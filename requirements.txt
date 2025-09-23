@@ -1,0 +1,2 @@
+pyserial>=3.5
+tecancavro>=0.3.5
