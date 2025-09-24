@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 import threading
+import io
 import time
 import sys
 import serial
@@ -1119,32 +1120,77 @@ class ElectrochemGUI:
         if filepath:
             self.plot_data(filepath)
 
+    def _read_csv_with_fallback(self, csv_path):
+        encodings_to_try = ("utf-8-sig", "utf-8", "cp1252", "latin-1")
+        last_error = None
+        for encoding in encodings_to_try:
+            try:
+                return pd.read_csv(csv_path, encoding=encoding)
+            except UnicodeDecodeError as exc:
+                last_error = exc
+        with open(csv_path, "r", encoding="utf-8", errors="replace") as handle:
+            data = handle.read()
+        try:
+            return pd.read_csv(io.StringIO(data))
+        except Exception as exc:
+            if last_error is not None:
+                raise last_error from exc
+            raise
+
+    @staticmethod
+    def _normalize_header(header: str) -> str:
+        normalized = header.strip().lower()
+        normalized = normalized.replace("\u03BC", "\u00B5")
+        normalized = normalized.replace("\u00B5", "mu")
+        normalized = normalized.replace("\uFFFD", "mu")
+        return normalized
+
+    def _find_column(self, df, candidates):
+        for candidate in candidates:
+            if candidate in df.columns:
+                return candidate
+        normalized_map = {self._normalize_header(col): col for col in df.columns}
+        for candidate in candidates:
+            normalized_candidate = self._normalize_header(candidate)
+            if normalized_candidate in normalized_map:
+                return normalized_map[normalized_candidate]
+        return None
+
     def plot_data(self, csv_path):
         """Reads a CSV file and plots the voltammogram."""
         try:
-            df = pd.read_csv(csv_path)
-            potential_col = 'Potential (V)'
-            current_col = 'Current (µA)'
+            df = self._read_csv_with_fallback(csv_path)
+        except Exception as exc:
+            self.log_message(f"Plot error: failed to read {csv_path}: {exc}")
+            messagebox.showerror("Plot Error", f"Failed to read data: {exc}")
+            self.update_status("Plot failed: see log for details")
+            return
 
-            if potential_col in df.columns and current_col in df.columns:
-                self.ax.clear()  # Clear the previous plot
-                self.ax.plot(df[potential_col], df[current_col])
-                
-                # Apply styling from the user's example
-                self.ax.set_title('Voltammogram')
-                self.ax.set_xlabel('Potential (V)')
-                self.ax.set_ylabel('Current (µA)')
-                self.ax.grid(visible=True, which='major', linestyle='-')
-                self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
-                self.ax.minorticks_on()
-                
-                self.canvas.draw() # Redraw the canvas
-                self.notebook.select(self.plotter_frame) # Switch to the plot tab
-            else:
-                messagebox.showerror("Plot Error", "CSV file must contain 'Potential (V)' and 'Current (µA)' columns.")
-        except Exception as e:
-            messagebox.showerror("Plot Error", f"Failed to plot data: {e}")
+        potential_col = self._find_column(df, ("Potential (V)",))
+        current_col = self._find_column(df, ("Current (µA)", "Current (uA)", "Current (�A)"))
 
+        if not potential_col or not current_col:
+            message = "Plot error: CSV file must contain 'Potential (V)' and 'Current (µA)' columns."
+            self.log_message(message)
+            messagebox.showerror("Plot Error", message)
+            self.update_status("Plot failed: missing required columns")
+            return
+
+        try:
+            self.ax.clear()
+            self.ax.plot(df[potential_col], df[current_col])
+            self.ax.set_title('Voltammogram')
+            self.ax.set_xlabel('Potential (V)')
+            self.ax.set_ylabel('Current (µA)')
+            self.ax.grid(visible=True, which='major', linestyle='-')
+            self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
+            self.ax.minorticks_on()
+            self.canvas.draw()
+            self.notebook.select(self.plotter_frame)
+        except Exception as exc:
+            self.log_message(f"Plot error: failed to render {csv_path}: {exc}")
+            messagebox.showerror("Plot Error", f"Failed to render plot: {exc}")
+            self.update_status("Plot failed: see log for details")
     def clear_params_frame(self):
         for widget in self.params_frame.winfo_children(): widget.destroy()
 

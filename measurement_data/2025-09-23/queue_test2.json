@@ -1,0 +1,120 @@
+[
+  {
+    "type": "PUMP_INIT",
+    "status": "pending",
+    "details": "Pump: Initialize (ZR)",
+    "pump_action": {
+      "name": "INIT",
+      "params": {}
+    }
+  },
+  {
+    "type": "PUMP_VALVE",
+    "status": "pending",
+    "details": "Pump: Valve -> 9",
+    "pump_action": {
+      "name": "VALVE",
+      "params": {
+        "port": 9
+      }
+    }
+  },
+  {
+    "type": "PUMP_SET_SPEED",
+    "status": "pending",
+    "details": "Pump: Set speed S15R",
+    "pump_action": {
+      "name": "SET_SPEED",
+      "params": {
+        "speed": 15
+      }
+    }
+  },
+  {
+    "type": "PUMP_ASPIRATE",
+    "status": "pending",
+    "details": "Pump: Aspirate 250.00 \u00b5L @ S15R",
+    "pump_action": {
+      "name": "ASPIRATE",
+      "params": {
+        "volume": 250.0,
+        "speed": 15
+      }
+    }
+  },
+  {
+    "type": "PUMP_VALVE",
+    "status": "pending",
+    "details": "Pump: Valve -> 1",
+    "pump_action": {
+      "name": "VALVE",
+      "params": {
+        "port": 1
+      }
+    }
+  },
+  {
+    "type": "PUMP_DISPENSE",
+    "status": "pending",
+    "details": "Pump: Dispense 250.00 \u00b5L @ S15R",
+    "pump_action": {
+      "name": "DISPENSE",
+      "params": {
+        "volume": 250.0,
+        "speed": 15
+      }
+    }
+  },
+  {
+    "type": "CV",
+    "script_path": "methods\\2025-09-23\\005_cv.ms",
+    "status": "pending",
+    "details": "005_cv.ms"
+  },
+  {
+    "type": "PUMP_VALVE",
+    "status": "pending",
+    "details": "Pump: Valve -> 3",
+    "pump_action": {
+      "name": "VALVE",
+      "params": {
+        "port": 3
+      }
+    }
+  },
+  {
+    "type": "PUMP_ASPIRATE",
+    "status": "pending",
+    "details": "Pump: Aspirate 250.00 \u00b5L @ S15R",
+    "pump_action": {
+      "name": "ASPIRATE",
+      "params": {
+        "volume": 250.0,
+        "speed": 15
+      }
+    }
+  },
+  {
+    "type": "PUMP_VALVE",
+    "status": "pending",
+    "details": "Pump: Valve -> 1",
+    "pump_action": {
+      "name": "VALVE",
+      "params": {
+        "port": 1
+      }
+    }
+  },
+  {
+    "type": "PUMP_DISPENSE",
+    "status": "pending",
+    "details": "Pump: Dispense 250.00 \u00b5L @ S15R",
+    "pump_action": {
+      "name": "DISPENSE",
+      "params": {
+        "volume": 250.0,
+        "speed": 15
+      }
+    }
+  }
+]
