@@ -57,6 +57,12 @@ try:
 except Exception:
     pythoncom = None
 
+PREFERRED_SYRINGE_UL = 250.0
+PREFERRED_STEPS_PER_STROKE = 181490
+
+PUMP_DEFAULT_STEPS = PREFERRED_STEPS_PER_STROKE
+PUMP_DEFAULT_SYRINGE = PREFERRED_SYRINGE_UL
+
 # --- PalmSens MethodSCRIPT Parser Integration ---
 # The following code is adapted from the provided mscript.py file
 # to correctly parse data packages from the device.
@@ -193,17 +199,22 @@ def to_si_string(value_str, unit='V'):
     """Converts a string float value to an SI unit string for the device."""
     try:
         val = float(value_str)
-        if unit in ['V', 'V/s']: # V/s for scan rate is treated like V
-            # For values between -1 and 1 (exclusive of 0), use milli suffix
-            if abs(val) < 1.0 and val != 0:
-                return f"{int(val * 1000)}m"
-            else:
-                return f"{int(val)}" # For whole numbers like 0, 1, -2 etc.
-        elif unit == 'Hz':
-            return f"{int(val)}"
-        return value_str # Fallback
     except (ValueError, TypeError):
-        return value_str # Return original if conversion fails
+        return value_str  # Return original if conversion fails
+
+    if unit in ['V', 'V/s']:
+        if val == 0:
+            return "0"
+        milli_value = val * 1000.0
+        formatted = f"{milli_value:.12f}".rstrip('0').rstrip('.')
+        if formatted in ('', '-0', '+0'):
+            formatted = '0'
+        return f"{formatted}m"
+    if unit == 'Hz':
+        if val.is_integer():
+            return f"{int(val)}"
+        return f"{val:g}"
+    return value_str  # Fallback for unsupported units
 
 # --- Integrated SerialMeasurementRunner Class (Unchanged) ---
 class SerialMeasurementRunner:
@@ -596,6 +607,7 @@ class ElectrochemGUI:
         container.rowconfigure(3, weight=1)
 
         self.pump_ctrl = PumpCtrl(use_sim=(not PUMP_HAS_COM), log_cb=self.pump_log)
+        self.pump_ctrl.configure_calibration(PREFERRED_STEPS_PER_STROKE, PREFERRED_SYRINGE_UL)
 
         # Connection section
         conn_frame = ttk.LabelFrame(container, text="Connection")
@@ -822,6 +834,7 @@ class ElectrochemGUI:
             self.pump_spin_speed,
             *self.pump_valve_buttons,
         ]
+        self.root.after(200, self._pump_auto_connect)
 
     def add_pump_action_to_queue(self, action_name: str, *, params=None, details: str):
         if not PUMP_AVAILABLE or self.pump_ctrl is None:
@@ -868,6 +881,16 @@ class ElectrochemGUI:
         except (ValueError, tk.TclError) as exc:
             messagebox.showerror("Invalid aspirate parameters", str(exc))
             return
+        if PUMP_AVAILABLE and self.pump_ctrl is not None:
+            pending_steps = self._pump_pending_plunger_steps()
+            projected_steps = pending_steps + self.pump_ctrl.steps_for_volume(volume)
+            if projected_steps > self.pump_ctrl.steps_per_stroke:
+                remaining_ul = self._pump_remaining_capacity_for_queue()
+                messagebox.showerror(
+                    "Pump Capacity Exceeded",
+                    f"Queued aspirations would exceed the syringe capacity. Remaining capacity: {remaining_ul:.2f} µL."
+                )
+                return
         details = f'Pump: Aspirate {volume:.2f} µL @ S{speed}R'
         self.add_pump_action_to_queue('ASPIRATE', params={'volume': volume, 'speed': speed}, details=details)
 
@@ -937,6 +960,61 @@ class ElectrochemGUI:
 
         self.root.after(0, apply_state)
 
+    def _pump_pending_plunger_steps(self) -> int:
+        if not PUMP_AVAILABLE or self.pump_ctrl is None:
+            return 0
+        steps = self.pump_ctrl.plunger_steps
+        for item in self.measurement_queue:
+            status = item.get('status')
+            if status not in (None, 'pending', 'in_progress'):
+                continue
+            action_info = item.get('pump_action') or {}
+            action = action_info.get('name')
+            params = action_info.get('params') or {}
+            if not action:
+                continue
+            if action == 'INIT':
+                steps = 0
+                continue
+            if action not in ('ASPIRATE', 'DISPENSE'):
+                continue
+            try:
+                volume = float(params.get('volume', 0.0))
+            except (TypeError, ValueError):
+                volume = 0.0
+            delta_steps = self.pump_ctrl.steps_for_volume(volume)
+            if action == 'ASPIRATE':
+                steps = min(self.pump_ctrl.steps_per_stroke, steps + delta_steps)
+            else:
+                steps = max(0, steps - delta_steps)
+        return steps
+
+    def _pump_remaining_capacity_for_queue(self) -> float:
+        if not PUMP_AVAILABLE or self.pump_ctrl is None:
+            return 0.0
+        pending_steps = self._pump_pending_plunger_steps()
+        remaining_steps = max(0, self.pump_ctrl.steps_per_stroke - pending_steps)
+        return self.pump_ctrl.volume_for_steps(remaining_steps)
+
+    def _pump_auto_connect(self):
+        if not PUMP_AVAILABLE or self.pump_ctrl is None:
+            return
+        if getattr(self, '_pump_auto_connect_attempted', False):
+            return
+        self._pump_auto_connect_attempted = True
+        try:
+            sim_mode = bool(self.pump_var_sim.get())
+            com_port = int(self.pump_var_com.get())
+            baud = int(self.pump_var_baud.get())
+            dev = int(self.pump_var_dev.get())
+        except (ValueError, tk.TclError):
+            self.pump_log('Auto-connect skipped: invalid connection parameters.')
+            return
+        if self.pump_ctrl.connected:
+            return
+        self.pump_log('Auto-connecting to pump...')
+        self.pump_threaded(self.pump_on_connect, sim_mode, com_port, baud, dev)
+
     def pump_threaded(self, fn, *args):
         if not PUMP_AVAILABLE or self.pump_ctrl is None:
             messagebox.showerror("Pump Error", "Pump backend unavailable.")
@@ -997,10 +1075,9 @@ class ElectrochemGUI:
         if self.pump_ctrl is None:
             return
         try:
-            self.pump_ctrl.steps_per_stroke = int(steps)
-            self.pump_ctrl.syringe_ul = float(syringe_ul)
+            self.pump_ctrl.configure_calibration(int(steps), float(syringe_ul))
             self.pump_log(
-                f"Applied: steps/stroke={self.pump_ctrl.steps_per_stroke}, syringe={self.pump_ctrl.syringe_ul:.0f} \u00B5L"
+                f"Applied: steps/stroke={self.pump_ctrl.steps_per_stroke}, syringe={self.pump_ctrl.syringe_ul:.0f} µL"
             )
         except Exception as exc:
             self.root.after(0, lambda: messagebox.showerror("Invalid calibration", str(exc)))
@@ -1063,6 +1140,8 @@ class ElectrochemGUI:
         control_frame = ttk.Frame(top_frame); control_frame.pack(pady=10, fill='x', padx=10)
         ttk.Button(control_frame, text="Run Queue", command=self.run_queue).pack(side='left', padx=5)
         ttk.Button(control_frame, text="Stop", command=self.stop_queue).pack(side='left', padx=5)
+        ttk.Button(control_frame, text="Save Queue", command=self.save_queue).pack(side='left', padx=5)
+        ttk.Button(control_frame, text="Load Queue", command=self.load_queue).pack(side='left', padx=5)
         ttk.Button(control_frame, text="Clear Queue", command=self.clear_queue).pack(side='left', padx=5)
         self.queue_tree = ttk.Treeview(top_frame, columns=('Type', 'Status', 'Details'), show='tree headings', height=8)
         self.queue_tree.heading('#0', text='#'); self.queue_tree.heading('Type', text='Type'); self.queue_tree.heading('Status', text='Status'); self.queue_tree.heading('Details', text='Details')
@@ -1353,6 +1432,143 @@ class ElectrochemGUI:
         for item in self.queue_tree.get_children(): self.queue_tree.delete(item)
         for i, item in enumerate(self.measurement_queue):
             self.queue_tree.insert('', 'end', text=str(i+1), values=(item['type'], item['status'].upper(), item.get('details', '')))
+
+    def _serialize_queue_item(self, item):
+        data = {
+            'type': item.get('type'),
+            'status': item.get('status', 'pending'),
+            'details': item.get('details'),
+        }
+        item_type = data['type']
+        if item_type == 'PAUSE':
+            data['pause_seconds'] = item.get('pause_seconds', 0.0)
+        elif item_type and item_type.startswith('PUMP_'):
+            action = item.get('pump_action') or {}
+            data['pump_action'] = {
+                'name': action.get('name'),
+                'params': dict(action.get('params') or {}),
+            }
+        else:
+            if 'script_path' in item:
+                data['script_path'] = item['script_path']
+        return data
+
+    def save_queue(self):
+        if not self.measurement_queue:
+            messagebox.showwarning("Empty Queue", "No items to save.")
+            return
+        if self.is_running:
+            messagebox.showwarning("Queue Running", "Stop the queue before saving.")
+            return
+
+        default_name = f"queue_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        file_path = filedialog.asksaveasfilename(
+            title="Save Queue",
+            defaultextension=".json",
+            filetypes=(("Queue Files", "*.json"), ("All Files", "*.*")),
+            initialdir=str(self.base_path),
+            initialfile=default_name,
+        )
+        if not file_path:
+            return
+
+        payload = {
+            'metadata': {
+                'saved_at': datetime.now().isoformat(timespec='seconds'),
+                'version': 1,
+            },
+            'items': [self._serialize_queue_item(item) for item in self.measurement_queue],
+        }
+
+        try:
+            with open(file_path, 'w', encoding='utf-8') as handle:
+                json.dump(payload, handle, indent=2)
+        except OSError as exc:
+            messagebox.showerror("Save Failed", f"Could not save queue:\n{exc}")
+            return
+
+        messagebox.showinfo("Queue Saved", f"Queue saved to:\n{file_path}")
+
+    def load_queue(self):
+        if self.is_running:
+            messagebox.showwarning("Queue Running", "Stop the queue before loading.")
+            return
+
+        file_path = filedialog.askopenfilename(
+            title="Load Queue",
+            defaultextension=".json",
+            filetypes=(("Queue Files", "*.json"), ("All Files", "*.*")),
+            initialdir=str(self.base_path),
+        )
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as handle:
+                payload = json.load(handle)
+            items = payload.get('items')
+            if not isinstance(items, list):
+                raise ValueError("Queue file missing 'items' list")
+        except Exception as exc:
+            messagebox.showerror("Load Failed", f"Could not load queue:\n{exc}")
+            return
+
+        new_queue = []
+        skipped = 0
+        for raw_item in items:
+            if not isinstance(raw_item, dict):
+                skipped += 1
+                continue
+            item_type = raw_item.get('type')
+            if not item_type:
+                skipped += 1
+                continue
+
+            queue_item = {'type': item_type, 'status': 'pending'}
+            details = raw_item.get('details')
+
+            if item_type == 'PAUSE':
+                try:
+                    seconds = float(raw_item.get('pause_seconds', 0.0))
+                except (TypeError, ValueError):
+                    skipped += 1
+                    continue
+                queue_item['pause_seconds'] = seconds
+                queue_item['details'] = details or f'Pause for {seconds:.1f} sec'
+            elif item_type.startswith('PUMP_'):
+                action = raw_item.get('pump_action') or {}
+                action_name = action.get('name')
+                if not action_name:
+                    skipped += 1
+                    continue
+                params = action.get('params') or {}
+                queue_item['pump_action'] = {
+                    'name': action_name,
+                    'params': dict(params),
+                }
+                queue_item['details'] = details or f'Pump action {action_name}'
+            else:
+                script_path = raw_item.get('script_path')
+                if not script_path:
+                    skipped += 1
+                    continue
+                queue_item['script_path'] = script_path
+                queue_item['details'] = details or Path(script_path).name
+                if not Path(script_path).exists():
+                    self.log_message(f"Warning: queue file references missing script -> {script_path}")
+
+            new_queue.append(queue_item)
+
+        if not new_queue:
+            messagebox.showwarning("Load Queue", "No valid queue items found in the selected file.")
+            return
+
+        self.measurement_queue = new_queue
+        self.refresh_queue_display()
+        self.update_status(f"Queue loaded ({len(new_queue)} items)")
+        if skipped:
+            self.log_message(f"Queue load skipped {skipped} invalid item(s) from {file_path}.")
+        messagebox.showinfo("Queue Loaded", f"Loaded {len(new_queue)} queue item(s).")
 
     def run_queue(self):
         if not self.measurement_queue: messagebox.showwarning("Empty Queue", "No items in queue"); return

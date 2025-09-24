@@ -96,13 +96,18 @@ class SimPumpComm:
                 return self._set_answer("")
 
             if c.startswith("A") and c.endswith("R") and c[1:-1].isdigit():
-                steps = max(0, int(c[1:-1])); time.sleep(self._duration_plunger(steps))
-                self.plunger_steps = min(self.steps_per_stroke, self.plunger_steps + steps)
+                target = max(0, int(c[1:-1]))
+                target = min(self.steps_per_stroke, target)
+                move = max(0, target - self.plunger_steps)
+                time.sleep(self._duration_plunger(move))
+                self.plunger_steps = target
                 return self._set_answer("")
 
             if c.startswith("D") and c.endswith("R") and c[1:-1].isdigit():
-                steps = max(0, int(c[1:-1])); time.sleep(self._duration_plunger(steps))
-                self.plunger_steps = max(0, self.plunger_steps - steps)
+                steps = max(0, int(c[1:-1]))
+                move = min(self.plunger_steps, steps)
+                time.sleep(self._duration_plunger(move))
+                self.plunger_steps = max(0, self.plunger_steps - move)
                 return self._set_answer("")
 
             time.sleep(0.02); return self._set_answer("")
@@ -120,9 +125,26 @@ class PumpCtrl:
         self.syringe_ul = DEFAULT_SYRINGE
         self.current_speed = None
         self._backend = None
+        self._plunger_steps = 0
 
     def _log(self, s):
         if self.log_cb: self.log_cb(s)
+
+    def _sync_backend_plunger(self):
+        backend = self._backend
+        if backend is None:
+            return
+        if hasattr(backend, 'plunger_steps'):
+            try:
+                backend.plunger_steps = int(self._plunger_steps)
+            except Exception:
+                pass
+
+    def _set_plunger_steps(self, steps: int):
+        clamped = max(0, min(int(steps), self.steps_per_stroke))
+        self._plunger_steps = clamped
+        self._sync_backend_plunger()
+
 
     def connect(self, com_port:int, baud:int, dev:int):
         if self.connected: return
@@ -132,6 +154,7 @@ class PumpCtrl:
             self._backend = SimPumpComm(self.steps_per_stroke, self.syringe_ul)
             self._backend.PumpInitComm(self.com_port)
             self.connected = True
+            self._sync_backend_plunger()
             self._log(f"[SIM] Connected (COM{self.com_port})")
             return
 
@@ -149,6 +172,7 @@ class PumpCtrl:
 
             self._backend.PumpInitComm(self.com_port)
             self.connected = True
+            self._sync_backend_plunger()
             self._log("Connected.")
         except Exception as e:
             self._backend = None
@@ -172,8 +196,26 @@ class PumpCtrl:
         try: return (self._backend.PumpGetLastAnswer(self.dev) or "").strip()
         except Exception: return ""
 
-    def initialize(self):      return self._send("ZR", 1.2)
-    def valve_to(self, port):  return self._send(f"I{int(port)}R", 0.8)
+    def initialize(self):
+        ans = self._send("ZR", 1.2)
+        self._set_plunger_steps(0)
+        return ans
+
+    def valve_to(self, port):
+        return self._send(f"I{int(port)}R", 0.8)
+
+    def configure_calibration(self, steps_per_stroke: int, syringe_ul: float):
+        steps = max(1, int(steps_per_stroke))
+        volume = max(1e-6, float(syringe_ul))
+        current_volume = self.current_volume_ul
+        self.steps_per_stroke = steps
+        self.syringe_ul = volume
+        self._set_plunger_steps(min(self._ul_to_steps(current_volume), self.steps_per_stroke))
+        if self._backend is not None:
+            if hasattr(self._backend, "steps_per_stroke"):
+                self._backend.steps_per_stroke = self.steps_per_stroke
+            if hasattr(self._backend, "syringe_ul"):
+                self._backend.syringe_ul = self.syringe_ul
 
     def set_speed(self, s:int, settle=0.15):
         s = max(SPEED_MIN, min(SPEED_MAX, int(s)))
@@ -181,17 +223,69 @@ class PumpCtrl:
         return self._send(f"S{s}R", settle)
 
     def _ul_to_steps(self, ul:float) -> int:
-        return max(0, int(round(self.steps_per_stroke * (float(ul)/float(self.syringe_ul)))))
+        return max(0, int(round(self.steps_per_stroke * (float(ul) / float(self.syringe_ul)))))
+
+    def _steps_to_ul(self, steps: int) -> float:
+        if self.steps_per_stroke <= 0:
+            return 0.0
+        return (float(steps) / float(self.steps_per_stroke)) * float(self.syringe_ul)
+
+    @property
+    def plunger_steps(self) -> int:
+        return self._plunger_steps
+
+    def steps_for_volume(self, ul: float) -> int:
+        return self._ul_to_steps(ul)
+
+    def volume_for_steps(self, steps: int) -> float:
+        return self._steps_to_ul(steps)
+
+    @property
+    def current_volume_ul(self) -> float:
+        return self._steps_to_ul(self._plunger_steps)
+
+    @property
+    def remaining_capacity_ul(self) -> float:
+        remaining_steps = max(0, self.steps_per_stroke - self._plunger_steps)
+        return self._steps_to_ul(remaining_steps)
 
     def aspirate_ul(self, ul:float):
+        volume = float(ul)
+        if volume < 0:
+            raise ValueError("Cannot aspirate a negative volume.")
+        delta_steps = self._ul_to_steps(volume)
+        if delta_steps <= 0:
+            return ""
+        target_steps = self._plunger_steps + delta_steps
+        if target_steps > self.steps_per_stroke:
+            remaining = self.remaining_capacity_ul
+            raise ValueError(
+                f"Requested {volume:.2f} uL exceeds remaining syringe capacity of {remaining:.2f} uL (syringe volume {self.syringe_ul:.2f} uL)."
+            )
         if self.current_speed is not None:
             self._send(f"S{self.current_speed}R", 0.05)
-        return self._send(f"A{self._ul_to_steps(ul)}R", 1.0)
+        ans = self._send(f"A{target_steps}R", 1.0)
+        self._set_plunger_steps(target_steps)
+        return ans
 
     def dispense_ul(self, ul:float):
+        volume = float(ul)
+        if volume < 0:
+            raise ValueError("Cannot dispense a negative volume.")
+        delta_steps = self._ul_to_steps(volume)
+        if delta_steps <= 0:
+            return ""
+        if delta_steps > self._plunger_steps:
+            available = self.current_volume_ul
+            raise ValueError(
+                f"Requested dispense of {volume:.2f} uL exceeds loaded volume of {available:.2f} uL."
+            )
         if self.current_speed is not None:
             self._send(f"S{self.current_speed}R", 0.05)
-        return self._send(f"D{self._ul_to_steps(ul)}R", 1.0)
+        ans = self._send(f"D{delta_steps}R", 1.0)
+        new_steps = self._plunger_steps - delta_steps
+        self._set_plunger_steps(new_steps)
+        return ans
 
 # ================================== GUI =====================================
 class PumpGUI(tk.Tk):
