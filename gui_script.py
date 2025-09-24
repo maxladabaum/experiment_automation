@@ -16,6 +16,7 @@ import csv
 import math
 import collections
 import warnings
+from typing import Dict, List, Optional
 
 # --- Matplotlib and Pandas imports for plotting ---
 import pandas as pd
@@ -166,7 +167,7 @@ class MScriptVar:
         return int(var, 16) - (2 ** 27)
 
     @staticmethod
-    def parse_metadata(tokens: list[str]) -> dict[str, int]:
+    def parse_metadata(tokens: List[str]) -> Dict[str, int]:
         """Parse the (optional) metadata."""
         metadata = {}
         for token in tokens:
@@ -177,7 +178,7 @@ class MScriptVar:
         return metadata
 
 
-def parse_mscript_data_package(line: str) -> list[MScriptVar]:
+def parse_mscript_data_package(line: str) -> Optional[List[MScriptVar]]:
     """Parse a MethodSCRIPT data package."""
     if line.startswith('P') and line.endswith('\n'):
         return [MScriptVar(var) for var in line[1:-1].split(';')]
@@ -229,9 +230,26 @@ class SerialMeasurementRunner:
         if not candidates:
             self.log("ERROR: No measurement device found")
             return None
-        elif len(candidates) > 1:
+
+        pump_port_upper = None
+        if PUMP_AVAILABLE and PUMP_DEFAULT_COM_PORT:
+            try:
+                pump_port_upper = f"COM{int(PUMP_DEFAULT_COM_PORT)}".upper()
+            except (TypeError, ValueError):
+                pump_port_upper = str(PUMP_DEFAULT_COM_PORT).upper()
+
+        def candidate_key(dev: str):
+            return (pump_port_upper is not None and dev.upper() == pump_port_upper, dev)
+
+        candidates.sort(key=candidate_key)
+
+        if len(candidates) > 1:
             self.log(f"Multiple devices found: {candidates}")
-            self.log(f"Using first device: {candidates[0]}")
+            selected = candidates[0]
+            if pump_port_upper and selected.upper() != pump_port_upper and any(dev.upper() == pump_port_upper for dev in candidates):
+                self.log(f"Using first device: {selected} (pump port {pump_port_upper} deprioritized)")
+            else:
+                self.log(f"Using first device: {selected}")
         return candidates[0]
 
     def connect(self, port=None):
