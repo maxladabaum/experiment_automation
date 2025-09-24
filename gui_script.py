@@ -501,6 +501,9 @@ class ElectrochemGUI:
         frequency = to_si_string(self.swv_params['frequency'].get(), 'Hz')
         cond_pot = to_si_string(self.swv_params['cond_potential'].get(), 'V')
         cond_time = self.swv_params['cond_time'].get()
+        n_scans = int(self.swv_params['n_scans'].get())
+        if n_scans < 1:
+            raise ValueError("Number of scans must be at least 1")
         
         min_pot = min(begin_v, end_v) - amp_v
         max_pot = max(begin_v, end_v) + amp_v
@@ -518,9 +521,13 @@ class ElectrochemGUI:
                 f"set_e {cond_pot}", f"wait {cond_time}"
             ])
             
+        swv_command = f"meas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}"
+        if n_scans > 1:
+            swv_command += f" nscans({n_scans})"
+
         script_parts.extend([
             "# SWV measurement loop",
-            f"meas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}",
+            swv_command,
             "\tpck_start", "\tpck_add p", "\tpck_add c", "\tpck_add f", "\tpck_add r",
             "\tpck_end", "endloop", "on_finished:", "cell_off"
         ])
@@ -569,7 +576,7 @@ class ElectrochemGUI:
         self.clear_params_frame()
         self.current_technique = "SWV"
         self.swv_params = {}
-        params = [("Begin Potential (V):", "begin_potential", "-0.5"), ("End Potential (V):", "end_potential", "0.5"), ("Step Potential (V):", "step_potential", "0.002"), ("Amplitude (V):", "amplitude", "0.02"), ("Frequency (Hz):", "frequency", "15"), ("Conditioning Potential (V):", "cond_potential", "0"), ("Conditioning Time (s):", "cond_time", "0")]
+        params = [("Begin Potential (V):", "begin_potential", "-0.5"), ("End Potential (V):", "end_potential", "0.5"), ("Step Potential (V):", "step_potential", "0.002"), ("Amplitude (V):", "amplitude", "0.02"), ("Frequency (Hz):", "frequency", "15"), ("Number of Scans:", "n_scans", "1"), ("Conditioning Potential (V):", "cond_potential", "0"), ("Conditioning Time (s):", "cond_time", "0")]
         for i, (label, key, default) in enumerate(params):
             ttk.Label(self.params_frame, text=label).grid(row=i, column=0, sticky='w', pady=2)
             entry = ttk.Entry(self.params_frame, width=15); entry.insert(0, default); entry.grid(row=i, column=1, pady=2)
