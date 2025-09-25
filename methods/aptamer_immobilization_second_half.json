@@ -1,48 +1,28 @@
 {
   "metadata": {
-    "saved_at": "2025-09-23T22:54:28",
+    "saved_at": "2025-09-24T16:21:09",
     "version": 1
   },
   "items": [
     {
-      "type": "PUMP_INIT",
-      "status": "pending",
-      "details": "Pump: Initialize (ZR)",
-      "pump_action": {
-        "name": "INIT",
-        "params": {}
-      }
-    },
-    {
-      "type": "PUMP_SET_SPEED",
-      "status": "pending",
-      "details": "Pump: Set speed S20R",
-      "pump_action": {
-        "name": "SET_SPEED",
-        "params": {
-          "speed": 20
-        }
-      }
-    },
-    {
       "type": "PUMP_VALVE",
       "status": "pending",
-      "details": "Pump: Valve -> 3",
+      "details": "Pump: Valve -> 7",
       "pump_action": {
         "name": "VALVE",
         "params": {
-          "port": 3
+          "port": 7
         }
       }
     },
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 500.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 185.00 \u00b5L @ S20R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
-          "volume": 500.0,
+          "volume": 185.0,
           "speed": 20
         }
       }
@@ -61,11 +41,11 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 500.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 100.00 \u00b5L @ S20R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
-          "volume": 500.0,
+          "volume": 100.0,
           "speed": 20
         }
       }
@@ -73,189 +53,22 @@
     {
       "type": "PUMP_VALVE",
       "status": "pending",
-      "details": "Pump: Valve -> 4",
+      "details": "Pump: Valve -> 2",
       "pump_action": {
         "name": "VALVE",
         "params": {
-          "port": 4
-        }
-      }
-    },
-    {
-      "type": "PUMP_ASPIRATE",
-      "status": "pending",
-      "details": "Pump: Aspirate 500.00 \u00b5L @ S20R",
-      "pump_action": {
-        "name": "ASPIRATE",
-        "params": {
-          "volume": 500.0,
-          "speed": 20
-        }
-      }
-    },
-    {
-      "type": "PUMP_VALVE",
-      "status": "pending",
-      "details": "Pump: Valve -> 1",
-      "pump_action": {
-        "name": "VALVE",
-        "params": {
-          "port": 1
+          "port": 2
         }
       }
     },
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 500.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 85.00 \u00b5L @ S20R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
-          "volume": 500.0,
-          "speed": 20
-        }
-      }
-    },
-    {
-      "type": "PUMP_VALVE",
-      "status": "pending",
-      "details": "Pump: Valve -> 3",
-      "pump_action": {
-        "name": "VALVE",
-        "params": {
-          "port": 3
-        }
-      }
-    },
-    {
-      "type": "PUMP_ASPIRATE",
-      "status": "pending",
-      "details": "Pump: Aspirate 500.00 \u00b5L @ S20R",
-      "pump_action": {
-        "name": "ASPIRATE",
-        "params": {
-          "volume": 500.0,
-          "speed": 20
-        }
-      }
-    },
-    {
-      "type": "PUMP_VALVE",
-      "status": "pending",
-      "details": "Pump: Valve -> 1",
-      "pump_action": {
-        "name": "VALVE",
-        "params": {
-          "port": 1
-        }
-      }
-    },
-    {
-      "type": "PUMP_DISPENSE",
-      "status": "pending",
-      "details": "Pump: Dispense 500.00 \u00b5L @ S20R",
-      "pump_action": {
-        "name": "DISPENSE",
-        "params": {
-          "volume": 500.0,
-          "speed": 20
-        }
-      }
-    },
-    {
-      "type": "PUMP_VALVE",
-      "status": "pending",
-      "details": "Pump: Valve -> 5",
-      "pump_action": {
-        "name": "VALVE",
-        "params": {
-          "port": 5
-        }
-      }
-    },
-    {
-      "type": "PUMP_ASPIRATE",
-      "status": "pending",
-      "details": "Pump: Aspirate 500.00 \u00b5L @ S20R",
-      "pump_action": {
-        "name": "ASPIRATE",
-        "params": {
-          "volume": 500.0,
-          "speed": 20
-        }
-      }
-    },
-    {
-      "type": "PUMP_VALVE",
-      "status": "pending",
-      "details": "Pump: Valve -> 1",
-      "pump_action": {
-        "name": "VALVE",
-        "params": {
-          "port": 1
-        }
-      }
-    },
-    {
-      "type": "PUMP_DISPENSE",
-      "status": "pending",
-      "details": "Pump: Dispense 500.00 \u00b5L @ S20R",
-      "pump_action": {
-        "name": "DISPENSE",
-        "params": {
-          "volume": 500.0,
-          "speed": 20
-        }
-      }
-    },
-    {
-      "type": "CV",
-      "status": "pending",
-      "details": "020_cv.ms",
-      "script_path": "methods\\2025-09-23\\020_cv.ms"
-    },
-    {
-      "type": "PUMP_VALVE",
-      "status": "pending",
-      "details": "Pump: Valve -> 3",
-      "pump_action": {
-        "name": "VALVE",
-        "params": {
-          "port": 3
-        }
-      }
-    },
-    {
-      "type": "PUMP_ASPIRATE",
-      "status": "pending",
-      "details": "Pump: Aspirate 500.00 \u00b5L @ S20R",
-      "pump_action": {
-        "name": "ASPIRATE",
-        "params": {
-          "volume": 500.0,
-          "speed": 20
-        }
-      }
-    },
-    {
-      "type": "PUMP_VALVE",
-      "status": "pending",
-      "details": "Pump: Valve -> 1",
-      "pump_action": {
-        "name": "VALVE",
-        "params": {
-          "port": 1
-        }
-      }
-    },
-    {
-      "type": "PUMP_DISPENSE",
-      "status": "pending",
-      "details": "Pump: Dispense 500.00 \u00b5L @ S20R",
-      "pump_action": {
-        "name": "DISPENSE",
-        "params": {
-          "volume": 500.0,
+          "volume": 85.0,
           "speed": 20
         }
       }
@@ -274,11 +87,11 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 500.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 70.00 \u00b5L @ S20R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
-          "volume": 500.0,
+          "volume": 70.0,
           "speed": 20
         }
       }
@@ -297,14 +110,199 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 500.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 70.00 \u00b5L @ S20R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
-          "volume": 500.0,
+          "volume": 70.0,
           "speed": 20
         }
       }
+    },
+    {
+      "type": "PAUSE",
+      "status": "pending",
+      "details": "Pause for 20.0 sec",
+      "pause_seconds": 20.0
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 8",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 8
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 185.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 185.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 100.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 100.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 2",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 2
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 85.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 85.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 70.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 70.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 70.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 70.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PAUSE",
+      "status": "pending",
+      "details": "Pause for 10.0 sec",
+      "pause_seconds": 10.0
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 6",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 6
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 50.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 50.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 50.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 50.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PAUSE",
+      "status": "pending",
+      "details": "Pause for 15.0 sec",
+      "pause_seconds": 15.0
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "009_swv.ms",
+      "script_path": "methods\\2025-09-24\\009_swv.ms"
     }
   ]
 }

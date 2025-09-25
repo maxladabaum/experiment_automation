@@ -57,7 +57,7 @@ try:
 except Exception:
     pythoncom = None
 
-PREFERRED_SYRINGE_UL = 250.0
+PREFERRED_SYRINGE_UL = 1000.0
 PREFERRED_STEPS_PER_STROKE = 181490
 
 PUMP_DEFAULT_STEPS = PREFERRED_STEPS_PER_STROKE
@@ -1738,3 +1738,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
