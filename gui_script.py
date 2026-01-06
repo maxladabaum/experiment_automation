@@ -57,7 +57,7 @@ try:
 except Exception:
     pythoncom = None
 
-PREFERRED_SYRINGE_UL = 1000.0
+PREFERRED_SYRINGE_UL = 250.0
 PREFERRED_STEPS_PER_STROKE = 181490
 
 PUMP_DEFAULT_STEPS = PREFERRED_STEPS_PER_STROKE
@@ -502,15 +502,12 @@ class ElectrochemGUI:
         cond_pot = to_si_string(self.swv_params['cond_potential'].get(), 'V')
         cond_time = self.swv_params['cond_time'].get()
         n_scans = int(self.swv_params['n_scans'].get())
-        if n_scans < 1:
-            raise ValueError("Number of scans must be at least 1")
-        
         min_pot = min(begin_v, end_v) - amp_v
         max_pot = max(begin_v, end_v) + amp_v
         min_pot_mv, max_pot_mv = int(min_pot * 1000), int(max_pot * 1000)
 
         script_parts = [
-            "e", "var c", "var p", "var f", "var r", "set_pgstat_mode 2", "set_max_bandwidth 1600",
+            "e", "var c", "var p", "var f", "var r","set_pgstat_mode 2", "set_max_bandwidth 1600",
             f"set_range_minmax da {min_pot_mv}m {max_pot_mv}m",
             "set_range ba 5m", "set_autoranging ba 100n 5m", "cell_on"
         ]
@@ -521,15 +518,24 @@ class ElectrochemGUI:
                 f"set_e {cond_pot}", f"wait {cond_time}"
             ])
             
-        swv_command = f"meas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}"
         if n_scans > 1:
-            swv_command += f" nscans({n_scans})"
+            script_parts.extend([
+            f"# SWV measurement loop for {n_scans} scans",
+            "var scan_num", "store_var scan_num 0i i", f"loop scan_num < {n_scans}i",
+            "\tadd_var scan_num 1i", "\t# Starting scan", '\tsend_string "C"','\tsend_var scan_num', 
+            f"\tmeas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}",
+            "\t\tpck_start", "\t\t\tpck_add p", "\t\t\tpck_add c", "\t\t\tpck_add f", "\t\t\tpck_add r",
+            "\t\tpck_end", "\tendloop", '\tsend_string "-"', "endloop"
+        ])
+        else:
+            script_parts.extend([
+            f"meas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}",
+            "\tpck_start", "\t\tpck_add p", "\t\tpck_add c", "\t\tpck_add f", "\t\tpck_add r",
+            "\tpck_end", "endloop"
+        ])
 
         script_parts.extend([
-            "# SWV measurement loop",
-            swv_command,
-            "\tpck_start", "\tpck_add p", "\tpck_add c", "\tpck_add f", "\tpck_add r",
-            "\tpck_end", "endloop", "on_finished:", "cell_off"
+            "on_finished:", "cell_off"
         ])
 
         return "\n".join(script_parts)
@@ -1738,4 +1744,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
