@@ -19,7 +19,6 @@ import collections
 import queue
 import warnings
 import traceback
-import itertools
 from typing import Dict, List, Optional
 
 # --- Matplotlib and Pandas imports for plotting ---
@@ -474,14 +473,6 @@ class ElectrochemGUI:
         self.live_plot_active = False
         self.live_plot_job = None
         self.plot_line = None
-        self.last_live_plot_color = None
-        self.last_live_plot_label = None
-        self.plot_colors = (
-            plt.rcParams.get('axes.prop_cycle', plt.cycler(color=['#1f77b4']))
-            .by_key()
-            .get('color', ['#1f77b4'])
-        )
-        self.plot_color_cycle = itertools.cycle(self.plot_colors)
         
         self.setup_gui()
         
@@ -601,81 +592,6 @@ class ElectrochemGUI:
         ])
 
         return "\n".join(script_parts)
-
-    def _get_mux_channels(self, params):
-        entry = params.get('mux_channel')
-        if entry is None:
-            return []
-        raw = entry.get().strip()
-        if raw in ("", "0"):
-            return []
-
-        channels = []
-        seen = set()
-        parts = [p.strip() for p in raw.split(",") if p.strip()]
-        if not parts:
-            messagebox.showerror("Invalid MUX Channel", "Enter channels like 1-3,7-9 or 0 to disable.")
-            return None
-
-        for part in parts:
-            if "-" in part:
-                start_s, end_s = part.split("-", 1)
-                if not start_s.strip() or not end_s.strip():
-                    messagebox.showerror("Invalid MUX Channel", f"Invalid range: '{part}'")
-                    return None
-                try:
-                    start = int(start_s)
-                    end = int(end_s)
-                except Exception:
-                    messagebox.showerror("Invalid MUX Channel", f"Invalid range: '{part}'")
-                    return None
-                if start > end:
-                    messagebox.showerror("Invalid MUX Channel", f"Invalid range: '{part}'")
-                    return None
-                for ch in range(start, end + 1):
-                    if not (1 <= ch <= 16):
-                        messagebox.showerror("Invalid MUX Channel", "MUX16 channels must be between 1 and 16.")
-                        return None
-                    if ch not in seen:
-                        seen.add(ch)
-                        channels.append(ch)
-            else:
-                try:
-                    ch = int(part)
-                except Exception:
-                    messagebox.showerror("Invalid MUX Channel", f"Invalid channel: '{part}'")
-                    return None
-                if not (1 <= ch <= 16):
-                    messagebox.showerror("Invalid MUX Channel", "MUX16 channels must be between 1 and 16.")
-                    return None
-                if ch not in seen:
-                    seen.add(ch)
-                    channels.append(ch)
-
-        return channels
-
-    @staticmethod
-    def _mux_channel_address(channel: int) -> int:
-        idx = channel - 1
-        return (idx << 4) | idx
-
-    def _build_mux_script(self, base_script: str, channel: int) -> str:
-        lines = base_script.splitlines()
-        header = "e"
-        rest = lines
-        if lines and lines[0].strip() in ("e", "l"):
-            header = lines[0].strip()
-            rest = lines[1:]
-
-        addr = self._mux_channel_address(channel)
-        prefix = [
-            header,
-            "# MUX16 channel select",
-            "set_gpio_cfg 0x3FFi 1",
-            f"set_gpio {addr}i",
-        ]
-        merged = prefix + rest
-        return "\n".join(merged)
     
     def setup_method_tab(self):
         left_frame = ttk.Frame(self.method_frame)
@@ -705,7 +621,7 @@ class ElectrochemGUI:
         self.clear_params_frame()
         self.current_technique = "CV"
         self.cv_params = {}
-        params = [("Begin Potential (V):", "begin_potential", "0"), ("Vertex 1 (V):", "vertex1", "-0.5"), ("Vertex 2 (V):", "vertex2", "0.5"), ("Step Potential (V):", "step_potential", "0.002"), ("Scan Rate (V/s):", "scan_rate", "0.1"), ("Number of Scans:", "n_scans", "1"), ("Conditioning Potential (V):", "cond_potential", "0"), ("Conditioning Time (s):", "cond_time", "0"), ("MUX16 Channels (1-16, 0=off, e.g. 1-3,7-9):", "mux_channel", "0")]
+        params = [("Begin Potential (V):", "begin_potential", "0"), ("Vertex 1 (V):", "vertex1", "-0.5"), ("Vertex 2 (V):", "vertex2", "0.5"), ("Step Potential (V):", "step_potential", "0.002"), ("Scan Rate (V/s):", "scan_rate", "0.1"), ("Number of Scans:", "n_scans", "1"), ("Conditioning Potential (V):", "cond_potential", "0"), ("Conditioning Time (s):", "cond_time", "0")]
         for i, (label, key, default) in enumerate(params):
             ttk.Label(self.params_frame, text=label).grid(row=i, column=0, sticky='w', pady=2)
             entry = ttk.Entry(self.params_frame, width=15); entry.insert(0, default); entry.grid(row=i, column=1, pady=2)
@@ -719,7 +635,7 @@ class ElectrochemGUI:
         self.clear_params_frame()
         self.current_technique = "SWV"
         self.swv_params = {}
-        params = [("Begin Potential (V):", "begin_potential", "-0.5"), ("End Potential (V):", "end_potential", "0.5"), ("Step Potential (V):", "step_potential", "0.002"), ("Amplitude (V):", "amplitude", "0.02"), ("Frequency (Hz):", "frequency", "15"), ("Number of Scans:", "n_scans", "1"), ("Conditioning Potential (V):", "cond_potential", "0"), ("Conditioning Time (s):", "cond_time", "0"), ("MUX16 Channels (1-16, 0=off, e.g. 1-3,7-9):", "mux_channel", "0")]
+        params = [("Begin Potential (V):", "begin_potential", "-0.5"), ("End Potential (V):", "end_potential", "0.5"), ("Step Potential (V):", "step_potential", "0.002"), ("Amplitude (V):", "amplitude", "0.02"), ("Frequency (Hz):", "frequency", "15"), ("Number of Scans:", "n_scans", "1"), ("Conditioning Potential (V):", "cond_potential", "0"), ("Conditioning Time (s):", "cond_time", "0")]
         for i, (label, key, default) in enumerate(params):
             ttk.Label(self.params_frame, text=label).grid(row=i, column=0, sticky='w', pady=2)
             entry = ttk.Entry(self.params_frame, width=15); entry.insert(0, default); entry.grid(row=i, column=1, pady=2)
@@ -1326,7 +1242,6 @@ class ElectrochemGUI:
         plot_controls.pack(side='top', fill='x', pady=5, padx=5)
         
         ttk.Button(plot_controls, text="Load and Plot CSV", command=self.load_and_plot_csv).pack(side='left')
-        ttk.Button(plot_controls, text="Clear Plot", command=self.clear_plot).pack(side='left', padx=5)
 
         # Create a Matplotlib figure and axis
         self.fig = Figure(figsize=(8, 6), dpi=100)
@@ -1391,7 +1306,7 @@ class ElectrochemGUI:
                 return normalized_map[normalized_candidate]
         return None
 
-    def plot_data(self, csv_path, color=None, label=None):
+    def plot_data(self, csv_path):
         """Reads a CSV file and plots the voltammogram."""
         try:
             df = self._read_csv_with_fallback(csv_path)
@@ -1412,22 +1327,14 @@ class ElectrochemGUI:
             return
 
         try:
-            if color is None:
-                color = next(self.plot_color_cycle)
-            if label is None:
-                label = Path(csv_path).name
-            if label:
-                for line in list(self.ax.lines):
-                    if line.get_label() == label:
-                        line.remove()
-            self.ax.plot(df[potential_col], df[current_col], color=color, label=label)
+            self.ax.clear()
+            self.ax.plot(df[potential_col], df[current_col])
             self.ax.set_title('Voltammogram')
             self.ax.set_xlabel('Potential (V)')
             self.ax.set_ylabel('Current (uA)')
             self.ax.grid(visible=True, which='major', linestyle='-')
             self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
             self.ax.minorticks_on()
-            self.ax.legend(loc='best')
             self.canvas.draw()
             self.notebook.select(self.plotter_frame)
         except Exception as exc:
@@ -1435,41 +1342,20 @@ class ElectrochemGUI:
             messagebox.showerror("Plot Error", f"Failed to render plot: {exc}")
             self.update_status("Plot failed: see log for details")
 
-    def clear_plot(self):
-        self.ax.clear()
-        self.ax.set_title('Voltammogram')
-        self.ax.set_xlabel('Potential (V)')
-        self.ax.set_ylabel('Current (uA)')
-        self.ax.grid(visible=True, which='major', linestyle='-')
-        self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
-        self.ax.minorticks_on()
-        self.plot_color_cycle = itertools.cycle(self.plot_colors)
-        self.plot_line = None
-        self.live_plot_x = []
-        self.live_plot_y = []
-        self.last_live_plot_color = None
-        self.last_live_plot_label = None
-        self.canvas.draw()
-
-    def start_live_plot(self, title=None, color=None, label=None):
+    def start_live_plot(self, title=None):
         self.live_plot_queue = queue.Queue(maxsize=10000)
         self.live_plot_x = []
         self.live_plot_y = []
         self.live_plot_active = True
 
-        if color is None:
-            color = next(self.plot_color_cycle)
-        self.last_live_plot_color = color
-        if label is None:
-            label = title or "Live"
-        self.last_live_plot_label = label
+        self.ax.clear()
         self.ax.set_title(title or "Live Voltammogram")
         self.ax.set_xlabel('Potential (V)')
         self.ax.set_ylabel('Current (uA)')
         self.ax.grid(visible=True, which='major', linestyle='-')
         self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
         self.ax.minorticks_on()
-        (self.plot_line,) = self.ax.plot([], [], lw=1, color=color, label=label)
+        (self.plot_line,) = self.ax.plot([], [], lw=1)
         self.canvas.draw()
         self.notebook.select(self.plotter_frame)
 
@@ -1517,8 +1403,6 @@ class ElectrochemGUI:
                 self.plot_line.set_data(self.live_plot_x, self.live_plot_y)
             self.ax.relim()
             self.ax.autoscale_view()
-            if self.last_live_plot_label:
-                self.ax.legend(loc='best')
             self.canvas.draw_idle()
 
         self.live_plot_job = self.root.after(100, self._poll_live_plot_queue)
@@ -1527,16 +1411,7 @@ class ElectrochemGUI:
 
     def generate_cv_script(self):
         try:
-            base_script = self.create_cv_methodscript()
-            mux_channels = self._get_mux_channels(self.cv_params)
-            if mux_channels is None:
-                return None
-            script = base_script
-            if mux_channels:
-                script = self._build_mux_script(base_script, mux_channels[0])
-                if len(mux_channels) > 1:
-                    note = f"# NOTE: Multiple MUX16 channels selected ({', '.join(map(str, mux_channels))}). Preview shows channel {mux_channels[0]}."
-                    script = f"{note}\n{script}"
+            script = self.create_cv_methodscript()
             self.current_script = script
             self.update_script_preview(script)
             return script
@@ -1546,16 +1421,7 @@ class ElectrochemGUI:
 
     def generate_swv_script(self):
         try:
-            base_script = self.create_swv_methodscript()
-            mux_channels = self._get_mux_channels(self.swv_params)
-            if mux_channels is None:
-                return None
-            script = base_script
-            if mux_channels:
-                script = self._build_mux_script(base_script, mux_channels[0])
-                if len(mux_channels) > 1:
-                    note = f"# NOTE: Multiple MUX16 channels selected ({', '.join(map(str, mux_channels))}). Preview shows channel {mux_channels[0]}."
-                    script = f"{note}\n{script}"
+            script = self.create_swv_methodscript()
             self.current_script = script
             self.update_script_preview(script)
             return script
@@ -1568,24 +1434,12 @@ class ElectrochemGUI:
         self.script_text.insert(1.0, script)
     
     def add_cv_to_queue(self):
-        base_script = self.create_cv_methodscript()
-        mux_channels = self._get_mux_channels(self.cv_params)
-        if mux_channels is None:
-            return
-        if mux_channels:
-            self.add_mux_scripts_to_queue("CV", base_script, mux_channels)
-        else:
-            self.add_to_queue("CV", base_script)
+        script = self.generate_cv_script()
+        if script: self.add_to_queue("CV", script)
     
     def add_swv_to_queue(self):
-        base_script = self.create_swv_methodscript()
-        mux_channels = self._get_mux_channels(self.swv_params)
-        if mux_channels is None:
-            return
-        if mux_channels:
-            self.add_mux_scripts_to_queue("SWV", base_script, mux_channels)
-        else:
-            self.add_to_queue("SWV", base_script)
+        script = self.generate_swv_script()
+        if script: self.add_to_queue("SWV", script)
 
     def add_pause_to_queue(self):
         try:
@@ -1607,32 +1461,12 @@ class ElectrochemGUI:
         messagebox.showinfo("Success", f"Pause ({seconds:.1f} sec) added to queue")
 
     def run_cv_immediately(self):
-        base_script = self.create_cv_methodscript()
-        mux_channels = self._get_mux_channels(self.cv_params)
-        if mux_channels is None:
-            return
-        if mux_channels:
-            if len(mux_channels) == 1:
-                mux_script = self._build_mux_script(base_script, mux_channels[0])
-                self.run_script_immediately("CV", mux_script, mux_channel=mux_channels[0])
-            else:
-                self.run_mux_script_sequence("CV", base_script, mux_channels)
-        else:
-            self.run_script_immediately("CV", base_script)
+        script = self.generate_cv_script()
+        if script: self.run_script_immediately("CV", script)
 
     def run_swv_immediately(self):
-        base_script = self.create_swv_methodscript()
-        mux_channels = self._get_mux_channels(self.swv_params)
-        if mux_channels is None:
-            return
-        if mux_channels:
-            if len(mux_channels) == 1:
-                mux_script = self._build_mux_script(base_script, mux_channels[0])
-                self.run_script_immediately("SWV", mux_script, mux_channel=mux_channels[0])
-            else:
-                self.run_mux_script_sequence("SWV", base_script, mux_channels)
-        else:
-            self.run_script_immediately("SWV", base_script)
+        script = self.generate_swv_script()
+        if script: self.run_script_immediately("SWV", script)
 
     def run_pause_immediately(self):
         try:
@@ -1651,13 +1485,13 @@ class ElectrochemGUI:
 
         threading.Thread(target=perform_pause, daemon=True).start()
 
-    def run_script_immediately(self, technique, script, mux_channel=None):
+    def run_script_immediately(self, technique, script):
         if self.is_running:
             messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
             return
 
         try:
-            filepath, filename = self.save_script_file(technique, script, mux_channel=mux_channel)
+            filepath, filename = self.save_script_file(technique, script)
         except Exception as e:
             messagebox.showerror("File Error", f"Failed to save {technique} script: {e}")
             return
@@ -1666,7 +1500,7 @@ class ElectrochemGUI:
         self.is_running = True
         self.update_status(f"Running: {technique} - {filename}")
         self.log_message(f"Starting immediate {technique} run ({filename})")
-        self.start_live_plot(f"{technique} (live)", label=technique)
+        self.start_live_plot(f"{technique} (live)")
 
         def worker():
             success = False
@@ -1693,7 +1527,7 @@ class ElectrochemGUI:
                     if stopped_by_user:
                         self.update_status("Ready (stopped)")
                         if csv_path:
-                            self.plot_data(csv_path, color=self.last_live_plot_color, label=self.last_live_plot_label)
+                            self.plot_data(csv_path)
                         detail = f"{technique} run was stopped. Script: {filename}"
                         if csv_path:
                             detail += f"\nData saved to: {csv_path}"
@@ -1702,7 +1536,7 @@ class ElectrochemGUI:
                     elif success:
                         self.update_status("Ready")
                         if csv_path:
-                            self.plot_data(csv_path, color=self.last_live_plot_color, label=self.last_live_plot_label)
+                            self.plot_data(csv_path)
                         detail = f"{technique} run completed. Script: {filename}"
                         if csv_path:
                             detail += f"\nData saved to: {csv_path}"
@@ -1711,7 +1545,7 @@ class ElectrochemGUI:
                     else:
                         self.update_status("Ready (last run failed)")
                         if csv_path:
-                            self.plot_data(csv_path, color=self.last_live_plot_color, label=self.last_live_plot_label)
+                            self.plot_data(csv_path)
                         self.log_message(f"{technique} run failed.")
                         messagebox.showerror("Run Failed", f"{technique} run failed. Check the log for details.")
 
@@ -1719,12 +1553,10 @@ class ElectrochemGUI:
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def save_script_file(self, technique, script, mux_channel=None):
+    def save_script_file(self, technique, script):
         date_folder = self.base_path / datetime.now().strftime('%Y-%m-%d')
         date_folder.mkdir(exist_ok=True)
         slug = technique.lower().replace(' ', '_')
-        if mux_channel is not None:
-            slug = f"{slug}_ch{mux_channel}"
         filename = f"{len(list(date_folder.glob('*.ms'))) + 1:03d}_{slug}.ms"
         filepath = date_folder / filename
         with open(filepath, 'w') as f:
@@ -1737,117 +1569,6 @@ class ElectrochemGUI:
         self.measurement_queue.append(queue_item)
         self.refresh_queue_display()
         messagebox.showinfo("Success", f"{technique} added to queue\nSaved as: {filename}")
-
-    def add_mux_scripts_to_queue(self, technique, base_script, channels):
-        saved = []
-        for ch in channels:
-            mux_script = self._build_mux_script(base_script, ch)
-            filepath, filename = self.save_script_file(technique, mux_script, mux_channel=ch)
-            queue_item = {
-                'type': technique,
-                'script_path': str(filepath),
-                'status': 'pending',
-                'details': f"{filename} (MUX ch {ch})",
-            }
-            self.measurement_queue.append(queue_item)
-            saved.append(f"{filename} (ch {ch})")
-        self.refresh_queue_display()
-        messagebox.showinfo(
-            "Success",
-            f"{technique} added for MUX channels: {', '.join(map(str, channels))}\nSaved as: {', '.join(saved)}",
-        )
-
-    def run_mux_script_sequence(self, technique, base_script, channels):
-        if self.is_running:
-            messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
-            return
-
-        if not channels:
-            return
-
-        self.clear_log()
-        self.is_running = True
-        self.update_status(f"Running: {technique} (MUX ch {channels[0]})")
-        self.log_message(f"Starting {technique} run for MUX channels: {', '.join(map(str, channels))}")
-
-        def worker():
-            stopped_by_user = False
-            success = True
-            last_csv_path = None
-
-            for idx, ch in enumerate(channels, start=1):
-                if not self.is_running:
-                    stopped_by_user = True
-                    success = False
-                    break
-
-                mux_script = self._build_mux_script(base_script, ch)
-                try:
-                    filepath, filename = self.save_script_file(technique, mux_script, mux_channel=ch)
-                except Exception as exc:
-                    self.log_message(f"File error: failed to save {technique} (MUX ch {ch}) script: {exc}")
-                    success = False
-                    break
-
-                self.root.after(0, self.update_status, f"Running: {technique} (MUX ch {ch}) [{idx}/{len(channels)}]")
-                self.log_message(f"Starting {technique} run (MUX ch {ch}) ({filename})")
-                color = next(self.plot_color_cycle)
-                label = f"MUX ch {ch}"
-                self.last_live_plot_color = color
-                self.last_live_plot_label = label
-                self.root.after(0, self.start_live_plot, f"{technique} (MUX ch {ch} live)", color, label)
-
-                runner = None
-                csv_path = None
-                try:
-                    runner = SerialMeasurementRunner(
-                        Path(filepath),
-                        log_callback=self.log_message,
-                        data_callback=self.queue_live_point,
-                    )
-                    self.current_runner = runner
-                    ok, csv_path = runner.execute()
-                    if not ok:
-                        success = False
-                        if not runner.is_running:
-                            stopped_by_user = True
-                        break
-                except Exception as exc:
-                    self.log_message(f"CRITICAL ERROR executing {technique} (MUX ch {ch}): {exc}")
-                    success = False
-                    break
-                finally:
-                    self.current_runner = None
-
-                if csv_path:
-                    last_csv_path = csv_path
-                    self.root.after(0, self.plot_data, csv_path, self.last_live_plot_color, self.last_live_plot_label)
-
-            def finalize():
-                self.is_running = False
-                self.stop_live_plot()
-                if stopped_by_user:
-                    self.update_status("Ready (stopped)")
-                    detail = f"{technique} MUX run was stopped."
-                    if last_csv_path:
-                        detail += f"\nLast data saved to: {last_csv_path}"
-                    self.log_message(f"{technique} MUX run stopped by user.")
-                    messagebox.showinfo("Run Stopped", detail)
-                elif success:
-                    self.update_status("Ready")
-                    detail = f"{technique} MUX run completed. Channels: {', '.join(map(str, channels))}"
-                    if last_csv_path:
-                        detail += f"\nLast data saved to: {last_csv_path}"
-                    self.log_message(f"{technique} MUX run completed successfully.")
-                    messagebox.showinfo("Run Complete", detail)
-                else:
-                    self.update_status("Ready (last run failed)")
-                    self.log_message(f"{technique} MUX run failed.")
-                    messagebox.showerror("Run Failed", f"{technique} MUX run failed. Check the log for details.")
-
-            self.root.after(0, finalize)
-
-        threading.Thread(target=worker, daemon=True).start()
     
     def refresh_queue_display(self):
         for item in self.queue_tree.get_children(): self.queue_tree.delete(item)
@@ -2022,7 +1743,7 @@ class ElectrochemGUI:
                     success = self.execute_pump_action(item)
                     self.measurement_queue[i]['status'] = 'completed' if success else 'failed'
                 else:
-                    self.root.after(0, self.start_live_plot, f"{item['type']} (live)", None, item['type'])
+                    self.root.after(0, self.start_live_plot, f"{item['type']} (live)")
                     try:
                         self.current_runner = SerialMeasurementRunner(
                             Path(item['script_path']),
@@ -2040,7 +1761,7 @@ class ElectrochemGUI:
             
             # If the measurement was successful and created a file, plot it
             if csv_path:
-                self.root.after(0, self.plot_data, csv_path, self.last_live_plot_color)
+                self.root.after(0, self.plot_data, csv_path)
 
             self.root.after(0, self.refresh_queue_display)
             time.sleep(1)

@@ -16,17 +16,17 @@ import serial.tools.list_ports
 import csv
 import math
 import collections
-import queue
 import warnings
-import traceback
-import itertools
+import re
+import queue
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 # --- Matplotlib and Pandas imports for plotting ---
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 try:
@@ -191,21 +191,117 @@ class MScriptVar:
 def parse_mscript_data_package(line: str) -> Optional[List[MScriptVar]]:
     """Parse a MethodSCRIPT data package."""
     if line.startswith('P') and line.endswith('\n'):
-        vars_out = []
-        for var in line[1:-1].split(';'):
-            if len(var) < 10:
-                continue
-            value_token = var[2:9]
-            if any(ch not in '0123456789ABCDEFabcdef' for ch in value_token):
-                continue
-            if var[9] not in SI_PREFIX_FACTOR:
-                continue
-            try:
-                vars_out.append(MScriptVar(var))
-            except Exception:
-                continue
-        return vars_out
+        return [MScriptVar(var) for var in line[1:-1].split(';')]
     return None
+
+
+# --- Mux16 packet parsing helpers (from mux_testing2) ---
+SI_FACTORS = {
+    'a': 1e-18,
+    'f': 1e-15,
+    'p': 1e-12,
+    'n': 1e-9,
+    'u': 1e-6,
+    'm': 1e-3,
+    ' ': 1.0,
+    'k': 1e3,
+    'M': 1e6,
+    'G': 1e9,
+    'T': 1e12,
+    'P': 1e15,
+    'E': 1e18,
+    'i': 1.0,  # integer marker (handled separately)
+}
+
+OFFSET_2P27 = 1 << 27
+
+
+def decode_ms_value(hhhhhhhp: str) -> float:
+    """Decode MethodSCRIPT measurement value HHHHHHHp (7 hex + SI prefix, 28-bit signed)."""
+    s = hhhhhhhp.rstrip("\r\n")
+    s_stripped = s.strip()
+    if s_stripped.endswith("nan"):
+        return float("nan")
+    if len(s_stripped) < 2:
+        return float("nan")
+
+    prefix = s[-1]
+    if prefix in "0123456789abcdefABCDEF":
+        prefix = " "
+        hex_part = s
+    else:
+        hex_part = s[:-1]
+    hex_part = hex_part.strip()
+    if not re.fullmatch(r"[0-9A-Fa-f]+", hex_part):
+        return float("nan")
+
+    raw = int(hex_part, 16)
+    signed = raw - OFFSET_2P27
+
+    if prefix == 'i':
+        return float(signed)
+
+    factor = SI_FACTORS.get(prefix, 1.0)
+    return signed * factor
+
+
+@dataclass
+class PacketVar:
+    vartype: str
+    value_str: str
+    value: float
+    meta: str = ""
+
+
+@dataclass
+class MeasurementPacket:
+    vars: List[PacketVar] = field(default_factory=list)
+    raw_line: str = ""
+
+
+def parse_measurement_packet_line(line: str) -> Optional[MeasurementPacket]:
+    """
+    Parse a measurement data line that starts with 'P':
+      P <Var1> ; <Var2> ; ...
+    Each variable is:
+      ttHHHHHHHp[,metadata...]
+    """
+    if not line.startswith("P"):
+        return None
+
+    body = line[1:].strip()
+    if not body:
+        return MeasurementPacket(vars=[], raw_line=line)
+
+    parts = body.split(";")
+    out = MeasurementPacket(vars=[], raw_line=line)
+
+    for part in parts:
+        part = part.lstrip()
+        if not part:
+            continue
+
+        if "," in part:
+            main, meta = part.split(",", 1)
+            meta = meta.strip()
+        else:
+            main, meta = part, ""
+
+        main = main.lstrip()
+        if len(main) < 4:
+            continue
+
+        vartype = main[:2]
+        value_str = main[2:]
+
+        try:
+            value = decode_ms_value(value_str)
+        except Exception:
+            value = float("nan")
+
+        out.vars.append(PacketVar(vartype=vartype, value_str=value_str, value=value, meta=meta))
+
+    return out
 
 # --- End of PalmSens MethodSCRIPT Parser Integration ---
 
@@ -234,14 +330,12 @@ def to_si_string(value_str, unit='V'):
 
 # --- Integrated SerialMeasurementRunner Class (Unchanged) ---
 class SerialMeasurementRunner:
-    def __init__(self, script_path, log_callback=print, data_callback=None):
+    def __init__(self, script_path, log_callback=print):
         self.script_path = Path(script_path)
         self.data_points = []
         self.connection = None
         self.log = log_callback # Callback to log messages to the GUI
-        self.data_callback = data_callback
         self.is_running = True
-        self.partial_packet = ""
 
         self.data_base_path = Path("measurement_data")
         self.data_base_path.mkdir(exist_ok=True)
@@ -325,21 +419,10 @@ class SerialMeasurementRunner:
                 try:
                     line = self.connection.readline()
                     if not line: continue
-                    text = line.decode('utf-8', errors='ignore').rstrip('\r\n')
+                    text = line.decode('utf-8', errors='ignore').strip()
                     if not text: continue
-                    if self.partial_packet:
-                        if text.startswith('P'):
-                            self.log("Warning: dropped incomplete data packet")
-                            self.partial_packet = ""
-                        else:
-                            text = self.partial_packet + text
-                            self.partial_packet = ""
                     self.log(text)
-                    if text.startswith('P'):
-                        if not self._is_complete_packet(text):
-                            self.partial_packet = text
-                            continue
-                        self.parse_data_line(text)
+                    if text.startswith('P'): self.parse_data_line(text)
                     if text in ['*', 'Measurement completed', 'Script completed']:
                         self.log("\nMeasurement completed")
                         break
@@ -353,8 +436,7 @@ class SerialMeasurementRunner:
             if not self.is_running: self.log("Measurement stopped by user.")
             return True
         except Exception as e:
-            self.log(f"Error running script: {type(e).__name__}: {e}")
-            self.log(traceback.format_exc())
+            self.log(f"Error running script: {e}")
             return False
 
     def parse_data_line(self, line):
@@ -377,25 +459,8 @@ class SerialMeasurementRunner:
             
             if 'potential' in data_point and 'current' in data_point:
                 self.data_points.append(data_point)
-                if self.data_callback:
-                    try:
-                        self.data_callback(data_point)
-                    except Exception as exc:
-                        self.log(f"Live plot callback error: {type(exc).__name__}: {exc}")
         except Exception as e:
             self.log(f"Error parsing data package: {line} -> {e}")
-
-    @staticmethod
-    def _is_complete_packet(line: str) -> bool:
-        if not line.startswith('P'):
-            return False
-        parts = line[1:].split(';')
-        if not parts:
-            return False
-        for part in parts:
-            if len(part) < 10:
-                return False
-        return True
 
     def save_data_to_csv(self):
         if not self.data_points:
@@ -406,7 +471,7 @@ class SerialMeasurementRunner:
         csv_filename = self.data_folder / f"{base_name}_{timestamp}.csv"
         with open(csv_filename, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=['potential', 'current'])
-            writer.writerow({'potential': 'Potential (V)', 'current': 'Current (uA)'})
+            writer.writerow({'potential': 'Potential (V)', 'current': 'Current (µA)'})
             writer.writerows(self.data_points)
         self.log(f"\nData saved to: {csv_filename}")
         return csv_filename
@@ -445,6 +510,564 @@ class SerialMeasurementRunner:
         return success, csv_path
 
 
+class EmstatSerialClient:
+    """
+    Serial client for EmStat Pico/Mux16.
+    Sends 'e' or 'l' then script lines, then an empty line.
+    """
+
+    def __init__(self):
+        self.ser: Optional[serial.Serial] = None
+        self.rx_thread: Optional[threading.Thread] = None
+        self.stop_event = threading.Event()
+        self.rx_queue: "queue.Queue[str]" = queue.Queue()
+
+    def open(self, port: str, baudrate: int, timeout: float = 0.1) -> None:
+        self.ser = serial.Serial(
+            port=port,
+            baudrate=baudrate,
+            bytesize=serial.EIGHTBITS,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE,
+            timeout=timeout,
+        )
+        self.stop_event.clear()
+        self.rx_thread = threading.Thread(target=self._reader_loop, daemon=True)
+        self.rx_thread.start()
+
+    def close(self) -> None:
+        self.stop_event.set()
+        if self.rx_thread and self.rx_thread.is_alive():
+            self.rx_thread.join(timeout=1.0)
+        if self.ser and self.ser.is_open:
+            try:
+                self.ser.close()
+            except Exception:
+                pass
+        self.ser = None
+
+    def is_open(self) -> bool:
+        return bool(self.ser and self.ser.is_open)
+
+    def _reader_loop(self) -> None:
+        assert self.ser is not None
+        buf = b""
+        while not self.stop_event.is_set():
+            try:
+                chunk = self.ser.read(4096)
+                if not chunk:
+                    continue
+                buf += chunk
+                while b"\n" in buf:
+                    line, buf = buf.split(b"\n", 1)
+                    try:
+                        txt = line.decode("utf-8", errors="replace")
+                    except Exception:
+                        txt = repr(line)
+                    self.rx_queue.put(txt)
+            except Exception as exc:
+                self.rx_queue.put(f"[RX ERROR] {exc}")
+                break
+
+    def send_script(self, script_text: str, mode: str = "execute") -> None:
+        if not self.is_open():
+            raise RuntimeError("Serial port is not open")
+
+        assert self.ser is not None
+
+        script_text = script_text.replace("\r\n", "\n").replace("\r", "\n")
+        raw_lines = [ln.rstrip() for ln in script_text.split("\n")]
+        lines = [ln for ln in raw_lines if ln.strip() != ""]
+
+        cmd = "e" if mode == "execute" else "l"
+        if lines:
+            first = lines[0].strip()
+            if first in ("e", "l"):
+                cmd = first
+                lines = lines[1:]
+
+        self.ser.write((cmd + "\n").encode("utf-8"))
+        for ln in lines:
+            self.ser.write((ln + "\n").encode("utf-8"))
+        self.ser.write(("\n").encode("utf-8"))
+        self.ser.flush()
+
+
+def apply_voltammogram_style(ax) -> None:
+    ax.set_title("Voltammogram")
+    ax.set_xlabel("Potential (V)")
+    ax.set_ylabel("Current (AæA)")
+    ax.grid(visible=True, which="major", linestyle="-")
+    ax.grid(visible=True, which="minor", linestyle="--", alpha=0.2)
+    ax.minorticks_on()
+
+
+class EmstatMuxTab(ttk.Frame):
+    """Embedded Mux16 GUI tab with live plotting for a single channel."""
+
+    def __init__(self, master, *, default_baud: int = 230400):
+        super().__init__(master)
+        self.default_baud = default_baud
+        self.client = EmstatSerialClient()
+
+        self.x_data: List[float] = []
+        self.y_data: List[float] = []
+        self.line = None
+        self.override_channel: Optional[int] = None
+        self._raw_log_lock = threading.Lock()
+        self._raw_lines_handle = None
+        self._raw_points_handle = None
+        self._raw_lines_writer = None
+        self._raw_points_writer = None
+
+        # Script completion signaling for external callers (queue/custom runs)
+        self._script_running = False
+        self._script_done_event = threading.Event()
+        self._last_script_status = None
+
+        # Based on pck_add order
+        # Demo packet order: i, p, c -> X=1, Y=2, Channel=0
+        self.x_var_index = tk.IntVar(value=1)
+        self.y_var_index = tk.IntVar(value=2)
+        self.channel_var_index = tk.IntVar(value=0)
+
+        # UI responsiveness during send
+        self._tx_busy = False
+
+        # Plot throttle
+        self.plot_fps = 12.0
+        self._last_draw_time = 0.0
+        self._dirty = False
+        self._last_autoscale_time = 0.0
+
+        self._build_ui()
+        self.after(30, self._poll_rx_queue)
+        self.after(50, self._plot_pump)
+
+    def _build_ui(self):
+        # Top: connection row
+        conn = ttk.Frame(self)
+        conn.pack(fill="x", padx=10, pady=8)
+
+        ttk.Label(conn, text="Port:").pack(side="left")
+        self.port_combo = ttk.Combobox(conn, width=25, values=self._list_ports())
+        self.port_combo.pack(side="left", padx=6)
+        if self.port_combo["values"]:
+            self.port_combo.current(0)
+
+        ttk.Button(conn, text="Refresh", command=self._refresh_ports).pack(side="left", padx=6)
+
+        ttk.Label(conn, text="Baud:").pack(side="left", padx=(18, 0))
+        self.baud_entry = ttk.Entry(conn, width=10)
+        self.baud_entry.insert(0, str(self.default_baud))
+        self.baud_entry.pack(side="left", padx=6)
+
+        self.connect_btn = ttk.Button(conn, text="Connect", command=self._connect)
+        self.connect_btn.pack(side="left", padx=6)
+
+        self.disconnect_btn = ttk.Button(conn, text="Disconnect", command=self._disconnect, state="disabled")
+        self.disconnect_btn.pack(side="left", padx=6)
+
+        self.status_lbl = ttk.Label(conn, text="Disconnected")
+        self.status_lbl.pack(side="left", padx=18)
+
+        # Middle: script editor + controls + log/plot
+        mid = ttk.Panedwindow(self, orient="horizontal")
+        mid.pack(fill="both", expand=True, padx=10, pady=8)
+
+        left = ttk.Frame(mid)
+        right = ttk.Frame(mid)
+        mid.add(left, weight=3)
+        mid.add(right, weight=2)
+
+        ttk.Label(left, text="MethodSCRIPT (paste here):").pack(anchor="w")
+        self.script_txt = tk.Text(left, height=18, wrap="none")
+        self.script_txt.pack(fill="both", expand=True)
+
+        btnrow = ttk.Frame(left)
+        btnrow.pack(fill="x", pady=6)
+
+        ttk.Button(btnrow, text="Send & Execute", command=self._send_execute).pack(side="left")
+        ttk.Button(btnrow, text="Send & Load", command=lambda: self._send_execute(load_only=True)).pack(side="left", padx=6)
+        ttk.Button(btnrow, text="Clear Data/Plots", command=self._clear_data).pack(side="left", padx=6)
+
+        settings = ttk.LabelFrame(left, text="Plot parsing settings (based on pck_add order)")
+        settings.pack(fill="x", pady=6)
+
+        r1 = ttk.Frame(settings)
+        r1.pack(fill="x", padx=8, pady=4)
+        ttk.Label(r1, text="X var index:").pack(side="left")
+        ttk.Spinbox(r1, from_=0, to=64, textvariable=self.x_var_index, width=5).pack(side="left", padx=6)
+        ttk.Label(r1, text="Y var index:").pack(side="left", padx=(12, 0))
+        ttk.Spinbox(r1, from_=0, to=64, textvariable=self.y_var_index, width=5).pack(side="left", padx=6)
+
+        # Right: log + single plot
+        ttk.Label(right, text="Device log / output:").pack(anchor="w")
+        self.log_txt = tk.Text(right, height=12, wrap="word")
+        self.log_txt.pack(fill="x", expand=False)
+
+        plot_frame = ttk.LabelFrame(right, text="Live plot")
+        plot_frame.pack(fill="both", expand=True, pady=(8, 0))
+
+        self.fig = Figure(figsize=(5, 4), dpi=100)
+        self.ax = self.fig.add_subplot(111)
+        apply_voltammogram_style(self.ax)
+        (self.line,) = self.ax.plot([], [])
+
+        self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)
+
+        demo = """e
+set_gpio_cfg 0x3FFi 1
+set_gpio 0x11i
+var i
+var c
+var p
+store_var i 0i aa
+set_pgstat_chan 0
+set_pgstat_mode 2
+set_max_bandwidth 400
+set_pot_range -1 1
+set_cr 1m
+set_autoranging 10u 1m
+cell_on
+loop i <= 0xFFi
+ set_gpio i
+ set_e -1000m
+ wait 100m
+ meas_loop_lsv p c -1 1 10m 1
+ pck_start
+ pck_add i
+ pck_add p
+ pck_add c
+ pck_end
+ endloop
+ add_var i 0x11i
+endloop
+on_finished:
+cell_off
+"""
+        self.script_txt.insert("1.0", demo)
+
+    def _list_ports(self) -> List[str]:
+        return [p.device for p in serial.tools.list_ports.comports()]
+
+    def _refresh_ports(self):
+        ports = self._list_ports()
+        self.port_combo["values"] = ports
+        if ports:
+            self.port_combo.current(0)
+
+    def _connect(self):
+        self.connect_if_needed(show_errors=True, auto_select=False)
+
+    def _disconnect(self):
+        self.client.close()
+        self.status_lbl.config(text="Disconnected")
+        self.connect_btn.config(state="normal")
+        self.disconnect_btn.config(state="disabled")
+        self._log("[INFO] Disconnected\n")
+
+    def _send_execute(self, load_only: bool = False):
+        if not self.client.is_open():
+            messagebox.showerror("Send", "Not connected.")
+            return
+
+        if self._tx_busy:
+            messagebox.showwarning("Busy", "Already sending/running a script.")
+            return
+
+        script = self.script_txt.get("1.0", "end").strip("\n")
+        if not script.strip():
+            messagebox.showerror("Send", "Paste a MethodSCRIPT first.")
+            return
+
+        mode = "load" if load_only else "execute"
+
+        self._tx_busy = True
+        self._log(f"[TX] Sending script ({mode})...\n")
+
+        def worker():
+            try:
+                self.client.send_script(script, mode=mode)
+                self.after(0, lambda: self._log(f"[TX] Sent script ({mode}). Waiting for data...\n"))
+            except Exception as exc:
+                self.after(0, lambda: messagebox.showerror("Send", f"Failed to send script: {exc}"))
+            finally:
+                self._tx_busy = False
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def start_script(self, script_text: str, *, load_only: bool = False):
+        """Send a script programmatically and signal completion via _script_done_event."""
+        if not self.client.is_open():
+            messagebox.showerror("Send", "Not connected.")
+            return False
+        if self._tx_busy:
+            messagebox.showwarning("Busy", "Already sending/running a script.")
+            return False
+        script = (script_text or "").strip("\n")
+        if not script.strip():
+            messagebox.showerror("Send", "Custom MethodSCRIPT is empty.")
+            return False
+
+        mode = "load" if load_only else "execute"
+        self._script_running = True
+        self._script_done_event.clear()
+        self._last_script_status = None
+        self._start_raw_logging()
+        self._tx_busy = True
+        self._log(f"[TX] Sending script ({mode})...\n")
+
+        def worker():
+            try:
+                self.client.send_script(script, mode=mode)
+                self.after(0, lambda: self._log(f"[TX] Sent script ({mode}). Waiting for data...\n"))
+            except Exception as exc:
+                self._last_script_status = f"send_failed: {exc}"
+                self._script_running = False
+                self._finish_raw_logging()
+                self._script_done_event.set()
+                self.after(0, lambda: messagebox.showerror("Send", f"Failed to send script: {exc}"))
+            finally:
+                self._tx_busy = False
+
+        threading.Thread(target=worker, daemon=True).start()
+        return True
+
+    def wait_for_script_done(self, *, poll: float = 0.1, stop_flag=None) -> str:
+        """Wait for the current script to complete; returns status string."""
+        while True:
+            if stop_flag and stop_flag():
+                return "stopped"
+            if self._script_done_event.wait(poll):
+                return self._last_script_status or "completed"
+
+    def _clear_data(self):
+        self.x_data.clear()
+        self.y_data.clear()
+        if self.line is not None:
+            self.line.set_data([], [])
+        apply_voltammogram_style(self.ax)
+        self.ax.relim()
+        self.ax.autoscale_view()
+        self.canvas.draw()
+        self._log("[INFO] Cleared data/plots\n")
+
+    def _poll_rx_queue(self):
+        while True:
+            try:
+                line = self.client.rx_queue.get_nowait()
+            except queue.Empty:
+                break
+
+            stripped = line.rstrip("\r")
+            self._log_raw_line(stripped)
+
+            if stripped == "":
+                self._log("[RX] <end>\n")
+                continue
+
+            if stripped.startswith("[RX ERROR]"):
+                self._log(stripped + "\n")
+                continue
+
+            if stripped.startswith("P"):
+                pkt = parse_measurement_packet_line(stripped)
+                if pkt:
+                    self._handle_packet(pkt)
+            elif stripped.startswith("T"):
+                self._log("[RX] " + stripped[1:] + "\n")
+            else:
+                self._log("[RX] " + stripped + "\n")
+
+            if self._script_running:
+                lower = stripped.lower()
+                if stripped in ("*", "Script completed", "Measurement completed"):
+                    self._last_script_status = "completed"
+                    self._script_running = False
+                    self._finish_raw_logging()
+                    self._script_done_event.set()
+                elif stripped.startswith("!"):
+                    self._last_script_status = f"device_error: {stripped}"
+                    self._script_running = False
+                    self._finish_raw_logging()
+                    self._script_done_event.set()
+
+        self.after(30, self._poll_rx_queue)
+
+    def _handle_packet(self, pkt: MeasurementPacket):
+        xi = self.x_var_index.get()
+        yi = self.y_var_index.get()
+        ci = self.channel_var_index.get()
+
+        if xi < 0 or yi < 0:
+            return
+        if xi >= len(pkt.vars) or yi >= len(pkt.vars):
+            return
+
+        x = pkt.vars[xi].value
+        y = pkt.vars[yi].value
+        if not math.isfinite(x) or not math.isfinite(y):
+            return
+        x_raw = (pkt.vars[xi].value_str or "").strip().lower()
+        y_raw = (pkt.vars[yi].value_str or "").strip().lower()
+        if x_raw == "8000000" or y_raw == "8000000":
+            return
+        if self.override_channel is not None:
+            ch_val = float(self.override_channel)
+        elif 0 <= ci < len(pkt.vars):
+            ch_val = pkt.vars[ci].value
+        else:
+            ch_val = float("nan")
+
+        self._log_point(x, y, ch_val, xi, yi, ci, self.override_channel)
+        self.x_data.append(x)
+        self.y_data.append(y)
+        self._dirty = True
+
+    def _plot_pump(self):
+        now = time.time()
+        min_dt = 1.0 / max(1e-6, float(self.plot_fps))
+
+        if (now - self._last_draw_time) >= min_dt and self._dirty:
+            do_autoscale = (now - self._last_autoscale_time) > 0.5
+
+            if self.line is not None:
+                self.line.set_data(self.x_data, self.y_data)
+
+            if do_autoscale:
+                self.ax.relim()
+                self.ax.autoscale_view()
+                self._last_autoscale_time = now
+
+            self.canvas.draw()
+
+            self._dirty = False
+            self._last_draw_time = now
+
+        self.after(50, self._plot_pump)
+
+    def _log(self, msg: str):
+        self.log_txt.insert("end", msg)
+        self.log_txt.see("end")
+
+    def set_override_channel(self, channel: Optional[int]):
+        self.override_channel = channel
+
+    def _start_raw_logging(self):
+        with self._raw_log_lock:
+            if self._raw_lines_handle or self._raw_points_handle:
+                return
+            base_dir = Path("measurement_data") / datetime.now().strftime('%Y-%m-%d')
+            base_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime('%H%M%S')
+            lines_path = base_dir / f"mux_raw_lines_{stamp}.csv"
+            points_path = base_dir / f"mux_raw_points_{stamp}.csv"
+            self._raw_lines_handle = open(lines_path, 'w', newline='', encoding='utf-8')
+            self._raw_points_handle = open(points_path, 'w', newline='', encoding='utf-8')
+            self._raw_lines_writer = csv.writer(self._raw_lines_handle)
+            self._raw_points_writer = csv.writer(self._raw_points_handle)
+            self._raw_lines_writer.writerow(["timestamp", "line"])
+            self._raw_points_writer.writerow(["timestamp", "x", "y", "channel", "x_idx", "y_idx", "ch_idx", "override_channel"])
+            self._log(f"[INFO] Raw logs: {lines_path} and {points_path}\n")
+
+    def _finish_raw_logging(self):
+        with self._raw_log_lock:
+            if self._raw_lines_handle:
+                try:
+                    self._raw_lines_handle.flush()
+                    self._raw_lines_handle.close()
+                except Exception:
+                    pass
+            if self._raw_points_handle:
+                try:
+                    self._raw_points_handle.flush()
+                    self._raw_points_handle.close()
+                except Exception:
+                    pass
+            self._raw_lines_handle = None
+            self._raw_points_handle = None
+            self._raw_lines_writer = None
+            self._raw_points_writer = None
+
+    def _log_raw_line(self, line: str):
+        with self._raw_log_lock:
+            if not self._raw_lines_writer:
+                return
+            ts = datetime.now().isoformat(timespec='milliseconds')
+            self._raw_lines_writer.writerow([ts, line])
+
+    def _log_point(self, x, y, ch_val, xi, yi, ci, override):
+        with self._raw_log_lock:
+            if not self._raw_points_writer:
+                return
+            ts = datetime.now().isoformat(timespec='milliseconds')
+            self._raw_points_writer.writerow([ts, x, y, ch_val, xi, yi, ci, override if override is not None else ""])
+
+    def connect_if_needed(self, *, show_errors: bool = False, auto_select: bool = True) -> bool:
+        if self.client.is_open():
+            return True
+
+        port = self.port_combo.get().strip()
+        if auto_select:
+            port = self._auto_select_port() or port
+        if not port:
+            if show_errors:
+                messagebox.showerror("Connect", "Select a serial port.")
+            return False
+        try:
+            baud = int(self.baud_entry.get().strip())
+        except Exception:
+            if show_errors:
+                messagebox.showerror("Connect", "Invalid baud rate.")
+            return False
+
+        try:
+            self.client.open(port=port, baudrate=baud)
+        except Exception as exc:
+            if show_errors:
+                messagebox.showerror("Connect", f"Failed to open {port}: {exc}")
+            return False
+
+        self.status_lbl.config(text=f"Connected: {port} @ {baud}")
+        self.connect_btn.config(state="disabled")
+        self.disconnect_btn.config(state="normal")
+        self._log(f"[INFO] Connected to {port} @ {baud}\n")
+        return True
+
+    def _auto_select_port(self) -> Optional[str]:
+        ports = serial.tools.list_ports.comports(include_links=False)
+        candidates = []
+        for port in ports:
+            if any(name in port.description for name in ['ESPicoDev', 'EmStat', 'USB Serial Port', 'FTDI']):
+                candidates.append(port.device)
+
+        if not candidates:
+            self._log("[INFO] No matching MUX device found during auto-connect\n")
+            return None
+
+        pump_port_upper = None
+        if PUMP_AVAILABLE and PUMP_DEFAULT_COM_PORT:
+            try:
+                pump_port_upper = f"COM{int(PUMP_DEFAULT_COM_PORT)}".upper()
+            except (TypeError, ValueError):
+                pump_port_upper = str(PUMP_DEFAULT_COM_PORT).upper()
+
+        def candidate_key(dev: str):
+            return (pump_port_upper is not None and dev.upper() == pump_port_upper, dev)
+
+        candidates.sort(key=candidate_key)
+        selected = candidates[0]
+        self._log(f"[INFO] Auto-selected MUX port: {selected}\n")
+        try:
+            if selected in self.port_combo["values"]:
+                self.port_combo.set(selected)
+        except Exception:
+            pass
+        return selected
+
 class ElectrochemGUI:
     def __init__(self, root):
         self.root = root
@@ -467,21 +1090,7 @@ class ElectrochemGUI:
         self.pump_disable_widgets = []
         self.pump_log_text = None
         self.pump_early_logs = []
-
-        self.live_plot_queue = queue.Queue(maxsize=10000)
-        self.live_plot_x = []
-        self.live_plot_y = []
-        self.live_plot_active = False
-        self.live_plot_job = None
-        self.plot_line = None
-        self.last_live_plot_color = None
-        self.last_live_plot_label = None
-        self.plot_colors = (
-            plt.rcParams.get('axes.prop_cycle', plt.cycler(color=['#1f77b4']))
-            .by_key()
-            .get('color', ['#1f77b4'])
-        )
-        self.plot_color_cycle = itertools.cycle(self.plot_colors)
+        self.mux_tab = None
         
         self.setup_gui()
         
@@ -512,6 +1121,15 @@ class ElectrochemGUI:
         self.plotter_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.plotter_frame, text="Plotter")
         self.setup_plotter_tab()
+
+        # --- NEW: Add the MUX16 tab ---
+        self.mux_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.mux_frame, text="EmStat MUX16")
+        self.setup_mux_tab()
+
+    def setup_mux_tab(self):
+        self.mux_tab = EmstatMuxTab(self.mux_frame)
+        self.mux_tab.pack(fill='both', expand=True)
 
     def create_cv_methodscript(self):
         """Create MethodSCRIPT for CV with correct SI unit formatting"""
@@ -659,7 +1277,30 @@ class ElectrochemGUI:
         idx = channel - 1
         return (idx << 4) | idx
 
-    def _build_mux_script(self, base_script: str, channel: int) -> str:
+    def _inject_mux_channel_packet(self, lines):
+        out = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            out.append(line)
+            if line.strip().startswith("pck_start"):
+                has_channel = False
+                j = i + 1
+                while j < len(lines):
+                    chk = lines[j].strip()
+                    if chk.startswith("pck_end"):
+                        break
+                    if chk.startswith("pck_add i"):
+                        has_channel = True
+                        break
+                    j += 1
+                if not has_channel:
+                    indent = line[:len(line) - len(line.lstrip())]
+                    out.append(f"{indent}pck_add i")
+            i += 1
+        return out
+
+    def _build_mux_script(self, base_script: str, channel: int, *, include_channel_var: bool = False) -> str:
         lines = base_script.splitlines()
         header = "e"
         rest = lines
@@ -674,8 +1315,44 @@ class ElectrochemGUI:
             "set_gpio_cfg 0x3FFi 1",
             f"set_gpio {addr}i",
         ]
+        if include_channel_var:
+            prefix.extend([
+                "var i",
+                f"store_var i {channel}i aa",
+            ])
+
         merged = prefix + rest
+        if include_channel_var:
+            merged = self._inject_mux_channel_packet(merged)
         return "\n".join(merged)
+
+    def _ensure_mux_connected(self) -> bool:
+        if not self.mux_tab:
+            self.log_message("MUX16 tab not available.")
+            return False
+        if self.mux_tab.client.is_open():
+            return True
+
+        if threading.current_thread() is threading.main_thread():
+            return self.mux_tab.connect_if_needed(show_errors=True, auto_select=True)
+
+        result = {"ok": False}
+        ready = threading.Event()
+
+        def do_connect():
+            result["ok"] = self.mux_tab.connect_if_needed(show_errors=True, auto_select=True)
+            ready.set()
+
+        self.root.after(0, do_connect)
+        ready.wait(timeout=5.0)
+        return result["ok"]
+
+    def _set_mux_plot_indices(self, x_idx: int, y_idx: int, ch_idx: int):
+        if not self.mux_tab:
+            return
+        self.mux_tab.x_var_index.set(x_idx)
+        self.mux_tab.y_var_index.set(y_idx)
+        self.mux_tab.channel_var_index.set(ch_idx)
     
     def setup_method_tab(self):
         left_frame = ttk.Frame(self.method_frame)
@@ -687,6 +1364,7 @@ class ElectrochemGUI:
         ttk.Button(technique_frame, text="Square Wave Voltammetry (SWV)", command=self.show_swv_params, width=25).pack(pady=5)
         ttk.Separator(technique_frame, orient='horizontal').pack(fill='x', pady=6)
         ttk.Button(technique_frame, text="Pause", command=self.show_pause_params, width=25).pack(pady=5)
+        ttk.Button(technique_frame, text="Custom MethodSCRIPT", command=self.show_custom_params, width=25).pack(pady=5)
         self.device_status = ttk.Label(left_frame, text="", foreground="blue")
         self.device_status.pack(pady=10)
         ttk.Button(left_frame, text="Check Device Connection", command=self.check_device).pack(pady=5)
@@ -705,7 +1383,17 @@ class ElectrochemGUI:
         self.clear_params_frame()
         self.current_technique = "CV"
         self.cv_params = {}
-        params = [("Begin Potential (V):", "begin_potential", "0"), ("Vertex 1 (V):", "vertex1", "-0.5"), ("Vertex 2 (V):", "vertex2", "0.5"), ("Step Potential (V):", "step_potential", "0.002"), ("Scan Rate (V/s):", "scan_rate", "0.1"), ("Number of Scans:", "n_scans", "1"), ("Conditioning Potential (V):", "cond_potential", "0"), ("Conditioning Time (s):", "cond_time", "0"), ("MUX16 Channels (1-16, 0=off, e.g. 1-3,7-9):", "mux_channel", "0")]
+        params = [
+            ("Begin Potential (V):", "begin_potential", "0"),
+            ("Vertex 1 (V):", "vertex1", "-0.5"),
+            ("Vertex 2 (V):", "vertex2", "0.5"),
+            ("Step Potential (V):", "step_potential", "0.002"),
+            ("Scan Rate (V/s):", "scan_rate", "0.1"),
+            ("Number of Scans:", "n_scans", "1"),
+            ("Conditioning Potential (V):", "cond_potential", "0"),
+            ("Conditioning Time (s):", "cond_time", "0"),
+            ("MUX16 Channels (1-16, 0=off, e.g. 1-3,7-9):", "mux_channel", "0"),
+        ]
         for i, (label, key, default) in enumerate(params):
             ttk.Label(self.params_frame, text=label).grid(row=i, column=0, sticky='w', pady=2)
             entry = ttk.Entry(self.params_frame, width=15); entry.insert(0, default); entry.grid(row=i, column=1, pady=2)
@@ -719,7 +1407,17 @@ class ElectrochemGUI:
         self.clear_params_frame()
         self.current_technique = "SWV"
         self.swv_params = {}
-        params = [("Begin Potential (V):", "begin_potential", "-0.5"), ("End Potential (V):", "end_potential", "0.5"), ("Step Potential (V):", "step_potential", "0.002"), ("Amplitude (V):", "amplitude", "0.02"), ("Frequency (Hz):", "frequency", "15"), ("Number of Scans:", "n_scans", "1"), ("Conditioning Potential (V):", "cond_potential", "0"), ("Conditioning Time (s):", "cond_time", "0"), ("MUX16 Channels (1-16, 0=off, e.g. 1-3,7-9):", "mux_channel", "0")]
+        params = [
+            ("Begin Potential (V):", "begin_potential", "-0.5"),
+            ("End Potential (V):", "end_potential", "0.5"),
+            ("Step Potential (V):", "step_potential", "0.002"),
+            ("Amplitude (V):", "amplitude", "0.02"),
+            ("Frequency (Hz):", "frequency", "15"),
+            ("Number of Scans:", "n_scans", "1"),
+            ("Conditioning Potential (V):", "cond_potential", "0"),
+            ("Conditioning Time (s):", "cond_time", "0"),
+            ("MUX16 Channels (1-16, 0=off, e.g. 1-3,7-9):", "mux_channel", "0"),
+        ]
         for i, (label, key, default) in enumerate(params):
             ttk.Label(self.params_frame, text=label).grid(row=i, column=0, sticky='w', pady=2)
             entry = ttk.Entry(self.params_frame, width=15); entry.insert(0, default); entry.grid(row=i, column=1, pady=2)
@@ -743,6 +1441,30 @@ class ElectrochemGUI:
         button_frame.grid(row=1, column=0, columnspan=2, pady=20)
         ttk.Button(button_frame, text="Add Pause to Queue", command=self.add_pause_to_queue).pack(side='left', padx=5)
         ttk.Button(button_frame, text="Run Pause Now", command=self.run_pause_immediately).pack(side='left', padx=5)
+
+    def show_custom_params(self):
+        self.clear_params_frame()
+        self.current_technique = "CUSTOM"
+
+        ttk.Label(self.params_frame, text="Custom MethodSCRIPT:").grid(row=0, column=0, sticky='w', pady=2)
+        text_frame = ttk.Frame(self.params_frame)
+        text_frame.grid(row=1, column=0, columnspan=2, sticky='nsew', pady=6)
+        self.params_frame.rowconfigure(1, weight=1)
+        self.params_frame.columnconfigure(1, weight=1)
+        text_frame.rowconfigure(0, weight=1)
+        text_frame.columnconfigure(0, weight=1)
+
+        self.custom_script_text = tk.Text(text_frame, wrap='none', height=10)
+        self.custom_script_text.grid(row=0, column=0, sticky='nsew')
+        scroll = ttk.Scrollbar(text_frame, orient='vertical', command=self.custom_script_text.yview)
+        scroll.grid(row=0, column=1, sticky='ns')
+        self.custom_script_text.configure(yscrollcommand=scroll.set)
+
+        button_frame = ttk.Frame(self.params_frame)
+        button_frame.grid(row=2, column=0, columnspan=2, pady=10)
+        ttk.Button(button_frame, text="Preview Script", command=self.generate_custom_script).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Run Now", command=self.run_custom_immediately).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Add to Queue", command=self.add_custom_to_queue).pack(side='left', padx=5)
 
     def setup_pump_tab(self):
         if not PUMP_AVAILABLE or PumpCtrl is None:
@@ -1326,24 +2048,18 @@ class ElectrochemGUI:
         plot_controls.pack(side='top', fill='x', pady=5, padx=5)
         
         ttk.Button(plot_controls, text="Load and Plot CSV", command=self.load_and_plot_csv).pack(side='left')
-        ttk.Button(plot_controls, text="Clear Plot", command=self.clear_plot).pack(side='left', padx=5)
 
         # Create a Matplotlib figure and axis
         self.fig = Figure(figsize=(8, 6), dpi=100)
         self.ax = self.fig.add_subplot(111)
         self.ax.set_title('Voltammogram')
         self.ax.set_xlabel('Potential (V)')
-        self.ax.set_ylabel('Current (uA)')
-        self.ax.grid(True)
+        self.ax.set_ylabel('Current (µA)')
+        apply_voltammogram_style(self.ax)
 
         # Create a canvas to embed the plot in Tkinter
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.plotter_frame)
         self.canvas.draw()
-        toolbar_frame = ttk.Frame(self.plotter_frame)
-        toolbar_frame.pack(side='top', fill='x')
-        self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
-        self.toolbar.update()
-
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
     def load_and_plot_csv(self):
@@ -1391,7 +2107,7 @@ class ElectrochemGUI:
                 return normalized_map[normalized_candidate]
         return None
 
-    def plot_data(self, csv_path, color=None, label=None):
+    def plot_data(self, csv_path):
         """Reads a CSV file and plots the voltammogram."""
         try:
             df = self._read_csv_with_fallback(csv_path)
@@ -1402,141 +2118,44 @@ class ElectrochemGUI:
             return
 
         potential_col = self._find_column(df, ("Potential (V)",))
-        current_col = self._find_column(df, ("Current (uA)", "Current (µA)", "Current (�A)"))
+        current_col = self._find_column(df, ("Current (µA)", "Current (uA)", "Current (�A)"))
 
         if not potential_col or not current_col:
-            message = "Plot error: CSV file must contain 'Potential (V)' and 'Current (uA)' columns."
+            message = "Plot error: CSV file must contain 'Potential (V)' and 'Current (µA)' columns."
             self.log_message(message)
             messagebox.showerror("Plot Error", message)
             self.update_status("Plot failed: missing required columns")
             return
 
         try:
-            if color is None:
-                color = next(self.plot_color_cycle)
-            if label is None:
-                label = Path(csv_path).name
-            if label:
-                for line in list(self.ax.lines):
-                    if line.get_label() == label:
-                        line.remove()
-            self.ax.plot(df[potential_col], df[current_col], color=color, label=label)
+            self.ax.clear()
+            self.ax.plot(df[potential_col], df[current_col])
             self.ax.set_title('Voltammogram')
             self.ax.set_xlabel('Potential (V)')
-            self.ax.set_ylabel('Current (uA)')
+            self.ax.set_ylabel('Current (µA)')
             self.ax.grid(visible=True, which='major', linestyle='-')
             self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
-            self.ax.minorticks_on()
-            self.ax.legend(loc='best')
+            apply_voltammogram_style(self.ax)
             self.canvas.draw()
             self.notebook.select(self.plotter_frame)
         except Exception as exc:
             self.log_message(f"Plot error: failed to render {csv_path}: {exc}")
             messagebox.showerror("Plot Error", f"Failed to render plot: {exc}")
             self.update_status("Plot failed: see log for details")
-
-    def clear_plot(self):
-        self.ax.clear()
-        self.ax.set_title('Voltammogram')
-        self.ax.set_xlabel('Potential (V)')
-        self.ax.set_ylabel('Current (uA)')
-        self.ax.grid(visible=True, which='major', linestyle='-')
-        self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
-        self.ax.minorticks_on()
-        self.plot_color_cycle = itertools.cycle(self.plot_colors)
-        self.plot_line = None
-        self.live_plot_x = []
-        self.live_plot_y = []
-        self.last_live_plot_color = None
-        self.last_live_plot_label = None
-        self.canvas.draw()
-
-    def start_live_plot(self, title=None, color=None, label=None):
-        self.live_plot_queue = queue.Queue(maxsize=10000)
-        self.live_plot_x = []
-        self.live_plot_y = []
-        self.live_plot_active = True
-
-        if color is None:
-            color = next(self.plot_color_cycle)
-        self.last_live_plot_color = color
-        if label is None:
-            label = title or "Live"
-        self.last_live_plot_label = label
-        self.ax.set_title(title or "Live Voltammogram")
-        self.ax.set_xlabel('Potential (V)')
-        self.ax.set_ylabel('Current (uA)')
-        self.ax.grid(visible=True, which='major', linestyle='-')
-        self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
-        self.ax.minorticks_on()
-        (self.plot_line,) = self.ax.plot([], [], lw=1, color=color, label=label)
-        self.canvas.draw()
-        self.notebook.select(self.plotter_frame)
-
-        if self.live_plot_job is None:
-            self.live_plot_job = self.root.after(100, self._poll_live_plot_queue)
-
-    def stop_live_plot(self):
-        self.live_plot_active = False
-        if self.live_plot_job is not None:
-            self.root.after_cancel(self.live_plot_job)
-            self.live_plot_job = None
-
-    def queue_live_point(self, data_point):
-        if not self.live_plot_active:
-            return
-        try:
-            potential = data_point['potential']
-            current = data_point['current']
-        except KeyError:
-            return
-        try:
-            self.live_plot_queue.put_nowait((potential, current))
-        except queue.Full:
-            return
-
-    def _poll_live_plot_queue(self):
-        if not self.live_plot_active:
-            self.live_plot_job = None
-            return
-
-        updated = False
-        while True:
-            try:
-                potential, current = self.live_plot_queue.get_nowait()
-            except queue.Empty:
-                break
-            self.live_plot_x.append(potential)
-            self.live_plot_y.append(current)
-            updated = True
-
-        if updated:
-            if self.plot_line is None:
-                (self.plot_line,) = self.ax.plot(self.live_plot_x, self.live_plot_y, lw=1)
-            else:
-                self.plot_line.set_data(self.live_plot_x, self.live_plot_y)
-            self.ax.relim()
-            self.ax.autoscale_view()
-            if self.last_live_plot_label:
-                self.ax.legend(loc='best')
-            self.canvas.draw_idle()
-
-        self.live_plot_job = self.root.after(100, self._poll_live_plot_queue)
     def clear_params_frame(self):
         for widget in self.params_frame.winfo_children(): widget.destroy()
 
     def generate_cv_script(self):
         try:
-            base_script = self.create_cv_methodscript()
+            script = self.create_cv_methodscript()
             mux_channels = self._get_mux_channels(self.cv_params)
             if mux_channels is None:
                 return None
-            script = base_script
             if mux_channels:
-                script = self._build_mux_script(base_script, mux_channels[0])
+                script = self._build_mux_script(script, mux_channels[0], include_channel_var=False)
                 if len(mux_channels) > 1:
                     note = f"# NOTE: Multiple MUX16 channels selected ({', '.join(map(str, mux_channels))}). Preview shows channel {mux_channels[0]}."
-                    script = f"{note}\n{script}"
+                    script = note + "\n" + script
             self.current_script = script
             self.update_script_preview(script)
             return script
@@ -1546,16 +2165,15 @@ class ElectrochemGUI:
 
     def generate_swv_script(self):
         try:
-            base_script = self.create_swv_methodscript()
+            script = self.create_swv_methodscript()
             mux_channels = self._get_mux_channels(self.swv_params)
             if mux_channels is None:
                 return None
-            script = base_script
             if mux_channels:
-                script = self._build_mux_script(base_script, mux_channels[0])
+                script = self._build_mux_script(script, mux_channels[0], include_channel_var=False)
                 if len(mux_channels) > 1:
                     note = f"# NOTE: Multiple MUX16 channels selected ({', '.join(map(str, mux_channels))}). Preview shows channel {mux_channels[0]}."
-                    script = f"{note}\n{script}"
+                    script = note + "\n" + script
             self.current_script = script
             self.update_script_preview(script)
             return script
@@ -1563,29 +2181,66 @@ class ElectrochemGUI:
             messagebox.showerror("Error", f"Failed to generate script: {str(e)}")
             return None
 
+    def generate_custom_script(self):
+        try:
+            script = self.custom_script_text.get(1.0, tk.END).strip()
+        except Exception:
+            script = ""
+        if not script:
+            messagebox.showerror("Error", "Custom MethodSCRIPT is empty.")
+            return None
+        self.current_script = script
+        self.update_script_preview(script)
+        return script
+
     def update_script_preview(self, script):
         self.script_text.delete(1.0, tk.END)
         self.script_text.insert(1.0, script)
     
     def add_cv_to_queue(self):
+        script = self.generate_cv_script()
+        if not script:
+            return
         base_script = self.create_cv_methodscript()
         mux_channels = self._get_mux_channels(self.cv_params)
         if mux_channels is None:
             return
         if mux_channels:
-            self.add_mux_scripts_to_queue("CV", base_script, mux_channels)
-        else:
-            self.add_to_queue("CV", base_script)
+            for ch in mux_channels:
+                mux_script = self._build_mux_script(base_script, ch, include_channel_var=False)
+                self.add_mux_script_to_queue("CV", mux_script, ch)
+            return
+        self.add_to_queue("CV", script)
     
     def add_swv_to_queue(self):
+        script = self.generate_swv_script()
+        if not script:
+            return
         base_script = self.create_swv_methodscript()
         mux_channels = self._get_mux_channels(self.swv_params)
         if mux_channels is None:
             return
         if mux_channels:
-            self.add_mux_scripts_to_queue("SWV", base_script, mux_channels)
-        else:
-            self.add_to_queue("SWV", base_script)
+            for ch in mux_channels:
+                mux_script = self._build_mux_script(base_script, ch, include_channel_var=False)
+                self.add_mux_script_to_queue("SWV", mux_script, ch)
+            return
+        self.add_to_queue("SWV", script)
+
+    def add_custom_to_queue(self):
+        script = self.generate_custom_script()
+        if not script:
+            return
+        lines = len(script.splitlines())
+        queue_item = {
+            'type': 'CUSTOM',
+            'status': 'pending',
+            'details': f'Custom MethodSCRIPT ({lines} lines)',
+            'script_text': script,
+        }
+        self.measurement_queue.append(queue_item)
+        self.refresh_queue_display()
+        messagebox.showinfo("Success", "Custom MethodSCRIPT added to queue")
 
     def add_pause_to_queue(self):
         try:
@@ -1607,32 +2262,74 @@ class ElectrochemGUI:
         messagebox.showinfo("Success", f"Pause ({seconds:.1f} sec) added to queue")
 
     def run_cv_immediately(self):
+        script = self.generate_cv_script()
+        if not script:
+            return
         base_script = self.create_cv_methodscript()
         mux_channels = self._get_mux_channels(self.cv_params)
         if mux_channels is None:
             return
         if mux_channels:
-            if len(mux_channels) == 1:
-                mux_script = self._build_mux_script(base_script, mux_channels[0])
-                self.run_script_immediately("CV", mux_script, mux_channel=mux_channels[0])
-            else:
-                self.run_mux_script_sequence("CV", base_script, mux_channels)
-        else:
-            self.run_script_immediately("CV", base_script)
+            self.run_mux_script_sequence("CV", base_script, mux_channels)
+            return
+        self.run_script_immediately("CV", script)
 
     def run_swv_immediately(self):
+        script = self.generate_swv_script()
+        if not script:
+            return
         base_script = self.create_swv_methodscript()
         mux_channels = self._get_mux_channels(self.swv_params)
         if mux_channels is None:
             return
         if mux_channels:
-            if len(mux_channels) == 1:
-                mux_script = self._build_mux_script(base_script, mux_channels[0])
-                self.run_script_immediately("SWV", mux_script, mux_channel=mux_channels[0])
-            else:
-                self.run_mux_script_sequence("SWV", base_script, mux_channels)
-        else:
-            self.run_script_immediately("SWV", base_script)
+            self.run_mux_script_sequence("SWV", base_script, mux_channels)
+            return
+        self.run_script_immediately("SWV", script)
+
+    def run_custom_immediately(self):
+        script = self.generate_custom_script()
+        if not script:
+            return
+        if not self._ensure_mux_connected():
+            messagebox.showerror("Custom Run", "Failed to connect to the MUX device.")
+            return
+
+        self.clear_log()
+        self.is_running = True
+        self.update_status("Running: CUSTOM (MUX16)")
+        self.log_message("Starting custom MethodSCRIPT run (MUX16)")
+
+        def worker():
+            success = False
+            status = None
+            try:
+                self.root.after(0, self.notebook.select, self.mux_frame)
+                if self.mux_tab.start_script(script):
+                    status = self.mux_tab.wait_for_script_done(stop_flag=lambda: not self.is_running)
+                    success = (status == "completed")
+            except Exception as exc:
+                self.log_message(f"CRITICAL ERROR executing CUSTOM: {exc}")
+            finally:
+                def finalize():
+                    self.is_running = False
+                    if status == "stopped":
+                        self.update_status("Ready (stopped)")
+                        self.log_message("Custom MethodSCRIPT stopped by user.")
+                        messagebox.showinfo("Run Stopped", "Custom MethodSCRIPT was stopped.")
+                    elif success:
+                        self.update_status("Ready")
+                        self.log_message("Custom MethodSCRIPT completed successfully.")
+                        messagebox.showinfo("Run Complete", "Custom MethodSCRIPT completed.")
+                    else:
+                        self.update_status("Ready (last run failed)")
+                        if status:
+                            self.log_message(f"Custom MethodSCRIPT failed: {status}")
+                        messagebox.showerror("Run Failed", "Custom MethodSCRIPT failed. Check the log.")
+
+                self.root.after(0, finalize)
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def run_pause_immediately(self):
         try:
@@ -1651,13 +2348,143 @@ class ElectrochemGUI:
 
         threading.Thread(target=perform_pause, daemon=True).start()
 
-    def run_script_immediately(self, technique, script, mux_channel=None):
+    def add_mux_script_to_queue(self, technique, script, channel: int):
+        filepath, filename = self.save_script_file(technique, script)
+        queue_item = {
+            'type': technique,
+            'script_path': str(filepath),
+            'script_text': script,
+            'mux_channel': channel,
+            'status': 'pending',
+            'details': f"{filename} (MUX ch {channel})",
+        }
+        self.measurement_queue.append(queue_item)
+        self.refresh_queue_display()
+        messagebox.showinfo("Success", f"{technique} (MUX ch {channel}) added to queue\nSaved as: {filename}")
+
+    def run_mux_script_immediately(self, technique, script, channel: int):
+        if self.is_running:
+            messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait.")
+            return
+        if not self._ensure_mux_connected():
+            messagebox.showerror("MUX Run", "Failed to connect to the MUX device.")
+            return
+        if self.mux_tab:
+            self.mux_tab.set_override_channel(channel)
+            self._set_mux_plot_indices(0, 1, 0)
+
+        self.clear_log()
+        self.is_running = True
+        self.update_status(f"Running: {technique} (MUX ch {channel})")
+        self.log_message(f"Starting {technique} run (MUX ch {channel})")
+
+        def worker():
+            success = False
+            status = None
+            try:
+                self.root.after(0, self.notebook.select, self.mux_frame)
+                if self.mux_tab.start_script(script):
+                    status = self.mux_tab.wait_for_script_done(stop_flag=lambda: not self.is_running)
+                    success = (status == "completed")
+            except Exception as exc:
+                self.log_message(f"CRITICAL ERROR executing {technique} (MUX): {exc}")
+            finally:
+                def finalize():
+                    self.is_running = False
+                    if self.mux_tab:
+                        self.mux_tab.set_override_channel(None)
+                        self.mux_tab._finish_raw_logging()
+                    if status == "stopped":
+                        self.update_status("Ready (stopped)")
+                        self.log_message(f"{technique} (MUX) stopped by user.")
+                        messagebox.showinfo("Run Stopped", f"{technique} run was stopped.")
+                    elif success:
+                        self.update_status("Ready")
+                        self.log_message(f"{technique} (MUX) completed successfully.")
+                        messagebox.showinfo("Run Complete", f"{technique} run completed.")
+                    else:
+                        self.update_status("Ready (last run failed)")
+                        if status:
+                            self.log_message(f"{technique} (MUX) failed: {status}")
+                        messagebox.showerror("Run Failed", f"{technique} run failed. Check the log.")
+
+                self.root.after(0, finalize)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def run_mux_script_sequence(self, technique, base_script: str, channels: List[int]):
+        if self.is_running:
+            messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait.")
+            return
+        if not self._ensure_mux_connected():
+            messagebox.showerror("MUX Run", "Failed to connect to the MUX device.")
+            return
+        if not channels:
+            return
+        if self.mux_tab:
+            self._set_mux_plot_indices(0, 1, 0)
+
+        self.clear_log()
+        self.is_running = True
+        self.update_status(f"Running: {technique} (MUX ch {channels[0]})")
+        self.log_message(f"Starting {technique} run for MUX channels: {', '.join(map(str, channels))}")
+
+        def worker():
+            success = True
+            status = None
+            try:
+                for idx, ch in enumerate(channels, start=1):
+                    if not self.is_running:
+                        status = "stopped"
+                        success = False
+                        break
+                    self.root.after(0, self.notebook.select, self.mux_frame)
+                    self.root.after(0, self.update_status, f"Running: {technique} (MUX ch {ch}) [{idx}/{len(channels)}]")
+                    if self.mux_tab:
+                        self.mux_tab.set_override_channel(ch)
+                    script = self._build_mux_script(base_script, ch, include_channel_var=False)
+                    if not self.mux_tab.start_script(script):
+                        status = "send_failed"
+                        success = False
+                        break
+                    status = self.mux_tab.wait_for_script_done(stop_flag=lambda: not self.is_running)
+                    if status != "completed":
+                        success = False
+                        break
+            except Exception as exc:
+                self.log_message(f"CRITICAL ERROR executing {technique} (MUX): {exc}")
+                success = False
+            finally:
+                def finalize():
+                    self.is_running = False
+                    if self.mux_tab:
+                        self.mux_tab.set_override_channel(None)
+                        self.mux_tab._finish_raw_logging()
+                    if status == "stopped":
+                        self.update_status("Ready (stopped)")
+                        self.log_message(f"{technique} (MUX) stopped by user.")
+                        messagebox.showinfo("Run Stopped", f"{technique} run was stopped.")
+                    elif success:
+                        self.update_status("Ready")
+                        self.log_message(f"{technique} (MUX) completed successfully.")
+                        messagebox.showinfo("Run Complete", f"{technique} run completed.")
+                    else:
+                        self.update_status("Ready (last run failed)")
+                        if status:
+                            self.log_message(f"{technique} (MUX) failed: {status}")
+                        messagebox.showerror("Run Failed", f"{technique} run failed. Check the log.")
+
+                self.root.after(0, finalize)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def run_script_immediately(self, technique, script):
         if self.is_running:
             messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
             return
 
         try:
-            filepath, filename = self.save_script_file(technique, script, mux_channel=mux_channel)
+            filepath, filename = self.save_script_file(technique, script)
         except Exception as e:
             messagebox.showerror("File Error", f"Failed to save {technique} script: {e}")
             return
@@ -1666,7 +2493,6 @@ class ElectrochemGUI:
         self.is_running = True
         self.update_status(f"Running: {technique} - {filename}")
         self.log_message(f"Starting immediate {technique} run ({filename})")
-        self.start_live_plot(f"{technique} (live)", label=technique)
 
         def worker():
             success = False
@@ -1674,11 +2500,7 @@ class ElectrochemGUI:
             stopped_by_user = False
             runner = None
             try:
-                runner = SerialMeasurementRunner(
-                    Path(filepath),
-                    log_callback=self.log_message,
-                    data_callback=self.queue_live_point,
-                )
+                runner = SerialMeasurementRunner(Path(filepath), log_callback=self.log_message)
                 self.current_runner = runner
                 success, csv_path = runner.execute()
                 stopped_by_user = not runner.is_running
@@ -1689,11 +2511,10 @@ class ElectrochemGUI:
 
                 def finalize():
                     self.is_running = False
-                    self.stop_live_plot()
                     if stopped_by_user:
                         self.update_status("Ready (stopped)")
                         if csv_path:
-                            self.plot_data(csv_path, color=self.last_live_plot_color, label=self.last_live_plot_label)
+                            self.plot_data(csv_path)
                         detail = f"{technique} run was stopped. Script: {filename}"
                         if csv_path:
                             detail += f"\nData saved to: {csv_path}"
@@ -1702,7 +2523,7 @@ class ElectrochemGUI:
                     elif success:
                         self.update_status("Ready")
                         if csv_path:
-                            self.plot_data(csv_path, color=self.last_live_plot_color, label=self.last_live_plot_label)
+                            self.plot_data(csv_path)
                         detail = f"{technique} run completed. Script: {filename}"
                         if csv_path:
                             detail += f"\nData saved to: {csv_path}"
@@ -1711,7 +2532,7 @@ class ElectrochemGUI:
                     else:
                         self.update_status("Ready (last run failed)")
                         if csv_path:
-                            self.plot_data(csv_path, color=self.last_live_plot_color, label=self.last_live_plot_label)
+                            self.plot_data(csv_path)
                         self.log_message(f"{technique} run failed.")
                         messagebox.showerror("Run Failed", f"{technique} run failed. Check the log for details.")
 
@@ -1719,12 +2540,10 @@ class ElectrochemGUI:
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def save_script_file(self, technique, script, mux_channel=None):
+    def save_script_file(self, technique, script):
         date_folder = self.base_path / datetime.now().strftime('%Y-%m-%d')
         date_folder.mkdir(exist_ok=True)
         slug = technique.lower().replace(' ', '_')
-        if mux_channel is not None:
-            slug = f"{slug}_ch{mux_channel}"
         filename = f"{len(list(date_folder.glob('*.ms'))) + 1:03d}_{slug}.ms"
         filepath = date_folder / filename
         with open(filepath, 'w') as f:
@@ -1737,117 +2556,6 @@ class ElectrochemGUI:
         self.measurement_queue.append(queue_item)
         self.refresh_queue_display()
         messagebox.showinfo("Success", f"{technique} added to queue\nSaved as: {filename}")
-
-    def add_mux_scripts_to_queue(self, technique, base_script, channels):
-        saved = []
-        for ch in channels:
-            mux_script = self._build_mux_script(base_script, ch)
-            filepath, filename = self.save_script_file(technique, mux_script, mux_channel=ch)
-            queue_item = {
-                'type': technique,
-                'script_path': str(filepath),
-                'status': 'pending',
-                'details': f"{filename} (MUX ch {ch})",
-            }
-            self.measurement_queue.append(queue_item)
-            saved.append(f"{filename} (ch {ch})")
-        self.refresh_queue_display()
-        messagebox.showinfo(
-            "Success",
-            f"{technique} added for MUX channels: {', '.join(map(str, channels))}\nSaved as: {', '.join(saved)}",
-        )
-
-    def run_mux_script_sequence(self, technique, base_script, channels):
-        if self.is_running:
-            messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
-            return
-
-        if not channels:
-            return
-
-        self.clear_log()
-        self.is_running = True
-        self.update_status(f"Running: {technique} (MUX ch {channels[0]})")
-        self.log_message(f"Starting {technique} run for MUX channels: {', '.join(map(str, channels))}")
-
-        def worker():
-            stopped_by_user = False
-            success = True
-            last_csv_path = None
-
-            for idx, ch in enumerate(channels, start=1):
-                if not self.is_running:
-                    stopped_by_user = True
-                    success = False
-                    break
-
-                mux_script = self._build_mux_script(base_script, ch)
-                try:
-                    filepath, filename = self.save_script_file(technique, mux_script, mux_channel=ch)
-                except Exception as exc:
-                    self.log_message(f"File error: failed to save {technique} (MUX ch {ch}) script: {exc}")
-                    success = False
-                    break
-
-                self.root.after(0, self.update_status, f"Running: {technique} (MUX ch {ch}) [{idx}/{len(channels)}]")
-                self.log_message(f"Starting {technique} run (MUX ch {ch}) ({filename})")
-                color = next(self.plot_color_cycle)
-                label = f"MUX ch {ch}"
-                self.last_live_plot_color = color
-                self.last_live_plot_label = label
-                self.root.after(0, self.start_live_plot, f"{technique} (MUX ch {ch} live)", color, label)
-
-                runner = None
-                csv_path = None
-                try:
-                    runner = SerialMeasurementRunner(
-                        Path(filepath),
-                        log_callback=self.log_message,
-                        data_callback=self.queue_live_point,
-                    )
-                    self.current_runner = runner
-                    ok, csv_path = runner.execute()
-                    if not ok:
-                        success = False
-                        if not runner.is_running:
-                            stopped_by_user = True
-                        break
-                except Exception as exc:
-                    self.log_message(f"CRITICAL ERROR executing {technique} (MUX ch {ch}): {exc}")
-                    success = False
-                    break
-                finally:
-                    self.current_runner = None
-
-                if csv_path:
-                    last_csv_path = csv_path
-                    self.root.after(0, self.plot_data, csv_path, self.last_live_plot_color, self.last_live_plot_label)
-
-            def finalize():
-                self.is_running = False
-                self.stop_live_plot()
-                if stopped_by_user:
-                    self.update_status("Ready (stopped)")
-                    detail = f"{technique} MUX run was stopped."
-                    if last_csv_path:
-                        detail += f"\nLast data saved to: {last_csv_path}"
-                    self.log_message(f"{technique} MUX run stopped by user.")
-                    messagebox.showinfo("Run Stopped", detail)
-                elif success:
-                    self.update_status("Ready")
-                    detail = f"{technique} MUX run completed. Channels: {', '.join(map(str, channels))}"
-                    if last_csv_path:
-                        detail += f"\nLast data saved to: {last_csv_path}"
-                    self.log_message(f"{technique} MUX run completed successfully.")
-                    messagebox.showinfo("Run Complete", detail)
-                else:
-                    self.update_status("Ready (last run failed)")
-                    self.log_message(f"{technique} MUX run failed.")
-                    messagebox.showerror("Run Failed", f"{technique} MUX run failed. Check the log for details.")
-
-            self.root.after(0, finalize)
-
-        threading.Thread(target=worker, daemon=True).start()
     
     def refresh_queue_display(self):
         for item in self.queue_tree.get_children(): self.queue_tree.delete(item)
@@ -1863,6 +2571,11 @@ class ElectrochemGUI:
         item_type = data['type']
         if item_type == 'PAUSE':
             data['pause_seconds'] = item.get('pause_seconds', 0.0)
+        elif item_type == 'CUSTOM':
+            data['script_text'] = item.get('script_text', '')
+        elif item_type in ('CV', 'SWV') and item.get('mux_channel'):
+            data['mux_channel'] = item.get('mux_channel')
+            data['script_text'] = item.get('script_text', '')
         elif item_type and item_type.startswith('PUMP_'):
             action = item.get('pump_action') or {}
             data['pump_action'] = {
@@ -1956,6 +2669,25 @@ class ElectrochemGUI:
                     continue
                 queue_item['pause_seconds'] = seconds
                 queue_item['details'] = details or f'Pause for {seconds:.1f} sec'
+            elif item_type == 'CUSTOM':
+                script_text = raw_item.get('script_text', '')
+                if not isinstance(script_text, str) or not script_text.strip():
+                    skipped += 1
+                    continue
+                queue_item['script_text'] = script_text
+                queue_item['details'] = details or f'Custom MethodSCRIPT ({len(script_text.splitlines())} lines)'
+            elif item_type in ('CV', 'SWV') and raw_item.get('mux_channel'):
+                mux_channel = raw_item.get('mux_channel')
+                script_text = raw_item.get('script_text', '')
+                if not isinstance(mux_channel, int) or not (1 <= mux_channel <= 16):
+                    skipped += 1
+                    continue
+                if not isinstance(script_text, str) or not script_text.strip():
+                    skipped += 1
+                    continue
+                queue_item['mux_channel'] = mux_channel
+                queue_item['script_text'] = script_text
+                queue_item['details'] = details or f'{item_type} (MUX ch {mux_channel})'
             elif item_type.startswith('PUMP_'):
                 action = raw_item.get('pump_action') or {}
                 action_name = action.get('name')
@@ -2021,26 +2753,24 @@ class ElectrochemGUI:
                 elif item['type'].startswith('PUMP_'):
                     success = self.execute_pump_action(item)
                     self.measurement_queue[i]['status'] = 'completed' if success else 'failed'
+                elif item['type'] == 'CUSTOM':
+                    success = self.execute_custom_mux(item)
+                    self.measurement_queue[i]['status'] = 'completed' if success else 'failed'
+                elif item['type'] in ('CV', 'SWV') and item.get('mux_channel'):
+                    success = self.execute_custom_mux(item)
+                    self.measurement_queue[i]['status'] = 'completed' if success else 'failed'
                 else:
-                    self.root.after(0, self.start_live_plot, f"{item['type']} (live)", None, item['type'])
-                    try:
-                        self.current_runner = SerialMeasurementRunner(
-                            Path(item['script_path']),
-                            log_callback=self.log_message,
-                            data_callback=self.queue_live_point,
-                        )
-                        success, csv_path = self.current_runner.execute()
-                        self.measurement_queue[i]['status'] = 'completed' if success else 'failed'
-                    finally:
-                        self.current_runner = None
-                        self.root.after(0, self.stop_live_plot)
+                    self.current_runner = SerialMeasurementRunner(Path(item['script_path']), log_callback=self.log_message)
+                    success, csv_path = self.current_runner.execute()
+                    self.measurement_queue[i]['status'] = 'completed' if success else 'failed'
+                    self.current_runner = None
             except Exception as e:
                 self.measurement_queue[i]['status'] = 'failed'
                 self.log_message(f"CRITICAL ERROR in queue execution: {e}")
             
             # If the measurement was successful and created a file, plot it
             if csv_path:
-                self.root.after(0, self.plot_data, csv_path, self.last_live_plot_color)
+                self.root.after(0, self.plot_data, csv_path)
 
             self.root.after(0, self.refresh_queue_display)
             time.sleep(1)
@@ -2089,6 +2819,48 @@ class ElectrochemGUI:
 
         self.root.after(0, self.update_status, "Pause complete")
         return True
+
+    def execute_custom_mux(self, item) -> bool:
+        if not self._ensure_mux_connected():
+            self.log_message("MUX16 connection failed; cannot run script.")
+            return False
+
+        script_text = item.get('script_text')
+        if not script_text:
+            script_path = item.get('script_path')
+            if script_path:
+                try:
+                    script_text = Path(script_path).read_text()
+                except Exception as exc:
+                    self.log_message(f"Failed to read custom script from {script_path}: {exc}")
+                    return False
+        if not script_text:
+            self.log_message("Custom queue item missing script text.")
+            return False
+
+        mux_channel = item.get('mux_channel')
+        if self.mux_tab and isinstance(mux_channel, int):
+            self.mux_tab.set_override_channel(mux_channel)
+            self._set_mux_plot_indices(0, 1, 0)
+
+        self.root.after(0, self.notebook.select, self.mux_frame)
+        if not self.mux_tab.start_script(script_text):
+            if self.mux_tab:
+                self.mux_tab.set_override_channel(None)
+            return False
+
+        status = self.mux_tab.wait_for_script_done(stop_flag=lambda: not self.is_running)
+        if self.mux_tab:
+            self.mux_tab.set_override_channel(None)
+            self.mux_tab._finish_raw_logging()
+        if status == "completed":
+            self.log_message("Custom MethodSCRIPT completed.")
+            return True
+        if status == "stopped":
+            self.log_message("Custom MethodSCRIPT stopped by user.")
+        else:
+            self.log_message(f"Custom MethodSCRIPT failed: {status}")
+        return False
 
     def execute_pump_action(self, item):
         if not PUMP_AVAILABLE or self.pump_ctrl is None:
