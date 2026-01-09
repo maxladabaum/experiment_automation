@@ -321,10 +321,18 @@ class SerialMeasurementRunner:
             self.log("Script sent. Collecting data...")
             self.log("-" * 40)
             
+            empty_reads = 0
             while self.is_running:
                 try:
                     line = self.connection.readline()
-                    if not line: continue
+                    if not line:
+                        if self.partial_packet:
+                            empty_reads += 1
+                            if empty_reads >= 3:
+                                self.log("Warning: incomplete data packet timed out")
+                                break
+                        continue
+                    empty_reads = 0
                     text = line.decode('utf-8', errors='ignore').rstrip('\r\n')
                     if not text: continue
                     if self.partial_packet:
@@ -332,7 +340,7 @@ class SerialMeasurementRunner:
                             self.log("Warning: dropped incomplete data packet")
                             self.partial_packet = ""
                         else:
-                            text = self.partial_packet + text
+                            self.log("Warning: dropped incomplete data packet")
                             self.partial_packet = ""
                     self.log(text)
                     if text.startswith('P'):
@@ -482,6 +490,10 @@ class ElectrochemGUI:
             .get('color', ['#1f77b4'])
         )
         self.plot_color_cycle = itertools.cycle(self.plot_colors)
+
+        self.queue_drag_item = None
+        self.queue_reorder_pending = False
+        self.queue_reorder_snapshot = None
         
         self.setup_gui()
         
@@ -563,7 +575,6 @@ class ElectrochemGUI:
         frequency = to_si_string(self.swv_params['frequency'].get(), 'Hz')
         cond_pot = to_si_string(self.swv_params['cond_potential'].get(), 'V')
         cond_time = self.swv_params['cond_time'].get()
-        n_scans = int(self.swv_params['n_scans'].get())
         min_pot = min(begin_v, end_v) - amp_v
         max_pot = max(begin_v, end_v) + amp_v
         min_pot_mv, max_pot_mv = int(min_pot * 1000), int(max_pot * 1000)
@@ -580,20 +591,10 @@ class ElectrochemGUI:
                 f"set_e {cond_pot}", f"wait {cond_time}"
             ])
             
-        if n_scans > 1:
-            script_parts.extend([
-            f"# SWV measurement loop for {n_scans} scans",
-            "var scan_num", "store_var scan_num 0i i", f"loop scan_num < {n_scans}i",
-            "\tadd_var scan_num 1i", "\t# Starting scan", '\tsend_string "C"','\tsend_var scan_num', 
-            f"\tmeas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}",
-            "\t\tpck_start", "\t\t\tpck_add p", "\t\t\tpck_add c", "\t\t\tpck_add f", "\t\t\tpck_add r",
-            "\t\tpck_end", "\tendloop", '\tsend_string "-"', "endloop"
-        ])
-        else:
-            script_parts.extend([
+        script_parts.extend([
             f"meas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}",
             "\tpck_start", "\t\tpck_add p", "\t\tpck_add c", "\t\tpck_add f", "\t\tpck_add r",
-            "\tpck_end", "endloop"
+            "\tpck_end", "endloop",
         ])
 
         script_parts.extend([
@@ -676,6 +677,25 @@ class ElectrochemGUI:
         ]
         merged = prefix + rest
         return "\n".join(merged)
+
+    def _get_swv_cycles_and_delay(self):
+        try:
+            n_scans = int(self.swv_params['n_scans'].get())
+        except Exception:
+            messagebox.showerror("Invalid SWV Scans", "Number of scans must be an integer.")
+            return None, None
+        try:
+            delay = float(self.swv_params.get('cycle_delay').get())
+        except Exception:
+            messagebox.showerror("Invalid SWV Delay", "Delay between scans must be a number.")
+            return None, None
+        if n_scans < 1:
+            messagebox.showerror("Invalid SWV Scans", "Number of scans must be at least 1.")
+            return None, None
+        if delay < 0:
+            messagebox.showerror("Invalid SWV Delay", "Delay between scans must be non-negative.")
+            return None, None
+        return n_scans, delay
     
     def setup_method_tab(self):
         left_frame = ttk.Frame(self.method_frame)
@@ -719,7 +739,7 @@ class ElectrochemGUI:
         self.clear_params_frame()
         self.current_technique = "SWV"
         self.swv_params = {}
-        params = [("Begin Potential (V):", "begin_potential", "-0.5"), ("End Potential (V):", "end_potential", "0.5"), ("Step Potential (V):", "step_potential", "0.002"), ("Amplitude (V):", "amplitude", "0.02"), ("Frequency (Hz):", "frequency", "15"), ("Number of Scans:", "n_scans", "1"), ("Conditioning Potential (V):", "cond_potential", "0"), ("Conditioning Time (s):", "cond_time", "0"), ("MUX16 Channels (1-16, 0=off, e.g. 1-3,7-9):", "mux_channel", "0")]
+        params = [("Begin Potential (V):", "begin_potential", "-0.5"), ("End Potential (V):", "end_potential", "0.5"), ("Step Potential (V):", "step_potential", "0.002"), ("Amplitude (V):", "amplitude", "0.02"), ("Frequency (Hz):", "frequency", "15"), ("Number of Scans:", "n_scans", "1"), ("Delay Between Scans (s):", "cycle_delay", "0"), ("Conditioning Potential (V):", "cond_potential", "0"), ("Conditioning Time (s):", "cond_time", "0"), ("MUX16 Channels (1-16, 0=off, e.g. 1-3,7-9):", "mux_channel", "0")]
         for i, (label, key, default) in enumerate(params):
             ttk.Label(self.params_frame, text=label).grid(row=i, column=0, sticky='w', pady=2)
             entry = ttk.Entry(self.params_frame, width=15); entry.insert(0, default); entry.grid(row=i, column=1, pady=2)
@@ -738,11 +758,17 @@ class ElectrochemGUI:
         entry.insert(0, "10")
         entry.grid(row=0, column=1, pady=2)
         self.pause_params['pause_time'] = entry
+        ttk.Label(self.params_frame, text="Alert Message:").grid(row=1, column=0, sticky='w', pady=2)
+        alert_entry = ttk.Entry(self.params_frame, width=30)
+        alert_entry.insert(0, "Paused - click OK to continue.")
+        alert_entry.grid(row=1, column=1, pady=2, sticky='w')
+        self.pause_params['alert_message'] = alert_entry
 
         button_frame = ttk.Frame(self.params_frame)
-        button_frame.grid(row=1, column=0, columnspan=2, pady=20)
+        button_frame.grid(row=2, column=0, columnspan=2, pady=20)
         ttk.Button(button_frame, text="Add Pause to Queue", command=self.add_pause_to_queue).pack(side='left', padx=5)
         ttk.Button(button_frame, text="Run Pause Now", command=self.run_pause_immediately).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Add Alert Pause", command=self.add_alert_pause_to_queue).pack(side='left', padx=5)
 
     def setup_pump_tab(self):
         if not PUMP_AVAILABLE or PumpCtrl is None:
@@ -1289,14 +1315,20 @@ class ElectrochemGUI:
         bottom_frame = ttk.Frame(main_pane); main_pane.add(bottom_frame, weight=1)
         control_frame = ttk.Frame(top_frame); control_frame.pack(pady=10, fill='x', padx=10)
         ttk.Button(control_frame, text="Run Queue", command=self.run_queue).pack(side='left', padx=5)
+        ttk.Button(control_frame, text="Run From Selected", command=self.run_queue_from_selected).pack(side='left', padx=5)
         ttk.Button(control_frame, text="Stop", command=self.stop_queue).pack(side='left', padx=5)
         ttk.Button(control_frame, text="Save Queue", command=self.save_queue).pack(side='left', padx=5)
         ttk.Button(control_frame, text="Load Queue", command=self.load_queue).pack(side='left', padx=5)
         ttk.Button(control_frame, text="Clear Queue", command=self.clear_queue).pack(side='left', padx=5)
+        ttk.Button(control_frame, text="Delete Selected", command=self.delete_selected_queue_item).pack(side='left', padx=5)
+        ttk.Button(control_frame, text="Confirm Move", command=self.confirm_queue_reorder).pack(side='left', padx=5)
         self.queue_tree = ttk.Treeview(top_frame, columns=('Type', 'Status', 'Details'), show='tree headings', height=8)
         self.queue_tree.heading('#0', text='#'); self.queue_tree.heading('Type', text='Type'); self.queue_tree.heading('Status', text='Status'); self.queue_tree.heading('Details', text='Details')
         self.queue_tree.column('#0', width=50); self.queue_tree.column('Type', width=150); self.queue_tree.column('Status', width=100); self.queue_tree.column('Details', width=400)
         self.queue_tree.pack(fill='both', expand=True, padx=10, pady=5)
+        self.queue_tree.bind("<ButtonPress-1>", self._on_queue_drag_start)
+        self.queue_tree.bind("<B1-Motion>", self._on_queue_drag_motion)
+        self.queue_tree.bind("<ButtonRelease-1>", self._on_queue_drag_release)
         log_frame = ttk.LabelFrame(bottom_frame, text="Live Output Log"); log_frame.pack(fill='both', expand=True, padx=10, pady=5)
         self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, height=10); self.log_text.pack(fill='both', expand=True)
         self.log_text.config(state='disabled')
@@ -1582,10 +1614,50 @@ class ElectrochemGUI:
         mux_channels = self._get_mux_channels(self.swv_params)
         if mux_channels is None:
             return
-        if mux_channels:
-            self.add_mux_scripts_to_queue("SWV", base_script, mux_channels)
-        else:
-            self.add_to_queue("SWV", base_script)
+        n_scans, delay = self._get_swv_cycles_and_delay()
+        if n_scans is None:
+            return
+        if n_scans <= 1:
+            if mux_channels:
+                self.add_mux_scripts_to_queue("SWV", base_script, mux_channels)
+            else:
+                self.add_to_queue("SWV", base_script)
+            return
+
+        added = []
+        for cycle in range(1, n_scans + 1):
+            if mux_channels:
+                for ch in mux_channels:
+                    mux_script = self._build_mux_script(base_script, ch)
+                    filepath, filename = self.save_script_file("SWV", mux_script, mux_channel=ch)
+                    queue_item = {
+                        'type': "SWV",
+                        'script_path': str(filepath),
+                        'status': 'pending',
+                        'details': f"{filename} (MUX ch {ch})",
+                    }
+                    self.measurement_queue.append(queue_item)
+                    added.append(f"{filename} (ch {ch})")
+            else:
+                filepath, filename = self.save_script_file("SWV", base_script)
+                queue_item = {'type': "SWV", 'script_path': str(filepath), 'status': 'pending', 'details': filename}
+                self.measurement_queue.append(queue_item)
+                added.append(filename)
+
+            if delay > 0 and cycle < n_scans:
+                pause_item = {
+                    'type': 'PAUSE',
+                    'status': 'pending',
+                    'details': f'Pause for {delay:.1f} sec',
+                    'pause_seconds': delay,
+                }
+                self.measurement_queue.append(pause_item)
+
+        self.refresh_queue_display()
+        messagebox.showinfo(
+            "Success",
+            f"SWV added for {n_scans} scan(s)\nSaved as: {', '.join(added)}",
+        )
 
     def add_pause_to_queue(self):
         try:
@@ -1606,6 +1678,21 @@ class ElectrochemGUI:
         self.refresh_queue_display()
         messagebox.showinfo("Success", f"Pause ({seconds:.1f} sec) added to queue")
 
+    def add_alert_pause_to_queue(self):
+        message = (self.pause_params.get('alert_message').get() or "").strip()
+        if not message:
+            messagebox.showerror("Invalid Alert", "Alert message cannot be empty.")
+            return
+        queue_item = {
+            'type': 'ALERT',
+            'status': 'pending',
+            'details': "Alert pause",
+            'alert_message': message,
+        }
+        self.measurement_queue.append(queue_item)
+        self.refresh_queue_display()
+        messagebox.showinfo("Success", "Alert pause added to queue")
+
     def run_cv_immediately(self):
         base_script = self.create_cv_methodscript()
         mux_channels = self._get_mux_channels(self.cv_params)
@@ -1625,14 +1712,24 @@ class ElectrochemGUI:
         mux_channels = self._get_mux_channels(self.swv_params)
         if mux_channels is None:
             return
-        if mux_channels:
-            if len(mux_channels) == 1:
-                mux_script = self._build_mux_script(base_script, mux_channels[0])
-                self.run_script_immediately("SWV", mux_script, mux_channel=mux_channels[0])
+        n_scans, delay = self._get_swv_cycles_and_delay()
+        if n_scans is None:
+            return
+        if n_scans <= 1:
+            if mux_channels:
+                if len(mux_channels) == 1:
+                    mux_script = self._build_mux_script(base_script, mux_channels[0])
+                    self.run_script_immediately("SWV", mux_script, mux_channel=mux_channels[0])
+                else:
+                    self.run_mux_script_sequence("SWV", base_script, mux_channels)
             else:
-                self.run_mux_script_sequence("SWV", base_script, mux_channels)
+                self.run_script_immediately("SWV", base_script)
+            return
+
+        if mux_channels:
+            self.run_mux_swv_cycles(base_script, mux_channels, n_scans, delay)
         else:
-            self.run_script_immediately("SWV", base_script)
+            self.run_swv_cycles(base_script, n_scans, delay)
 
     def run_pause_immediately(self):
         try:
@@ -1848,11 +1945,215 @@ class ElectrochemGUI:
             self.root.after(0, finalize)
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def run_swv_cycles(self, base_script, n_scans, delay_seconds):
+        if self.is_running:
+            messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
+            return
+
+        self.clear_log()
+        self.is_running = True
+        self.update_status("Running: SWV (multi-scan)")
+        self.log_message(f"Starting SWV run for {n_scans} scan(s)")
+
+        def worker():
+            stopped_by_user = False
+            success = True
+            last_csv_path = None
+
+            for scan in range(1, n_scans + 1):
+                if not self.is_running:
+                    stopped_by_user = True
+                    success = False
+                    break
+
+                try:
+                    filepath, filename = self.save_script_file("SWV", base_script)
+                except Exception as exc:
+                    self.log_message(f"File error: failed to save SWV script: {exc}")
+                    success = False
+                    break
+
+                label = f"SWV scan {scan}"
+                color = next(self.plot_color_cycle)
+                self.last_live_plot_color = color
+                self.last_live_plot_label = label
+                self.root.after(0, self.start_live_plot, f"SWV (scan {scan}/{n_scans} live)", color, label)
+                self.root.after(0, self.update_status, f"Running: SWV scan {scan}/{n_scans}")
+                self.log_message(f"Starting SWV scan {scan}/{n_scans} ({filename})")
+
+                runner = None
+                csv_path = None
+                try:
+                    runner = SerialMeasurementRunner(
+                        Path(filepath),
+                        log_callback=self.log_message,
+                        data_callback=self.queue_live_point,
+                    )
+                    self.current_runner = runner
+                    ok, csv_path = runner.execute()
+                    if not ok:
+                        success = False
+                        if not runner.is_running:
+                            stopped_by_user = True
+                        break
+                except Exception as exc:
+                    self.log_message(f"CRITICAL ERROR executing SWV scan {scan}: {exc}")
+                    success = False
+                    break
+                finally:
+                    self.current_runner = None
+                    self.root.after(0, self.stop_live_plot)
+
+                if csv_path:
+                    last_csv_path = csv_path
+                    self.root.after(0, self.plot_data, csv_path, self.last_live_plot_color, self.last_live_plot_label)
+
+                if delay_seconds > 0 and scan < n_scans:
+                    self.log_message(f"Waiting {delay_seconds:.1f} sec before next SWV scan...")
+                    waited = 0.0
+                    while waited < delay_seconds and self.is_running:
+                        time.sleep(min(0.5, delay_seconds - waited))
+                        waited += min(0.5, delay_seconds - waited)
+
+            def finalize():
+                self.is_running = False
+                if stopped_by_user:
+                    self.update_status("Ready (stopped)")
+                    detail = "SWV run was stopped."
+                    if last_csv_path:
+                        detail += f"\nLast data saved to: {last_csv_path}"
+                    self.log_message("SWV run stopped by user.")
+                    messagebox.showinfo("Run Stopped", detail)
+                elif success:
+                    self.update_status("Ready")
+                    detail = f"SWV run completed. Scans: {n_scans}"
+                    if last_csv_path:
+                        detail += f"\nLast data saved to: {last_csv_path}"
+                    self.log_message("SWV run completed successfully.")
+                    messagebox.showinfo("Run Complete", detail)
+                else:
+                    self.update_status("Ready (last run failed)")
+                    self.log_message("SWV run failed.")
+                    messagebox.showerror("Run Failed", "SWV run failed. Check the log for details.")
+
+            self.root.after(0, finalize)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def run_mux_swv_cycles(self, base_script, channels, n_scans, delay_seconds):
+        if self.is_running:
+            messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
+            return
+
+        if not channels:
+            return
+
+        self.clear_log()
+        self.is_running = True
+        self.update_status(f"Running: SWV (MUX ch {channels[0]})")
+        self.log_message(
+            f"Starting SWV run for MUX channels: {', '.join(map(str, channels))} ({n_scans} scan(s))"
+        )
+
+        def worker():
+            stopped_by_user = False
+            success = True
+            last_csv_path = None
+
+            for scan in range(1, n_scans + 1):
+                for idx, ch in enumerate(channels, start=1):
+                    if not self.is_running:
+                        stopped_by_user = True
+                        success = False
+                        break
+
+                    mux_script = self._build_mux_script(base_script, ch)
+                    try:
+                        filepath, filename = self.save_script_file("SWV", mux_script, mux_channel=ch)
+                    except Exception as exc:
+                        self.log_message(f"File error: failed to save SWV (MUX ch {ch}) script: {exc}")
+                        success = False
+                        break
+
+                    label = f"MUX ch {ch} (scan {scan})"
+                    color = next(self.plot_color_cycle)
+                    self.last_live_plot_color = color
+                    self.last_live_plot_label = label
+                    self.root.after(0, self.start_live_plot, f"SWV (MUX ch {ch} scan {scan}/{n_scans})", color, label)
+                    self.root.after(
+                        0,
+                        self.update_status,
+                        f"Running: SWV MUX ch {ch} scan {scan}/{n_scans} [{idx}/{len(channels)}]",
+                    )
+                    self.log_message(f"Starting SWV MUX ch {ch} scan {scan}/{n_scans} ({filename})")
+
+                    runner = None
+                    csv_path = None
+                    try:
+                        runner = SerialMeasurementRunner(
+                            Path(filepath),
+                            log_callback=self.log_message,
+                            data_callback=self.queue_live_point,
+                        )
+                        self.current_runner = runner
+                        ok, csv_path = runner.execute()
+                        if not ok:
+                            success = False
+                            if not runner.is_running:
+                                stopped_by_user = True
+                            break
+                    except Exception as exc:
+                        self.log_message(f"CRITICAL ERROR executing SWV MUX ch {ch} scan {scan}: {exc}")
+                        success = False
+                        break
+                    finally:
+                        self.current_runner = None
+                        self.root.after(0, self.stop_live_plot)
+
+                    if csv_path:
+                        last_csv_path = csv_path
+                        self.root.after(0, self.plot_data, csv_path, self.last_live_plot_color, self.last_live_plot_label)
+
+                if not success or stopped_by_user:
+                    break
+
+                if delay_seconds > 0 and scan < n_scans:
+                    self.log_message(f"Waiting {delay_seconds:.1f} sec before next SWV cycle...")
+                    waited = 0.0
+                    while waited < delay_seconds and self.is_running:
+                        time.sleep(min(0.5, delay_seconds - waited))
+                        waited += min(0.5, delay_seconds - waited)
+
+            def finalize():
+                self.is_running = False
+                if stopped_by_user:
+                    self.update_status("Ready (stopped)")
+                    detail = "SWV MUX run was stopped."
+                    if last_csv_path:
+                        detail += f"\nLast data saved to: {last_csv_path}"
+                    self.log_message("SWV MUX run stopped by user.")
+                    messagebox.showinfo("Run Stopped", detail)
+                elif success:
+                    self.update_status("Ready")
+                    detail = f"SWV MUX run completed. Scans: {n_scans}"
+                    if last_csv_path:
+                        detail += f"\nLast data saved to: {last_csv_path}"
+                    self.log_message("SWV MUX run completed successfully.")
+                    messagebox.showinfo("Run Complete", detail)
+                else:
+                    self.update_status("Ready (last run failed)")
+                    self.log_message("SWV MUX run failed.")
+                    messagebox.showerror("Run Failed", "SWV MUX run failed. Check the log for details.")
+
+            self.root.after(0, finalize)
+
+        threading.Thread(target=worker, daemon=True).start()
     
     def refresh_queue_display(self):
         for item in self.queue_tree.get_children(): self.queue_tree.delete(item)
         for i, item in enumerate(self.measurement_queue):
-            self.queue_tree.insert('', 'end', text=str(i+1), values=(item['type'], item['status'].upper(), item.get('details', '')))
+            self.queue_tree.insert('', 'end', iid=str(i), text=str(i+1), values=(item['type'], item['status'].upper(), item.get('details', '')))
 
     def _serialize_queue_item(self, item):
         data = {
@@ -1863,6 +2164,8 @@ class ElectrochemGUI:
         item_type = data['type']
         if item_type == 'PAUSE':
             data['pause_seconds'] = item.get('pause_seconds', 0.0)
+        elif item_type == 'ALERT':
+            data['alert_message'] = item.get('alert_message', '')
         elif item_type and item_type.startswith('PUMP_'):
             action = item.get('pump_action') or {}
             data['pump_action'] = {
@@ -1956,6 +2259,13 @@ class ElectrochemGUI:
                     continue
                 queue_item['pause_seconds'] = seconds
                 queue_item['details'] = details or f'Pause for {seconds:.1f} sec'
+            elif item_type == 'ALERT':
+                message = raw_item.get('alert_message')
+                if not isinstance(message, str) or not message.strip():
+                    skipped += 1
+                    continue
+                queue_item['alert_message'] = message.strip()
+                queue_item['details'] = details or "Alert pause"
             elif item_type.startswith('PUMP_'):
                 action = raw_item.get('pump_action') or {}
                 action_name = action.get('name')
@@ -1992,15 +2302,41 @@ class ElectrochemGUI:
         messagebox.showinfo("Queue Loaded", f"Loaded {len(new_queue)} queue item(s).")
 
     def run_queue(self):
+        self.reset_queue_reorder()
         if not self.measurement_queue: messagebox.showwarning("Empty Queue", "No items in queue"); return
         if self.is_running: messagebox.showwarning("Already Running", "Queue is already running"); return
         self.is_running = True
         self.clear_log()
-        self.queue_thread = threading.Thread(target=self.execute_queue, daemon=True)
+        self.queue_thread = threading.Thread(target=self.execute_queue, args=(0,), daemon=True)
         self.queue_thread.start()
 
-    def execute_queue(self):
-        for i, item in enumerate(list(self.measurement_queue)):
+    def run_queue_from_selected(self):
+        self.reset_queue_reorder()
+        if not self.measurement_queue:
+            messagebox.showwarning("Empty Queue", "No items in queue")
+            return
+        if self.is_running:
+            messagebox.showwarning("Already Running", "Queue is already running")
+            return
+        selected = self.queue_tree.selection()
+        if not selected:
+            messagebox.showwarning("No Selection", "Select a queue item to start from.")
+            return
+        try:
+            index = self.queue_tree.index(selected[0])
+        except Exception:
+            messagebox.showerror("Selection Error", "Unable to determine selected queue item.")
+            return
+        if index < 0 or index >= len(self.measurement_queue):
+            messagebox.showerror("Selection Error", "Selected queue item is out of range.")
+            return
+        self.is_running = True
+        self.clear_log()
+        self.queue_thread = threading.Thread(target=self.execute_queue, args=(index,), daemon=True)
+        self.queue_thread.start()
+
+    def execute_queue(self, start_index=0):
+        for i, item in enumerate(list(self.measurement_queue)[start_index:], start=start_index):
             if not self.is_running: self.log_message("Queue execution stopped by user."); break
             self.measurement_queue[i]['status'] = 'running'
             self.root.after(0, self.refresh_queue_display)
@@ -2018,6 +2354,16 @@ class ElectrochemGUI:
                         self.log_message(f"Queue pause complete: {seconds:.1f} sec")
                     else:
                         self.log_message("Queue pause cancelled before completion.")
+                elif item['type'] == 'ALERT':
+                    message = item.get('alert_message', 'Paused - click OK to continue.')
+                    self.log_message("Queue alert pause started")
+                    alert_completed = self.execute_alert_pause(message)
+                    self.measurement_queue[i]['status'] = 'completed' if alert_completed else 'stopped'
+                    success = alert_completed
+                    if alert_completed:
+                        self.log_message("Queue alert pause complete")
+                    else:
+                        self.log_message("Queue alert pause cancelled before completion.")
                 elif item['type'].startswith('PUMP_'):
                     success = self.execute_pump_action(item)
                     self.measurement_queue[i]['status'] = 'completed' if success else 'failed'
@@ -2055,10 +2401,82 @@ class ElectrochemGUI:
         self.update_status("Queue Stopped")
     
     def clear_queue(self):
+        self.reset_queue_reorder()
         if self.is_running: messagebox.showwarning("Queue Running", "Cannot clear queue while running"); return
         self.measurement_queue = []
         self.refresh_queue_display()
         self.update_status("Queue Cleared")
+
+    def delete_selected_queue_item(self):
+        self.reset_queue_reorder()
+        if self.is_running:
+            messagebox.showwarning("Queue Running", "Cannot delete items while running")
+            return
+        selected = self.queue_tree.selection()
+        if not selected:
+            messagebox.showwarning("No Selection", "Select a queue item to delete.")
+            return
+        try:
+            index = self.queue_tree.index(selected[0])
+        except Exception:
+            messagebox.showerror("Selection Error", "Unable to determine selected queue item.")
+            return
+        if index < 0 or index >= len(self.measurement_queue):
+            messagebox.showerror("Selection Error", "Selected queue item is out of range.")
+            return
+        removed = self.measurement_queue.pop(index)
+        self.refresh_queue_display()
+        self.update_status("Queue item deleted")
+        self.log_message(f"Queue item deleted: {removed.get('details', removed.get('type', 'Unknown'))}")
+
+    def _on_queue_drag_start(self, event):
+        if self.is_running:
+            return
+        item = self.queue_tree.identify_row(event.y)
+        if not item:
+            return
+        self.queue_drag_item = item
+        if not self.queue_reorder_pending:
+            self.queue_reorder_snapshot = list(self.measurement_queue)
+
+    def _on_queue_drag_motion(self, event):
+        if self.is_running or not self.queue_drag_item:
+            return
+        target = self.queue_tree.identify_row(event.y)
+        if not target or target == self.queue_drag_item:
+            return
+        target_index = self.queue_tree.index(target)
+        self.queue_tree.move(self.queue_drag_item, '', target_index)
+        self.queue_reorder_pending = True
+
+    def _on_queue_drag_release(self, event):
+        if self.queue_reorder_pending:
+            self.update_status("Queue reorder pending - click Confirm Move")
+        self.queue_drag_item = None
+
+    def confirm_queue_reorder(self):
+        if not self.queue_reorder_pending or not self.queue_reorder_snapshot:
+            messagebox.showinfo("No Changes", "No pending queue reorder to confirm.")
+            return
+        try:
+            order = [int(iid) for iid in self.queue_tree.get_children()]
+        except Exception:
+            messagebox.showerror("Reorder Error", "Failed to read queue order.")
+            return
+        if any(i < 0 or i >= len(self.queue_reorder_snapshot) for i in order):
+            messagebox.showerror("Reorder Error", "Queue order is out of range.")
+            return
+        self.measurement_queue = [self.queue_reorder_snapshot[i] for i in order]
+        self.queue_reorder_snapshot = None
+        self.queue_reorder_pending = False
+        self.refresh_queue_display()
+        self.update_status("Queue reordered")
+
+    def reset_queue_reorder(self):
+        if self.queue_reorder_pending:
+            self.queue_reorder_pending = False
+            self.queue_reorder_snapshot = None
+            self.refresh_queue_display()
 
     def update_status(self, message):
         self.status_label.config(text=f"Status: {message}")
@@ -2089,6 +2507,20 @@ class ElectrochemGUI:
 
         self.root.after(0, self.update_status, "Pause complete")
         return True
+
+    def execute_alert_pause(self, message: str) -> bool:
+        if not self.is_running:
+            return False
+        done = threading.Event()
+
+        def show_alert():
+            messagebox.showinfo("Paused", message)
+            done.set()
+
+        self.root.after(0, show_alert)
+        while self.is_running and not done.is_set():
+            done.wait(timeout=0.2)
+        return done.is_set()
 
     def execute_pump_action(self, item):
         if not PUMP_AVAILABLE or self.pump_ctrl is None:

@@ -58,7 +58,7 @@ C:\Users\Chien Lab>C:\pump32_py38_new\Scripts\activate.bat
 (pump32_py38_new) C:\Users\Chien Lab>python "C:\Users\Chien Lab\Documents\GitHub\experiment_automation\gui_script.py
 
 
-or run C:\Users\Chien Lab>C:\pump32_py38_new\Scripts\python.exe "C:\Users\Chien Lab\Documents\GitHub\experiment_automation\gui_script.py"
+or run C:\Users\Chien Lab>python "C:\Users\Chien Lab\Documents\GitHub\experiment_automation\gui_script.py"
 
 
 
