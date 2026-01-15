@@ -232,22 +232,30 @@ def to_si_string(value_str, unit='V'):
         return f"{val:g}"
     return value_str  # Fallback for unsupported units
 
-# --- Integrated SerialMeasurementRunner Class (Unchanged) ---
+# --- Integrated SerialMeasurementRunner Class (Option 2 implemented: don't log every 'P...' line) ---
 class SerialMeasurementRunner:
-    def __init__(self, script_path, log_callback=print, data_callback=None):
+    def __init__(self, script_path, log_callback=print, data_callback=None, invert_current=False):
         self.script_path = Path(script_path)
         self.data_points = []
         self.connection = None
-        self.log = log_callback # Callback to log messages to the GUI
+        self.log = log_callback  # Callback to log messages to the GUI
         self.data_callback = data_callback
         self.is_running = True
         self.partial_packet = ""
+        self.invert_current = invert_current
 
         self.data_base_path = Path("measurement_data")
         self.data_base_path.mkdir(exist_ok=True)
         date_folder = datetime.now().strftime('%Y-%m-%d')
         self.data_folder = self.data_base_path / date_folder
         self.data_folder.mkdir(exist_ok=True)
+
+        # Option 2: suppress per-packet logging to avoid GUI/log overload.
+        # If you want occasional progress, set these:
+        self._packet_log_every_n = 0          # 0 = never log packet progress; set e.g. 200 to log every 200 packets
+        self._packet_counter = 0
+        self._last_packet_log_t = 0.0
+        self._packet_log_min_period_s = 1.0  # never log packet progress more often than once/sec
 
     def find_device_port(self):
         self.log("Scanning for devices...")
@@ -269,6 +277,7 @@ class SerialMeasurementRunner:
                 pump_port_upper = str(PUMP_DEFAULT_COM_PORT).upper()
 
         def candidate_key(dev: str):
+            # deprioritize pump COM if it matches
             return (pump_port_upper is not None and dev.upper() == pump_port_upper, dev)
 
         candidates.sort(key=candidate_key)
@@ -285,13 +294,16 @@ class SerialMeasurementRunner:
     def connect(self, port=None):
         if port is None:
             port = self.find_device_port()
-            if port is None: return False
+            if port is None:
+                return False
         try:
             self.log(f"Connecting to {port}...")
             self.connection = serial.Serial(port=port, baudrate=230400, timeout=1, write_timeout=1)
             time.sleep(2)
             self.connection.reset_input_buffer()
             self.connection.reset_output_buffer()
+
+            # simple ping
             self.connection.write(b't\n')
             response = self.connection.readline()
             if response:
@@ -307,7 +319,7 @@ class SerialMeasurementRunner:
     def stop(self):
         self.is_running = False
 
-    def run_script(self, script):
+    def run_script(self, script: str):
         if not self.connection:
             self.log("ERROR: Not connected to device")
             return False
@@ -318,71 +330,152 @@ class SerialMeasurementRunner:
                 self.connection.write((line + '\n').encode('utf-8'))
                 time.sleep(0.01)
             self.connection.write(b'\n')
+
             self.log("Script sent. Collecting data...")
             self.log("-" * 40)
-            
-            empty_reads = 0
+
+            buffer = b""
+            packet_start_time = None
+            packet_timeout_sec = 1.0
+            idle_timeout_sec = 5.0
+            last_data_time = time.time()
+            measurement_completed = False
+
             while self.is_running:
                 try:
-                    line = self.connection.readline()
-                    if not line:
-                        if self.partial_packet:
-                            empty_reads += 1
-                            if empty_reads >= 3:
-                                self.log("Warning: incomplete data packet timed out")
-                                break
+                    waiting = self.connection.in_waiting
+                    chunk = self.connection.read(waiting or 1)
+
+                    if not chunk:
+                        if measurement_completed:
+                            break
+
+                        if (time.time() - last_data_time) >= idle_timeout_sec:
+                            self.log("Warning: data stream idle timed out")
+                            break
+
+                        # If we have some buffered bytes but no newline yet, enforce a timeout.
+                        if buffer:
+                            if packet_start_time is None:
+                                packet_start_time = time.time()
+                            elif (time.time() - packet_start_time) >= packet_timeout_sec:
+                                self.log("Warning: incomplete data packet timed out (dropping buffer)")
+                                buffer = b""
+                                packet_start_time = None
                         continue
-                    empty_reads = 0
-                    text = line.decode('utf-8', errors='ignore').rstrip('\r\n')
-                    if not text: continue
-                    if self.partial_packet:
-                        if text.startswith('P'):
-                            self.log("Warning: dropped incomplete data packet")
-                            self.partial_packet = ""
-                        else:
-                            self.log("Warning: dropped incomplete data packet")
-                            self.partial_packet = ""
-                    self.log(text)
-                    if text.startswith('P'):
-                        if not self._is_complete_packet(text):
-                            self.partial_packet = text
+
+                    last_data_time = time.time()
+                    buffer += chunk
+                    packet_start_time = None
+
+                    while b'\n' in buffer:
+                        line_bytes, _, buffer = buffer.partition(b'\n')
+                        text = line_bytes.decode('utf-8', errors='ignore').rstrip('\r')
+                        if not text:
                             continue
-                        self.parse_data_line(text)
-                    if text in ['*', 'Measurement completed', 'Script completed']:
-                        self.log("\nMeasurement completed")
+
+                        # If we were assembling a partial packet and the next line starts a new packet,
+                        # we drop the partial and resync.
+                        if self.partial_packet:
+                            if text.startswith('P'):
+                                self.log("Warning: dropped incomplete data packet")
+                                self.partial_packet = ""
+                                # continue processing this new packet line normally below
+                            else:
+                                combined = self.partial_packet + text
+                                if self._is_complete_packet(combined):
+                                    self.parse_data_line(combined)
+                                    self.partial_packet = ""
+                                else:
+                                    self.partial_packet = combined
+                                continue
+
+                        # OPTION 2: Do NOT log raw packet lines (P...)
+                        # Only log non-packet/status lines.
+                        if not text.startswith('P'):
+                            self.log(text)
+
+                        if text.startswith('P'):
+                            if not self._is_complete_packet(text):
+                                self.partial_packet = text
+                                continue
+
+                            # parse packet line (no per-packet logging)
+                            self.parse_data_line(text)
+
+                            # optional, very lightweight progress logging
+                            if self._packet_log_every_n and self._packet_log_every_n > 0:
+                                self._packet_counter += 1
+                                now = time.time()
+                                if (self._packet_counter % self._packet_log_every_n) == 0 and (now - self._last_packet_log_t) >= self._packet_log_min_period_s:
+                                    self._last_packet_log_t = now
+                                    self.log(f"(data) received {self._packet_counter} packets so far")
+
+                        # completion markers
+                        if text in ['*', 'Measurement completed', 'Script completed']:
+                            self.log("\nMeasurement completed")
+                            measurement_completed = True
+                            self.partial_packet = ""
+                            buffer = b""
+                            break
+
+                        # error lines
+                        if text.startswith('!'):
+                            self.log(f"Device error: {text}")
+                            if "abort" in text.lower():
+                                break
+
+                    if measurement_completed:
                         break
-                    if text.startswith('!'):
-                        self.log(f"Device error: {text}")
-                        if "abort" in text.lower(): break
+
                 except serial.SerialException as e:
                     self.log(f"Serial Error: {e}")
                     break
-            
-            if not self.is_running: self.log("Measurement stopped by user.")
+
+            if not self.is_running:
+                self.log("Measurement stopped by user.")
             return True
+
         except Exception as e:
             self.log(f"Error running script: {type(e).__name__}: {e}")
             self.log(traceback.format_exc())
             return False
 
-    def parse_data_line(self, line):
+    def parse_data_line(self, line: str):
         """
         Parses a MethodSCRIPT data package line (e.g., 'Pab...') using the
         integrated mscript parsing logic.
         """
         package = parse_mscript_data_package(line + '\n')
-        
         if not package:
             return
 
         try:
             data_point = {}
+            currents = []
             for var in package:
                 if var.id in ['ab', 'da']:
-                    data_point['potential'] = var.value
+                    if 'potential' not in data_point:
+                        data_point['potential'] = var.value
                 elif var.id == 'ba':
-                    data_point['current'] = var.value * 1e6
-            
+                    current = var.value * 1e6
+                    if self.invert_current:
+                        current = -current
+                    currents.append(current)
+
+            if currents:
+                if len(currents) >= 3:
+                    data_point['current_diff'] = -currents[0]
+                    data_point['current_reverse'] = currents[1]
+                    data_point['current_forward'] = currents[2]
+                    data_point['current'] = data_point['current_diff']
+                elif len(currents) == 2:
+                    data_point['current_forward'] = currents[0]
+                    data_point['current_reverse'] = currents[1]
+                    data_point['current'] = currents[1]
+                else:
+                    data_point['current'] = currents[0]
+
             if 'potential' in data_point and 'current' in data_point:
                 self.data_points.append(data_point)
                 if self.data_callback:
@@ -413,8 +506,22 @@ class SerialMeasurementRunner:
         timestamp = datetime.now().strftime('%H%M%S')
         csv_filename = self.data_folder / f"{base_name}_{timestamp}.csv"
         with open(csv_filename, 'w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=['potential', 'current'])
-            writer.writerow({'potential': 'Potential (V)', 'current': 'Current (uA)'})
+            fieldnames = ['potential', 'current']
+            label_map = {
+                'potential': 'Potential (V)',
+                'current': 'Current (uA)',
+            }
+            if any('current_forward' in dp for dp in self.data_points):
+                fieldnames.append('current_forward')
+                label_map['current_forward'] = 'Current Forward (uA)'
+            if any('current_reverse' in dp for dp in self.data_points):
+                fieldnames.append('current_reverse')
+                label_map['current_reverse'] = 'Current Reverse (uA)'
+            if any('current_diff' in dp for dp in self.data_points):
+                fieldnames.append('current_diff')
+                label_map['current_diff'] = 'Current Diff (uA)'
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writerow({key: label_map.get(key, key) for key in fieldnames})
             writer.writerows(self.data_points)
         self.log(f"\nData saved to: {csv_filename}")
         return csv_filename
@@ -424,23 +531,26 @@ class SerialMeasurementRunner:
             try:
                 self.connection.close()
                 self.log("Disconnected from device")
-            except Exception as e: self.log(f"Error on disconnect: {e}")
+            except Exception as e:
+                self.log(f"Error on disconnect: {e}")
 
     def execute(self):
         self.log("=" * 60)
         self.log(f"Starting measurement for: {self.script_path.name}")
         self.log("=" * 60)
+
         csv_path = None
         try:
-            with open(self.script_path, 'r') as f: script = f.read()
+            with open(self.script_path, 'r') as f:
+                script = f.read()
         except Exception as e:
             self.log(f"ERROR: Failed to read script: {e}")
             return False, None
-        
+
         if not self.connect():
             self.log("ERROR: Failed to connect to device")
             return False, None
-        
+
         success = False
         try:
             if self.run_script(script):
@@ -450,6 +560,7 @@ class SerialMeasurementRunner:
                 success = True
         finally:
             self.disconnect()
+
         return success, csv_path
 
 
@@ -490,6 +601,8 @@ class ElectrochemGUI:
             .get('color', ['#1f77b4'])
         )
         self.plot_color_cycle = itertools.cycle(self.plot_colors)
+        self.show_swv_components = False
+        self.last_plotted_csv = None
 
         self.queue_drag_item = None
         self.queue_reorder_pending = False
@@ -580,9 +693,11 @@ class ElectrochemGUI:
         min_pot_mv, max_pot_mv = int(min_pot * 1000), int(max_pot * 1000)
 
         script_parts = [
-            "e", "var c", "var p", "var f", "var r","set_pgstat_mode 2", "set_max_bandwidth 1600",
+            "e", "var c", "var p", "var f", "var r",
+            "set_pgstat_chan 1", "set_pgstat_mode 0", "set_pgstat_chan 0", "set_pgstat_mode 3",
+            "set_max_bandwidth 4k",
             f"set_range_minmax da {min_pot_mv}m {max_pot_mv}m",
-            "set_range ba 5m", "set_autoranging ba 100n 5m", "cell_on"
+            "set_range ba 59n", "set_autoranging ba 59n 59n", "cell_on"
         ]
         
         if float(cond_time) > 0:
@@ -590,6 +705,8 @@ class ElectrochemGUI:
                 f"# Equilibrate at {cond_pot} for {cond_time}s",
                 f"set_e {cond_pot}", f"wait {cond_time}"
             ])
+        else:
+            script_parts.extend([f"set_e {begin}"])
             
         script_parts.extend([
             f"meas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}",
@@ -598,7 +715,7 @@ class ElectrochemGUI:
         ])
 
         script_parts.extend([
-            "on_finished:", "cell_off"
+            "on_finished:", "\tcell_off"
         ])
 
         return "\n".join(script_parts)
@@ -671,7 +788,6 @@ class ElectrochemGUI:
         addr = self._mux_channel_address(channel)
         prefix = [
             header,
-            "# MUX16 channel select",
             "set_gpio_cfg 0x3FFi 1",
             f"set_gpio {addr}i",
         ]
@@ -748,6 +864,7 @@ class ElectrochemGUI:
         ttk.Button(button_frame, text="Generate Script", command=self.generate_swv_script).pack(side='left', padx=5)
         ttk.Button(button_frame, text="Run Now", command=self.run_swv_immediately).pack(side='left', padx=5)
         ttk.Button(button_frame, text="Add to Queue", command=self.add_swv_to_queue).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Run PStrace SWV", command=self.run_pstrace_swv_preset).pack(side='left', padx=5)
         
     def show_pause_params(self):
         self.clear_params_frame()
@@ -1359,6 +1476,8 @@ class ElectrochemGUI:
         
         ttk.Button(plot_controls, text="Load and Plot CSV", command=self.load_and_plot_csv).pack(side='left')
         ttk.Button(plot_controls, text="Clear Plot", command=self.clear_plot).pack(side='left', padx=5)
+        self.plot_swv_btn = ttk.Button(plot_controls, text="Show SWV F/R", command=self.toggle_swv_components)
+        self.plot_swv_btn.pack(side='left', padx=5)
 
         # Create a Matplotlib figure and axis
         self.fig = Figure(figsize=(8, 6), dpi=100)
@@ -1385,7 +1504,17 @@ class ElectrochemGUI:
             filetypes=(("CSV files", "*.csv"), ("All files", "*.*"))
         )
         if filepath:
+            self.last_plotted_csv = filepath
             self.plot_data(filepath)
+
+    def toggle_swv_components(self):
+        self.show_swv_components = not self.show_swv_components
+        if self.show_swv_components:
+            self.plot_swv_btn.configure(text="Hide SWV F/R")
+        else:
+            self.plot_swv_btn.configure(text="Show SWV F/R")
+        if self.last_plotted_csv:
+            self.plot_data(self.last_plotted_csv)
 
     def _read_csv_with_fallback(self, csv_path):
         encodings_to_try = ("utf-8-sig", "utf-8", "cp1252", "latin-1")
@@ -1425,6 +1554,7 @@ class ElectrochemGUI:
 
     def plot_data(self, csv_path, color=None, label=None):
         """Reads a CSV file and plots the voltammogram."""
+        self.last_plotted_csv = csv_path
         try:
             df = self._read_csv_with_fallback(csv_path)
         except Exception as exc:
@@ -1435,24 +1565,38 @@ class ElectrochemGUI:
 
         potential_col = self._find_column(df, ("Potential (V)",))
         current_col = self._find_column(df, ("Current (uA)", "Current (µA)", "Current (�A)"))
+        forward_col = self._find_column(df, ("Current Forward (uA)", "Current Forward (µA)", "Current Forward (�A)"))
+        reverse_col = self._find_column(df, ("Current Reverse (uA)", "Current Reverse (µA)", "Current Reverse (�A)"))
+        diff_col = self._find_column(df, ("Current Diff (uA)", "Current Diff (µA)", "Current Diff (�A)"))
 
-        if not potential_col or not current_col:
-            message = "Plot error: CSV file must contain 'Potential (V)' and 'Current (uA)' columns."
+        if not potential_col or (not current_col and not (forward_col or reverse_col or diff_col)):
+            message = "Plot error: CSV file must contain 'Potential (V)' and at least one current column."
             self.log_message(message)
             messagebox.showerror("Plot Error", message)
             self.update_status("Plot failed: missing required columns")
             return
 
         try:
-            if color is None:
-                color = next(self.plot_color_cycle)
-            if label is None:
-                label = Path(csv_path).name
-            if label:
+            base_label = label or Path(csv_path).name
+            if base_label:
                 for line in list(self.ax.lines):
-                    if line.get_label() == label:
+                    if line.get_label().startswith(base_label):
                         line.remove()
-            self.ax.plot(df[potential_col], df[current_col], color=color, label=label)
+            series = []
+            if diff_col:
+                series.append((diff_col, "Diff"))
+            elif current_col:
+                series.append((current_col, "Current"))
+
+            if self.show_swv_components:
+                if forward_col:
+                    series.append((forward_col, "Forward"))
+                if reverse_col:
+                    series.append((reverse_col, "Reverse"))
+
+            for col, suffix in series:
+                series_label = f"{base_label} ({suffix})" if base_label else suffix
+                self.ax.plot(df[potential_col], df[col], color=next(self.plot_color_cycle), label=series_label)
             self.ax.set_title('Voltammogram')
             self.ax.set_xlabel('Potential (V)')
             self.ax.set_ylabel('Current (uA)')
@@ -1594,6 +1738,44 @@ class ElectrochemGUI:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to generate script: {str(e)}")
             return None
+
+    def run_pstrace_swv_preset(self):
+        script = (
+            "e\n"
+            "set_gpio_cfg 0x3FFi 1\n"
+            "set_gpio 119i\n"
+            "var c\n"
+            "var p\n"
+            "var f\n"
+            "var g\n"
+            "set_pgstat_chan 1\n"
+            "set_pgstat_mode 0\n"
+            "set_pgstat_chan 0\n"
+            "set_pgstat_mode 3\n"
+            "set_max_bandwidth 4k\n"
+            "set_range_minmax da -536m 36m\n"
+            "set_range ba 59n\n"
+            "set_autoranging ba 59n 59n\n"
+            "set_e -500m\n"
+            "cell_on\n"
+            "meas_loop_ca p c -500m 200m 1\n"
+            "  pck_start\n"
+            "    pck_add p\n"
+            "    pck_add c\n"
+            "  pck_end\n"
+            "endloop\n"
+            "meas_loop_swv p c f g -500m 0 2m 36m 100\n"
+            "  pck_start\n"
+            "    pck_add p\n"
+            "    pck_add c\n"
+            "    pck_add f\n"
+            "    pck_add g\n"
+            "  pck_end\n"
+            "endloop\n"
+            "on_finished:\n"
+            "  cell_off\n"
+        )
+        self.run_script_immediately("SWV", script)
 
     def update_script_preview(self, script):
         self.script_text.delete(1.0, tk.END)
@@ -1775,6 +1957,7 @@ class ElectrochemGUI:
                     Path(filepath),
                     log_callback=self.log_message,
                     data_callback=self.queue_live_point,
+                    invert_current=(technique == "SWV"),
                 )
                 self.current_runner = runner
                 success, csv_path = runner.execute()
@@ -1901,6 +2084,7 @@ class ElectrochemGUI:
                         Path(filepath),
                         log_callback=self.log_message,
                         data_callback=self.queue_live_point,
+                        invert_current=(technique == "SWV"),
                     )
                     self.current_runner = runner
                     ok, csv_path = runner.execute()
@@ -1989,6 +2173,7 @@ class ElectrochemGUI:
                         Path(filepath),
                         log_callback=self.log_message,
                         data_callback=self.queue_live_point,
+                        invert_current=True,
                     )
                     self.current_runner = runner
                     ok, csv_path = runner.execute()
@@ -2095,6 +2280,7 @@ class ElectrochemGUI:
                             Path(filepath),
                             log_callback=self.log_message,
                             data_callback=self.queue_live_point,
+                            invert_current=True,
                         )
                         self.current_runner = runner
                         ok, csv_path = runner.execute()
@@ -2374,6 +2560,7 @@ class ElectrochemGUI:
                             Path(item['script_path']),
                             log_callback=self.log_message,
                             data_callback=self.queue_live_point,
+                            invert_current=(item['type'] == 'SWV'),
                         )
                         success, csv_path = self.current_runner.execute()
                         self.measurement_queue[i]['status'] = 'completed' if success else 'failed'
