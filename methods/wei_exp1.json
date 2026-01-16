@@ -1,0 +1,92 @@
+{
+  "metadata": {
+    "saved_at": "2026-01-15T16:00:38",
+    "version": 1
+  },
+  "items": [
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "007_swv_ch8.ms (MUX ch 8)",
+      "script_path": "methods\\2026-01-15\\007_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "008_swv_ch8.ms (MUX ch 8)",
+      "script_path": "methods\\2026-01-15\\008_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "009_swv_ch8.ms (MUX ch 8)",
+      "script_path": "methods\\2026-01-15\\009_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "010_swv_ch8.ms (MUX ch 8)",
+      "script_path": "methods\\2026-01-15\\010_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "011_swv_ch8.ms (MUX ch 8)",
+      "script_path": "methods\\2026-01-15\\011_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "012_swv_ch1.ms (MUX ch 1)",
+      "script_path": "methods\\2026-01-15\\012_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "013_swv_ch1.ms (MUX ch 1)",
+      "script_path": "methods\\2026-01-15\\013_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "014_swv_ch1.ms (MUX ch 1)",
+      "script_path": "methods\\2026-01-15\\014_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "015_swv_ch1.ms (MUX ch 1)",
+      "script_path": "methods\\2026-01-15\\015_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "016_swv_ch1.ms (MUX ch 1)",
+      "script_path": "methods\\2026-01-15\\016_swv_ch1.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "017_cv_ch1.ms (MUX ch 1)",
+      "script_path": "methods\\2026-01-15\\017_cv_ch1.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "018_cv_ch8.ms (MUX ch 8)",
+      "script_path": "methods\\2026-01-15\\018_cv_ch8.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "019_cv_ch1.ms (MUX ch 1)",
+      "script_path": "methods\\2026-01-15\\019_cv_ch1.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "020_cv_ch8.ms (MUX ch 8)",
+      "script_path": "methods\\2026-01-15\\020_cv_ch8.ms"
+    }
+  ]
+}
