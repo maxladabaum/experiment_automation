@@ -234,7 +234,7 @@ def to_si_string(value_str, unit='V'):
 
 # --- Integrated SerialMeasurementRunner Class (Option 2 implemented: don't log every 'P...' line) ---
 class SerialMeasurementRunner:
-    def __init__(self, script_path, log_callback=print, data_callback=None, invert_current=False):
+    def __init__(self, script_path, log_callback=print, data_callback=None, invert_current=False, raw_packet_log=False):
         self.script_path = Path(script_path)
         self.data_points = []
         self.connection = None
@@ -243,6 +243,11 @@ class SerialMeasurementRunner:
         self.is_running = True
         self.partial_packet = ""
         self.invert_current = invert_current
+        self.raw_packet_log = raw_packet_log
+        self.raw_packet_log_handle = None
+        self.raw_packet_log_path = None
+        self.time_offset = 0.0
+        self.segment_last_time_raw = None
 
         self.data_base_path = Path("measurement_data")
         self.data_base_path.mkdir(exist_ok=True)
@@ -412,7 +417,10 @@ class SerialMeasurementRunner:
                                     self.log(f"(data) received {self._packet_counter} packets so far")
 
                         # completion markers
-                        if text in ['*', 'Measurement completed', 'Script completed']:
+                        if text == '*':
+                            self._advance_time_offset()
+                            continue
+                        if text in ['Measurement completed', 'Script completed']:
                             self.log("\nMeasurement completed")
                             measurement_completed = True
                             self.partial_packet = ""
@@ -446,6 +454,7 @@ class SerialMeasurementRunner:
         Parses a MethodSCRIPT data package line (e.g., 'Pab...') using the
         integrated mscript parsing logic.
         """
+        self._write_raw_packet(line)
         package = parse_mscript_data_package(line + '\n')
         if not package:
             return
@@ -457,6 +466,16 @@ class SerialMeasurementRunner:
                 if var.id in ['ab', 'da']:
                     if 'potential' not in data_point:
                         data_point['potential'] = var.value
+                elif var.id == 'eb':
+                    if 'time' not in data_point:
+                        time_raw = var.value
+                        data_point['time'] = time_raw + self.time_offset
+                        self._update_segment_time(time_raw)
+                elif var.id == 'aa':
+                    if 'time' not in data_point:
+                        time_raw = var.value
+                        data_point['time'] = time_raw + self.time_offset
+                        self._update_segment_time(time_raw)
                 elif var.id == 'ba':
                     current = var.value * 1e6
                     if self.invert_current:
@@ -476,7 +495,7 @@ class SerialMeasurementRunner:
                 else:
                     data_point['current'] = currents[0]
 
-            if 'potential' in data_point and 'current' in data_point:
+            if 'current' in data_point and ('potential' in data_point or 'time' in data_point):
                 self.data_points.append(data_point)
                 if self.data_callback:
                     try:
@@ -506,11 +525,16 @@ class SerialMeasurementRunner:
         timestamp = datetime.now().strftime('%H%M%S')
         csv_filename = self.data_folder / f"{base_name}_{timestamp}.csv"
         with open(csv_filename, 'w', newline='') as f:
-            fieldnames = ['potential', 'current']
-            label_map = {
-                'potential': 'Potential (V)',
-                'current': 'Current (uA)',
-            }
+            fieldnames = []
+            label_map = {}
+            if any('time' in dp for dp in self.data_points):
+                fieldnames.append('time')
+                label_map['time'] = 'Time (s)'
+            if any('potential' in dp for dp in self.data_points):
+                fieldnames.append('potential')
+                label_map['potential'] = 'Potential (V)'
+            fieldnames.append('current')
+            label_map['current'] = 'Current (uA)'
             if any('current_forward' in dp for dp in self.data_points):
                 fieldnames.append('current_forward')
                 label_map['current_forward'] = 'Current Forward (uA)'
@@ -525,6 +549,55 @@ class SerialMeasurementRunner:
             writer.writerows(self.data_points)
         self.log(f"\nData saved to: {csv_filename}")
         return csv_filename
+
+    def _open_raw_packet_log(self):
+        if not self.raw_packet_log:
+            return
+        timestamp = datetime.now().strftime('%H%M%S')
+        base_name = self.script_path.stem
+        self.raw_packet_log_path = self.data_folder / f"{base_name}_{timestamp}_raw_packets.txt"
+        try:
+            self.raw_packet_log_handle = open(
+                self.raw_packet_log_path,
+                'w',
+                encoding='ascii',
+                errors='replace',
+                newline='\n',
+            )
+            self.log(f"Raw packet log: {self.raw_packet_log_path}")
+        except OSError as exc:
+            self.raw_packet_log_handle = None
+            self.raw_packet_log_path = None
+            self.log(f"Warning: failed to open raw packet log: {exc}")
+
+    def _close_raw_packet_log(self):
+        if self.raw_packet_log_handle is None:
+            return
+        try:
+            self.raw_packet_log_handle.close()
+        except Exception:
+            pass
+        self.raw_packet_log_handle = None
+
+    def _write_raw_packet(self, line: str):
+        if not self.raw_packet_log_handle:
+            return
+        if not line.startswith('P'):
+            return
+        try:
+            self.raw_packet_log_handle.write(line + '\n')
+        except Exception:
+            pass
+
+    def _update_segment_time(self, time_raw: float):
+        if self.segment_last_time_raw is None or time_raw > self.segment_last_time_raw:
+            self.segment_last_time_raw = time_raw
+
+    def _advance_time_offset(self):
+        if self.segment_last_time_raw is None:
+            return
+        self.time_offset += self.segment_last_time_raw
+        self.segment_last_time_raw = None
 
     def disconnect(self):
         if self.connection and self.connection.is_open:
@@ -553,12 +626,14 @@ class SerialMeasurementRunner:
 
         success = False
         try:
+            self._open_raw_packet_log()
             if self.run_script(script):
                 if self.data_points:
                     csv_path = self.save_data_to_csv()
                 self.log(f"Total data points: {len(self.data_points)}")
                 success = True
         finally:
+            self._close_raw_packet_log()
             self.disconnect()
 
         return success, csv_path
@@ -579,7 +654,12 @@ class ElectrochemGUI:
         self.measurement_queue = []
         self.is_running = False
         self.current_script = ""
+        self.custom_script = ""
+        self.custom_script_path = None
+        self.custom_script_name = None
+        self.custom_script_has_mux_header = False
         self.current_runner = None
+        self.debug_raw_packets = tk.BooleanVar(value=False)
         
         self.pump_ctrl = None
         self.pump_busy = False
@@ -590,6 +670,7 @@ class ElectrochemGUI:
         self.live_plot_queue = queue.Queue(maxsize=10000)
         self.live_plot_x = []
         self.live_plot_y = []
+        self.live_plot_t = []
         self.live_plot_active = False
         self.live_plot_job = None
         self.plot_line = None
@@ -601,7 +682,9 @@ class ElectrochemGUI:
             .get('color', ['#1f77b4'])
         )
         self.plot_color_cycle = itertools.cycle(self.plot_colors)
+        self.plot_series_colors = {}
         self.show_swv_components = False
+        self.plot_x_mode = "potential"
         self.last_plotted_csv = None
 
         self.queue_drag_item = None
@@ -794,6 +877,43 @@ class ElectrochemGUI:
         merged = prefix + rest
         return "\n".join(merged)
 
+    def _find_mux_header_indices(self, script: str):
+        lines = script.splitlines()
+        cfg_idx = None
+        gpio_idx = None
+        for idx, line in enumerate(lines):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if stripped == "set_gpio_cfg 0x3FFi 1" and cfg_idx is None:
+                cfg_idx = idx
+                continue
+            if cfg_idx is not None and stripped.startswith("set_gpio ") and not stripped.startswith("set_gpio_cfg"):
+                gpio_idx = idx
+                break
+        return cfg_idx, gpio_idx
+
+    def _script_has_mux_header(self, script: str) -> bool:
+        cfg_idx, gpio_idx = self._find_mux_header_indices(script)
+        return cfg_idx is not None and gpio_idx is not None
+
+    def _strip_mux_header(self, script: str) -> str:
+        cfg_idx, gpio_idx = self._find_mux_header_indices(script)
+        if cfg_idx is None or gpio_idx is None:
+            return script
+        lines = script.splitlines()
+        for idx in sorted([cfg_idx, gpio_idx], reverse=True):
+            del lines[idx]
+        return "\n".join(lines)
+
+    def _confirm_mux_override(self, script: str) -> bool:
+        if not self._script_has_mux_header(script):
+            return True
+        return messagebox.askyesno(
+            "MUX Header Detected",
+            "This script already includes a MUX header. Generate new scripts for the selected channel(s) anyway?",
+        )
+
     def _get_swv_cycles_and_delay(self):
         try:
             n_scans = int(self.swv_params['n_scans'].get())
@@ -821,11 +941,17 @@ class ElectrochemGUI:
         technique_frame.pack(pady=10)
         ttk.Button(technique_frame, text="Cyclic Voltammetry (CV)", command=self.show_cv_params, width=25).pack(pady=5)
         ttk.Button(technique_frame, text="Square Wave Voltammetry (SWV)", command=self.show_swv_params, width=25).pack(pady=5)
+        ttk.Button(technique_frame, text="Custom Script (File)", command=self.show_custom_params, width=25).pack(pady=5)
         ttk.Separator(technique_frame, orient='horizontal').pack(fill='x', pady=6)
         ttk.Button(technique_frame, text="Pause", command=self.show_pause_params, width=25).pack(pady=5)
         self.device_status = ttk.Label(left_frame, text="", foreground="blue")
         self.device_status.pack(pady=10)
         ttk.Button(left_frame, text="Check Device Connection", command=self.check_device).pack(pady=5)
+        ttk.Checkbutton(
+            left_frame,
+            text="Save raw packets (debug)",
+            variable=self.debug_raw_packets,
+        ).pack(pady=5)
         self.params_frame = ttk.LabelFrame(self.method_frame, text="Parameters", padding=10)
         self.params_frame.pack(side='right', fill='both', expand=True, padx=5)
         self.show_cv_params()
@@ -864,6 +990,116 @@ class ElectrochemGUI:
         ttk.Button(button_frame, text="Generate Script", command=self.generate_swv_script).pack(side='left', padx=5)
         ttk.Button(button_frame, text="Run Now", command=self.run_swv_immediately).pack(side='left', padx=5)
         ttk.Button(button_frame, text="Add to Queue", command=self.add_swv_to_queue).pack(side='left', padx=5)
+
+    def show_custom_params(self):
+        self.clear_params_frame()
+        self.current_technique = "CUSTOM"
+        self.custom_params = {}
+
+        path_var = tk.StringVar(value=self.custom_script_path or "")
+        self.custom_params['script_path_var'] = path_var
+
+        ttk.Label(self.params_frame, text="MethodSCRIPT file:").grid(row=0, column=0, sticky='w', pady=2)
+        path_entry = ttk.Entry(self.params_frame, textvariable=path_var, width=50)
+        path_entry.grid(row=0, column=1, pady=2, sticky='w')
+        ttk.Button(self.params_frame, text="Browse", command=self.load_custom_script).grid(row=0, column=2, padx=5)
+
+        ttk.Label(
+            self.params_frame,
+            text="MUX16 Channels (1-16, 0=off, e.g. 1-3,7-9):",
+        ).grid(row=1, column=0, sticky='w', pady=2)
+        mux_entry = ttk.Entry(self.params_frame, width=15)
+        mux_entry.insert(0, "0")
+        mux_entry.grid(row=1, column=1, sticky='w', pady=2)
+        self.custom_params['mux_channel'] = mux_entry
+
+        button_frame = ttk.Frame(self.params_frame)
+        button_frame.grid(row=2, column=0, columnspan=3, pady=20)
+        ttk.Button(button_frame, text="Run Now", command=self.run_custom_immediately).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Add to Queue", command=self.add_custom_to_queue).pack(side='left', padx=5)
+
+    def load_custom_script(self):
+        file_path = filedialog.askopenfilename(
+            title="Select a MethodSCRIPT file",
+            filetypes=(("MethodSCRIPT", "*.ms;*.txt"), ("All Files", "*.*")),
+            initialdir=str(self.base_path),
+        )
+        if not file_path:
+            return
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='replace') as handle:
+                script = handle.read()
+        except OSError as exc:
+            messagebox.showerror("Load Failed", f"Could not read script:\n{exc}")
+            return
+
+        self.custom_script = script
+        self.custom_script_path = file_path
+        self.custom_script_name = Path(file_path).name
+        self.custom_script_has_mux_header = self._script_has_mux_header(script)
+        self.current_script = script
+        if self.custom_script_has_mux_header:
+            self.log_message("Custom script includes a MUX header; selecting channels will override it.")
+        if self.custom_params.get('script_path_var'):
+            self.custom_params['script_path_var'].set(file_path)
+        self.update_script_preview(script)
+        self.notebook.select(self.script_frame)
+
+    def run_custom_immediately(self):
+        if not self.custom_script_path or not self.custom_script:
+            messagebox.showerror("No Script Loaded", "Select a MethodSCRIPT file before running.")
+            return
+        channels = self._get_mux_channels(self.custom_params)
+        if channels is None:
+            return
+        base_script = self.custom_script
+        if channels:
+            if not self._confirm_mux_override(base_script):
+                return
+            base_script = self._strip_mux_header(base_script)
+            if len(channels) == 1:
+                mux_script = self._build_mux_script(base_script, channels[0])
+                base_label = self.custom_script_name or "Custom"
+                source_label = f"{base_label} (MUX ch {channels[0]})"
+                self.run_script_immediately(
+                    "Custom",
+                    mux_script,
+                    mux_channel=channels[0],
+                    source_label=source_label,
+                )
+            else:
+                self.run_mux_script_sequence("Custom", base_script, channels)
+            return
+        self.run_script_immediately("Custom", self.custom_script, source_label=self.custom_script_name)
+
+    def add_custom_to_queue(self):
+        if not self.custom_script_path or not self.custom_script:
+            messagebox.showerror("No Script Loaded", "Select a MethodSCRIPT file before adding to the queue.")
+            return
+        channels = self._get_mux_channels(self.custom_params)
+        if channels is None:
+            return
+        base_script = self.custom_script
+        if channels:
+            if not self._confirm_mux_override(base_script):
+                return
+            base_script = self._strip_mux_header(base_script)
+            self.add_mux_scripts_to_queue("Custom", base_script, channels)
+            return
+        try:
+            filepath, filename = self.save_script_file("Custom", self.custom_script)
+        except Exception as exc:
+            messagebox.showerror("File Error", f"Failed to save Custom script: {exc}")
+            return
+        label = self.custom_script_name or filename
+        if label != filename:
+            details = f"{label} (saved as {filename})"
+        else:
+            details = filename
+        queue_item = {'type': "Custom", 'script_path': str(filepath), 'status': 'pending', 'details': details}
+        self.measurement_queue.append(queue_item)
+        self.refresh_queue_display()
+        messagebox.showinfo("Success", f"Custom script added to queue\nSaved as: {filename}")
         ttk.Button(button_frame, text="Run PStrace SWV", command=self.run_pstrace_swv_preset).pack(side='left', padx=5)
         
     def show_pause_params(self):
@@ -1478,6 +1714,8 @@ class ElectrochemGUI:
         ttk.Button(plot_controls, text="Clear Plot", command=self.clear_plot).pack(side='left', padx=5)
         self.plot_swv_btn = ttk.Button(plot_controls, text="Show SWV F/R", command=self.toggle_swv_components)
         self.plot_swv_btn.pack(side='left', padx=5)
+        self.plot_x_btn = ttk.Button(plot_controls, text="Plot vs Time", command=self.toggle_plot_x_mode)
+        self.plot_x_btn.pack(side='left', padx=5)
 
         # Create a Matplotlib figure and axis
         self.fig = Figure(figsize=(8, 6), dpi=100)
@@ -1515,6 +1753,30 @@ class ElectrochemGUI:
             self.plot_swv_btn.configure(text="Show SWV F/R")
         if self.last_plotted_csv:
             self.plot_data(self.last_plotted_csv)
+
+    def toggle_plot_x_mode(self):
+        if self.plot_x_mode == "potential":
+            self.plot_x_mode = "time"
+            self.plot_x_btn.configure(text="Plot vs Potential")
+        else:
+            self.plot_x_mode = "potential"
+            self.plot_x_btn.configure(text="Plot vs Time")
+        if self.live_plot_active:
+            self._refresh_live_plot_axes()
+        if self.last_plotted_csv:
+            self.plot_data(self.last_plotted_csv)
+
+    def _refresh_live_plot_axes(self):
+        if self.plot_x_mode == "time":
+            self.ax.set_xlabel('Time (s)')
+        else:
+            self.ax.set_xlabel('Potential (V)')
+        use_time = self.plot_x_mode == "time" and any(t is not None for t in self.live_plot_t)
+        if self.plot_line is not None:
+            self.plot_line.set_data(self._live_plot_x_values(use_time), self._live_plot_y_values(use_time))
+            self.ax.relim()
+            self.ax.autoscale_view()
+            self.canvas.draw_idle()
 
     def _read_csv_with_fallback(self, csv_path):
         encodings_to_try = ("utf-8-sig", "utf-8", "cp1252", "latin-1")
@@ -1564,17 +1826,27 @@ class ElectrochemGUI:
             return
 
         potential_col = self._find_column(df, ("Potential (V)",))
+        time_col = self._find_column(df, ("Time (s)",))
         current_col = self._find_column(df, ("Current (uA)", "Current (µA)", "Current (�A)"))
         forward_col = self._find_column(df, ("Current Forward (uA)", "Current Forward (µA)", "Current Forward (�A)"))
         reverse_col = self._find_column(df, ("Current Reverse (uA)", "Current Reverse (µA)", "Current Reverse (�A)"))
         diff_col = self._find_column(df, ("Current Diff (uA)", "Current Diff (µA)", "Current Diff (�A)"))
 
-        if not potential_col or (not current_col and not (forward_col or reverse_col or diff_col)):
-            message = "Plot error: CSV file must contain 'Potential (V)' and at least one current column."
+        if not potential_col and not time_col:
+            message = "Plot error: CSV file must contain 'Potential (V)' or 'Time (s)'."
             self.log_message(message)
             messagebox.showerror("Plot Error", message)
             self.update_status("Plot failed: missing required columns")
             return
+        if not current_col and not (forward_col or reverse_col or diff_col):
+            message = "Plot error: CSV file must contain at least one current column."
+            self.log_message(message)
+            messagebox.showerror("Plot Error", message)
+            self.update_status("Plot failed: missing required columns")
+            return
+
+        if self.plot_x_mode == "time" and not time_col:
+            self.log_message("Plot warning: no Time (s) column; using Potential (V) instead.")
 
         try:
             base_label = label or Path(csv_path).name
@@ -1594,15 +1866,34 @@ class ElectrochemGUI:
                 if reverse_col:
                     series.append((reverse_col, "Reverse"))
 
+            use_time = False
+            if self.plot_x_mode == "time" and time_col:
+                use_time = True
+            elif potential_col:
+                use_time = False
+            elif time_col:
+                use_time = True
+                self.log_message("Plot warning: no Potential (V) column; using Time (s) instead.")
+            x_col = time_col if use_time else potential_col
             for col, suffix in series:
                 series_label = f"{base_label} ({suffix})" if base_label else suffix
-                self.ax.plot(df[potential_col], df[col], color=next(self.plot_color_cycle), label=series_label)
+                series_key = (base_label, suffix)
+                color = self.plot_series_colors.get(series_key)
+                if color is None:
+                    color = next(self.plot_color_cycle)
+                    self.plot_series_colors[series_key] = color
+                self.ax.plot(df[x_col], df[col], color=color, label=series_label)
             self.ax.set_title('Voltammogram')
-            self.ax.set_xlabel('Potential (V)')
+            if use_time and time_col:
+                self.ax.set_xlabel('Time (s)')
+            else:
+                self.ax.set_xlabel('Potential (V)')
             self.ax.set_ylabel('Current (uA)')
             self.ax.grid(visible=True, which='major', linestyle='-')
             self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
             self.ax.minorticks_on()
+            self.ax.relim()
+            self.ax.autoscale_view()
             self.ax.legend(loc='best')
             self.canvas.draw()
             self.notebook.select(self.plotter_frame)
@@ -1614,15 +1905,20 @@ class ElectrochemGUI:
     def clear_plot(self):
         self.ax.clear()
         self.ax.set_title('Voltammogram')
-        self.ax.set_xlabel('Potential (V)')
+        if self.plot_x_mode == "time":
+            self.ax.set_xlabel('Time (s)')
+        else:
+            self.ax.set_xlabel('Potential (V)')
         self.ax.set_ylabel('Current (uA)')
         self.ax.grid(visible=True, which='major', linestyle='-')
         self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
         self.ax.minorticks_on()
         self.plot_color_cycle = itertools.cycle(self.plot_colors)
+        self.plot_series_colors = {}
         self.plot_line = None
         self.live_plot_x = []
         self.live_plot_y = []
+        self.live_plot_t = []
         self.last_live_plot_color = None
         self.last_live_plot_label = None
         self.canvas.draw()
@@ -1631,6 +1927,7 @@ class ElectrochemGUI:
         self.live_plot_queue = queue.Queue(maxsize=10000)
         self.live_plot_x = []
         self.live_plot_y = []
+        self.live_plot_t = []
         self.live_plot_active = True
 
         if color is None:
@@ -1640,7 +1937,10 @@ class ElectrochemGUI:
             label = title or "Live"
         self.last_live_plot_label = label
         self.ax.set_title(title or "Live Voltammogram")
-        self.ax.set_xlabel('Potential (V)')
+        if self.plot_x_mode == "time":
+            self.ax.set_xlabel('Time (s)')
+        else:
+            self.ax.set_xlabel('Potential (V)')
         self.ax.set_ylabel('Current (uA)')
         self.ax.grid(visible=True, which='major', linestyle='-')
         self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
@@ -1662,12 +1962,13 @@ class ElectrochemGUI:
         if not self.live_plot_active:
             return
         try:
-            potential = data_point['potential']
             current = data_point['current']
         except KeyError:
             return
+        potential = data_point.get('potential')
+        timestamp = data_point.get('time')
         try:
-            self.live_plot_queue.put_nowait((potential, current))
+            self.live_plot_queue.put_nowait((potential, current, timestamp))
         except queue.Full:
             return
 
@@ -1679,18 +1980,22 @@ class ElectrochemGUI:
         updated = False
         while True:
             try:
-                potential, current = self.live_plot_queue.get_nowait()
+                potential, current, timestamp = self.live_plot_queue.get_nowait()
             except queue.Empty:
                 break
             self.live_plot_x.append(potential)
             self.live_plot_y.append(current)
+            self.live_plot_t.append(timestamp)
             updated = True
 
         if updated:
+            use_time = self.plot_x_mode == "time" and any(t is not None for t in self.live_plot_t)
+            x_vals = self._live_plot_x_values(use_time)
+            y_vals = self._live_plot_y_values(use_time)
             if self.plot_line is None:
-                (self.plot_line,) = self.ax.plot(self.live_plot_x, self.live_plot_y, lw=1)
+                (self.plot_line,) = self.ax.plot(x_vals, y_vals, lw=1)
             else:
-                self.plot_line.set_data(self.live_plot_x, self.live_plot_y)
+                self.plot_line.set_data(x_vals, y_vals)
             self.ax.relim()
             self.ax.autoscale_view()
             if self.last_live_plot_label:
@@ -1698,6 +2003,16 @@ class ElectrochemGUI:
             self.canvas.draw_idle()
 
         self.live_plot_job = self.root.after(100, self._poll_live_plot_queue)
+
+    def _live_plot_x_values(self, use_time: bool):
+        if use_time:
+            return [t for t, y in zip(self.live_plot_t, self.live_plot_y) if t is not None]
+        return [x for x, y in zip(self.live_plot_x, self.live_plot_y) if x is not None]
+
+    def _live_plot_y_values(self, use_time: bool):
+        if use_time:
+            return [y for t, y in zip(self.live_plot_t, self.live_plot_y) if t is not None]
+        return [y for x, y in zip(self.live_plot_x, self.live_plot_y) if x is not None]
     def clear_params_frame(self):
         for widget in self.params_frame.winfo_children(): widget.destroy()
 
@@ -1930,7 +2245,7 @@ class ElectrochemGUI:
 
         threading.Thread(target=perform_pause, daemon=True).start()
 
-    def run_script_immediately(self, technique, script, mux_channel=None):
+    def run_script_immediately(self, technique, script, mux_channel=None, source_label=None):
         if self.is_running:
             messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
             return
@@ -1943,8 +2258,9 @@ class ElectrochemGUI:
 
         self.clear_log()
         self.is_running = True
-        self.update_status(f"Running: {technique} - {filename}")
-        self.log_message(f"Starting immediate {technique} run ({filename})")
+        display_label = source_label or filename
+        self.update_status(f"Running: {technique} - {display_label}")
+        self.log_message(f"Starting immediate {technique} run ({display_label})")
         self.start_live_plot(f"{technique} (live)", label=technique)
 
         def worker():
@@ -1958,6 +2274,7 @@ class ElectrochemGUI:
                     log_callback=self.log_message,
                     data_callback=self.queue_live_point,
                     invert_current=(technique == "SWV"),
+                    raw_packet_log=self.debug_raw_packets.get(),
                 )
                 self.current_runner = runner
                 success, csv_path = runner.execute()
@@ -1974,7 +2291,9 @@ class ElectrochemGUI:
                         self.update_status("Ready (stopped)")
                         if csv_path:
                             self.plot_data(csv_path, color=self.last_live_plot_color, label=self.last_live_plot_label)
-                        detail = f"{technique} run was stopped. Script: {filename}"
+                        detail = f"{technique} run was stopped. Script: {display_label}"
+                        if source_label:
+                            detail += f"\nSaved script: {filename}"
                         if csv_path:
                             detail += f"\nData saved to: {csv_path}"
                         self.log_message(f"{technique} run stopped by user.")
@@ -1983,7 +2302,9 @@ class ElectrochemGUI:
                         self.update_status("Ready")
                         if csv_path:
                             self.plot_data(csv_path, color=self.last_live_plot_color, label=self.last_live_plot_label)
-                        detail = f"{technique} run completed. Script: {filename}"
+                        detail = f"{technique} run completed. Script: {display_label}"
+                        if source_label:
+                            detail += f"\nSaved script: {filename}"
                         if csv_path:
                             detail += f"\nData saved to: {csv_path}"
                         self.log_message(f"{technique} run completed successfully.")
@@ -2085,6 +2406,7 @@ class ElectrochemGUI:
                         log_callback=self.log_message,
                         data_callback=self.queue_live_point,
                         invert_current=(technique == "SWV"),
+                        raw_packet_log=self.debug_raw_packets.get(),
                     )
                     self.current_runner = runner
                     ok, csv_path = runner.execute()
@@ -2174,6 +2496,7 @@ class ElectrochemGUI:
                         log_callback=self.log_message,
                         data_callback=self.queue_live_point,
                         invert_current=True,
+                        raw_packet_log=self.debug_raw_packets.get(),
                     )
                     self.current_runner = runner
                     ok, csv_path = runner.execute()
@@ -2281,6 +2604,7 @@ class ElectrochemGUI:
                             log_callback=self.log_message,
                             data_callback=self.queue_live_point,
                             invert_current=True,
+                            raw_packet_log=self.debug_raw_packets.get(),
                         )
                         self.current_runner = runner
                         ok, csv_path = runner.execute()
@@ -2561,6 +2885,7 @@ class ElectrochemGUI:
                             log_callback=self.log_message,
                             data_callback=self.queue_live_point,
                             invert_current=(item['type'] == 'SWV'),
+                            raw_packet_log=self.debug_raw_packets.get(),
                         )
                         success, csv_path = self.current_runner.execute()
                         self.measurement_queue[i]['status'] = 'completed' if success else 'failed'
