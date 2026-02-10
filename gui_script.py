@@ -20,6 +20,7 @@ import queue
 import warnings
 import traceback
 import itertools
+import shutil
 from typing import Dict, List, Optional
 
 # --- Matplotlib and Pandas imports for plotting ---
@@ -234,7 +235,15 @@ def to_si_string(value_str, unit='V'):
 
 # --- Integrated SerialMeasurementRunner Class (Option 2 implemented: don't log every 'P...' line) ---
 class SerialMeasurementRunner:
-    def __init__(self, script_path, log_callback=print, data_callback=None, invert_current=False, raw_packet_log=False):
+    def __init__(
+        self,
+        script_path,
+        log_callback=print,
+        data_callback=None,
+        invert_current=False,
+        raw_packet_log=False,
+        data_folder=None,
+    ):
         self.script_path = Path(script_path)
         self.data_points = []
         self.connection = None
@@ -251,9 +260,12 @@ class SerialMeasurementRunner:
 
         self.data_base_path = Path("measurement_data")
         self.data_base_path.mkdir(exist_ok=True)
-        date_folder = datetime.now().strftime('%Y-%m-%d')
-        self.data_folder = self.data_base_path / date_folder
-        self.data_folder.mkdir(exist_ok=True)
+        if data_folder is None:
+            date_folder = datetime.now().strftime('%Y-%m-%d')
+            self.data_folder = self.data_base_path / date_folder
+        else:
+            self.data_folder = Path(data_folder)
+        self.data_folder.mkdir(exist_ok=True, parents=True)
 
         # Option 2: suppress per-packet logging to avoid GUI/log overload.
         # If you want occasional progress, set these:
@@ -686,6 +698,24 @@ class ElectrochemGUI:
         self.base_path = Path("methods")
         self.base_path.mkdir(exist_ok=True)
         
+        self.data_root = Path("measurement_data")
+        self.data_root.mkdir(exist_ok=True)
+        self.current_session_path = None
+        self.current_experiment_path = None
+        self.session_metadata_path = None
+        self.experiment_metadata_path = None
+        self.session_log_path = None
+        self.last_queue_file_path = None
+        self.session_started_at = None
+        self.experiment_started_at = None
+        self.session_name_var = tk.StringVar()
+        self.experiment_name_var = tk.StringVar()
+        self.session_user_var = tk.StringVar()
+        self.session_chip_id_var = tk.StringVar()
+        self.session_notes_var = tk.StringVar()
+        self.experiment_notes_var = tk.StringVar()
+        self.session_status_var = tk.StringVar(value="Session: (none) | Experiment: (none)")
+        
         self.measurement_queue = []
         self.is_running = False
         self.current_script = ""
@@ -763,6 +793,263 @@ class ElectrochemGUI:
         self.plotter_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.plotter_frame, text="Plotter")
         self.setup_plotter_tab()
+
+        self.setup_session_bar()
+
+    def setup_session_bar(self):
+        bar = ttk.Frame(self.root)
+        bar.pack(side='bottom', fill='x', padx=5, pady=5)
+
+        session_frame = ttk.LabelFrame(bar, text="Session")
+        session_frame.pack(side='left', fill='x', expand=True, padx=(0, 6))
+        experiment_frame = ttk.LabelFrame(bar, text="Experiment")
+        experiment_frame.pack(side='right', fill='x', expand=True, padx=(6, 0))
+
+        session_frame.columnconfigure(1, weight=1)
+        session_frame.columnconfigure(3, weight=1)
+        session_frame.columnconfigure(5, weight=1)
+
+        ttk.Label(session_frame, text="Session Name:").grid(row=0, column=0, sticky='w', padx=5, pady=2)
+        ttk.Entry(session_frame, textvariable=self.session_name_var, width=24).grid(row=0, column=1, sticky='we', padx=5, pady=2)
+        ttk.Button(session_frame, text="Start Session", command=self.start_new_session).grid(row=0, column=2, padx=5, pady=2)
+        ttk.Button(session_frame, text="End Session", command=self.end_session).grid(row=0, column=3, padx=5, pady=2)
+
+        ttk.Label(session_frame, text="User:").grid(row=1, column=0, sticky='w', padx=5, pady=2)
+        ttk.Entry(session_frame, textvariable=self.session_user_var, width=18).grid(row=1, column=1, sticky='we', padx=5, pady=2)
+        ttk.Label(session_frame, text="Chip ID:").grid(row=1, column=2, sticky='w', padx=5, pady=2)
+        ttk.Entry(session_frame, textvariable=self.session_chip_id_var, width=18).grid(row=1, column=3, sticky='we', padx=5, pady=2)
+
+        ttk.Label(session_frame, text="Notes:").grid(row=2, column=0, sticky='w', padx=5, pady=2)
+        ttk.Entry(session_frame, textvariable=self.session_notes_var, width=36).grid(row=2, column=1, columnspan=3, sticky='we', padx=5, pady=2)
+
+        ttk.Button(session_frame, text="Update Session Metadata", command=self.update_session_metadata).grid(row=3, column=0, columnspan=2, padx=5, pady=2, sticky='w')
+
+        experiment_frame.columnconfigure(1, weight=1)
+        ttk.Label(experiment_frame, text="Experiment Name:").grid(row=0, column=0, sticky='w', padx=5, pady=2)
+        ttk.Entry(experiment_frame, textvariable=self.experiment_name_var, width=24).grid(row=0, column=1, sticky='we', padx=5, pady=2)
+        ttk.Label(experiment_frame, text="Notes:").grid(row=1, column=0, sticky='w', padx=5, pady=2)
+        ttk.Entry(experiment_frame, textvariable=self.experiment_notes_var, width=28).grid(row=1, column=1, sticky='we', padx=5, pady=2)
+        ttk.Button(experiment_frame, text="Start Experiment", command=self.start_new_experiment).grid(row=2, column=0, padx=5, pady=2, sticky='w')
+        ttk.Button(experiment_frame, text="End Experiment", command=self.end_experiment).grid(row=2, column=1, padx=5, pady=2, sticky='w')
+
+        ttk.Label(bar, textvariable=self.session_status_var, foreground="blue").pack(side='bottom', fill='x', padx=5, pady=2)
+
+    @staticmethod
+    def _sanitize_folder_name(value: str, fallback: str) -> str:
+        if value is None:
+            value = ""
+        cleaned = value.strip()
+        if not cleaned:
+            cleaned = fallback
+        invalid = '<>:"/\\\\|?*'
+        cleaned = ''.join('_' if ch in invalid else ch for ch in cleaned)
+        cleaned = cleaned.strip().strip('.')
+        return cleaned or fallback
+
+    @staticmethod
+    def _unique_path(base_path: Path) -> Path:
+        if not base_path.exists():
+            return base_path
+        for idx in range(2, 1000):
+            candidate = Path(f"{base_path}_{idx:02d}")
+            if not candidate.exists():
+                return candidate
+        return Path(f"{base_path}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+
+    def _update_session_status(self):
+        session_label = "(none)"
+        experiment_label = "(none)"
+        if self.current_session_path:
+            session_label = self.current_session_path.name
+        if self.current_experiment_path:
+            experiment_label = self.current_experiment_path.name
+        self.session_status_var.set(f"Session: {session_label} | Experiment: {experiment_label}")
+
+    def _write_session_log(self, message: str):
+        if not self.session_log_path:
+            return
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        line = f"[{timestamp}] {message}"
+        try:
+            with open(self.session_log_path, 'a', encoding='utf-8') as handle:
+                handle.write(line + '\n')
+        except OSError:
+            pass
+
+    def _write_json(self, path: Path, payload: dict):
+        try:
+            with open(path, 'w', encoding='utf-8') as handle:
+                json.dump(payload, handle, indent=2)
+        except OSError as exc:
+            messagebox.showerror("Save Failed", f"Could not write metadata:\n{exc}")
+
+    def start_new_session(self):
+        if self.current_session_path:
+            if not messagebox.askyesno("Start New Session", "End the current session and start a new one?"):
+                return
+            self.end_session()
+
+        raw_name = self.session_name_var.get()
+        user = self.session_user_var.get()
+        chip_id = self.session_chip_id_var.get()
+        notes = self.session_notes_var.get()
+        required = {
+            "Session Name": raw_name,
+            "User": user,
+            "Chip ID": chip_id,
+        }
+        missing = [label for label, value in required.items() if not str(value).strip()]
+        if missing:
+            messagebox.showerror(
+                "Missing Metadata",
+                "Fill out all session metadata before starting:\n" + ", ".join(missing),
+            )
+            return
+        timestamp_suffix = datetime.now().strftime('%Y%m%d_%H%M%S')
+        fallback = f"session_{timestamp_suffix}"
+        base_name = self._sanitize_folder_name(raw_name, fallback)
+        if not base_name or base_name == fallback:
+            messagebox.showerror("Invalid Session Name", "Session name cannot be empty or invalid.")
+            return
+        folder_name = f"{base_name}_{timestamp_suffix}"
+        session_path = self._unique_path(self.data_root / folder_name)
+        session_path.mkdir(parents=True, exist_ok=True)
+
+        self.current_session_path = session_path
+        self.current_experiment_path = None
+        self.session_metadata_path = session_path / "session_metadata.json"
+        self.session_log_path = session_path / "session_log.txt"
+        self.session_started_at = datetime.now().isoformat(timespec='seconds')
+        self.experiment_started_at = None
+        self.experiment_metadata_path = None
+
+        self._write_json(self.session_metadata_path, {
+            'session_name': raw_name.strip() or folder_name,
+            'session_folder': session_path.name,
+            'user': user.strip(),
+            'chip_id': chip_id.strip(),
+            'notes': notes.strip(),
+            'started_at': self.session_started_at,
+            'ended_at': None,
+        })
+
+        self.log_message(f"Session started: {session_path}")
+        self._update_session_status()
+        self._pump_auto_connect(force=True)
+
+    def update_session_metadata(self):
+        if not self.current_session_path or not self.session_metadata_path:
+            messagebox.showwarning("No Session", "Start a session before updating metadata.")
+            return
+        payload = {
+            'session_name': self.session_name_var.get().strip() or self.current_session_path.name,
+            'session_folder': self.current_session_path.name,
+            'user': self.session_user_var.get().strip(),
+            'chip_id': self.session_chip_id_var.get().strip(),
+            'notes': self.session_notes_var.get().strip(),
+            'started_at': self.session_started_at,
+            'ended_at': None,
+        }
+        self._write_json(self.session_metadata_path, payload)
+        self.log_message("Session metadata updated.")
+
+    def end_session(self):
+        if not self.current_session_path:
+            messagebox.showinfo("No Session", "No active session to end.")
+            return
+
+        if self.current_experiment_path:
+            self.end_experiment()
+
+        payload = {
+            'session_name': self.session_name_var.get().strip() or self.current_session_path.name,
+            'session_folder': self.current_session_path.name,
+            'user': self.session_user_var.get().strip(),
+            'chip_id': self.session_chip_id_var.get().strip(),
+            'notes': self.session_notes_var.get().strip(),
+            'started_at': self.session_started_at,
+            'ended_at': datetime.now().isoformat(timespec='seconds'),
+        }
+        if self.session_metadata_path:
+            self._write_json(self.session_metadata_path, payload)
+
+        self.log_message(f"Session ended: {self.current_session_path}")
+        self.current_session_path = None
+        self.session_metadata_path = None
+        self.session_log_path = None
+        self.session_started_at = None
+        self._update_session_status()
+
+    def start_new_experiment(self):
+        if not self.current_session_path:
+            messagebox.showwarning("No Session", "Start a session before creating an experiment.")
+            return
+        if self.current_experiment_path:
+            if not messagebox.askyesno("Start New Experiment", "End the current experiment and start a new one?"):
+                return
+            self.end_experiment()
+
+        raw_name = self.experiment_name_var.get()
+        timestamp_suffix = datetime.now().strftime('%Y%m%d_%H%M%S')
+        fallback = f"experiment_{timestamp_suffix}"
+        base_name = self._sanitize_folder_name(raw_name, fallback)
+        if not raw_name.strip():
+            self.experiment_name_var.set(base_name)
+        folder_name = f"{base_name}_{timestamp_suffix}"
+        experiment_path = self._unique_path(self.current_session_path / folder_name)
+        experiment_path.mkdir(parents=True, exist_ok=True)
+
+        self.current_experiment_path = experiment_path
+        self.experiment_metadata_path = experiment_path / "experiment_metadata.json"
+        self.experiment_started_at = datetime.now().isoformat(timespec='seconds')
+
+        self._write_json(self.experiment_metadata_path, {
+            'experiment_name': raw_name.strip() or folder_name,
+            'experiment_folder': experiment_path.name,
+            'session_folder': self.current_session_path.name,
+            'notes': self.experiment_notes_var.get().strip(),
+            'started_at': self.experiment_started_at,
+            'ended_at': None,
+        })
+
+        self.log_message(f"Experiment started: {experiment_path}")
+        self._update_session_status()
+
+    def end_experiment(self):
+        if not self.current_experiment_path:
+            messagebox.showinfo("No Experiment", "No active experiment to end.")
+            return
+
+        payload = {
+            'experiment_name': self.experiment_name_var.get().strip() or self.current_experiment_path.name,
+            'experiment_folder': self.current_experiment_path.name,
+            'session_folder': self.current_session_path.name if self.current_session_path else None,
+            'notes': self.experiment_notes_var.get().strip(),
+            'started_at': self.experiment_started_at,
+            'ended_at': datetime.now().isoformat(timespec='seconds'),
+        }
+        if self.experiment_metadata_path:
+            self._write_json(self.experiment_metadata_path, payload)
+
+        self.log_message(f"Experiment ended: {self.current_experiment_path}")
+        self.current_experiment_path = None
+        self.experiment_metadata_path = None
+        self.experiment_started_at = None
+        self._update_session_status()
+
+    def _require_active_session(self):
+        if not self.current_session_path:
+            messagebox.showwarning("No Session", "Start a session before performing actions.")
+            return None
+        return self.current_session_path
+
+    def _require_active_experiment(self):
+        if self._require_active_session() is None:
+            return None
+        if not self.current_experiment_path:
+            messagebox.showwarning("No Experiment", "Start an experiment before running measurements.")
+            return None
+        return self.current_experiment_path
 
     def create_cv_methodscript(self):
         """Create MethodSCRIPT for CV with correct SI unit formatting"""
@@ -1116,6 +1403,8 @@ class ElectrochemGUI:
         self.run_script_immediately("Custom", self.custom_script, source_label=self.custom_script_name)
 
     def add_custom_to_queue(self):
+        if self._require_active_session() is None:
+            return
         if not self.custom_script_path or not self.custom_script:
             messagebox.showerror("No Script Loaded", "Select a MethodSCRIPT file before adding to the queue.")
             return
@@ -1143,6 +1432,7 @@ class ElectrochemGUI:
         self.measurement_queue.append(queue_item)
         self.refresh_queue_display()
         messagebox.showinfo("Success", f"Custom script added to queue\nSaved as: {filename}")
+        self.log_message(f"Queue add: Custom ({details})")
         ttk.Button(button_frame, text="Run PStrace SWV", command=self.run_pstrace_swv_preset).pack(side='left', padx=5)
         
     def show_pause_params(self):
@@ -1409,6 +1699,8 @@ class ElectrochemGUI:
         self.root.after(200, self._pump_auto_connect)
 
     def add_pump_action_to_queue(self, action_name: str, *, params=None, details: str):
+        if self._require_active_session() is None:
+            return
         if not PUMP_AVAILABLE or self.pump_ctrl is None:
             messagebox.showerror("Pump Error", "Pump backend unavailable.")
             return
@@ -1424,6 +1716,7 @@ class ElectrochemGUI:
         self.measurement_queue.append(item)
         self.refresh_queue_display()
         messagebox.showinfo("Added to Queue", details)
+        self.log_message(f"Queue add: {details}")
 
     def queue_pump_init(self):
         self.add_pump_action_to_queue('INIT', details='Pump: Initialize (ZR)')
@@ -1493,6 +1786,7 @@ class ElectrochemGUI:
         if self.pump_log_text is None:
             self.pump_early_logs.append(message)
             return
+        self._write_session_log(message)
 
         def append():
             self.pump_log_text.configure(state='normal')
@@ -1568,12 +1862,13 @@ class ElectrochemGUI:
         remaining_steps = max(0, self.pump_ctrl.steps_per_stroke - pending_steps)
         return self.pump_ctrl.volume_for_steps(remaining_steps)
 
-    def _pump_auto_connect(self):
+    def _pump_auto_connect(self, force: bool = False):
         if not PUMP_AVAILABLE or self.pump_ctrl is None:
             return
-        if getattr(self, '_pump_auto_connect_attempted', False):
+        if not self.current_session_path:
             return
-        self._pump_auto_connect_attempted = True
+        if getattr(self, '_pump_auto_connect_attempted', False) and not force:
+            return
         try:
             sim_mode = bool(self.pump_var_sim.get())
             com_port = int(self.pump_var_com.get())
@@ -1584,10 +1879,13 @@ class ElectrochemGUI:
             return
         if self.pump_ctrl.connected:
             return
+        self._pump_auto_connect_attempted = True
         self.pump_log('Auto-connecting to pump...')
         self.pump_threaded(self.pump_on_connect, sim_mode, com_port, baud, dev)
 
     def pump_threaded(self, fn, *args):
+        if self._require_active_session() is None:
+            return
         if not PUMP_AVAILABLE or self.pump_ctrl is None:
             messagebox.showerror("Pump Error", "Pump backend unavailable.")
             return
@@ -1747,6 +2045,7 @@ class ElectrochemGUI:
             self.log_text.see(tk.END)
             self.log_text.config(state='disabled')
         self.root.after(0, append_message)
+        self._write_session_log(message)
         print(message)
 
     def setup_script_tab(self):
@@ -1786,12 +2085,14 @@ class ElectrochemGUI:
         self._connect_plot_interactions()
 
     def load_and_plot_csv(self):
-        """Opens a file dialog to select a CSV and plots it."""
-        filepath = filedialog.askopenfilename(
+        """Opens a file dialog to select CSVs and plots them."""
+        filepaths = filedialog.askopenfilenames(
             title="Select a measurement CSV",
             filetypes=(("CSV files", "*.csv"), ("All files", "*.*"))
         )
-        if filepath:
+        if not filepaths:
+            return
+        for filepath in filepaths:
             self.last_plotted_csv = filepath
             self.plot_data(filepath)
 
@@ -2115,11 +2416,28 @@ class ElectrochemGUI:
             self.log_message("Plot warning: no Time (s) column; using Potential (V) instead.")
 
         try:
-            base_label = label or Path(csv_path).name
+            filename = Path(csv_path).name
+            base_label = label or filename
+            channel_label = None
+            if label is None:
+                lower_name = filename.lower()
+                ch_marker = "_ch"
+                if ch_marker in lower_name:
+                    after = lower_name.split(ch_marker, 1)[1]
+                    digits = []
+                    for ch in after:
+                        if ch.isdigit():
+                            digits.append(ch)
+                        else:
+                            break
+                    if digits:
+                        channel_label = f"ch{''.join(digits)}"
+            legend_base = channel_label or base_label
             if base_label:
                 for line in list(self.ax.lines):
                     if line.get_label().startswith(base_label):
                         line.remove()
+            existing_labels = {line.get_label() for line in self.ax.lines if line.get_label()}
             series = []
             if diff_col:
                 series.append((diff_col, "Diff"))
@@ -2148,13 +2466,15 @@ class ElectrochemGUI:
                 x_max = float(x_series.max())
             y_min = y_max = None
             for col, suffix in series:
-                series_label = f"{base_label} ({suffix})" if base_label else suffix
-                series_key = (base_label, suffix)
+                series_label = f"{legend_base} ({suffix})" if legend_base else suffix
+                series_key = (legend_base, suffix)
                 color = self.plot_series_colors.get(series_key)
                 if color is None:
                     color = next(self.plot_color_cycle)
                     self.plot_series_colors[series_key] = color
-                self.ax.plot(df[x_col], df[col], color=color, label=series_label)
+                plot_label = "_nolegend_" if series_label in existing_labels else series_label
+                self.ax.plot(df[x_col], df[col], color=color, label=plot_label)
+                existing_labels.add(series_label)
                 y_series = pd.to_numeric(df[col], errors="coerce").dropna()
                 if not y_series.empty:
                     series_min = float(y_series.min())
@@ -2329,7 +2649,42 @@ class ElectrochemGUI:
         return self._build_plot_bounds(x_min, x_max, y_min, y_max)
 
     def _get_plot_data_bounds(self):
+        bounds = self._compute_bounds_from_lines()
+        if bounds is not None:
+            return bounds
         return self.plot_data_bounds
+
+    def _compute_bounds_from_lines(self):
+        if not hasattr(self, "ax") or self.ax is None:
+            return None
+        x_min = x_max = y_min = y_max = None
+        for line in self.ax.lines:
+            try:
+                x_data = line.get_xdata(orig=False)
+                y_data = line.get_ydata(orig=False)
+            except Exception:
+                continue
+            if x_data is None or y_data is None:
+                continue
+            for x_val in x_data:
+                if x_val is None or isinstance(x_val, str):
+                    continue
+                try:
+                    xv = float(x_val)
+                except Exception:
+                    continue
+                x_min = xv if x_min is None else min(x_min, xv)
+                x_max = xv if x_max is None else max(x_max, xv)
+            for y_val in y_data:
+                if y_val is None or isinstance(y_val, str):
+                    continue
+                try:
+                    yv = float(y_val)
+                except Exception:
+                    continue
+                y_min = yv if y_min is None else min(y_min, yv)
+                y_max = yv if y_max is None else max(y_max, yv)
+        return self._build_plot_bounds(x_min, x_max, y_min, y_max)
     def clear_params_frame(self):
         for widget in self.params_frame.winfo_children(): widget.destroy()
 
@@ -2414,6 +2769,8 @@ class ElectrochemGUI:
         self.script_text.insert(1.0, script)
     
     def add_cv_to_queue(self):
+        if self._require_active_session() is None:
+            return
         base_script = self.create_cv_methodscript()
         mux_channels = self._get_mux_channels(self.cv_params)
         if mux_channels is None:
@@ -2424,6 +2781,8 @@ class ElectrochemGUI:
             self.add_to_queue("CV", base_script)
     
     def add_swv_to_queue(self):
+        if self._require_active_session() is None:
+            return
         base_script = self.create_swv_methodscript()
         mux_channels = self._get_mux_channels(self.swv_params)
         if mux_channels is None:
@@ -2474,6 +2833,8 @@ class ElectrochemGUI:
         )
 
     def add_pause_to_queue(self):
+        if self._require_active_session() is None:
+            return
         try:
             seconds = float(self.pause_params['pause_time'].get())
             if seconds < 0:
@@ -2491,8 +2852,11 @@ class ElectrochemGUI:
         self.measurement_queue.append(queue_item)
         self.refresh_queue_display()
         messagebox.showinfo("Success", f"Pause ({seconds:.1f} sec) added to queue")
+        self.log_message(f"Queue add: Pause ({seconds:.1f} sec)")
 
     def add_alert_pause_to_queue(self):
+        if self._require_active_session() is None:
+            return
         message = (self.pause_params.get('alert_message').get() or "").strip()
         if not message:
             messagebox.showerror("Invalid Alert", "Alert message cannot be empty.")
@@ -2506,6 +2870,7 @@ class ElectrochemGUI:
         self.measurement_queue.append(queue_item)
         self.refresh_queue_display()
         messagebox.showinfo("Success", "Alert pause added to queue")
+        self.log_message("Queue add: Alert pause")
 
     def run_cv_immediately(self):
         base_script = self.create_cv_methodscript()
@@ -2546,6 +2911,8 @@ class ElectrochemGUI:
             self.run_swv_cycles(base_script, n_scans, delay)
 
     def run_pause_immediately(self):
+        if self._require_active_session() is None:
+            return
         try:
             seconds = float(self.pause_params['pause_time'].get())
             if seconds < 0:
@@ -2565,6 +2932,9 @@ class ElectrochemGUI:
     def run_script_immediately(self, technique, script, mux_channel=None, source_label=None):
         if self.is_running:
             messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
+            return
+        data_folder = self._require_active_experiment()
+        if data_folder is None:
             return
 
         try:
@@ -2592,6 +2962,7 @@ class ElectrochemGUI:
                     data_callback=self.queue_live_point,
                     invert_current=(technique == "SWV"),
                     raw_packet_log=self.debug_raw_packets.get(),
+                    data_folder=data_folder,
                 )
                 self.current_runner = runner
                 success, csv_path = runner.execute()
@@ -2638,25 +3009,38 @@ class ElectrochemGUI:
         threading.Thread(target=worker, daemon=True).start()
 
     def save_script_file(self, technique, script, mux_channel=None):
-        date_folder = self.base_path / datetime.now().strftime('%Y-%m-%d')
-        date_folder.mkdir(exist_ok=True)
+        if self.current_experiment_path:
+            date_folder = self.current_experiment_path / "scripts"
+            date_folder.mkdir(exist_ok=True, parents=True)
+            use_zero_index = True
+        else:
+            date_folder = self.base_path / datetime.now().strftime('%Y-%m-%d')
+            date_folder.mkdir(exist_ok=True)
+            use_zero_index = False
         slug = technique.lower().replace(' ', '_')
         if mux_channel is not None:
             slug = f"{slug}_ch{mux_channel}"
-        filename = f"{len(list(date_folder.glob('*.ms'))) + 1:03d}_{slug}.ms"
+        count = len(list(date_folder.glob('*.ms')))
+        index = count if use_zero_index else count + 1
+        filename = f"{index:03d}_{slug}.ms"
         filepath = date_folder / filename
         with open(filepath, 'w') as f:
             f.write(script)
         return filepath, filename
 
     def add_to_queue(self, technique, script):
+        if self._require_active_session() is None:
+            return
         filepath, filename = self.save_script_file(technique, script)
         queue_item = {'type': technique, 'script_path': str(filepath), 'status': 'pending', 'details': filename}
         self.measurement_queue.append(queue_item)
         self.refresh_queue_display()
         messagebox.showinfo("Success", f"{technique} added to queue\nSaved as: {filename}")
+        self.log_message(f"Queue add: {technique} ({filename})")
 
     def add_mux_scripts_to_queue(self, technique, base_script, channels):
+        if self._require_active_session() is None:
+            return
         saved = []
         for ch in channels:
             mux_script = self._build_mux_script(base_script, ch)
@@ -2674,10 +3058,14 @@ class ElectrochemGUI:
             "Success",
             f"{technique} added for MUX channels: {', '.join(map(str, channels))}\nSaved as: {', '.join(saved)}",
         )
+        self.log_message(f"Queue add: {technique} (MUX ch {', '.join(map(str, channels))})")
 
     def run_mux_script_sequence(self, technique, base_script, channels):
         if self.is_running:
             messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
+            return
+        data_folder = self._require_active_experiment()
+        if data_folder is None:
             return
 
         if not channels:
@@ -2724,6 +3112,7 @@ class ElectrochemGUI:
                         data_callback=self.queue_live_point,
                         invert_current=(technique == "SWV"),
                         raw_packet_log=self.debug_raw_packets.get(),
+                        data_folder=data_folder,
                     )
                     self.current_runner = runner
                     ok, csv_path = runner.execute()
@@ -2773,6 +3162,9 @@ class ElectrochemGUI:
         if self.is_running:
             messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
             return
+        data_folder = self._require_active_experiment()
+        if data_folder is None:
+            return
 
         self.clear_log()
         self.is_running = True
@@ -2814,6 +3206,7 @@ class ElectrochemGUI:
                         data_callback=self.queue_live_point,
                         invert_current=True,
                         raw_packet_log=self.debug_raw_packets.get(),
+                        data_folder=data_folder,
                     )
                     self.current_runner = runner
                     ok, csv_path = runner.execute()
@@ -2870,6 +3263,9 @@ class ElectrochemGUI:
         if self.is_running:
             messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
             return
+        data_folder = self._require_active_experiment()
+        if data_folder is None:
+            return
 
         if not channels:
             return
@@ -2922,6 +3318,7 @@ class ElectrochemGUI:
                             data_callback=self.queue_live_point,
                             invert_current=True,
                             raw_packet_log=self.debug_raw_packets.get(),
+                            data_folder=data_folder,
                         )
                         self.current_runner = runner
                         ok, csv_path = runner.execute()
@@ -3004,7 +3401,39 @@ class ElectrochemGUI:
                 data['script_path'] = item['script_path']
         return data
 
+    def _snapshot_queue(self):
+        return {
+            'metadata': {
+                'saved_at': datetime.now().isoformat(timespec='seconds'),
+                'version': 1,
+            },
+            'items': [self._serialize_queue_item(item) for item in self.measurement_queue],
+        }
+
+    def _copy_queue_into_experiment(self, label: str):
+        if not self.current_experiment_path:
+            return
+        try:
+            queues_dir = self.current_experiment_path / "queue_files"
+            queues_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            if self.last_queue_file_path and Path(self.last_queue_file_path).exists():
+                src = Path(self.last_queue_file_path)
+                dest = queues_dir / f"{label}_{timestamp}_{src.name}"
+                shutil.copy2(src, dest)
+                self.log_message(f"Queue file copied to: {dest}")
+            else:
+                dest = queues_dir / f"{label}_{timestamp}_queue_snapshot.json"
+                payload = self._snapshot_queue()
+                with open(dest, 'w', encoding='utf-8') as handle:
+                    json.dump(payload, handle, indent=2)
+                self.log_message(f"Queue snapshot saved to: {dest}")
+        except OSError as exc:
+            self.log_message(f"Queue copy failed: {exc}")
+
     def save_queue(self):
+        if self._require_active_session() is None:
+            return
         if not self.measurement_queue:
             messagebox.showwarning("Empty Queue", "No items to save.")
             return
@@ -3038,9 +3467,13 @@ class ElectrochemGUI:
             messagebox.showerror("Save Failed", f"Could not save queue:\n{exc}")
             return
 
+        self.last_queue_file_path = file_path
+        self.log_message(f"Queue saved: {file_path}")
         messagebox.showinfo("Queue Saved", f"Queue saved to:\n{file_path}")
 
     def load_queue(self):
+        if self._require_active_session() is None:
+            return
         if self.is_running:
             messagebox.showwarning("Queue Running", "Stop the queue before loading.")
             return
@@ -3124,14 +3557,20 @@ class ElectrochemGUI:
         self.measurement_queue = new_queue
         self.refresh_queue_display()
         self.update_status(f"Queue loaded ({len(new_queue)} items)")
+        self.last_queue_file_path = file_path
         if skipped:
             self.log_message(f"Queue load skipped {skipped} invalid item(s) from {file_path}.")
+        self.log_message(f"Queue loaded: {file_path} ({len(new_queue)} items)")
         messagebox.showinfo("Queue Loaded", f"Loaded {len(new_queue)} queue item(s).")
 
     def run_queue(self):
         self.reset_queue_reorder()
         if not self.measurement_queue: messagebox.showwarning("Empty Queue", "No items in queue"); return
         if self.is_running: messagebox.showwarning("Already Running", "Queue is already running"); return
+        if self._require_active_experiment() is None:
+            return
+        self.log_message("Queue start requested.")
+        self._copy_queue_into_experiment("run_queue")
         self.is_running = True
         self.clear_log()
         self.queue_thread = threading.Thread(target=self.execute_queue, args=(0,), daemon=True)
@@ -3145,6 +3584,10 @@ class ElectrochemGUI:
         if self.is_running:
             messagebox.showwarning("Already Running", "Queue is already running")
             return
+        if self._require_active_experiment() is None:
+            return
+        self.log_message("Queue start from selected requested.")
+        self._copy_queue_into_experiment("run_queue_from_selected")
         selected = self.queue_tree.selection()
         if not selected:
             messagebox.showwarning("No Selection", "Select a queue item to start from.")
@@ -3163,6 +3606,11 @@ class ElectrochemGUI:
         self.queue_thread.start()
 
     def execute_queue(self, start_index=0):
+        data_folder = self.current_experiment_path
+        if data_folder is None:
+            self.root.after(0, messagebox.showwarning, "No Experiment", "Start an experiment before running the queue.")
+            self.is_running = False
+            return
         for i, item in enumerate(list(self.measurement_queue)[start_index:], start=start_index):
             if not self.is_running: self.log_message("Queue execution stopped by user."); break
             self.measurement_queue[i]['status'] = 'running'
@@ -3203,6 +3651,7 @@ class ElectrochemGUI:
                             data_callback=self.queue_live_point,
                             invert_current=(item['type'] == 'SWV'),
                             raw_packet_log=self.debug_raw_packets.get(),
+                            data_folder=data_folder,
                         )
                         success, csv_path = self.current_runner.execute()
                         self.measurement_queue[i]['status'] = 'completed' if success else 'failed'
@@ -3222,21 +3671,28 @@ class ElectrochemGUI:
 
         self.is_running = False
         self.root.after(0, self.update_status, "Queue Complete")
+        self.log_message("Queue completed.")
     
     def stop_queue(self):
         if not self.is_running: return
         self.is_running = False
         if self.current_runner: self.current_runner.stop()
         self.update_status("Queue Stopped")
+        self.log_message("Queue stop requested.")
     
     def clear_queue(self):
+        if self._require_active_session() is None:
+            return
         self.reset_queue_reorder()
         if self.is_running: messagebox.showwarning("Queue Running", "Cannot clear queue while running"); return
         self.measurement_queue = []
         self.refresh_queue_display()
         self.update_status("Queue Cleared")
+        self.log_message("Queue cleared.")
 
     def delete_selected_queue_item(self):
+        if self._require_active_session() is None:
+            return
         self.reset_queue_reorder()
         if self.is_running:
             messagebox.showwarning("Queue Running", "Cannot delete items while running")
@@ -3284,6 +3740,8 @@ class ElectrochemGUI:
         self.queue_drag_item = None
 
     def confirm_queue_reorder(self):
+        if self._require_active_session() is None:
+            return
         if not self.queue_reorder_pending or not self.queue_reorder_snapshot:
             messagebox.showinfo("No Changes", "No pending queue reorder to confirm.")
             return
@@ -3300,6 +3758,7 @@ class ElectrochemGUI:
         self.queue_reorder_pending = False
         self.refresh_queue_display()
         self.update_status("Queue reordered")
+        self.log_message("Queue reordered.")
 
     def reset_queue_reorder(self):
         if self.queue_reorder_pending:

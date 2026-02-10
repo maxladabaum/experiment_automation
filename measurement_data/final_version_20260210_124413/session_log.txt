@@ -1,0 +1,181 @@
+[2026-02-10 12:44:13] Session started: measurement_data\final_version_20260210_124413
+[2026-02-10 12:44:13] Auto-connecting to pump...
+[2026-02-10 12:44:13] [REAL] Connecting…
+[2026-02-10 12:44:13] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-02-10 12:44:13] Connected.
+[2026-02-10 12:44:13] Real mode ready. Tip: set plunger speed (SnnR) before A/D.
+[2026-02-10 12:44:18] Experiment started: measurement_data\final_version_20260210_124413\my_exp_20260210_124418
+[2026-02-10 12:44:32] Queue loaded: C:/Users/Chien Lab/Documents/GitHub/experiment_automation/methods/clean_cell_with_di.json (17 items)
+[2026-02-10 12:44:35] Queue start requested.
+[2026-02-10 12:44:35] Queue file copied to: measurement_data\final_version_20260210_124413\my_exp_20260210_124418\queue_files\run_queue_20260210_124435_clean_cell_with_di.json
+[2026-02-10 12:44:35] Queue start -> Pump: Initialize (ZR)
+[2026-02-10 12:44:35] Queue start -> Pump: Initialize (ZR)
+[2026-02-10 12:44:41] Queue init complete
+[2026-02-10 12:44:41] Queue init complete
+[2026-02-10 12:44:42] Queue start -> Pump: Set speed S20R
+[2026-02-10 12:44:42] Queue start -> Pump: Set speed S20R
+[2026-02-10 12:44:42] Queue set speed done (S20R)
+[2026-02-10 12:44:42] Queue set speed done (S20R)
+[2026-02-10 12:44:43] Queue start -> Pump: Valve -> 9
+[2026-02-10 12:44:43] Queue start -> Pump: Valve -> 9
+[2026-02-10 12:44:44] Queue valve move complete (I9R)
+[2026-02-10 12:44:44] Queue valve move complete (I9R)
+[2026-02-10 12:44:45] Queue start -> Pump: Aspirate 225.00 µL @ S20R
+[2026-02-10 12:44:45] Queue start -> Pump: Aspirate 225.00 µL @ S20R
+[2026-02-10 12:45:29] Queue aspirate complete (225.00 µL @ S20R)
+[2026-02-10 12:45:29] Queue aspirate complete (225.00 µL @ S20R)
+[2026-02-10 12:45:30] Queue start -> Pump: Valve -> 1
+[2026-02-10 12:45:30] Queue start -> Pump: Valve -> 1
+[2026-02-10 12:45:31] Queue valve move complete (I1R)
+[2026-02-10 12:45:31] Queue valve move complete (I1R)
+[2026-02-10 12:45:32] Queue start -> Pump: Dispense 225.00 µL @ S20R
+[2026-02-10 12:45:32] Queue start -> Pump: Dispense 225.00 µL @ S20R
+[2026-02-10 12:46:14] Queue dispense complete (225.00 µL @ S20R)
+[2026-02-10 12:46:14] Queue dispense complete (225.00 µL @ S20R)
+[2026-02-10 12:46:15] Queue start -> Pump: Valve -> 3
+[2026-02-10 12:46:15] Queue start -> Pump: Valve -> 3
+[2026-02-10 12:46:17] Queue valve move complete (I3R)
+[2026-02-10 12:46:17] Queue valve move complete (I3R)
+[2026-02-10 12:46:18] Queue start -> Pump: Aspirate 225.00 µL @ S20R
+[2026-02-10 12:46:18] Queue start -> Pump: Aspirate 225.00 µL @ S20R
+[2026-02-10 12:47:01] Queue aspirate complete (225.00 µL @ S20R)
+[2026-02-10 12:47:01] Queue aspirate complete (225.00 µL @ S20R)
+[2026-02-10 12:47:02] Queue start -> Pump: Valve -> 1
+[2026-02-10 12:47:02] Queue start -> Pump: Valve -> 1
+[2026-02-10 12:47:03] Queue valve move complete (I1R)
+[2026-02-10 12:47:03] Queue valve move complete (I1R)
+[2026-02-10 12:47:04] Queue start -> Pump: Valve -> 3
+[2026-02-10 12:47:04] Queue start -> Pump: Valve -> 3
+[2026-02-10 12:47:06] Queue valve move complete (I3R)
+[2026-02-10 12:47:06] Queue valve move complete (I3R)
+[2026-02-10 12:47:07] Queue start -> Pump: Aspirate 225.00 µL @ S20R
+[2026-02-10 12:47:07] Queue start -> Pump: Aspirate 225.00 µL @ S20R
+[2026-02-10 12:47:07] Pump action failed: Requested 225.00 uL exceeds remaining syringe capacity of 25.00 uL (syringe volume 250.00 uL).
+[2026-02-10 12:47:07] Pump action failed: Requested 225.00 uL exceeds remaining syringe capacity of 25.00 uL (syringe volume 250.00 uL).
+[2026-02-10 12:47:08] Queue start -> Pump: Valve -> 1
+[2026-02-10 12:47:08] Queue start -> Pump: Valve -> 1
+[2026-02-10 12:47:09] Queue valve move complete (I1R)
+[2026-02-10 12:47:09] Queue valve move complete (I1R)
+[2026-02-10 12:47:10] Queue start -> Pump: Dispense 225.00 µL @ S20R
+[2026-02-10 12:47:10] Queue start -> Pump: Dispense 225.00 µL @ S20R
+[2026-02-10 12:47:53] Queue dispense complete (225.00 µL @ S20R)
+[2026-02-10 12:47:53] Queue dispense complete (225.00 µL @ S20R)
+[2026-02-10 12:47:54] Queue start -> Pump: Valve -> 9
+[2026-02-10 12:47:54] Queue start -> Pump: Valve -> 9
+[2026-02-10 12:47:55] Queue valve move complete (I9R)
+[2026-02-10 12:47:55] Queue valve move complete (I9R)
+[2026-02-10 12:47:56] Queue start -> Pump: Aspirate 225.00 µL @ S20R
+[2026-02-10 12:47:56] Queue start -> Pump: Aspirate 225.00 µL @ S20R
+[2026-02-10 12:48:40] Queue aspirate complete (225.00 µL @ S20R)
+[2026-02-10 12:48:40] Queue aspirate complete (225.00 µL @ S20R)
+[2026-02-10 12:48:41] Queue start -> Pump: Valve -> 1
+[2026-02-10 12:48:41] Queue start -> Pump: Valve -> 1
+[2026-02-10 12:48:42] Queue valve move complete (I1R)
+[2026-02-10 12:48:42] Queue valve move complete (I1R)
+[2026-02-10 12:48:43] Queue start -> Pump: Dispense 225.00 µL @ S20R
+[2026-02-10 12:48:43] Queue start -> Pump: Dispense 225.00 µL @ S20R
+[2026-02-10 12:49:25] Queue dispense complete (225.00 µL @ S20R)
+[2026-02-10 12:49:25] Queue dispense complete (225.00 µL @ S20R)
+[2026-02-10 12:49:26] Queue completed.
+[2026-02-10 13:29:40] Starting SWV run for MUX channels: 1, 2, 3, 4
+[2026-02-10 13:29:40] Starting SWV run (MUX ch 1) (000_swv_ch1.ms)
+[2026-02-10 13:29:40] ============================================================
+[2026-02-10 13:29:40] Starting measurement for: 000_swv_ch1.ms
+[2026-02-10 13:29:40] ============================================================
+[2026-02-10 13:29:40] Scanning for devices...
+[2026-02-10 13:29:40]   Found port: USB Serial Port (COM8) (COM8)
+[2026-02-10 13:29:40]   Found port: Communications Port (COM1) (COM1)
+[2026-02-10 13:29:40]   Found port: USB Serial Port (COM10) (COM10)
+[2026-02-10 13:29:40] Multiple devices found: ['COM10', 'COM8']
+[2026-02-10 13:29:40] Using first device: COM10 (pump port COM8 deprioritized)
+[2026-02-10 13:29:40] Connecting to COM10...
+[2026-02-10 13:29:42] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-02-10 13:29:42] Sending script to device...
+[2026-02-10 13:29:43] Script sent. Collecting data...
+[2026-02-10 13:29:43] ----------------------------------------
+[2026-02-10 13:29:43] R*
+[2026-02-10 13:29:43] e
+[2026-02-10 13:29:43] M0002
+[2026-02-10 13:29:45] *
+[2026-02-10 13:29:51] Warning: data stream idle timed out
+[2026-02-10 13:29:51] 
+Data saved to: measurement_data\final_version_20260210_124413\my_exp_20260210_124418\000_swv_ch1_132951.csv
+[2026-02-10 13:29:51] Total data points: 254
+[2026-02-10 13:29:51] Disconnected from device
+[2026-02-10 13:29:51] Starting SWV run (MUX ch 2) (001_swv_ch2.ms)
+[2026-02-10 13:29:51] ============================================================
+[2026-02-10 13:29:51] Starting measurement for: 001_swv_ch2.ms
+[2026-02-10 13:29:51] ============================================================
+[2026-02-10 13:29:51] Scanning for devices...
+[2026-02-10 13:29:51]   Found port: USB Serial Port (COM8) (COM8)
+[2026-02-10 13:29:51]   Found port: Communications Port (COM1) (COM1)
+[2026-02-10 13:29:51]   Found port: USB Serial Port (COM10) (COM10)
+[2026-02-10 13:29:51] Multiple devices found: ['COM10', 'COM8']
+[2026-02-10 13:29:51] Using first device: COM10 (pump port COM8 deprioritized)
+[2026-02-10 13:29:51] Connecting to COM10...
+[2026-02-10 13:29:53] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-02-10 13:29:53] Sending script to device...
+[2026-02-10 13:29:53] Script sent. Collecting data...
+[2026-02-10 13:29:53] ----------------------------------------
+[2026-02-10 13:29:53] R*
+[2026-02-10 13:29:53] e
+[2026-02-10 13:29:53] M0002
+[2026-02-10 13:29:56] *
+[2026-02-10 13:30:01] Warning: data stream idle timed out
+[2026-02-10 13:30:01] 
+Data saved to: measurement_data\final_version_20260210_124413\my_exp_20260210_124418\001_swv_ch2_133001.csv
+[2026-02-10 13:30:01] Total data points: 254
+[2026-02-10 13:30:01] Disconnected from device
+[2026-02-10 13:30:01] Starting SWV run (MUX ch 3) (002_swv_ch3.ms)
+[2026-02-10 13:30:01] ============================================================
+[2026-02-10 13:30:01] Starting measurement for: 002_swv_ch3.ms
+[2026-02-10 13:30:01] ============================================================
+[2026-02-10 13:30:01] Scanning for devices...
+[2026-02-10 13:30:01]   Found port: USB Serial Port (COM8) (COM8)
+[2026-02-10 13:30:01]   Found port: Communications Port (COM1) (COM1)
+[2026-02-10 13:30:01]   Found port: USB Serial Port (COM10) (COM10)
+[2026-02-10 13:30:01] Multiple devices found: ['COM10', 'COM8']
+[2026-02-10 13:30:01] Using first device: COM10 (pump port COM8 deprioritized)
+[2026-02-10 13:30:01] Connecting to COM10...
+[2026-02-10 13:30:03] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-02-10 13:30:03] Sending script to device...
+[2026-02-10 13:30:04] Script sent. Collecting data...
+[2026-02-10 13:30:04] ----------------------------------------
+[2026-02-10 13:30:04] R*
+[2026-02-10 13:30:04] e
+[2026-02-10 13:30:04] M0002
+[2026-02-10 13:30:07] *
+[2026-02-10 13:30:12] Warning: data stream idle timed out
+[2026-02-10 13:30:12] 
+Data saved to: measurement_data\final_version_20260210_124413\my_exp_20260210_124418\002_swv_ch3_133012.csv
+[2026-02-10 13:30:12] Total data points: 254
+[2026-02-10 13:30:12] Disconnected from device
+[2026-02-10 13:30:12] Starting SWV run (MUX ch 4) (003_swv_ch4.ms)
+[2026-02-10 13:30:12] ============================================================
+[2026-02-10 13:30:12] Starting measurement for: 003_swv_ch4.ms
+[2026-02-10 13:30:12] ============================================================
+[2026-02-10 13:30:12] Scanning for devices...
+[2026-02-10 13:30:12]   Found port: USB Serial Port (COM8) (COM8)
+[2026-02-10 13:30:12]   Found port: Communications Port (COM1) (COM1)
+[2026-02-10 13:30:12]   Found port: USB Serial Port (COM10) (COM10)
+[2026-02-10 13:30:12] Multiple devices found: ['COM10', 'COM8']
+[2026-02-10 13:30:12] Using first device: COM10 (pump port COM8 deprioritized)
+[2026-02-10 13:30:12] Connecting to COM10...
+[2026-02-10 13:30:14] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-02-10 13:30:14] Sending script to device...
+[2026-02-10 13:30:14] Script sent. Collecting data...
+[2026-02-10 13:30:14] ----------------------------------------
+[2026-02-10 13:30:14] R*
+[2026-02-10 13:30:14] e
+[2026-02-10 13:30:14] M0002
+[2026-02-10 13:30:17] *
+[2026-02-10 13:30:22] Warning: data stream idle timed out
+[2026-02-10 13:30:22] 
+Data saved to: measurement_data\final_version_20260210_124413\my_exp_20260210_124418\003_swv_ch4_133022.csv
+[2026-02-10 13:30:22] Total data points: 254
+[2026-02-10 13:30:22] Disconnected from device
+[2026-02-10 13:30:22] SWV MUX run completed successfully.
+[2026-02-10 13:30:50] Plot warning: no Time (s) column; using Potential (V) instead.
+[2026-02-10 13:33:17] Plot warning: no Time (s) column; using Potential (V) instead.
+[2026-02-10 13:33:26] Plot warning: no Time (s) column; using Potential (V) instead.
+[2026-02-10 13:33:28] Plot warning: no Time (s) column; using Potential (V) instead.
