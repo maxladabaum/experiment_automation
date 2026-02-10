@@ -639,6 +639,41 @@ class SerialMeasurementRunner:
         return success, csv_path
 
 
+class _AutoScaleToolbar(NavigationToolbar2Tk):
+    def __init__(self, canvas, window, *, get_bounds=None):
+        self._get_bounds = get_bounds
+        super().__init__(canvas, window)
+
+    def press_zoom(self, event):
+        if event.button != 1:
+            return
+        return super().press_zoom(event)
+
+    def release_zoom(self, event):
+        if event.button != 1:
+            return
+        return super().release_zoom(event)
+
+    def home(self, *args):
+        ax = self.canvas.figure.axes[0] if self.canvas.figure.axes else None
+        if ax is None:
+            return
+        if self._get_bounds is not None:
+            bounds = self._get_bounds()
+        else:
+            bounds = None
+        if bounds:
+            x_min, x_max, y_min, y_max = bounds
+            ax.set_xlim(x_min, x_max)
+            ax.set_ylim(y_min, y_max)
+            self.canvas.draw_idle()
+            return
+        ax.relim()
+        ax.autoscale_view(tight=True)
+        ax.margins(x=0.05, y=0.05)
+        self.canvas.draw_idle()
+
+
 class ElectrochemGUI:
     def __init__(self, root):
         self.root = root
@@ -686,6 +721,14 @@ class ElectrochemGUI:
         self.show_swv_components = False
         self.plot_x_mode = "potential"
         self.last_plotted_csv = None
+        self.measure_start = None
+        self.measure_artists = []
+        self.measure_preview_line = None
+        self.measure_preview_text = None
+        self.pan_start = None
+        self.pan_xlim = None
+        self.pan_ylim = None
+        self.plot_data_bounds = None
 
         self.queue_drag_item = None
         self.queue_reorder_pending = False
@@ -1675,10 +1718,15 @@ class ElectrochemGUI:
         ttk.Button(control_frame, text="Clear Queue", command=self.clear_queue).pack(side='left', padx=5)
         ttk.Button(control_frame, text="Delete Selected", command=self.delete_selected_queue_item).pack(side='left', padx=5)
         ttk.Button(control_frame, text="Confirm Move", command=self.confirm_queue_reorder).pack(side='left', padx=5)
-        self.queue_tree = ttk.Treeview(top_frame, columns=('Type', 'Status', 'Details'), show='tree headings', height=8)
+        tree_frame = ttk.Frame(top_frame)
+        tree_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        self.queue_tree = ttk.Treeview(tree_frame, columns=('Type', 'Status', 'Details'), show='tree headings', height=8)
         self.queue_tree.heading('#0', text='#'); self.queue_tree.heading('Type', text='Type'); self.queue_tree.heading('Status', text='Status'); self.queue_tree.heading('Details', text='Details')
         self.queue_tree.column('#0', width=50); self.queue_tree.column('Type', width=150); self.queue_tree.column('Status', width=100); self.queue_tree.column('Details', width=400)
-        self.queue_tree.pack(fill='both', expand=True, padx=10, pady=5)
+        queue_scrollbar = ttk.Scrollbar(tree_frame, orient='vertical', command=self.queue_tree.yview)
+        self.queue_tree.configure(yscrollcommand=queue_scrollbar.set)
+        self.queue_tree.pack(side='left', fill='both', expand=True)
+        queue_scrollbar.pack(side='right', fill='y')
         self.queue_tree.bind("<ButtonPress-1>", self._on_queue_drag_start)
         self.queue_tree.bind("<B1-Motion>", self._on_queue_drag_motion)
         self.queue_tree.bind("<ButtonRelease-1>", self._on_queue_drag_release)
@@ -1716,6 +1764,7 @@ class ElectrochemGUI:
         self.plot_swv_btn.pack(side='left', padx=5)
         self.plot_x_btn = ttk.Button(plot_controls, text="Plot vs Time", command=self.toggle_plot_x_mode)
         self.plot_x_btn.pack(side='left', padx=5)
+        ttk.Button(plot_controls, text="Clear Measurements", command=self.clear_measurements).pack(side='left', padx=5)
 
         # Create a Matplotlib figure and axis
         self.fig = Figure(figsize=(8, 6), dpi=100)
@@ -1730,10 +1779,11 @@ class ElectrochemGUI:
         self.canvas.draw()
         toolbar_frame = ttk.Frame(self.plotter_frame)
         toolbar_frame.pack(side='top', fill='x')
-        self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
+        self.toolbar = _AutoScaleToolbar(self.canvas, toolbar_frame, get_bounds=self._get_plot_data_bounds)
         self.toolbar.update()
 
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self._connect_plot_interactions()
 
     def load_and_plot_csv(self):
         """Opens a file dialog to select a CSV and plots it."""
@@ -1744,6 +1794,222 @@ class ElectrochemGUI:
         if filepath:
             self.last_plotted_csv = filepath
             self.plot_data(filepath)
+
+    def _connect_plot_interactions(self):
+        self.canvas.mpl_connect("scroll_event", self._on_plot_scroll)
+        self.canvas.mpl_connect("button_press_event", self._on_plot_press)
+        self.canvas.mpl_connect("button_release_event", self._on_plot_release)
+        self.canvas.mpl_connect("motion_notify_event", self._on_plot_motion)
+
+    def _on_plot_scroll(self, event):
+        if event.inaxes != self.ax:
+            return
+        if event.xdata is None or event.ydata is None:
+            return
+        zoom_factor = 1.06
+        scale = (1 / zoom_factor) if event.button == "up" else zoom_factor
+        x_min, x_max = self.ax.get_xlim()
+        y_min, y_max = self.ax.get_ylim()
+        x_range = (x_max - x_min) * scale
+        y_range = (y_max - y_min) * scale
+        x_axis_center = (x_min + x_max) / 2
+        y_axis_center = (y_min + y_max) / 2
+        anchor = 0.6
+        x_center = (event.xdata * anchor) + (x_axis_center * (1 - anchor))
+        y_center = (event.ydata * anchor) + (y_axis_center * (1 - anchor))
+        self.ax.set_xlim(x_center - x_range / 2, x_center + x_range / 2)
+        self.ax.set_ylim(y_center - y_range / 2, y_center + y_range / 2)
+        self.canvas.draw_idle()
+
+    def _on_plot_press(self, event):
+        if event.inaxes != self.ax:
+            return
+        if self._plot_pan_active():
+            if self.measure_start is not None:
+                self._cancel_measurement_preview()
+            return
+        if self._plot_zoom_active() and event.button == 1:
+            if self.measure_start is not None:
+                self._cancel_measurement_preview()
+            return
+        if event.button == 3:
+            if self.measure_start is not None:
+                self._cancel_measurement_preview()
+                return
+            if event.x is None or event.y is None:
+                return
+            self.pan_start = (event.x, event.y)
+            self.pan_xlim = self.ax.get_xlim()
+            self.pan_ylim = self.ax.get_ylim()
+            return
+        if event.button == 1:
+            if event.xdata is None or event.ydata is None:
+                return
+            if self.measure_start is None:
+                self.measure_start = (event.xdata, event.ydata)
+                self._start_measure_preview(self.measure_start)
+            else:
+                self._finalize_measurement((event.xdata, event.ydata))
+
+    def _on_plot_release(self, event):
+        if event.button == 3:
+            self.pan_start = None
+            self.pan_xlim = None
+            self.pan_ylim = None
+
+    def _on_plot_motion(self, event):
+        if event.inaxes != self.ax:
+            return
+        if self._plot_pan_active() and self.measure_start is not None:
+            self._cancel_measurement_preview()
+            return
+        if self._plot_zoom_active() and self.measure_start is not None:
+            self._cancel_measurement_preview()
+            return
+        if self.pan_start is not None:
+            if event.x is None or event.y is None:
+                return
+            start_x, start_y = self.pan_start
+            if self.pan_xlim and self.pan_ylim:
+                inv = self.ax.transData.inverted()
+                x0, y0 = inv.transform((start_x, start_y))
+                x1, y1 = inv.transform((event.x, event.y))
+                dx = x1 - x0
+                dy = y1 - y0
+                x_min, x_max = self.pan_xlim
+                y_min, y_max = self.pan_ylim
+                self.ax.set_xlim(x_min - dx, x_max - dx)
+                self.ax.set_ylim(y_min - dy, y_max - dy)
+                self.canvas.draw_idle()
+            return
+        if self.measure_start is not None and event.xdata is not None and event.ydata is not None:
+            self._update_measure_preview((event.xdata, event.ydata))
+
+    def _finalize_measurement(self, end_point):
+        if self.measure_start is None:
+            return
+        x0, y0 = self.measure_start
+        x1, y1 = end_point
+        dx = x1 - x0
+        dy = y1 - y0
+        x_label = self.ax.get_xlabel()
+        y_label = self.ax.get_ylabel()
+        if "Time" in x_label:
+            dx_label = "dt"
+        elif "Potential" in x_label:
+            dx_label = "dV"
+        else:
+            dx_label = "dx"
+        if "Current" in y_label:
+            dy_label = "dI"
+        else:
+            dy_label = "dy"
+        if self.measure_preview_line is None:
+            line = self.ax.plot([x0, x1], [y0, y1], color="gray", linestyle="--", lw=1)[0]
+        else:
+            line = self.measure_preview_line
+            line.set_data([x0, x1], [y0, y1])
+        if self.measure_preview_text is None:
+            annotation = self.ax.annotate(
+                "",
+                xy=(x1, y1),
+                xytext=(5, 5),
+                textcoords="offset points",
+                fontsize=9,
+                color="gray",
+                bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.7),
+            )
+        else:
+            annotation = self.measure_preview_text
+            annotation.xy = (x1, y1)
+        annotation.set_text(f"{dx_label}={dx:.4g}, {dy_label}={dy:.4g}")
+        annotation.set_visible(True)
+        self.measure_artists.extend([line, annotation])
+        self.measure_start = None
+        self.measure_preview_line = None
+        self.measure_preview_text = None
+        self.canvas.draw_idle()
+
+    def clear_measurements(self):
+        if self.measure_preview_line is not None:
+            try:
+                self.measure_preview_line.remove()
+            except Exception:
+                pass
+            self.measure_preview_line = None
+        if self.measure_preview_text is not None:
+            try:
+                self.measure_preview_text.remove()
+            except Exception:
+                pass
+            self.measure_preview_text = None
+        if not self.measure_artists:
+            return
+        for artist in list(self.measure_artists):
+            try:
+                artist.remove()
+            except Exception:
+                pass
+        self.measure_artists = []
+        self.canvas.draw_idle()
+
+    def _cancel_measurement_preview(self):
+        if self.measure_preview_line is not None:
+            try:
+                self.measure_preview_line.remove()
+            except Exception:
+                pass
+            self.measure_preview_line = None
+        if self.measure_preview_text is not None:
+            try:
+                self.measure_preview_text.remove()
+            except Exception:
+                pass
+            self.measure_preview_text = None
+        self.measure_start = None
+        self.canvas.draw_idle()
+
+    def _start_measure_preview(self, start_point):
+        x0, y0 = start_point
+        self.measure_preview_line = self.ax.plot([x0, x0], [y0, y0], color="gray", linestyle="--", lw=1)[0]
+        self.measure_preview_text = self.ax.annotate(
+            "",
+            xy=(x0, y0),
+            xytext=(5, 5),
+            textcoords="offset points",
+            fontsize=9,
+            color="gray",
+            bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.7),
+        )
+        self.measure_preview_text.set_visible(False)
+        self.canvas.draw_idle()
+
+    def _update_measure_preview(self, end_point):
+        if self.measure_preview_line is None or self.measure_start is None:
+            return
+        x0, y0 = self.measure_start
+        x1, y1 = end_point
+        dx = x1 - x0
+        dy = y1 - y0
+        x_label = self.ax.get_xlabel()
+        y_label = self.ax.get_ylabel()
+        if "Time" in x_label:
+            dx_label = "dt"
+        elif "Potential" in x_label:
+            dx_label = "dV"
+        else:
+            dx_label = "dx"
+        if "Current" in y_label:
+            dy_label = "dI"
+        else:
+            dy_label = "dy"
+        self.measure_preview_line.set_data([x0, x1], [y0, y1])
+        if self.measure_preview_text is None:
+            return
+        self.measure_preview_text.xy = (x1, y1)
+        self.measure_preview_text.set_text(f"{dx_label}={dx:.4g}, {dy_label}={dy:.4g}")
+        self.measure_preview_text.set_visible(True)
+        self.canvas.draw_idle()
 
     def toggle_swv_components(self):
         self.show_swv_components = not self.show_swv_components
@@ -1875,6 +2141,12 @@ class ElectrochemGUI:
                 use_time = True
                 self.log_message("Plot warning: no Potential (V) column; using Time (s) instead.")
             x_col = time_col if use_time else potential_col
+            x_series = pd.to_numeric(df[x_col], errors="coerce").dropna()
+            x_min = x_max = None
+            if not x_series.empty:
+                x_min = float(x_series.min())
+                x_max = float(x_series.max())
+            y_min = y_max = None
             for col, suffix in series:
                 series_label = f"{base_label} ({suffix})" if base_label else suffix
                 series_key = (base_label, suffix)
@@ -1883,6 +2155,13 @@ class ElectrochemGUI:
                     color = next(self.plot_color_cycle)
                     self.plot_series_colors[series_key] = color
                 self.ax.plot(df[x_col], df[col], color=color, label=series_label)
+                y_series = pd.to_numeric(df[col], errors="coerce").dropna()
+                if not y_series.empty:
+                    series_min = float(y_series.min())
+                    series_max = float(y_series.max())
+                    y_min = series_min if y_min is None else min(y_min, series_min)
+                    y_max = series_max if y_max is None else max(y_max, series_max)
+            self.plot_data_bounds = self._build_plot_bounds(x_min, x_max, y_min, y_max)
             self.ax.set_title('Voltammogram')
             if use_time and time_col:
                 self.ax.set_xlabel('Time (s)')
@@ -1921,6 +2200,9 @@ class ElectrochemGUI:
         self.live_plot_t = []
         self.last_live_plot_color = None
         self.last_live_plot_label = None
+        self.measure_start = None
+        self.clear_measurements()
+        self.plot_data_bounds = None
         self.canvas.draw()
 
     def start_live_plot(self, title=None, color=None, label=None):
@@ -2000,6 +2282,7 @@ class ElectrochemGUI:
             self.ax.autoscale_view()
             if self.last_live_plot_label:
                 self.ax.legend(loc='best')
+            self.plot_data_bounds = self._build_plot_bounds_from_lists(x_vals, y_vals)
             self.canvas.draw_idle()
 
         self.live_plot_job = self.root.after(100, self._poll_live_plot_queue)
@@ -2013,6 +2296,40 @@ class ElectrochemGUI:
         if use_time:
             return [y for t, y in zip(self.live_plot_t, self.live_plot_y) if t is not None]
         return [y for x, y in zip(self.live_plot_x, self.live_plot_y) if x is not None]
+
+    def _plot_zoom_active(self):
+        return self.toolbar is not None and getattr(self.toolbar, "mode", "") == "zoom rect"
+
+    def _plot_pan_active(self):
+        return self.toolbar is not None and getattr(self.toolbar, "mode", "") == "pan/zoom"
+
+    def _build_plot_bounds(self, x_min, x_max, y_min, y_max):
+        if x_min is None or x_max is None or y_min is None or y_max is None:
+            return None
+        x_range = x_max - x_min
+        y_range = y_max - y_min
+        if x_range == 0:
+            x_range = max(abs(x_min), 1.0) * 0.1
+        if y_range == 0:
+            y_range = max(abs(y_min), 1.0) * 0.1
+        x_margin = x_range * 0.05
+        y_margin = y_range * 0.05
+        return (x_min - x_margin, x_max + x_margin, y_min - y_margin, y_max + y_margin)
+
+    def _build_plot_bounds_from_lists(self, x_vals, y_vals):
+        if not x_vals or not y_vals:
+            return None
+        try:
+            x_min = min(x_vals)
+            x_max = max(x_vals)
+            y_min = min(y_vals)
+            y_max = max(y_vals)
+        except ValueError:
+            return None
+        return self._build_plot_bounds(x_min, x_max, y_min, y_max)
+
+    def _get_plot_data_bounds(self):
+        return self.plot_data_bounds
     def clear_params_frame(self):
         for widget in self.params_frame.winfo_children(): widget.destroy()
 
