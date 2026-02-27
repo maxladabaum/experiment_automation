@@ -474,6 +474,7 @@ class SerialMeasurementRunner:
         try:
             data_point = {}
             currents = []
+            currents_amp = []
             for var in package:
                 if var.id in ['ab', 'da']:
                     if 'potential' not in data_point:
@@ -489,10 +490,11 @@ class SerialMeasurementRunner:
                         data_point['time'] = time_raw + self.time_offset
                         self._update_segment_time(time_raw)
                 elif var.id == 'ba':
-                    current = var.value * 1e6
+                    current_amp = var.value
                     if self.invert_current:
-                        current = -current
-                    currents.append(current)
+                        current_amp = -current_amp
+                    currents_amp.append(current_amp)
+                    currents.append(current_amp * 1e6)
 
             if currents:
                 if len(currents) >= 3:
@@ -500,12 +502,20 @@ class SerialMeasurementRunner:
                     data_point['current_reverse'] = currents[1]
                     data_point['current_forward'] = currents[2]
                     data_point['current'] = data_point['current_diff']
+                    data_point['current_diff_amp'] = -currents_amp[0]
+                    data_point['current_reverse_amp'] = currents_amp[1]
+                    data_point['current_forward_amp'] = currents_amp[2]
+                    data_point['current_amp'] = data_point['current_diff_amp']
                 elif len(currents) == 2:
                     data_point['current_forward'] = currents[0]
                     data_point['current_reverse'] = currents[1]
                     data_point['current'] = currents[1]
+                    data_point['current_forward_amp'] = currents_amp[0]
+                    data_point['current_reverse_amp'] = currents_amp[1]
+                    data_point['current_amp'] = currents_amp[1]
                 else:
                     data_point['current'] = currents[0]
+                    data_point['current_amp'] = currents_amp[0]
 
             if 'current' in data_point and ('potential' in data_point or 'time' in data_point):
                 self.data_points.append(data_point)
@@ -533,6 +543,11 @@ class SerialMeasurementRunner:
         if not self.data_points:
             self.log("No data to save")
             return None
+        # Drop internal-only amp fields so DictWriter matches header.
+        rows = [
+            {k: v for k, v in dp.items() if not k.endswith("_amp")}
+            for dp in self.data_points
+        ]
         base_name = self.script_path.stem
         timestamp = datetime.now().strftime('%H%M%S')
         csv_filename = self.data_folder / f"{base_name}_{timestamp}.csv"
@@ -558,7 +573,7 @@ class SerialMeasurementRunner:
                 label_map['current_diff'] = 'Current Diff (uA)'
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writerow({key: label_map.get(key, key) for key in fieldnames})
-            writer.writerows(self.data_points)
+            writer.writerows(rows)
         self.log(f"\nData saved to: {csv_filename}")
         return csv_filename
 
@@ -724,7 +739,7 @@ class ElectrochemGUI:
         self.custom_script_name = None
         self.custom_script_has_mux_header = False
         self.current_runner = None
-        self.debug_raw_packets = tk.BooleanVar(value=False)
+        self.debug_raw_packets = tk.BooleanVar(value=True)
         
         self.pump_ctrl = None
         self.pump_busy = False
@@ -741,6 +756,8 @@ class ElectrochemGUI:
         self.plot_line = None
         self.last_live_plot_color = None
         self.last_live_plot_label = None
+        self.live_plot_current_unit = "uA"
+        self.live_plot_current_scale = 1e-6
         self.plot_colors = (
             plt.rcParams.get('axes.prop_cycle', plt.cycler(color=['#1f77b4']))
             .by_key()
@@ -1062,9 +1079,28 @@ class ElectrochemGUI:
         cond_pot = to_si_string(self.cv_params['cond_potential'].get(), 'V')
         cond_time = self.cv_params['cond_time'].get()
 
+        min_pot = min(float(self.cv_params['begin_potential'].get()),
+                      float(self.cv_params['vertex1'].get()),
+                      float(self.cv_params['vertex2'].get()))
+        max_pot = max(float(self.cv_params['begin_potential'].get()),
+                      float(self.cv_params['vertex1'].get()),
+                      float(self.cv_params['vertex2'].get()))
+        min_pot_si = to_si_string(min_pot, 'V')
+        max_pot_si = to_si_string(max_pot, 'V')
+
         script_parts = [
-            "e", "var c", "var p", "set_pgstat_mode 2", "set_max_bandwidth 40",
-            "set_range ba 100u", "set_autoranging ba 1n 100u"
+            "e",
+            "var c",
+            "var p",
+            "var t",
+            "set_pgstat_chan 1",
+            "set_pgstat_mode 0",
+            "set_pgstat_chan 0",
+            "set_pgstat_mode 2",
+            "set_max_bandwidth 400",
+            f"set_range_minmax da {min_pot_si} {max_pot_si}",
+            "set_range ba 29500n",
+            "set_autoranging ba 29500n 29500n",
         ]
         
         if float(cond_time) > 0:
@@ -1075,6 +1111,8 @@ class ElectrochemGUI:
             ])
         else:
             script_parts.extend([f"set_e {begin}", "cell_on"])
+
+        script_parts.append("store_var t 0 eb")
         
         cv_command = f"meas_loop_cv p c {begin} {v1} {v2} {step} {scan_rate}"
         if int(n_scans) > 1:
@@ -1082,8 +1120,16 @@ class ElectrochemGUI:
         
         script_parts.extend([
             "# CV measurement loop",
-            cv_command, "\tpck_start", "\tpck_add p", "\tpck_add c", "\tpck_end",
-            "endloop", "on_finished:", "cell_off"
+            cv_command,
+            "\tpck_start",
+            "\t\tpck_add p",
+            "\t\tpck_add c",
+            "\t\tpck_add t",
+            "\tpck_end",
+            "\tadd_var t 9879557n",
+            "endloop",
+            "on_finished:",
+            "\tcell_off",
         ])
         
         return "\n".join(script_parts)
@@ -1279,7 +1325,7 @@ class ElectrochemGUI:
         ttk.Button(left_frame, text="Check Device Connection", command=self.check_device).pack(pady=5)
         ttk.Checkbutton(
             left_frame,
-            text="Save raw packets (debug)",
+            text="Save raw packets",
             variable=self.debug_raw_packets,
         ).pack(pady=5)
         self.params_frame = ttk.LabelFrame(self.method_frame, text="Parameters", padding=10)
@@ -2070,7 +2116,7 @@ class ElectrochemGUI:
         self.ax = self.fig.add_subplot(111)
         self.ax.set_title('Voltammogram')
         self.ax.set_xlabel('Potential (V)')
-        self.ax.set_ylabel('Current (uA)')
+        self.ax.set_ylabel(f'Current ({self.live_plot_current_unit})')
         self.ax.grid(True)
 
         # Create a canvas to embed the plot in Tkinter
@@ -2338,6 +2384,7 @@ class ElectrochemGUI:
             self.ax.set_xlabel('Time (s)')
         else:
             self.ax.set_xlabel('Potential (V)')
+        self.ax.set_ylabel(f"Current ({self.live_plot_current_unit})")
         use_time = self.plot_x_mode == "time" and any(t is not None for t in self.live_plot_t)
         if self.plot_line is not None:
             self.plot_line.set_data(self._live_plot_x_values(use_time), self._live_plot_y_values(use_time))
@@ -2367,8 +2414,49 @@ class ElectrochemGUI:
         normalized = header.strip().lower()
         normalized = normalized.replace("\u03BC", "\u00B5")
         normalized = normalized.replace("\u00B5", "mu")
+        normalized = normalized.replace("\u00C2", "")
         normalized = normalized.replace("\uFFFD", "mu")
         return normalized
+
+    @staticmethod
+    def _parse_current_unit(header: str):
+        """Return (unit_label, factor_to_amp) parsed from a current column header."""
+        normalized = header.strip()
+        unit_label = None
+        if "(" in normalized and ")" in normalized:
+            unit_label = normalized.rsplit("(", 1)[-1].rstrip(")").strip()
+        if not unit_label:
+            return None, None
+        unit_key = unit_label.lower().replace("\u00C2", "")
+        unit_key = unit_key.replace("\u03BC", "u").replace("\u00B5", "u").replace(" ", "")
+        unit_key = unit_key.replace("mu", "u")
+        unit_map = {
+            "a": ("A", 1.0),
+            "ma": ("mA", 1e-3),
+            "ua": ("uA", 1e-6),
+            "na": ("nA", 1e-9),
+            "pa": ("pA", 1e-12),
+            "fa": ("fA", 1e-15),
+        }
+        return unit_map.get(unit_key, (None, None))
+
+    @staticmethod
+    def _choose_current_display_unit(max_abs_amp: float):
+        """Choose a display unit and scale based on max absolute current in amps."""
+        if max_abs_amp is None or max_abs_amp == 0 or math.isnan(max_abs_amp):
+            return ("uA", 1e-6)
+        thresholds = [
+            (1.0, "A", 1.0),
+            (1e-3, "mA", 1e-3),
+            (1e-6, "uA", 1e-6),
+            (1e-9, "nA", 1e-9),
+            (1e-12, "pA", 1e-12),
+            (1e-15, "fA", 1e-15),
+        ]
+        for threshold, unit, scale in thresholds:
+            if max_abs_amp >= threshold:
+                return (unit, scale)
+        return ("fA", 1e-15)
 
     def _find_column(self, df, candidates):
         for candidate in candidates:
@@ -2394,10 +2482,11 @@ class ElectrochemGUI:
 
         potential_col = self._find_column(df, ("Potential (V)",))
         time_col = self._find_column(df, ("Time (s)",))
-        current_col = self._find_column(df, ("Current (uA)", "Current (µA)", "Current (�A)"))
-        forward_col = self._find_column(df, ("Current Forward (uA)", "Current Forward (µA)", "Current Forward (�A)"))
-        reverse_col = self._find_column(df, ("Current Reverse (uA)", "Current Reverse (µA)", "Current Reverse (�A)"))
-        diff_col = self._find_column(df, ("Current Diff (uA)", "Current Diff (µA)", "Current Diff (�A)"))
+        current_units = ("A", "mA", "uA", "\u00B5A", "nA", "pA", "fA")
+        current_col = self._find_column(df, tuple(f"Current ({unit})" for unit in current_units))
+        forward_col = self._find_column(df, tuple(f"Current Forward ({unit})" for unit in current_units))
+        reverse_col = self._find_column(df, tuple(f"Current Reverse ({unit})" for unit in current_units))
+        diff_col = self._find_column(df, tuple(f"Current Diff ({unit})" for unit in current_units))
 
         if not potential_col and not time_col:
             message = "Plot error: CSV file must contain 'Potential (V)' or 'Time (s)'."
@@ -2439,6 +2528,11 @@ class ElectrochemGUI:
                         line.remove()
             existing_labels = {line.get_label() for line in self.ax.lines if line.get_label()}
             series = []
+            current_columns = [col for col in (diff_col, current_col, forward_col, reverse_col) if col]
+            current_unit_factors = {}
+            for col in current_columns:
+                _, factor = self._parse_current_unit(col)
+                current_unit_factors[col] = 1e-6 if factor is None else factor
             if diff_col:
                 series.append((diff_col, "Diff"))
             elif current_col:
@@ -2465,6 +2559,15 @@ class ElectrochemGUI:
                 x_min = float(x_series.min())
                 x_max = float(x_series.max())
             y_min = y_max = None
+            max_abs_amp = 0.0
+            series_data_amp = {}
+            for col, suffix in series:
+                y_series_amp = pd.to_numeric(df[col], errors="coerce") * current_unit_factors.get(col, 1e-6)
+                series_data_amp[col] = y_series_amp
+                y_abs = y_series_amp.abs().dropna()
+                if not y_abs.empty:
+                    max_abs_amp = max(max_abs_amp, float(y_abs.max()))
+            display_unit, display_scale = self._choose_current_display_unit(max_abs_amp)
             for col, suffix in series:
                 series_label = f"{legend_base} ({suffix})" if legend_base else suffix
                 series_key = (legend_base, suffix)
@@ -2473,9 +2576,10 @@ class ElectrochemGUI:
                     color = next(self.plot_color_cycle)
                     self.plot_series_colors[series_key] = color
                 plot_label = "_nolegend_" if series_label in existing_labels else series_label
-                self.ax.plot(df[x_col], df[col], color=color, label=plot_label)
+                y_scaled = series_data_amp[col] / display_scale
+                self.ax.plot(df[x_col], y_scaled, color=color, label=plot_label)
                 existing_labels.add(series_label)
-                y_series = pd.to_numeric(df[col], errors="coerce").dropna()
+                y_series = y_scaled.dropna()
                 if not y_series.empty:
                     series_min = float(y_series.min())
                     series_max = float(y_series.max())
@@ -2487,7 +2591,7 @@ class ElectrochemGUI:
                 self.ax.set_xlabel('Time (s)')
             else:
                 self.ax.set_xlabel('Potential (V)')
-            self.ax.set_ylabel('Current (uA)')
+            self.ax.set_ylabel(f'Current ({display_unit})')
             self.ax.grid(visible=True, which='major', linestyle='-')
             self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
             self.ax.minorticks_on()
@@ -2508,7 +2612,9 @@ class ElectrochemGUI:
             self.ax.set_xlabel('Time (s)')
         else:
             self.ax.set_xlabel('Potential (V)')
-        self.ax.set_ylabel('Current (uA)')
+        self.live_plot_current_unit = "uA"
+        self.live_plot_current_scale = 1e-6
+        self.ax.set_ylabel(f'Current ({self.live_plot_current_unit})')
         self.ax.grid(visible=True, which='major', linestyle='-')
         self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
         self.ax.minorticks_on()
@@ -2531,6 +2637,8 @@ class ElectrochemGUI:
         self.live_plot_y = []
         self.live_plot_t = []
         self.live_plot_active = True
+        self.live_plot_current_unit = "uA"
+        self.live_plot_current_scale = 1e-6
 
         if color is None:
             color = next(self.plot_color_cycle)
@@ -2543,7 +2651,7 @@ class ElectrochemGUI:
             self.ax.set_xlabel('Time (s)')
         else:
             self.ax.set_xlabel('Potential (V)')
-        self.ax.set_ylabel('Current (uA)')
+        self.ax.set_ylabel(f'Current ({self.live_plot_current_unit})')
         self.ax.grid(visible=True, which='major', linestyle='-')
         self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
         self.ax.minorticks_on()
@@ -2564,13 +2672,15 @@ class ElectrochemGUI:
         if not self.live_plot_active:
             return
         try:
-            current = data_point['current']
+            current_amp = data_point.get('current_amp')
+            if current_amp is None:
+                current_amp = data_point['current'] * 1e-6
         except KeyError:
             return
         potential = data_point.get('potential')
         timestamp = data_point.get('time')
         try:
-            self.live_plot_queue.put_nowait((potential, current, timestamp))
+            self.live_plot_queue.put_nowait((potential, current_amp, timestamp))
         except queue.Full:
             return
 
@@ -2592,6 +2702,19 @@ class ElectrochemGUI:
 
         if updated:
             use_time = self.plot_x_mode == "time" and any(t is not None for t in self.live_plot_t)
+            max_abs_amp = 0.0
+            for y_val in self.live_plot_y:
+                if y_val is None:
+                    continue
+                try:
+                    max_abs_amp = max(max_abs_amp, abs(float(y_val)))
+                except Exception:
+                    continue
+            unit, scale = self._choose_current_display_unit(max_abs_amp)
+            if unit != self.live_plot_current_unit or scale != self.live_plot_current_scale:
+                self.live_plot_current_unit = unit
+                self.live_plot_current_scale = scale
+                self.ax.set_ylabel(f"Current ({self.live_plot_current_unit})")
             x_vals = self._live_plot_x_values(use_time)
             y_vals = self._live_plot_y_values(use_time)
             if self.plot_line is None:
@@ -2614,8 +2737,13 @@ class ElectrochemGUI:
 
     def _live_plot_y_values(self, use_time: bool):
         if use_time:
-            return [y for t, y in zip(self.live_plot_t, self.live_plot_y) if t is not None]
-        return [y for x, y in zip(self.live_plot_x, self.live_plot_y) if x is not None]
+            raw_vals = [y for t, y in zip(self.live_plot_t, self.live_plot_y) if t is not None]
+        else:
+            raw_vals = [y for x, y in zip(self.live_plot_x, self.live_plot_y) if x is not None]
+        if not raw_vals:
+            return []
+        scale = self.live_plot_current_scale or 1e-6
+        return [y / scale for y in raw_vals]
 
     def _plot_zoom_active(self):
         return self.toolbar is not None and getattr(self.toolbar, "mode", "") == "zoom rect"
