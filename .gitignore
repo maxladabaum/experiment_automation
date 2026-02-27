@@ -1,0 +1,4 @@
+venv_gui/
+__pycache__/
+*.pyc
+ 
