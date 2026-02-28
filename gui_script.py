@@ -20,7 +20,13 @@ import queue
 import warnings
 import traceback
 import itertools
+import hashlib
 from typing import Dict, List, Optional
+
+# ── Canonical version of this file ──────────────────────────────────────────
+APP_VERSION = "2.0.0"          # Phase 0 consolidation + Phase 1 bug-fixes
+# ────────────────────────────────────────────────────────────────────────────
+
 
 # --- Matplotlib and Pandas imports for plotting ---
 import pandas as pd
