@@ -20,6 +20,7 @@ import queue
 import warnings
 import traceback
 import itertools
+import shutil
 from typing import Dict, List, Optional
 
 # --- Matplotlib and Pandas imports for plotting ---
@@ -232,22 +233,46 @@ def to_si_string(value_str, unit='V'):
         return f"{val:g}"
     return value_str  # Fallback for unsupported units
 
-# --- Integrated SerialMeasurementRunner Class (Unchanged) ---
+# --- Integrated SerialMeasurementRunner Class (Option 2 implemented: don't log every 'P...' line) ---
 class SerialMeasurementRunner:
-    def __init__(self, script_path, log_callback=print, data_callback=None):
+    def __init__(
+        self,
+        script_path,
+        log_callback=print,
+        data_callback=None,
+        invert_current=False,
+        raw_packet_log=False,
+        data_folder=None,
+    ):
         self.script_path = Path(script_path)
         self.data_points = []
         self.connection = None
-        self.log = log_callback # Callback to log messages to the GUI
+        self.log = log_callback  # Callback to log messages to the GUI
         self.data_callback = data_callback
         self.is_running = True
         self.partial_packet = ""
+        self.invert_current = invert_current
+        self.raw_packet_log = raw_packet_log
+        self.raw_packet_log_handle = None
+        self.raw_packet_log_path = None
+        self.time_offset = 0.0
+        self.segment_last_time_raw = None
 
         self.data_base_path = Path("measurement_data")
         self.data_base_path.mkdir(exist_ok=True)
-        date_folder = datetime.now().strftime('%Y-%m-%d')
-        self.data_folder = self.data_base_path / date_folder
-        self.data_folder.mkdir(exist_ok=True)
+        if data_folder is None:
+            date_folder = datetime.now().strftime('%Y-%m-%d')
+            self.data_folder = self.data_base_path / date_folder
+        else:
+            self.data_folder = Path(data_folder)
+        self.data_folder.mkdir(exist_ok=True, parents=True)
+
+        # Option 2: suppress per-packet logging to avoid GUI/log overload.
+        # If you want occasional progress, set these:
+        self._packet_log_every_n = 0          # 0 = never log packet progress; set e.g. 200 to log every 200 packets
+        self._packet_counter = 0
+        self._last_packet_log_t = 0.0
+        self._packet_log_min_period_s = 1.0  # never log packet progress more often than once/sec
 
     def find_device_port(self):
         self.log("Scanning for devices...")
@@ -269,6 +294,7 @@ class SerialMeasurementRunner:
                 pump_port_upper = str(PUMP_DEFAULT_COM_PORT).upper()
 
         def candidate_key(dev: str):
+            # deprioritize pump COM if it matches
             return (pump_port_upper is not None and dev.upper() == pump_port_upper, dev)
 
         candidates.sort(key=candidate_key)
@@ -285,13 +311,16 @@ class SerialMeasurementRunner:
     def connect(self, port=None):
         if port is None:
             port = self.find_device_port()
-            if port is None: return False
+            if port is None:
+                return False
         try:
             self.log(f"Connecting to {port}...")
             self.connection = serial.Serial(port=port, baudrate=230400, timeout=1, write_timeout=1)
             time.sleep(2)
             self.connection.reset_input_buffer()
             self.connection.reset_output_buffer()
+
+            # simple ping
             self.connection.write(b't\n')
             response = self.connection.readline()
             if response:
@@ -307,7 +336,7 @@ class SerialMeasurementRunner:
     def stop(self):
         self.is_running = False
 
-    def run_script(self, script):
+    def run_script(self, script: str):
         if not self.connection:
             self.log("ERROR: Not connected to device")
             return False
@@ -318,72 +347,177 @@ class SerialMeasurementRunner:
                 self.connection.write((line + '\n').encode('utf-8'))
                 time.sleep(0.01)
             self.connection.write(b'\n')
+
             self.log("Script sent. Collecting data...")
             self.log("-" * 40)
-            
-            empty_reads = 0
+
+            buffer = b""
+            packet_start_time = None
+            packet_timeout_sec = 1.0
+            idle_timeout_sec = 5.0
+            last_data_time = time.time()
+            measurement_completed = False
+
             while self.is_running:
                 try:
-                    line = self.connection.readline()
-                    if not line:
-                        if self.partial_packet:
-                            empty_reads += 1
-                            if empty_reads >= 3:
-                                self.log("Warning: incomplete data packet timed out")
-                                break
+                    waiting = self.connection.in_waiting
+                    chunk = self.connection.read(waiting or 1)
+
+                    if not chunk:
+                        if measurement_completed:
+                            break
+
+                        if (time.time() - last_data_time) >= idle_timeout_sec:
+                            self.log("Warning: data stream idle timed out")
+                            break
+
+                        # If we have some buffered bytes but no newline yet, enforce a timeout.
+                        if buffer:
+                            if packet_start_time is None:
+                                packet_start_time = time.time()
+                            elif (time.time() - packet_start_time) >= packet_timeout_sec:
+                                self.log("Warning: incomplete data packet timed out (dropping buffer)")
+                                buffer = b""
+                                packet_start_time = None
                         continue
-                    empty_reads = 0
-                    text = line.decode('utf-8', errors='ignore').rstrip('\r\n')
-                    if not text: continue
-                    if self.partial_packet:
-                        if text.startswith('P'):
-                            self.log("Warning: dropped incomplete data packet")
-                            self.partial_packet = ""
-                        else:
-                            self.log("Warning: dropped incomplete data packet")
-                            self.partial_packet = ""
-                    self.log(text)
-                    if text.startswith('P'):
-                        if not self._is_complete_packet(text):
-                            self.partial_packet = text
+
+                    last_data_time = time.time()
+                    buffer += chunk
+                    packet_start_time = None
+
+                    while b'\n' in buffer:
+                        line_bytes, _, buffer = buffer.partition(b'\n')
+                        text = line_bytes.decode('utf-8', errors='ignore').rstrip('\r')
+                        if not text:
                             continue
-                        self.parse_data_line(text)
-                    if text in ['*', 'Measurement completed', 'Script completed']:
-                        self.log("\nMeasurement completed")
+
+                        # If we were assembling a partial packet and the next line starts a new packet,
+                        # we drop the partial and resync.
+                        if self.partial_packet:
+                            if text.startswith('P'):
+                                self.log("Warning: dropped incomplete data packet")
+                                self.partial_packet = ""
+                                # continue processing this new packet line normally below
+                            else:
+                                combined = self.partial_packet + text
+                                if self._is_complete_packet(combined):
+                                    self.parse_data_line(combined)
+                                    self.partial_packet = ""
+                                else:
+                                    self.partial_packet = combined
+                                continue
+
+                        # OPTION 2: Do NOT log raw packet lines (P...)
+                        # Only log non-packet/status lines.
+                        if not text.startswith('P'):
+                            self.log(text)
+
+                        if text.startswith('P'):
+                            if not self._is_complete_packet(text):
+                                self.partial_packet = text
+                                continue
+
+                            # parse packet line (no per-packet logging)
+                            self.parse_data_line(text)
+
+                            # optional, very lightweight progress logging
+                            if self._packet_log_every_n and self._packet_log_every_n > 0:
+                                self._packet_counter += 1
+                                now = time.time()
+                                if (self._packet_counter % self._packet_log_every_n) == 0 and (now - self._last_packet_log_t) >= self._packet_log_min_period_s:
+                                    self._last_packet_log_t = now
+                                    self.log(f"(data) received {self._packet_counter} packets so far")
+
+                        # completion markers
+                        if text == '*':
+                            self._advance_time_offset()
+                            continue
+                        if text in ['Measurement completed', 'Script completed']:
+                            self.log("\nMeasurement completed")
+                            measurement_completed = True
+                            self.partial_packet = ""
+                            buffer = b""
+                            break
+
+                        # error lines
+                        if text.startswith('!'):
+                            self.log(f"Device error: {text}")
+                            if "abort" in text.lower():
+                                break
+
+                    if measurement_completed:
                         break
-                    if text.startswith('!'):
-                        self.log(f"Device error: {text}")
-                        if "abort" in text.lower(): break
+
                 except serial.SerialException as e:
                     self.log(f"Serial Error: {e}")
                     break
-            
-            if not self.is_running: self.log("Measurement stopped by user.")
+
+            if not self.is_running:
+                self.log("Measurement stopped by user.")
             return True
+
         except Exception as e:
             self.log(f"Error running script: {type(e).__name__}: {e}")
             self.log(traceback.format_exc())
             return False
 
-    def parse_data_line(self, line):
+    def parse_data_line(self, line: str):
         """
         Parses a MethodSCRIPT data package line (e.g., 'Pab...') using the
         integrated mscript parsing logic.
         """
+        self._write_raw_packet(line)
         package = parse_mscript_data_package(line + '\n')
-        
         if not package:
             return
 
         try:
             data_point = {}
+            currents = []
+            currents_amp = []
             for var in package:
                 if var.id in ['ab', 'da']:
-                    data_point['potential'] = var.value
+                    if 'potential' not in data_point:
+                        data_point['potential'] = var.value
+                elif var.id == 'eb':
+                    if 'time' not in data_point:
+                        time_raw = var.value
+                        data_point['time'] = time_raw + self.time_offset
+                        self._update_segment_time(time_raw)
+                elif var.id == 'aa':
+                    if 'time' not in data_point:
+                        time_raw = var.value
+                        data_point['time'] = time_raw + self.time_offset
+                        self._update_segment_time(time_raw)
                 elif var.id == 'ba':
-                    data_point['current'] = var.value * 1e6
-            
-            if 'potential' in data_point and 'current' in data_point:
+                    current_amp = var.value
+                    if self.invert_current:
+                        current_amp = -current_amp
+                    currents_amp.append(current_amp)
+                    currents.append(current_amp * 1e6)
+
+            if currents:
+                if len(currents) >= 3:
+                    data_point['current_diff'] = -currents[0]
+                    data_point['current_reverse'] = currents[1]
+                    data_point['current_forward'] = currents[2]
+                    data_point['current'] = data_point['current_diff']
+                    data_point['current_diff_amp'] = -currents_amp[0]
+                    data_point['current_reverse_amp'] = currents_amp[1]
+                    data_point['current_forward_amp'] = currents_amp[2]
+                    data_point['current_amp'] = data_point['current_diff_amp']
+                elif len(currents) == 2:
+                    data_point['current_forward'] = currents[0]
+                    data_point['current_reverse'] = currents[1]
+                    data_point['current'] = currents[1]
+                    data_point['current_forward_amp'] = currents_amp[0]
+                    data_point['current_reverse_amp'] = currents_amp[1]
+                    data_point['current_amp'] = currents_amp[1]
+                else:
+                    data_point['current'] = currents[0]
+                    data_point['current_amp'] = currents_amp[0]
+
+            if 'current' in data_point and ('potential' in data_point or 'time' in data_point):
                 self.data_points.append(data_point)
                 if self.data_callback:
                     try:
@@ -409,48 +543,162 @@ class SerialMeasurementRunner:
         if not self.data_points:
             self.log("No data to save")
             return None
+        # Drop internal-only amp fields so DictWriter matches header.
+        rows = [
+            {k: v for k, v in dp.items() if not k.endswith("_amp")}
+            for dp in self.data_points
+        ]
         base_name = self.script_path.stem
         timestamp = datetime.now().strftime('%H%M%S')
         csv_filename = self.data_folder / f"{base_name}_{timestamp}.csv"
         with open(csv_filename, 'w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=['potential', 'current'])
-            writer.writerow({'potential': 'Potential (V)', 'current': 'Current (uA)'})
-            writer.writerows(self.data_points)
+            fieldnames = []
+            label_map = {}
+            if any('time' in dp for dp in self.data_points):
+                fieldnames.append('time')
+                label_map['time'] = 'Time (s)'
+            if any('potential' in dp for dp in self.data_points):
+                fieldnames.append('potential')
+                label_map['potential'] = 'Potential (V)'
+            fieldnames.append('current')
+            label_map['current'] = 'Current (uA)'
+            if any('current_forward' in dp for dp in self.data_points):
+                fieldnames.append('current_forward')
+                label_map['current_forward'] = 'Current Forward (uA)'
+            if any('current_reverse' in dp for dp in self.data_points):
+                fieldnames.append('current_reverse')
+                label_map['current_reverse'] = 'Current Reverse (uA)'
+            if any('current_diff' in dp for dp in self.data_points):
+                fieldnames.append('current_diff')
+                label_map['current_diff'] = 'Current Diff (uA)'
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writerow({key: label_map.get(key, key) for key in fieldnames})
+            writer.writerows(rows)
         self.log(f"\nData saved to: {csv_filename}")
         return csv_filename
+
+    def _open_raw_packet_log(self):
+        if not self.raw_packet_log:
+            return
+        timestamp = datetime.now().strftime('%H%M%S')
+        base_name = self.script_path.stem
+        self.raw_packet_log_path = self.data_folder / f"{base_name}_{timestamp}_raw_packets.txt"
+        try:
+            self.raw_packet_log_handle = open(
+                self.raw_packet_log_path,
+                'w',
+                encoding='ascii',
+                errors='replace',
+                newline='\n',
+            )
+            self.log(f"Raw packet log: {self.raw_packet_log_path}")
+        except OSError as exc:
+            self.raw_packet_log_handle = None
+            self.raw_packet_log_path = None
+            self.log(f"Warning: failed to open raw packet log: {exc}")
+
+    def _close_raw_packet_log(self):
+        if self.raw_packet_log_handle is None:
+            return
+        try:
+            self.raw_packet_log_handle.close()
+        except Exception:
+            pass
+        self.raw_packet_log_handle = None
+
+    def _write_raw_packet(self, line: str):
+        if not self.raw_packet_log_handle:
+            return
+        if not line.startswith('P'):
+            return
+        try:
+            self.raw_packet_log_handle.write(line + '\n')
+        except Exception:
+            pass
+
+    def _update_segment_time(self, time_raw: float):
+        if self.segment_last_time_raw is None or time_raw > self.segment_last_time_raw:
+            self.segment_last_time_raw = time_raw
+
+    def _advance_time_offset(self):
+        if self.segment_last_time_raw is None:
+            return
+        self.time_offset += self.segment_last_time_raw
+        self.segment_last_time_raw = None
 
     def disconnect(self):
         if self.connection and self.connection.is_open:
             try:
                 self.connection.close()
                 self.log("Disconnected from device")
-            except Exception as e: self.log(f"Error on disconnect: {e}")
+            except Exception as e:
+                self.log(f"Error on disconnect: {e}")
 
     def execute(self):
         self.log("=" * 60)
         self.log(f"Starting measurement for: {self.script_path.name}")
         self.log("=" * 60)
+
         csv_path = None
         try:
-            with open(self.script_path, 'r') as f: script = f.read()
+            with open(self.script_path, 'r') as f:
+                script = f.read()
         except Exception as e:
             self.log(f"ERROR: Failed to read script: {e}")
             return False, None
-        
+
         if not self.connect():
             self.log("ERROR: Failed to connect to device")
             return False, None
-        
+
         success = False
         try:
+            self._open_raw_packet_log()
             if self.run_script(script):
                 if self.data_points:
                     csv_path = self.save_data_to_csv()
                 self.log(f"Total data points: {len(self.data_points)}")
                 success = True
         finally:
+            self._close_raw_packet_log()
             self.disconnect()
+
         return success, csv_path
+
+
+class _AutoScaleToolbar(NavigationToolbar2Tk):
+    def __init__(self, canvas, window, *, get_bounds=None):
+        self._get_bounds = get_bounds
+        super().__init__(canvas, window)
+
+    def press_zoom(self, event):
+        if event.button != 1:
+            return
+        return super().press_zoom(event)
+
+    def release_zoom(self, event):
+        if event.button != 1:
+            return
+        return super().release_zoom(event)
+
+    def home(self, *args):
+        ax = self.canvas.figure.axes[0] if self.canvas.figure.axes else None
+        if ax is None:
+            return
+        if self._get_bounds is not None:
+            bounds = self._get_bounds()
+        else:
+            bounds = None
+        if bounds:
+            x_min, x_max, y_min, y_max = bounds
+            ax.set_xlim(x_min, x_max)
+            ax.set_ylim(y_min, y_max)
+            self.canvas.draw_idle()
+            return
+        ax.relim()
+        ax.autoscale_view(tight=True)
+        ax.margins(x=0.05, y=0.05)
+        self.canvas.draw_idle()
 
 
 class ElectrochemGUI:
@@ -465,10 +713,33 @@ class ElectrochemGUI:
         self.base_path = Path("methods")
         self.base_path.mkdir(exist_ok=True)
         
+        self.data_root = Path("measurement_data")
+        self.data_root.mkdir(exist_ok=True)
+        self.current_session_path = None
+        self.current_experiment_path = None
+        self.session_metadata_path = None
+        self.experiment_metadata_path = None
+        self.session_log_path = None
+        self.last_queue_file_path = None
+        self.session_started_at = None
+        self.experiment_started_at = None
+        self.session_name_var = tk.StringVar()
+        self.experiment_name_var = tk.StringVar()
+        self.session_user_var = tk.StringVar()
+        self.session_chip_id_var = tk.StringVar()
+        self.session_notes_var = tk.StringVar()
+        self.experiment_notes_var = tk.StringVar()
+        self.session_status_var = tk.StringVar(value="Session: (none) | Experiment: (none)")
+        
         self.measurement_queue = []
         self.is_running = False
         self.current_script = ""
+        self.custom_script = ""
+        self.custom_script_path = None
+        self.custom_script_name = None
+        self.custom_script_has_mux_header = False
         self.current_runner = None
+        self.debug_raw_packets = tk.BooleanVar(value=True)
         
         self.pump_ctrl = None
         self.pump_busy = False
@@ -479,17 +750,32 @@ class ElectrochemGUI:
         self.live_plot_queue = queue.Queue(maxsize=10000)
         self.live_plot_x = []
         self.live_plot_y = []
+        self.live_plot_t = []
         self.live_plot_active = False
         self.live_plot_job = None
         self.plot_line = None
         self.last_live_plot_color = None
         self.last_live_plot_label = None
+        self.live_plot_current_unit = "uA"
+        self.live_plot_current_scale = 1e-6
         self.plot_colors = (
             plt.rcParams.get('axes.prop_cycle', plt.cycler(color=['#1f77b4']))
             .by_key()
             .get('color', ['#1f77b4'])
         )
         self.plot_color_cycle = itertools.cycle(self.plot_colors)
+        self.plot_series_colors = {}
+        self.show_swv_components = False
+        self.plot_x_mode = "potential"
+        self.last_plotted_csv = None
+        self.measure_start = None
+        self.measure_artists = []
+        self.measure_preview_line = None
+        self.measure_preview_text = None
+        self.pan_start = None
+        self.pan_xlim = None
+        self.pan_ylim = None
+        self.plot_data_bounds = None
 
         self.queue_drag_item = None
         self.queue_reorder_pending = False
@@ -525,6 +811,263 @@ class ElectrochemGUI:
         self.notebook.add(self.plotter_frame, text="Plotter")
         self.setup_plotter_tab()
 
+        self.setup_session_bar()
+
+    def setup_session_bar(self):
+        bar = ttk.Frame(self.root)
+        bar.pack(side='bottom', fill='x', padx=5, pady=5)
+
+        session_frame = ttk.LabelFrame(bar, text="Session")
+        session_frame.pack(side='left', fill='x', expand=True, padx=(0, 6))
+        experiment_frame = ttk.LabelFrame(bar, text="Experiment")
+        experiment_frame.pack(side='right', fill='x', expand=True, padx=(6, 0))
+
+        session_frame.columnconfigure(1, weight=1)
+        session_frame.columnconfigure(3, weight=1)
+        session_frame.columnconfigure(5, weight=1)
+
+        ttk.Label(session_frame, text="Session Name:").grid(row=0, column=0, sticky='w', padx=5, pady=2)
+        ttk.Entry(session_frame, textvariable=self.session_name_var, width=24).grid(row=0, column=1, sticky='we', padx=5, pady=2)
+        ttk.Button(session_frame, text="Start Session", command=self.start_new_session).grid(row=0, column=2, padx=5, pady=2)
+        ttk.Button(session_frame, text="End Session", command=self.end_session).grid(row=0, column=3, padx=5, pady=2)
+
+        ttk.Label(session_frame, text="User:").grid(row=1, column=0, sticky='w', padx=5, pady=2)
+        ttk.Entry(session_frame, textvariable=self.session_user_var, width=18).grid(row=1, column=1, sticky='we', padx=5, pady=2)
+        ttk.Label(session_frame, text="Chip ID:").grid(row=1, column=2, sticky='w', padx=5, pady=2)
+        ttk.Entry(session_frame, textvariable=self.session_chip_id_var, width=18).grid(row=1, column=3, sticky='we', padx=5, pady=2)
+
+        ttk.Label(session_frame, text="Notes:").grid(row=2, column=0, sticky='w', padx=5, pady=2)
+        ttk.Entry(session_frame, textvariable=self.session_notes_var, width=36).grid(row=2, column=1, columnspan=3, sticky='we', padx=5, pady=2)
+
+        ttk.Button(session_frame, text="Update Session Metadata", command=self.update_session_metadata).grid(row=3, column=0, columnspan=2, padx=5, pady=2, sticky='w')
+
+        experiment_frame.columnconfigure(1, weight=1)
+        ttk.Label(experiment_frame, text="Experiment Name:").grid(row=0, column=0, sticky='w', padx=5, pady=2)
+        ttk.Entry(experiment_frame, textvariable=self.experiment_name_var, width=24).grid(row=0, column=1, sticky='we', padx=5, pady=2)
+        ttk.Label(experiment_frame, text="Notes:").grid(row=1, column=0, sticky='w', padx=5, pady=2)
+        ttk.Entry(experiment_frame, textvariable=self.experiment_notes_var, width=28).grid(row=1, column=1, sticky='we', padx=5, pady=2)
+        ttk.Button(experiment_frame, text="Start Experiment", command=self.start_new_experiment).grid(row=2, column=0, padx=5, pady=2, sticky='w')
+        ttk.Button(experiment_frame, text="End Experiment", command=self.end_experiment).grid(row=2, column=1, padx=5, pady=2, sticky='w')
+
+        ttk.Label(bar, textvariable=self.session_status_var, foreground="blue").pack(side='bottom', fill='x', padx=5, pady=2)
+
+    @staticmethod
+    def _sanitize_folder_name(value: str, fallback: str) -> str:
+        if value is None:
+            value = ""
+        cleaned = value.strip()
+        if not cleaned:
+            cleaned = fallback
+        invalid = '<>:"/\\\\|?*'
+        cleaned = ''.join('_' if ch in invalid else ch for ch in cleaned)
+        cleaned = cleaned.strip().strip('.')
+        return cleaned or fallback
+
+    @staticmethod
+    def _unique_path(base_path: Path) -> Path:
+        if not base_path.exists():
+            return base_path
+        for idx in range(2, 1000):
+            candidate = Path(f"{base_path}_{idx:02d}")
+            if not candidate.exists():
+                return candidate
+        return Path(f"{base_path}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+
+    def _update_session_status(self):
+        session_label = "(none)"
+        experiment_label = "(none)"
+        if self.current_session_path:
+            session_label = self.current_session_path.name
+        if self.current_experiment_path:
+            experiment_label = self.current_experiment_path.name
+        self.session_status_var.set(f"Session: {session_label} | Experiment: {experiment_label}")
+
+    def _write_session_log(self, message: str):
+        if not self.session_log_path:
+            return
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        line = f"[{timestamp}] {message}"
+        try:
+            with open(self.session_log_path, 'a', encoding='utf-8') as handle:
+                handle.write(line + '\n')
+        except OSError:
+            pass
+
+    def _write_json(self, path: Path, payload: dict):
+        try:
+            with open(path, 'w', encoding='utf-8') as handle:
+                json.dump(payload, handle, indent=2)
+        except OSError as exc:
+            messagebox.showerror("Save Failed", f"Could not write metadata:\n{exc}")
+
+    def start_new_session(self):
+        if self.current_session_path:
+            if not messagebox.askyesno("Start New Session", "End the current session and start a new one?"):
+                return
+            self.end_session()
+
+        raw_name = self.session_name_var.get()
+        user = self.session_user_var.get()
+        chip_id = self.session_chip_id_var.get()
+        notes = self.session_notes_var.get()
+        required = {
+            "Session Name": raw_name,
+            "User": user,
+            "Chip ID": chip_id,
+        }
+        missing = [label for label, value in required.items() if not str(value).strip()]
+        if missing:
+            messagebox.showerror(
+                "Missing Metadata",
+                "Fill out all session metadata before starting:\n" + ", ".join(missing),
+            )
+            return
+        timestamp_suffix = datetime.now().strftime('%Y%m%d_%H%M%S')
+        fallback = f"session_{timestamp_suffix}"
+        base_name = self._sanitize_folder_name(raw_name, fallback)
+        if not base_name or base_name == fallback:
+            messagebox.showerror("Invalid Session Name", "Session name cannot be empty or invalid.")
+            return
+        folder_name = f"{base_name}_{timestamp_suffix}"
+        session_path = self._unique_path(self.data_root / folder_name)
+        session_path.mkdir(parents=True, exist_ok=True)
+
+        self.current_session_path = session_path
+        self.current_experiment_path = None
+        self.session_metadata_path = session_path / "session_metadata.json"
+        self.session_log_path = session_path / "session_log.txt"
+        self.session_started_at = datetime.now().isoformat(timespec='seconds')
+        self.experiment_started_at = None
+        self.experiment_metadata_path = None
+
+        self._write_json(self.session_metadata_path, {
+            'session_name': raw_name.strip() or folder_name,
+            'session_folder': session_path.name,
+            'user': user.strip(),
+            'chip_id': chip_id.strip(),
+            'notes': notes.strip(),
+            'started_at': self.session_started_at,
+            'ended_at': None,
+        })
+
+        self.log_message(f"Session started: {session_path}")
+        self._update_session_status()
+        self._pump_auto_connect(force=True)
+
+    def update_session_metadata(self):
+        if not self.current_session_path or not self.session_metadata_path:
+            messagebox.showwarning("No Session", "Start a session before updating metadata.")
+            return
+        payload = {
+            'session_name': self.session_name_var.get().strip() or self.current_session_path.name,
+            'session_folder': self.current_session_path.name,
+            'user': self.session_user_var.get().strip(),
+            'chip_id': self.session_chip_id_var.get().strip(),
+            'notes': self.session_notes_var.get().strip(),
+            'started_at': self.session_started_at,
+            'ended_at': None,
+        }
+        self._write_json(self.session_metadata_path, payload)
+        self.log_message("Session metadata updated.")
+
+    def end_session(self):
+        if not self.current_session_path:
+            messagebox.showinfo("No Session", "No active session to end.")
+            return
+
+        if self.current_experiment_path:
+            self.end_experiment()
+
+        payload = {
+            'session_name': self.session_name_var.get().strip() or self.current_session_path.name,
+            'session_folder': self.current_session_path.name,
+            'user': self.session_user_var.get().strip(),
+            'chip_id': self.session_chip_id_var.get().strip(),
+            'notes': self.session_notes_var.get().strip(),
+            'started_at': self.session_started_at,
+            'ended_at': datetime.now().isoformat(timespec='seconds'),
+        }
+        if self.session_metadata_path:
+            self._write_json(self.session_metadata_path, payload)
+
+        self.log_message(f"Session ended: {self.current_session_path}")
+        self.current_session_path = None
+        self.session_metadata_path = None
+        self.session_log_path = None
+        self.session_started_at = None
+        self._update_session_status()
+
+    def start_new_experiment(self):
+        if not self.current_session_path:
+            messagebox.showwarning("No Session", "Start a session before creating an experiment.")
+            return
+        if self.current_experiment_path:
+            if not messagebox.askyesno("Start New Experiment", "End the current experiment and start a new one?"):
+                return
+            self.end_experiment()
+
+        raw_name = self.experiment_name_var.get()
+        timestamp_suffix = datetime.now().strftime('%Y%m%d_%H%M%S')
+        fallback = f"experiment_{timestamp_suffix}"
+        base_name = self._sanitize_folder_name(raw_name, fallback)
+        if not raw_name.strip():
+            self.experiment_name_var.set(base_name)
+        folder_name = f"{base_name}_{timestamp_suffix}"
+        experiment_path = self._unique_path(self.current_session_path / folder_name)
+        experiment_path.mkdir(parents=True, exist_ok=True)
+
+        self.current_experiment_path = experiment_path
+        self.experiment_metadata_path = experiment_path / "experiment_metadata.json"
+        self.experiment_started_at = datetime.now().isoformat(timespec='seconds')
+
+        self._write_json(self.experiment_metadata_path, {
+            'experiment_name': raw_name.strip() or folder_name,
+            'experiment_folder': experiment_path.name,
+            'session_folder': self.current_session_path.name,
+            'notes': self.experiment_notes_var.get().strip(),
+            'started_at': self.experiment_started_at,
+            'ended_at': None,
+        })
+
+        self.log_message(f"Experiment started: {experiment_path}")
+        self._update_session_status()
+
+    def end_experiment(self):
+        if not self.current_experiment_path:
+            messagebox.showinfo("No Experiment", "No active experiment to end.")
+            return
+
+        payload = {
+            'experiment_name': self.experiment_name_var.get().strip() or self.current_experiment_path.name,
+            'experiment_folder': self.current_experiment_path.name,
+            'session_folder': self.current_session_path.name if self.current_session_path else None,
+            'notes': self.experiment_notes_var.get().strip(),
+            'started_at': self.experiment_started_at,
+            'ended_at': datetime.now().isoformat(timespec='seconds'),
+        }
+        if self.experiment_metadata_path:
+            self._write_json(self.experiment_metadata_path, payload)
+
+        self.log_message(f"Experiment ended: {self.current_experiment_path}")
+        self.current_experiment_path = None
+        self.experiment_metadata_path = None
+        self.experiment_started_at = None
+        self._update_session_status()
+
+    def _require_active_session(self):
+        if not self.current_session_path:
+            messagebox.showwarning("No Session", "Start a session before performing actions.")
+            return None
+        return self.current_session_path
+
+    def _require_active_experiment(self):
+        if self._require_active_session() is None:
+            return None
+        if not self.current_experiment_path:
+            messagebox.showwarning("No Experiment", "Start an experiment before running measurements.")
+            return None
+        return self.current_experiment_path
+
     def create_cv_methodscript(self):
         """Create MethodSCRIPT for CV with correct SI unit formatting"""
         begin = to_si_string(self.cv_params['begin_potential'].get(), 'V')
@@ -536,9 +1079,28 @@ class ElectrochemGUI:
         cond_pot = to_si_string(self.cv_params['cond_potential'].get(), 'V')
         cond_time = self.cv_params['cond_time'].get()
 
+        min_pot = min(float(self.cv_params['begin_potential'].get()),
+                      float(self.cv_params['vertex1'].get()),
+                      float(self.cv_params['vertex2'].get()))
+        max_pot = max(float(self.cv_params['begin_potential'].get()),
+                      float(self.cv_params['vertex1'].get()),
+                      float(self.cv_params['vertex2'].get()))
+        min_pot_si = to_si_string(min_pot, 'V')
+        max_pot_si = to_si_string(max_pot, 'V')
+
         script_parts = [
-            "e", "var c", "var p", "set_pgstat_mode 2", "set_max_bandwidth 40",
-            "set_range ba 100u", "set_autoranging ba 1n 100u"
+            "e",
+            "var c",
+            "var p",
+            "var t",
+            "set_pgstat_chan 1",
+            "set_pgstat_mode 0",
+            "set_pgstat_chan 0",
+            "set_pgstat_mode 2",
+            "set_max_bandwidth 400",
+            f"set_range_minmax da {min_pot_si} {max_pot_si}",
+            "set_range ba 29500n",
+            "set_autoranging ba 29500n 29500n",
         ]
         
         if float(cond_time) > 0:
@@ -549,6 +1111,8 @@ class ElectrochemGUI:
             ])
         else:
             script_parts.extend([f"set_e {begin}", "cell_on"])
+
+        script_parts.append("store_var t 0 eb")
         
         cv_command = f"meas_loop_cv p c {begin} {v1} {v2} {step} {scan_rate}"
         if int(n_scans) > 1:
@@ -556,8 +1120,16 @@ class ElectrochemGUI:
         
         script_parts.extend([
             "# CV measurement loop",
-            cv_command, "\tpck_start", "\tpck_add p", "\tpck_add c", "\tpck_end",
-            "endloop", "on_finished:", "cell_off"
+            cv_command,
+            "\tpck_start",
+            "\t\tpck_add p",
+            "\t\tpck_add c",
+            "\t\tpck_add t",
+            "\tpck_end",
+            "\tadd_var t 9879557n",
+            "endloop",
+            "on_finished:",
+            "\tcell_off",
         ])
         
         return "\n".join(script_parts)
@@ -580,9 +1152,11 @@ class ElectrochemGUI:
         min_pot_mv, max_pot_mv = int(min_pot * 1000), int(max_pot * 1000)
 
         script_parts = [
-            "e", "var c", "var p", "var f", "var r","set_pgstat_mode 2", "set_max_bandwidth 1600",
+            "e", "var c", "var p", "var f", "var r",
+            "set_pgstat_chan 1", "set_pgstat_mode 0", "set_pgstat_chan 0", "set_pgstat_mode 3",
+            "set_max_bandwidth 4k",
             f"set_range_minmax da {min_pot_mv}m {max_pot_mv}m",
-            "set_range ba 5m", "set_autoranging ba 100n 5m", "cell_on"
+            "set_range ba 59n", "set_autoranging ba 59n 59n", "cell_on"
         ]
         
         if float(cond_time) > 0:
@@ -590,6 +1164,8 @@ class ElectrochemGUI:
                 f"# Equilibrate at {cond_pot} for {cond_time}s",
                 f"set_e {cond_pot}", f"wait {cond_time}"
             ])
+        else:
+            script_parts.extend([f"set_e {begin}"])
             
         script_parts.extend([
             f"meas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}",
@@ -598,7 +1174,7 @@ class ElectrochemGUI:
         ])
 
         script_parts.extend([
-            "on_finished:", "cell_off"
+            "on_finished:", "\tcell_off"
         ])
 
         return "\n".join(script_parts)
@@ -671,12 +1247,48 @@ class ElectrochemGUI:
         addr = self._mux_channel_address(channel)
         prefix = [
             header,
-            "# MUX16 channel select",
             "set_gpio_cfg 0x3FFi 1",
             f"set_gpio {addr}i",
         ]
         merged = prefix + rest
         return "\n".join(merged)
+
+    def _find_mux_header_indices(self, script: str):
+        lines = script.splitlines()
+        cfg_idx = None
+        gpio_idx = None
+        for idx, line in enumerate(lines):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if stripped == "set_gpio_cfg 0x3FFi 1" and cfg_idx is None:
+                cfg_idx = idx
+                continue
+            if cfg_idx is not None and stripped.startswith("set_gpio ") and not stripped.startswith("set_gpio_cfg"):
+                gpio_idx = idx
+                break
+        return cfg_idx, gpio_idx
+
+    def _script_has_mux_header(self, script: str) -> bool:
+        cfg_idx, gpio_idx = self._find_mux_header_indices(script)
+        return cfg_idx is not None and gpio_idx is not None
+
+    def _strip_mux_header(self, script: str) -> str:
+        cfg_idx, gpio_idx = self._find_mux_header_indices(script)
+        if cfg_idx is None or gpio_idx is None:
+            return script
+        lines = script.splitlines()
+        for idx in sorted([cfg_idx, gpio_idx], reverse=True):
+            del lines[idx]
+        return "\n".join(lines)
+
+    def _confirm_mux_override(self, script: str) -> bool:
+        if not self._script_has_mux_header(script):
+            return True
+        return messagebox.askyesno(
+            "MUX Header Detected",
+            "This script already includes a MUX header. Generate new scripts for the selected channel(s) anyway?",
+        )
 
     def _get_swv_cycles_and_delay(self):
         try:
@@ -705,11 +1317,17 @@ class ElectrochemGUI:
         technique_frame.pack(pady=10)
         ttk.Button(technique_frame, text="Cyclic Voltammetry (CV)", command=self.show_cv_params, width=25).pack(pady=5)
         ttk.Button(technique_frame, text="Square Wave Voltammetry (SWV)", command=self.show_swv_params, width=25).pack(pady=5)
+        ttk.Button(technique_frame, text="Custom Script (File)", command=self.show_custom_params, width=25).pack(pady=5)
         ttk.Separator(technique_frame, orient='horizontal').pack(fill='x', pady=6)
         ttk.Button(technique_frame, text="Pause", command=self.show_pause_params, width=25).pack(pady=5)
         self.device_status = ttk.Label(left_frame, text="", foreground="blue")
         self.device_status.pack(pady=10)
         ttk.Button(left_frame, text="Check Device Connection", command=self.check_device).pack(pady=5)
+        ttk.Checkbutton(
+            left_frame,
+            text="Save raw packets",
+            variable=self.debug_raw_packets,
+        ).pack(pady=5)
         self.params_frame = ttk.LabelFrame(self.method_frame, text="Parameters", padding=10)
         self.params_frame.pack(side='right', fill='both', expand=True, padx=5)
         self.show_cv_params()
@@ -748,6 +1366,120 @@ class ElectrochemGUI:
         ttk.Button(button_frame, text="Generate Script", command=self.generate_swv_script).pack(side='left', padx=5)
         ttk.Button(button_frame, text="Run Now", command=self.run_swv_immediately).pack(side='left', padx=5)
         ttk.Button(button_frame, text="Add to Queue", command=self.add_swv_to_queue).pack(side='left', padx=5)
+
+    def show_custom_params(self):
+        self.clear_params_frame()
+        self.current_technique = "CUSTOM"
+        self.custom_params = {}
+
+        path_var = tk.StringVar(value=self.custom_script_path or "")
+        self.custom_params['script_path_var'] = path_var
+
+        ttk.Label(self.params_frame, text="MethodSCRIPT file:").grid(row=0, column=0, sticky='w', pady=2)
+        path_entry = ttk.Entry(self.params_frame, textvariable=path_var, width=50)
+        path_entry.grid(row=0, column=1, pady=2, sticky='w')
+        ttk.Button(self.params_frame, text="Browse", command=self.load_custom_script).grid(row=0, column=2, padx=5)
+
+        ttk.Label(
+            self.params_frame,
+            text="MUX16 Channels (1-16, 0=off, e.g. 1-3,7-9):",
+        ).grid(row=1, column=0, sticky='w', pady=2)
+        mux_entry = ttk.Entry(self.params_frame, width=15)
+        mux_entry.insert(0, "0")
+        mux_entry.grid(row=1, column=1, sticky='w', pady=2)
+        self.custom_params['mux_channel'] = mux_entry
+
+        button_frame = ttk.Frame(self.params_frame)
+        button_frame.grid(row=2, column=0, columnspan=3, pady=20)
+        ttk.Button(button_frame, text="Run Now", command=self.run_custom_immediately).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Add to Queue", command=self.add_custom_to_queue).pack(side='left', padx=5)
+
+    def load_custom_script(self):
+        file_path = filedialog.askopenfilename(
+            title="Select a MethodSCRIPT file",
+            filetypes=(("MethodSCRIPT", "*.ms;*.txt"), ("All Files", "*.*")),
+            initialdir=str(self.base_path),
+        )
+        if not file_path:
+            return
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='replace') as handle:
+                script = handle.read()
+        except OSError as exc:
+            messagebox.showerror("Load Failed", f"Could not read script:\n{exc}")
+            return
+
+        self.custom_script = script
+        self.custom_script_path = file_path
+        self.custom_script_name = Path(file_path).name
+        self.custom_script_has_mux_header = self._script_has_mux_header(script)
+        self.current_script = script
+        if self.custom_script_has_mux_header:
+            self.log_message("Custom script includes a MUX header; selecting channels will override it.")
+        if self.custom_params.get('script_path_var'):
+            self.custom_params['script_path_var'].set(file_path)
+        self.update_script_preview(script)
+        self.notebook.select(self.script_frame)
+
+    def run_custom_immediately(self):
+        if not self.custom_script_path or not self.custom_script:
+            messagebox.showerror("No Script Loaded", "Select a MethodSCRIPT file before running.")
+            return
+        channels = self._get_mux_channels(self.custom_params)
+        if channels is None:
+            return
+        base_script = self.custom_script
+        if channels:
+            if not self._confirm_mux_override(base_script):
+                return
+            base_script = self._strip_mux_header(base_script)
+            if len(channels) == 1:
+                mux_script = self._build_mux_script(base_script, channels[0])
+                base_label = self.custom_script_name or "Custom"
+                source_label = f"{base_label} (MUX ch {channels[0]})"
+                self.run_script_immediately(
+                    "Custom",
+                    mux_script,
+                    mux_channel=channels[0],
+                    source_label=source_label,
+                )
+            else:
+                self.run_mux_script_sequence("Custom", base_script, channels)
+            return
+        self.run_script_immediately("Custom", self.custom_script, source_label=self.custom_script_name)
+
+    def add_custom_to_queue(self):
+        if self._require_active_session() is None:
+            return
+        if not self.custom_script_path or not self.custom_script:
+            messagebox.showerror("No Script Loaded", "Select a MethodSCRIPT file before adding to the queue.")
+            return
+        channels = self._get_mux_channels(self.custom_params)
+        if channels is None:
+            return
+        base_script = self.custom_script
+        if channels:
+            if not self._confirm_mux_override(base_script):
+                return
+            base_script = self._strip_mux_header(base_script)
+            self.add_mux_scripts_to_queue("Custom", base_script, channels)
+            return
+        try:
+            filepath, filename = self.save_script_file("Custom", self.custom_script)
+        except Exception as exc:
+            messagebox.showerror("File Error", f"Failed to save Custom script: {exc}")
+            return
+        label = self.custom_script_name or filename
+        if label != filename:
+            details = f"{label} (saved as {filename})"
+        else:
+            details = filename
+        queue_item = {'type': "Custom", 'script_path': str(filepath), 'status': 'pending', 'details': details}
+        self.measurement_queue.append(queue_item)
+        self.refresh_queue_display()
+        messagebox.showinfo("Success", f"Custom script added to queue\nSaved as: {filename}")
+        self.log_message(f"Queue add: Custom ({details})")
+        ttk.Button(button_frame, text="Run PStrace SWV", command=self.run_pstrace_swv_preset).pack(side='left', padx=5)
         
     def show_pause_params(self):
         self.clear_params_frame()
@@ -1013,6 +1745,8 @@ class ElectrochemGUI:
         self.root.after(200, self._pump_auto_connect)
 
     def add_pump_action_to_queue(self, action_name: str, *, params=None, details: str):
+        if self._require_active_session() is None:
+            return
         if not PUMP_AVAILABLE or self.pump_ctrl is None:
             messagebox.showerror("Pump Error", "Pump backend unavailable.")
             return
@@ -1028,6 +1762,7 @@ class ElectrochemGUI:
         self.measurement_queue.append(item)
         self.refresh_queue_display()
         messagebox.showinfo("Added to Queue", details)
+        self.log_message(f"Queue add: {details}")
 
     def queue_pump_init(self):
         self.add_pump_action_to_queue('INIT', details='Pump: Initialize (ZR)')
@@ -1097,6 +1832,7 @@ class ElectrochemGUI:
         if self.pump_log_text is None:
             self.pump_early_logs.append(message)
             return
+        self._write_session_log(message)
 
         def append():
             self.pump_log_text.configure(state='normal')
@@ -1172,12 +1908,13 @@ class ElectrochemGUI:
         remaining_steps = max(0, self.pump_ctrl.steps_per_stroke - pending_steps)
         return self.pump_ctrl.volume_for_steps(remaining_steps)
 
-    def _pump_auto_connect(self):
+    def _pump_auto_connect(self, force: bool = False):
         if not PUMP_AVAILABLE or self.pump_ctrl is None:
             return
-        if getattr(self, '_pump_auto_connect_attempted', False):
+        if not self.current_session_path:
             return
-        self._pump_auto_connect_attempted = True
+        if getattr(self, '_pump_auto_connect_attempted', False) and not force:
+            return
         try:
             sim_mode = bool(self.pump_var_sim.get())
             com_port = int(self.pump_var_com.get())
@@ -1188,10 +1925,13 @@ class ElectrochemGUI:
             return
         if self.pump_ctrl.connected:
             return
+        self._pump_auto_connect_attempted = True
         self.pump_log('Auto-connecting to pump...')
         self.pump_threaded(self.pump_on_connect, sim_mode, com_port, baud, dev)
 
     def pump_threaded(self, fn, *args):
+        if self._require_active_session() is None:
+            return
         if not PUMP_AVAILABLE or self.pump_ctrl is None:
             messagebox.showerror("Pump Error", "Pump backend unavailable.")
             return
@@ -1322,10 +2062,15 @@ class ElectrochemGUI:
         ttk.Button(control_frame, text="Clear Queue", command=self.clear_queue).pack(side='left', padx=5)
         ttk.Button(control_frame, text="Delete Selected", command=self.delete_selected_queue_item).pack(side='left', padx=5)
         ttk.Button(control_frame, text="Confirm Move", command=self.confirm_queue_reorder).pack(side='left', padx=5)
-        self.queue_tree = ttk.Treeview(top_frame, columns=('Type', 'Status', 'Details'), show='tree headings', height=8)
+        tree_frame = ttk.Frame(top_frame)
+        tree_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        self.queue_tree = ttk.Treeview(tree_frame, columns=('Type', 'Status', 'Details'), show='tree headings', height=8)
         self.queue_tree.heading('#0', text='#'); self.queue_tree.heading('Type', text='Type'); self.queue_tree.heading('Status', text='Status'); self.queue_tree.heading('Details', text='Details')
         self.queue_tree.column('#0', width=50); self.queue_tree.column('Type', width=150); self.queue_tree.column('Status', width=100); self.queue_tree.column('Details', width=400)
-        self.queue_tree.pack(fill='both', expand=True, padx=10, pady=5)
+        queue_scrollbar = ttk.Scrollbar(tree_frame, orient='vertical', command=self.queue_tree.yview)
+        self.queue_tree.configure(yscrollcommand=queue_scrollbar.set)
+        self.queue_tree.pack(side='left', fill='both', expand=True)
+        queue_scrollbar.pack(side='right', fill='y')
         self.queue_tree.bind("<ButtonPress-1>", self._on_queue_drag_start)
         self.queue_tree.bind("<B1-Motion>", self._on_queue_drag_motion)
         self.queue_tree.bind("<ButtonRelease-1>", self._on_queue_drag_release)
@@ -1346,6 +2091,7 @@ class ElectrochemGUI:
             self.log_text.see(tk.END)
             self.log_text.config(state='disabled')
         self.root.after(0, append_message)
+        self._write_session_log(message)
         print(message)
 
     def setup_script_tab(self):
@@ -1359,13 +2105,18 @@ class ElectrochemGUI:
         
         ttk.Button(plot_controls, text="Load and Plot CSV", command=self.load_and_plot_csv).pack(side='left')
         ttk.Button(plot_controls, text="Clear Plot", command=self.clear_plot).pack(side='left', padx=5)
+        self.plot_swv_btn = ttk.Button(plot_controls, text="Show SWV F/R", command=self.toggle_swv_components)
+        self.plot_swv_btn.pack(side='left', padx=5)
+        self.plot_x_btn = ttk.Button(plot_controls, text="Plot vs Time", command=self.toggle_plot_x_mode)
+        self.plot_x_btn.pack(side='left', padx=5)
+        ttk.Button(plot_controls, text="Clear Measurements", command=self.clear_measurements).pack(side='left', padx=5)
 
         # Create a Matplotlib figure and axis
         self.fig = Figure(figsize=(8, 6), dpi=100)
         self.ax = self.fig.add_subplot(111)
         self.ax.set_title('Voltammogram')
         self.ax.set_xlabel('Potential (V)')
-        self.ax.set_ylabel('Current (uA)')
+        self.ax.set_ylabel(f'Current ({self.live_plot_current_unit})')
         self.ax.grid(True)
 
         # Create a canvas to embed the plot in Tkinter
@@ -1373,19 +2124,273 @@ class ElectrochemGUI:
         self.canvas.draw()
         toolbar_frame = ttk.Frame(self.plotter_frame)
         toolbar_frame.pack(side='top', fill='x')
-        self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
+        self.toolbar = _AutoScaleToolbar(self.canvas, toolbar_frame, get_bounds=self._get_plot_data_bounds)
         self.toolbar.update()
 
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self._connect_plot_interactions()
 
     def load_and_plot_csv(self):
-        """Opens a file dialog to select a CSV and plots it."""
-        filepath = filedialog.askopenfilename(
+        """Opens a file dialog to select CSVs and plots them."""
+        filepaths = filedialog.askopenfilenames(
             title="Select a measurement CSV",
             filetypes=(("CSV files", "*.csv"), ("All files", "*.*"))
         )
-        if filepath:
+        if not filepaths:
+            return
+        for filepath in filepaths:
+            self.last_plotted_csv = filepath
             self.plot_data(filepath)
+
+    def _connect_plot_interactions(self):
+        self.canvas.mpl_connect("scroll_event", self._on_plot_scroll)
+        self.canvas.mpl_connect("button_press_event", self._on_plot_press)
+        self.canvas.mpl_connect("button_release_event", self._on_plot_release)
+        self.canvas.mpl_connect("motion_notify_event", self._on_plot_motion)
+
+    def _on_plot_scroll(self, event):
+        if event.inaxes != self.ax:
+            return
+        if event.xdata is None or event.ydata is None:
+            return
+        zoom_factor = 1.06
+        scale = (1 / zoom_factor) if event.button == "up" else zoom_factor
+        x_min, x_max = self.ax.get_xlim()
+        y_min, y_max = self.ax.get_ylim()
+        x_range = (x_max - x_min) * scale
+        y_range = (y_max - y_min) * scale
+        x_axis_center = (x_min + x_max) / 2
+        y_axis_center = (y_min + y_max) / 2
+        anchor = 0.6
+        x_center = (event.xdata * anchor) + (x_axis_center * (1 - anchor))
+        y_center = (event.ydata * anchor) + (y_axis_center * (1 - anchor))
+        self.ax.set_xlim(x_center - x_range / 2, x_center + x_range / 2)
+        self.ax.set_ylim(y_center - y_range / 2, y_center + y_range / 2)
+        self.canvas.draw_idle()
+
+    def _on_plot_press(self, event):
+        if event.inaxes != self.ax:
+            return
+        if self._plot_pan_active():
+            if self.measure_start is not None:
+                self._cancel_measurement_preview()
+            return
+        if self._plot_zoom_active() and event.button == 1:
+            if self.measure_start is not None:
+                self._cancel_measurement_preview()
+            return
+        if event.button == 3:
+            if self.measure_start is not None:
+                self._cancel_measurement_preview()
+                return
+            if event.x is None or event.y is None:
+                return
+            self.pan_start = (event.x, event.y)
+            self.pan_xlim = self.ax.get_xlim()
+            self.pan_ylim = self.ax.get_ylim()
+            return
+        if event.button == 1:
+            if event.xdata is None or event.ydata is None:
+                return
+            if self.measure_start is None:
+                self.measure_start = (event.xdata, event.ydata)
+                self._start_measure_preview(self.measure_start)
+            else:
+                self._finalize_measurement((event.xdata, event.ydata))
+
+    def _on_plot_release(self, event):
+        if event.button == 3:
+            self.pan_start = None
+            self.pan_xlim = None
+            self.pan_ylim = None
+
+    def _on_plot_motion(self, event):
+        if event.inaxes != self.ax:
+            return
+        if self._plot_pan_active() and self.measure_start is not None:
+            self._cancel_measurement_preview()
+            return
+        if self._plot_zoom_active() and self.measure_start is not None:
+            self._cancel_measurement_preview()
+            return
+        if self.pan_start is not None:
+            if event.x is None or event.y is None:
+                return
+            start_x, start_y = self.pan_start
+            if self.pan_xlim and self.pan_ylim:
+                inv = self.ax.transData.inverted()
+                x0, y0 = inv.transform((start_x, start_y))
+                x1, y1 = inv.transform((event.x, event.y))
+                dx = x1 - x0
+                dy = y1 - y0
+                x_min, x_max = self.pan_xlim
+                y_min, y_max = self.pan_ylim
+                self.ax.set_xlim(x_min - dx, x_max - dx)
+                self.ax.set_ylim(y_min - dy, y_max - dy)
+                self.canvas.draw_idle()
+            return
+        if self.measure_start is not None and event.xdata is not None and event.ydata is not None:
+            self._update_measure_preview((event.xdata, event.ydata))
+
+    def _finalize_measurement(self, end_point):
+        if self.measure_start is None:
+            return
+        x0, y0 = self.measure_start
+        x1, y1 = end_point
+        dx = x1 - x0
+        dy = y1 - y0
+        x_label = self.ax.get_xlabel()
+        y_label = self.ax.get_ylabel()
+        if "Time" in x_label:
+            dx_label = "dt"
+        elif "Potential" in x_label:
+            dx_label = "dV"
+        else:
+            dx_label = "dx"
+        if "Current" in y_label:
+            dy_label = "dI"
+        else:
+            dy_label = "dy"
+        if self.measure_preview_line is None:
+            line = self.ax.plot([x0, x1], [y0, y1], color="gray", linestyle="--", lw=1)[0]
+        else:
+            line = self.measure_preview_line
+            line.set_data([x0, x1], [y0, y1])
+        if self.measure_preview_text is None:
+            annotation = self.ax.annotate(
+                "",
+                xy=(x1, y1),
+                xytext=(5, 5),
+                textcoords="offset points",
+                fontsize=9,
+                color="gray",
+                bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.7),
+            )
+        else:
+            annotation = self.measure_preview_text
+            annotation.xy = (x1, y1)
+        annotation.set_text(f"{dx_label}={dx:.4g}, {dy_label}={dy:.4g}")
+        annotation.set_visible(True)
+        self.measure_artists.extend([line, annotation])
+        self.measure_start = None
+        self.measure_preview_line = None
+        self.measure_preview_text = None
+        self.canvas.draw_idle()
+
+    def clear_measurements(self):
+        if self.measure_preview_line is not None:
+            try:
+                self.measure_preview_line.remove()
+            except Exception:
+                pass
+            self.measure_preview_line = None
+        if self.measure_preview_text is not None:
+            try:
+                self.measure_preview_text.remove()
+            except Exception:
+                pass
+            self.measure_preview_text = None
+        if not self.measure_artists:
+            return
+        for artist in list(self.measure_artists):
+            try:
+                artist.remove()
+            except Exception:
+                pass
+        self.measure_artists = []
+        self.canvas.draw_idle()
+
+    def _cancel_measurement_preview(self):
+        if self.measure_preview_line is not None:
+            try:
+                self.measure_preview_line.remove()
+            except Exception:
+                pass
+            self.measure_preview_line = None
+        if self.measure_preview_text is not None:
+            try:
+                self.measure_preview_text.remove()
+            except Exception:
+                pass
+            self.measure_preview_text = None
+        self.measure_start = None
+        self.canvas.draw_idle()
+
+    def _start_measure_preview(self, start_point):
+        x0, y0 = start_point
+        self.measure_preview_line = self.ax.plot([x0, x0], [y0, y0], color="gray", linestyle="--", lw=1)[0]
+        self.measure_preview_text = self.ax.annotate(
+            "",
+            xy=(x0, y0),
+            xytext=(5, 5),
+            textcoords="offset points",
+            fontsize=9,
+            color="gray",
+            bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.7),
+        )
+        self.measure_preview_text.set_visible(False)
+        self.canvas.draw_idle()
+
+    def _update_measure_preview(self, end_point):
+        if self.measure_preview_line is None or self.measure_start is None:
+            return
+        x0, y0 = self.measure_start
+        x1, y1 = end_point
+        dx = x1 - x0
+        dy = y1 - y0
+        x_label = self.ax.get_xlabel()
+        y_label = self.ax.get_ylabel()
+        if "Time" in x_label:
+            dx_label = "dt"
+        elif "Potential" in x_label:
+            dx_label = "dV"
+        else:
+            dx_label = "dx"
+        if "Current" in y_label:
+            dy_label = "dI"
+        else:
+            dy_label = "dy"
+        self.measure_preview_line.set_data([x0, x1], [y0, y1])
+        if self.measure_preview_text is None:
+            return
+        self.measure_preview_text.xy = (x1, y1)
+        self.measure_preview_text.set_text(f"{dx_label}={dx:.4g}, {dy_label}={dy:.4g}")
+        self.measure_preview_text.set_visible(True)
+        self.canvas.draw_idle()
+
+    def toggle_swv_components(self):
+        self.show_swv_components = not self.show_swv_components
+        if self.show_swv_components:
+            self.plot_swv_btn.configure(text="Hide SWV F/R")
+        else:
+            self.plot_swv_btn.configure(text="Show SWV F/R")
+        if self.last_plotted_csv:
+            self.plot_data(self.last_plotted_csv)
+
+    def toggle_plot_x_mode(self):
+        if self.plot_x_mode == "potential":
+            self.plot_x_mode = "time"
+            self.plot_x_btn.configure(text="Plot vs Potential")
+        else:
+            self.plot_x_mode = "potential"
+            self.plot_x_btn.configure(text="Plot vs Time")
+        if self.live_plot_active:
+            self._refresh_live_plot_axes()
+        if self.last_plotted_csv:
+            self.plot_data(self.last_plotted_csv)
+
+    def _refresh_live_plot_axes(self):
+        if self.plot_x_mode == "time":
+            self.ax.set_xlabel('Time (s)')
+        else:
+            self.ax.set_xlabel('Potential (V)')
+        self.ax.set_ylabel(f"Current ({self.live_plot_current_unit})")
+        use_time = self.plot_x_mode == "time" and any(t is not None for t in self.live_plot_t)
+        if self.plot_line is not None:
+            self.plot_line.set_data(self._live_plot_x_values(use_time), self._live_plot_y_values(use_time))
+            self.ax.relim()
+            self.ax.autoscale_view()
+            self.canvas.draw_idle()
 
     def _read_csv_with_fallback(self, csv_path):
         encodings_to_try = ("utf-8-sig", "utf-8", "cp1252", "latin-1")
@@ -1409,8 +2414,49 @@ class ElectrochemGUI:
         normalized = header.strip().lower()
         normalized = normalized.replace("\u03BC", "\u00B5")
         normalized = normalized.replace("\u00B5", "mu")
+        normalized = normalized.replace("\u00C2", "")
         normalized = normalized.replace("\uFFFD", "mu")
         return normalized
+
+    @staticmethod
+    def _parse_current_unit(header: str):
+        """Return (unit_label, factor_to_amp) parsed from a current column header."""
+        normalized = header.strip()
+        unit_label = None
+        if "(" in normalized and ")" in normalized:
+            unit_label = normalized.rsplit("(", 1)[-1].rstrip(")").strip()
+        if not unit_label:
+            return None, None
+        unit_key = unit_label.lower().replace("\u00C2", "")
+        unit_key = unit_key.replace("\u03BC", "u").replace("\u00B5", "u").replace(" ", "")
+        unit_key = unit_key.replace("mu", "u")
+        unit_map = {
+            "a": ("A", 1.0),
+            "ma": ("mA", 1e-3),
+            "ua": ("uA", 1e-6),
+            "na": ("nA", 1e-9),
+            "pa": ("pA", 1e-12),
+            "fa": ("fA", 1e-15),
+        }
+        return unit_map.get(unit_key, (None, None))
+
+    @staticmethod
+    def _choose_current_display_unit(max_abs_amp: float):
+        """Choose a display unit and scale based on max absolute current in amps."""
+        if max_abs_amp is None or max_abs_amp == 0 or math.isnan(max_abs_amp):
+            return ("uA", 1e-6)
+        thresholds = [
+            (1.0, "A", 1.0),
+            (1e-3, "mA", 1e-3),
+            (1e-6, "uA", 1e-6),
+            (1e-9, "nA", 1e-9),
+            (1e-12, "pA", 1e-12),
+            (1e-15, "fA", 1e-15),
+        ]
+        for threshold, unit, scale in thresholds:
+            if max_abs_amp >= threshold:
+                return (unit, scale)
+        return ("fA", 1e-15)
 
     def _find_column(self, df, candidates):
         for candidate in candidates:
@@ -1425,6 +2471,7 @@ class ElectrochemGUI:
 
     def plot_data(self, csv_path, color=None, label=None):
         """Reads a CSV file and plots the voltammogram."""
+        self.last_plotted_csv = csv_path
         try:
             df = self._read_csv_with_fallback(csv_path)
         except Exception as exc:
@@ -1434,31 +2481,122 @@ class ElectrochemGUI:
             return
 
         potential_col = self._find_column(df, ("Potential (V)",))
-        current_col = self._find_column(df, ("Current (uA)", "Current (µA)", "Current (�A)"))
+        time_col = self._find_column(df, ("Time (s)",))
+        current_units = ("A", "mA", "uA", "\u00B5A", "nA", "pA", "fA")
+        current_col = self._find_column(df, tuple(f"Current ({unit})" for unit in current_units))
+        forward_col = self._find_column(df, tuple(f"Current Forward ({unit})" for unit in current_units))
+        reverse_col = self._find_column(df, tuple(f"Current Reverse ({unit})" for unit in current_units))
+        diff_col = self._find_column(df, tuple(f"Current Diff ({unit})" for unit in current_units))
 
-        if not potential_col or not current_col:
-            message = "Plot error: CSV file must contain 'Potential (V)' and 'Current (uA)' columns."
+        if not potential_col and not time_col:
+            message = "Plot error: CSV file must contain 'Potential (V)' or 'Time (s)'."
+            self.log_message(message)
+            messagebox.showerror("Plot Error", message)
+            self.update_status("Plot failed: missing required columns")
+            return
+        if not current_col and not (forward_col or reverse_col or diff_col):
+            message = "Plot error: CSV file must contain at least one current column."
             self.log_message(message)
             messagebox.showerror("Plot Error", message)
             self.update_status("Plot failed: missing required columns")
             return
 
+        if self.plot_x_mode == "time" and not time_col:
+            self.log_message("Plot warning: no Time (s) column; using Potential (V) instead.")
+
         try:
-            if color is None:
-                color = next(self.plot_color_cycle)
+            filename = Path(csv_path).name
+            base_label = label or filename
+            channel_label = None
             if label is None:
-                label = Path(csv_path).name
-            if label:
+                lower_name = filename.lower()
+                ch_marker = "_ch"
+                if ch_marker in lower_name:
+                    after = lower_name.split(ch_marker, 1)[1]
+                    digits = []
+                    for ch in after:
+                        if ch.isdigit():
+                            digits.append(ch)
+                        else:
+                            break
+                    if digits:
+                        channel_label = f"ch{''.join(digits)}"
+            legend_base = channel_label or base_label
+            if base_label:
                 for line in list(self.ax.lines):
-                    if line.get_label() == label:
+                    if line.get_label().startswith(base_label):
                         line.remove()
-            self.ax.plot(df[potential_col], df[current_col], color=color, label=label)
+            existing_labels = {line.get_label() for line in self.ax.lines if line.get_label()}
+            series = []
+            current_columns = [col for col in (diff_col, current_col, forward_col, reverse_col) if col]
+            current_unit_factors = {}
+            for col in current_columns:
+                _, factor = self._parse_current_unit(col)
+                current_unit_factors[col] = 1e-6 if factor is None else factor
+            if diff_col:
+                series.append((diff_col, "Diff"))
+            elif current_col:
+                series.append((current_col, "Current"))
+
+            if self.show_swv_components:
+                if forward_col:
+                    series.append((forward_col, "Forward"))
+                if reverse_col:
+                    series.append((reverse_col, "Reverse"))
+
+            use_time = False
+            if self.plot_x_mode == "time" and time_col:
+                use_time = True
+            elif potential_col:
+                use_time = False
+            elif time_col:
+                use_time = True
+                self.log_message("Plot warning: no Potential (V) column; using Time (s) instead.")
+            x_col = time_col if use_time else potential_col
+            x_series = pd.to_numeric(df[x_col], errors="coerce").dropna()
+            x_min = x_max = None
+            if not x_series.empty:
+                x_min = float(x_series.min())
+                x_max = float(x_series.max())
+            y_min = y_max = None
+            max_abs_amp = 0.0
+            series_data_amp = {}
+            for col, suffix in series:
+                y_series_amp = pd.to_numeric(df[col], errors="coerce") * current_unit_factors.get(col, 1e-6)
+                series_data_amp[col] = y_series_amp
+                y_abs = y_series_amp.abs().dropna()
+                if not y_abs.empty:
+                    max_abs_amp = max(max_abs_amp, float(y_abs.max()))
+            display_unit, display_scale = self._choose_current_display_unit(max_abs_amp)
+            for col, suffix in series:
+                series_label = f"{legend_base} ({suffix})" if legend_base else suffix
+                series_key = (legend_base, suffix)
+                color = self.plot_series_colors.get(series_key)
+                if color is None:
+                    color = next(self.plot_color_cycle)
+                    self.plot_series_colors[series_key] = color
+                plot_label = "_nolegend_" if series_label in existing_labels else series_label
+                y_scaled = series_data_amp[col] / display_scale
+                self.ax.plot(df[x_col], y_scaled, color=color, label=plot_label)
+                existing_labels.add(series_label)
+                y_series = y_scaled.dropna()
+                if not y_series.empty:
+                    series_min = float(y_series.min())
+                    series_max = float(y_series.max())
+                    y_min = series_min if y_min is None else min(y_min, series_min)
+                    y_max = series_max if y_max is None else max(y_max, series_max)
+            self.plot_data_bounds = self._build_plot_bounds(x_min, x_max, y_min, y_max)
             self.ax.set_title('Voltammogram')
-            self.ax.set_xlabel('Potential (V)')
-            self.ax.set_ylabel('Current (uA)')
+            if use_time and time_col:
+                self.ax.set_xlabel('Time (s)')
+            else:
+                self.ax.set_xlabel('Potential (V)')
+            self.ax.set_ylabel(f'Current ({display_unit})')
             self.ax.grid(visible=True, which='major', linestyle='-')
             self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
             self.ax.minorticks_on()
+            self.ax.relim()
+            self.ax.autoscale_view()
             self.ax.legend(loc='best')
             self.canvas.draw()
             self.notebook.select(self.plotter_frame)
@@ -1470,24 +2608,37 @@ class ElectrochemGUI:
     def clear_plot(self):
         self.ax.clear()
         self.ax.set_title('Voltammogram')
-        self.ax.set_xlabel('Potential (V)')
-        self.ax.set_ylabel('Current (uA)')
+        if self.plot_x_mode == "time":
+            self.ax.set_xlabel('Time (s)')
+        else:
+            self.ax.set_xlabel('Potential (V)')
+        self.live_plot_current_unit = "uA"
+        self.live_plot_current_scale = 1e-6
+        self.ax.set_ylabel(f'Current ({self.live_plot_current_unit})')
         self.ax.grid(visible=True, which='major', linestyle='-')
         self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
         self.ax.minorticks_on()
         self.plot_color_cycle = itertools.cycle(self.plot_colors)
+        self.plot_series_colors = {}
         self.plot_line = None
         self.live_plot_x = []
         self.live_plot_y = []
+        self.live_plot_t = []
         self.last_live_plot_color = None
         self.last_live_plot_label = None
+        self.measure_start = None
+        self.clear_measurements()
+        self.plot_data_bounds = None
         self.canvas.draw()
 
     def start_live_plot(self, title=None, color=None, label=None):
         self.live_plot_queue = queue.Queue(maxsize=10000)
         self.live_plot_x = []
         self.live_plot_y = []
+        self.live_plot_t = []
         self.live_plot_active = True
+        self.live_plot_current_unit = "uA"
+        self.live_plot_current_scale = 1e-6
 
         if color is None:
             color = next(self.plot_color_cycle)
@@ -1496,8 +2647,11 @@ class ElectrochemGUI:
             label = title or "Live"
         self.last_live_plot_label = label
         self.ax.set_title(title or "Live Voltammogram")
-        self.ax.set_xlabel('Potential (V)')
-        self.ax.set_ylabel('Current (uA)')
+        if self.plot_x_mode == "time":
+            self.ax.set_xlabel('Time (s)')
+        else:
+            self.ax.set_xlabel('Potential (V)')
+        self.ax.set_ylabel(f'Current ({self.live_plot_current_unit})')
         self.ax.grid(visible=True, which='major', linestyle='-')
         self.ax.grid(visible=True, which='minor', linestyle='--', alpha=0.2)
         self.ax.minorticks_on()
@@ -1518,12 +2672,15 @@ class ElectrochemGUI:
         if not self.live_plot_active:
             return
         try:
-            potential = data_point['potential']
-            current = data_point['current']
+            current_amp = data_point.get('current_amp')
+            if current_amp is None:
+                current_amp = data_point['current'] * 1e-6
         except KeyError:
             return
+        potential = data_point.get('potential')
+        timestamp = data_point.get('time')
         try:
-            self.live_plot_queue.put_nowait((potential, current))
+            self.live_plot_queue.put_nowait((potential, current_amp, timestamp))
         except queue.Full:
             return
 
@@ -1535,25 +2692,127 @@ class ElectrochemGUI:
         updated = False
         while True:
             try:
-                potential, current = self.live_plot_queue.get_nowait()
+                potential, current, timestamp = self.live_plot_queue.get_nowait()
             except queue.Empty:
                 break
             self.live_plot_x.append(potential)
             self.live_plot_y.append(current)
+            self.live_plot_t.append(timestamp)
             updated = True
 
         if updated:
+            use_time = self.plot_x_mode == "time" and any(t is not None for t in self.live_plot_t)
+            max_abs_amp = 0.0
+            for y_val in self.live_plot_y:
+                if y_val is None:
+                    continue
+                try:
+                    max_abs_amp = max(max_abs_amp, abs(float(y_val)))
+                except Exception:
+                    continue
+            unit, scale = self._choose_current_display_unit(max_abs_amp)
+            if unit != self.live_plot_current_unit or scale != self.live_plot_current_scale:
+                self.live_plot_current_unit = unit
+                self.live_plot_current_scale = scale
+                self.ax.set_ylabel(f"Current ({self.live_plot_current_unit})")
+            x_vals = self._live_plot_x_values(use_time)
+            y_vals = self._live_plot_y_values(use_time)
             if self.plot_line is None:
-                (self.plot_line,) = self.ax.plot(self.live_plot_x, self.live_plot_y, lw=1)
+                (self.plot_line,) = self.ax.plot(x_vals, y_vals, lw=1)
             else:
-                self.plot_line.set_data(self.live_plot_x, self.live_plot_y)
+                self.plot_line.set_data(x_vals, y_vals)
             self.ax.relim()
             self.ax.autoscale_view()
             if self.last_live_plot_label:
                 self.ax.legend(loc='best')
+            self.plot_data_bounds = self._build_plot_bounds_from_lists(x_vals, y_vals)
             self.canvas.draw_idle()
 
         self.live_plot_job = self.root.after(100, self._poll_live_plot_queue)
+
+    def _live_plot_x_values(self, use_time: bool):
+        if use_time:
+            return [t for t, y in zip(self.live_plot_t, self.live_plot_y) if t is not None]
+        return [x for x, y in zip(self.live_plot_x, self.live_plot_y) if x is not None]
+
+    def _live_plot_y_values(self, use_time: bool):
+        if use_time:
+            raw_vals = [y for t, y in zip(self.live_plot_t, self.live_plot_y) if t is not None]
+        else:
+            raw_vals = [y for x, y in zip(self.live_plot_x, self.live_plot_y) if x is not None]
+        if not raw_vals:
+            return []
+        scale = self.live_plot_current_scale or 1e-6
+        return [y / scale for y in raw_vals]
+
+    def _plot_zoom_active(self):
+        return self.toolbar is not None and getattr(self.toolbar, "mode", "") == "zoom rect"
+
+    def _plot_pan_active(self):
+        return self.toolbar is not None and getattr(self.toolbar, "mode", "") == "pan/zoom"
+
+    def _build_plot_bounds(self, x_min, x_max, y_min, y_max):
+        if x_min is None or x_max is None or y_min is None or y_max is None:
+            return None
+        x_range = x_max - x_min
+        y_range = y_max - y_min
+        if x_range == 0:
+            x_range = max(abs(x_min), 1.0) * 0.1
+        if y_range == 0:
+            y_range = max(abs(y_min), 1.0) * 0.1
+        x_margin = x_range * 0.05
+        y_margin = y_range * 0.05
+        return (x_min - x_margin, x_max + x_margin, y_min - y_margin, y_max + y_margin)
+
+    def _build_plot_bounds_from_lists(self, x_vals, y_vals):
+        if not x_vals or not y_vals:
+            return None
+        try:
+            x_min = min(x_vals)
+            x_max = max(x_vals)
+            y_min = min(y_vals)
+            y_max = max(y_vals)
+        except ValueError:
+            return None
+        return self._build_plot_bounds(x_min, x_max, y_min, y_max)
+
+    def _get_plot_data_bounds(self):
+        bounds = self._compute_bounds_from_lines()
+        if bounds is not None:
+            return bounds
+        return self.plot_data_bounds
+
+    def _compute_bounds_from_lines(self):
+        if not hasattr(self, "ax") or self.ax is None:
+            return None
+        x_min = x_max = y_min = y_max = None
+        for line in self.ax.lines:
+            try:
+                x_data = line.get_xdata(orig=False)
+                y_data = line.get_ydata(orig=False)
+            except Exception:
+                continue
+            if x_data is None or y_data is None:
+                continue
+            for x_val in x_data:
+                if x_val is None or isinstance(x_val, str):
+                    continue
+                try:
+                    xv = float(x_val)
+                except Exception:
+                    continue
+                x_min = xv if x_min is None else min(x_min, xv)
+                x_max = xv if x_max is None else max(x_max, xv)
+            for y_val in y_data:
+                if y_val is None or isinstance(y_val, str):
+                    continue
+                try:
+                    yv = float(y_val)
+                except Exception:
+                    continue
+                y_min = yv if y_min is None else min(y_min, yv)
+                y_max = yv if y_max is None else max(y_max, yv)
+        return self._build_plot_bounds(x_min, x_max, y_min, y_max)
     def clear_params_frame(self):
         for widget in self.params_frame.winfo_children(): widget.destroy()
 
@@ -1595,11 +2854,51 @@ class ElectrochemGUI:
             messagebox.showerror("Error", f"Failed to generate script: {str(e)}")
             return None
 
+    def run_pstrace_swv_preset(self):
+        script = (
+            "e\n"
+            "set_gpio_cfg 0x3FFi 1\n"
+            "set_gpio 119i\n"
+            "var c\n"
+            "var p\n"
+            "var f\n"
+            "var g\n"
+            "set_pgstat_chan 1\n"
+            "set_pgstat_mode 0\n"
+            "set_pgstat_chan 0\n"
+            "set_pgstat_mode 3\n"
+            "set_max_bandwidth 4k\n"
+            "set_range_minmax da -536m 36m\n"
+            "set_range ba 59n\n"
+            "set_autoranging ba 59n 59n\n"
+            "set_e -500m\n"
+            "cell_on\n"
+            "meas_loop_ca p c -500m 200m 1\n"
+            "  pck_start\n"
+            "    pck_add p\n"
+            "    pck_add c\n"
+            "  pck_end\n"
+            "endloop\n"
+            "meas_loop_swv p c f g -500m 0 2m 36m 100\n"
+            "  pck_start\n"
+            "    pck_add p\n"
+            "    pck_add c\n"
+            "    pck_add f\n"
+            "    pck_add g\n"
+            "  pck_end\n"
+            "endloop\n"
+            "on_finished:\n"
+            "  cell_off\n"
+        )
+        self.run_script_immediately("SWV", script)
+
     def update_script_preview(self, script):
         self.script_text.delete(1.0, tk.END)
         self.script_text.insert(1.0, script)
     
     def add_cv_to_queue(self):
+        if self._require_active_session() is None:
+            return
         base_script = self.create_cv_methodscript()
         mux_channels = self._get_mux_channels(self.cv_params)
         if mux_channels is None:
@@ -1610,6 +2909,8 @@ class ElectrochemGUI:
             self.add_to_queue("CV", base_script)
     
     def add_swv_to_queue(self):
+        if self._require_active_session() is None:
+            return
         base_script = self.create_swv_methodscript()
         mux_channels = self._get_mux_channels(self.swv_params)
         if mux_channels is None:
@@ -1660,6 +2961,8 @@ class ElectrochemGUI:
         )
 
     def add_pause_to_queue(self):
+        if self._require_active_session() is None:
+            return
         try:
             seconds = float(self.pause_params['pause_time'].get())
             if seconds < 0:
@@ -1677,8 +2980,11 @@ class ElectrochemGUI:
         self.measurement_queue.append(queue_item)
         self.refresh_queue_display()
         messagebox.showinfo("Success", f"Pause ({seconds:.1f} sec) added to queue")
+        self.log_message(f"Queue add: Pause ({seconds:.1f} sec)")
 
     def add_alert_pause_to_queue(self):
+        if self._require_active_session() is None:
+            return
         message = (self.pause_params.get('alert_message').get() or "").strip()
         if not message:
             messagebox.showerror("Invalid Alert", "Alert message cannot be empty.")
@@ -1692,6 +2998,7 @@ class ElectrochemGUI:
         self.measurement_queue.append(queue_item)
         self.refresh_queue_display()
         messagebox.showinfo("Success", "Alert pause added to queue")
+        self.log_message("Queue add: Alert pause")
 
     def run_cv_immediately(self):
         base_script = self.create_cv_methodscript()
@@ -1732,6 +3039,8 @@ class ElectrochemGUI:
             self.run_swv_cycles(base_script, n_scans, delay)
 
     def run_pause_immediately(self):
+        if self._require_active_session() is None:
+            return
         try:
             seconds = float(self.pause_params['pause_time'].get())
             if seconds < 0:
@@ -1748,9 +3057,12 @@ class ElectrochemGUI:
 
         threading.Thread(target=perform_pause, daemon=True).start()
 
-    def run_script_immediately(self, technique, script, mux_channel=None):
+    def run_script_immediately(self, technique, script, mux_channel=None, source_label=None):
         if self.is_running:
             messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
+            return
+        data_folder = self._require_active_experiment()
+        if data_folder is None:
             return
 
         try:
@@ -1761,8 +3073,9 @@ class ElectrochemGUI:
 
         self.clear_log()
         self.is_running = True
-        self.update_status(f"Running: {technique} - {filename}")
-        self.log_message(f"Starting immediate {technique} run ({filename})")
+        display_label = source_label or filename
+        self.update_status(f"Running: {technique} - {display_label}")
+        self.log_message(f"Starting immediate {technique} run ({display_label})")
         self.start_live_plot(f"{technique} (live)", label=technique)
 
         def worker():
@@ -1775,6 +3088,9 @@ class ElectrochemGUI:
                     Path(filepath),
                     log_callback=self.log_message,
                     data_callback=self.queue_live_point,
+                    invert_current=(technique == "SWV"),
+                    raw_packet_log=self.debug_raw_packets.get(),
+                    data_folder=data_folder,
                 )
                 self.current_runner = runner
                 success, csv_path = runner.execute()
@@ -1791,7 +3107,9 @@ class ElectrochemGUI:
                         self.update_status("Ready (stopped)")
                         if csv_path:
                             self.plot_data(csv_path, color=self.last_live_plot_color, label=self.last_live_plot_label)
-                        detail = f"{technique} run was stopped. Script: {filename}"
+                        detail = f"{technique} run was stopped. Script: {display_label}"
+                        if source_label:
+                            detail += f"\nSaved script: {filename}"
                         if csv_path:
                             detail += f"\nData saved to: {csv_path}"
                         self.log_message(f"{technique} run stopped by user.")
@@ -1800,7 +3118,9 @@ class ElectrochemGUI:
                         self.update_status("Ready")
                         if csv_path:
                             self.plot_data(csv_path, color=self.last_live_plot_color, label=self.last_live_plot_label)
-                        detail = f"{technique} run completed. Script: {filename}"
+                        detail = f"{technique} run completed. Script: {display_label}"
+                        if source_label:
+                            detail += f"\nSaved script: {filename}"
                         if csv_path:
                             detail += f"\nData saved to: {csv_path}"
                         self.log_message(f"{technique} run completed successfully.")
@@ -1817,25 +3137,38 @@ class ElectrochemGUI:
         threading.Thread(target=worker, daemon=True).start()
 
     def save_script_file(self, technique, script, mux_channel=None):
-        date_folder = self.base_path / datetime.now().strftime('%Y-%m-%d')
-        date_folder.mkdir(exist_ok=True)
+        if self.current_experiment_path:
+            date_folder = self.current_experiment_path / "scripts"
+            date_folder.mkdir(exist_ok=True, parents=True)
+            use_zero_index = True
+        else:
+            date_folder = self.base_path / datetime.now().strftime('%Y-%m-%d')
+            date_folder.mkdir(exist_ok=True)
+            use_zero_index = False
         slug = technique.lower().replace(' ', '_')
         if mux_channel is not None:
             slug = f"{slug}_ch{mux_channel}"
-        filename = f"{len(list(date_folder.glob('*.ms'))) + 1:03d}_{slug}.ms"
+        count = len(list(date_folder.glob('*.ms')))
+        index = count if use_zero_index else count + 1
+        filename = f"{index:03d}_{slug}.ms"
         filepath = date_folder / filename
         with open(filepath, 'w') as f:
             f.write(script)
         return filepath, filename
 
     def add_to_queue(self, technique, script):
+        if self._require_active_session() is None:
+            return
         filepath, filename = self.save_script_file(technique, script)
         queue_item = {'type': technique, 'script_path': str(filepath), 'status': 'pending', 'details': filename}
         self.measurement_queue.append(queue_item)
         self.refresh_queue_display()
         messagebox.showinfo("Success", f"{technique} added to queue\nSaved as: {filename}")
+        self.log_message(f"Queue add: {technique} ({filename})")
 
     def add_mux_scripts_to_queue(self, technique, base_script, channels):
+        if self._require_active_session() is None:
+            return
         saved = []
         for ch in channels:
             mux_script = self._build_mux_script(base_script, ch)
@@ -1853,10 +3186,14 @@ class ElectrochemGUI:
             "Success",
             f"{technique} added for MUX channels: {', '.join(map(str, channels))}\nSaved as: {', '.join(saved)}",
         )
+        self.log_message(f"Queue add: {technique} (MUX ch {', '.join(map(str, channels))})")
 
     def run_mux_script_sequence(self, technique, base_script, channels):
         if self.is_running:
             messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
+            return
+        data_folder = self._require_active_experiment()
+        if data_folder is None:
             return
 
         if not channels:
@@ -1901,6 +3238,9 @@ class ElectrochemGUI:
                         Path(filepath),
                         log_callback=self.log_message,
                         data_callback=self.queue_live_point,
+                        invert_current=(technique == "SWV"),
+                        raw_packet_log=self.debug_raw_packets.get(),
+                        data_folder=data_folder,
                     )
                     self.current_runner = runner
                     ok, csv_path = runner.execute()
@@ -1950,6 +3290,9 @@ class ElectrochemGUI:
         if self.is_running:
             messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
             return
+        data_folder = self._require_active_experiment()
+        if data_folder is None:
+            return
 
         self.clear_log()
         self.is_running = True
@@ -1989,6 +3332,9 @@ class ElectrochemGUI:
                         Path(filepath),
                         log_callback=self.log_message,
                         data_callback=self.queue_live_point,
+                        invert_current=True,
+                        raw_packet_log=self.debug_raw_packets.get(),
+                        data_folder=data_folder,
                     )
                     self.current_runner = runner
                     ok, csv_path = runner.execute()
@@ -2045,6 +3391,9 @@ class ElectrochemGUI:
         if self.is_running:
             messagebox.showwarning("Busy", "Another measurement is currently running. Stop it or wait for it to finish before starting a new run.")
             return
+        data_folder = self._require_active_experiment()
+        if data_folder is None:
+            return
 
         if not channels:
             return
@@ -2095,6 +3444,9 @@ class ElectrochemGUI:
                             Path(filepath),
                             log_callback=self.log_message,
                             data_callback=self.queue_live_point,
+                            invert_current=True,
+                            raw_packet_log=self.debug_raw_packets.get(),
+                            data_folder=data_folder,
                         )
                         self.current_runner = runner
                         ok, csv_path = runner.execute()
@@ -2177,7 +3529,39 @@ class ElectrochemGUI:
                 data['script_path'] = item['script_path']
         return data
 
+    def _snapshot_queue(self):
+        return {
+            'metadata': {
+                'saved_at': datetime.now().isoformat(timespec='seconds'),
+                'version': 1,
+            },
+            'items': [self._serialize_queue_item(item) for item in self.measurement_queue],
+        }
+
+    def _copy_queue_into_experiment(self, label: str):
+        if not self.current_experiment_path:
+            return
+        try:
+            queues_dir = self.current_experiment_path / "queue_files"
+            queues_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            if self.last_queue_file_path and Path(self.last_queue_file_path).exists():
+                src = Path(self.last_queue_file_path)
+                dest = queues_dir / f"{label}_{timestamp}_{src.name}"
+                shutil.copy2(src, dest)
+                self.log_message(f"Queue file copied to: {dest}")
+            else:
+                dest = queues_dir / f"{label}_{timestamp}_queue_snapshot.json"
+                payload = self._snapshot_queue()
+                with open(dest, 'w', encoding='utf-8') as handle:
+                    json.dump(payload, handle, indent=2)
+                self.log_message(f"Queue snapshot saved to: {dest}")
+        except OSError as exc:
+            self.log_message(f"Queue copy failed: {exc}")
+
     def save_queue(self):
+        if self._require_active_session() is None:
+            return
         if not self.measurement_queue:
             messagebox.showwarning("Empty Queue", "No items to save.")
             return
@@ -2211,9 +3595,13 @@ class ElectrochemGUI:
             messagebox.showerror("Save Failed", f"Could not save queue:\n{exc}")
             return
 
+        self.last_queue_file_path = file_path
+        self.log_message(f"Queue saved: {file_path}")
         messagebox.showinfo("Queue Saved", f"Queue saved to:\n{file_path}")
 
     def load_queue(self):
+        if self._require_active_session() is None:
+            return
         if self.is_running:
             messagebox.showwarning("Queue Running", "Stop the queue before loading.")
             return
@@ -2297,14 +3685,20 @@ class ElectrochemGUI:
         self.measurement_queue = new_queue
         self.refresh_queue_display()
         self.update_status(f"Queue loaded ({len(new_queue)} items)")
+        self.last_queue_file_path = file_path
         if skipped:
             self.log_message(f"Queue load skipped {skipped} invalid item(s) from {file_path}.")
+        self.log_message(f"Queue loaded: {file_path} ({len(new_queue)} items)")
         messagebox.showinfo("Queue Loaded", f"Loaded {len(new_queue)} queue item(s).")
 
     def run_queue(self):
         self.reset_queue_reorder()
         if not self.measurement_queue: messagebox.showwarning("Empty Queue", "No items in queue"); return
         if self.is_running: messagebox.showwarning("Already Running", "Queue is already running"); return
+        if self._require_active_experiment() is None:
+            return
+        self.log_message("Queue start requested.")
+        self._copy_queue_into_experiment("run_queue")
         self.is_running = True
         self.clear_log()
         self.queue_thread = threading.Thread(target=self.execute_queue, args=(0,), daemon=True)
@@ -2318,6 +3712,10 @@ class ElectrochemGUI:
         if self.is_running:
             messagebox.showwarning("Already Running", "Queue is already running")
             return
+        if self._require_active_experiment() is None:
+            return
+        self.log_message("Queue start from selected requested.")
+        self._copy_queue_into_experiment("run_queue_from_selected")
         selected = self.queue_tree.selection()
         if not selected:
             messagebox.showwarning("No Selection", "Select a queue item to start from.")
@@ -2336,6 +3734,11 @@ class ElectrochemGUI:
         self.queue_thread.start()
 
     def execute_queue(self, start_index=0):
+        data_folder = self.current_experiment_path
+        if data_folder is None:
+            self.root.after(0, messagebox.showwarning, "No Experiment", "Start an experiment before running the queue.")
+            self.is_running = False
+            return
         for i, item in enumerate(list(self.measurement_queue)[start_index:], start=start_index):
             if not self.is_running: self.log_message("Queue execution stopped by user."); break
             self.measurement_queue[i]['status'] = 'running'
@@ -2374,6 +3777,9 @@ class ElectrochemGUI:
                             Path(item['script_path']),
                             log_callback=self.log_message,
                             data_callback=self.queue_live_point,
+                            invert_current=(item['type'] == 'SWV'),
+                            raw_packet_log=self.debug_raw_packets.get(),
+                            data_folder=data_folder,
                         )
                         success, csv_path = self.current_runner.execute()
                         self.measurement_queue[i]['status'] = 'completed' if success else 'failed'
@@ -2393,21 +3799,28 @@ class ElectrochemGUI:
 
         self.is_running = False
         self.root.after(0, self.update_status, "Queue Complete")
+        self.log_message("Queue completed.")
     
     def stop_queue(self):
         if not self.is_running: return
         self.is_running = False
         if self.current_runner: self.current_runner.stop()
         self.update_status("Queue Stopped")
+        self.log_message("Queue stop requested.")
     
     def clear_queue(self):
+        if self._require_active_session() is None:
+            return
         self.reset_queue_reorder()
         if self.is_running: messagebox.showwarning("Queue Running", "Cannot clear queue while running"); return
         self.measurement_queue = []
         self.refresh_queue_display()
         self.update_status("Queue Cleared")
+        self.log_message("Queue cleared.")
 
     def delete_selected_queue_item(self):
+        if self._require_active_session() is None:
+            return
         self.reset_queue_reorder()
         if self.is_running:
             messagebox.showwarning("Queue Running", "Cannot delete items while running")
@@ -2455,6 +3868,8 @@ class ElectrochemGUI:
         self.queue_drag_item = None
 
     def confirm_queue_reorder(self):
+        if self._require_active_session() is None:
+            return
         if not self.queue_reorder_pending or not self.queue_reorder_snapshot:
             messagebox.showinfo("No Changes", "No pending queue reorder to confirm.")
             return
@@ -2471,6 +3886,7 @@ class ElectrochemGUI:
         self.queue_reorder_pending = False
         self.refresh_queue_display()
         self.update_status("Queue reordered")
+        self.log_message("Queue reordered.")
 
     def reset_queue_reorder(self):
         if self.queue_reorder_pending:

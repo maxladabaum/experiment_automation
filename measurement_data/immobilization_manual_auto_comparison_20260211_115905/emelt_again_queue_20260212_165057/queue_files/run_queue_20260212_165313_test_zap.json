@@ -1,0 +1,2103 @@
+{
+  "metadata": {
+    "saved_at": "2026-02-12T11:55:37",
+    "version": 1
+  },
+  "items": [
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 7",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 7
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 185.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 185.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 100.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 100.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 2",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 2
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 85.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 85.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 70.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 70.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 70.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 70.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "000_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\000_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "001_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\001_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "002_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\002_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "003_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\003_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "004_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\004_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "005_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\005_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "006_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\006_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "007_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\007_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "008_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\008_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "009_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\009_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "010_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\010_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "011_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\011_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "012_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\012_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "013_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\013_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "014_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\014_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "015_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\015_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "016_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\016_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "017_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\017_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "018_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\018_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "019_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\019_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "020_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\020_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "021_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\021_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "022_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\022_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "023_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\023_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "024_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\024_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "025_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\025_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "026_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\026_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "027_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\027_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "028_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\028_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "029_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\029_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "030_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\030_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "031_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\031_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "032_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\032_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "033_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\033_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "034_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\034_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "035_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\035_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "036_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\036_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "037_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\037_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "038_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\038_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "039_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\039_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "040_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\040_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "041_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\041_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "042_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\042_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "043_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\043_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "044_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\044_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "045_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\045_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "046_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\046_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "047_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\047_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "048_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\048_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "049_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\049_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "050_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\050_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "051_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\051_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "052_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\052_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "053_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\053_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "054_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\054_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "055_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\055_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "056_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\056_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "057_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\057_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "058_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\058_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "059_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\059_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "060_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\060_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "061_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\061_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "062_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\062_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "063_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\063_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "064_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\064_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "065_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\065_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "066_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\066_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "067_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\067_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "068_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\068_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "069_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\069_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "070_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\070_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "071_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\071_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "072_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\072_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "073_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\073_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "074_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\074_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "075_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\075_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "076_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\076_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "077_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\077_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "078_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\078_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "079_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\079_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "080_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\080_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "081_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\081_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "082_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\082_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "083_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\083_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "084_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\084_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "085_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\085_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "086_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\086_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "087_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\087_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "088_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\088_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "089_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\089_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "090_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\090_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "091_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\091_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "092_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\092_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "093_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\093_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "094_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\094_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "095_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\095_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "096_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\096_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "097_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\097_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "098_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\098_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "099_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\099_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "100_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\100_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "101_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\101_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "102_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\102_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "103_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\103_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "104_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\104_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "105_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\105_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "106_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\106_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "107_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\107_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "108_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\108_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "109_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\109_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "110_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\110_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "111_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\111_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "112_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\112_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "113_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\113_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "114_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\114_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "115_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\115_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "116_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\116_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "117_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\117_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "118_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\118_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "119_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\119_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "120_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\120_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "121_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\121_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "122_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\122_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "123_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\123_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "124_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\124_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "125_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\125_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "126_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\126_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "127_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\127_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "128_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\128_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "129_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\129_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "130_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\130_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "131_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\131_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "132_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\132_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "133_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\133_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "134_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\134_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "135_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\135_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "136_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\136_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "137_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\137_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "138_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\138_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "139_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\139_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "140_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\140_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "141_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\141_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "142_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\142_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "143_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\143_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "144_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\144_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "145_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\145_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "146_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\146_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "147_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\147_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "148_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\148_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "149_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\149_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "150_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\150_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "151_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\151_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "152_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\152_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "153_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\153_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "154_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\154_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "155_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\155_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "156_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\156_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "157_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\157_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "158_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\158_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "159_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\159_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "160_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\160_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "161_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\161_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "162_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\162_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "163_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\163_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "164_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\164_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "165_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\165_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "166_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\166_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "167_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\167_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "168_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\168_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "169_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\169_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "170_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\170_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "171_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\171_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "172_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\172_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "173_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\173_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "174_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\174_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "175_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\175_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "176_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\176_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "177_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\177_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "178_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\178_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "179_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\179_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "180_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\180_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "181_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\181_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "182_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\182_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "183_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\183_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "184_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\184_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "185_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\185_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "186_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\186_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "187_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\187_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "188_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\188_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "189_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\189_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "190_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\190_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "191_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\191_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "192_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\192_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "193_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\193_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "194_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\194_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "195_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\195_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "196_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\196_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "197_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\197_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "198_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\198_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "199_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\199_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "200_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\200_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "201_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\201_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "202_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\202_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "203_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\203_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "204_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\204_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "205_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\205_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "206_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\206_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "207_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\207_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "208_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\208_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "209_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\209_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "210_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\210_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "211_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\211_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "212_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\212_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "213_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\213_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "214_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\214_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "215_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\215_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "216_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\216_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "217_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\217_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "218_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\218_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "219_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\219_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "220_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\220_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "221_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\221_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "222_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\222_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "223_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\223_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "224_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\224_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "225_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\225_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "226_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\226_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "227_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\227_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "228_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\228_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "229_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\229_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "230_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\230_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "231_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\231_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "232_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\232_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "233_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\233_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "234_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\234_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "235_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\235_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "236_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\236_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "237_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\237_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "238_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\238_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "239_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\239_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "240_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\240_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "241_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\241_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "242_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\242_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "243_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\243_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "244_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\244_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "245_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\245_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "246_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\246_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "247_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\247_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "248_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\248_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "249_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\249_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "250_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\250_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "251_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\251_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "252_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\252_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "253_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\253_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "254_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\254_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "255_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\255_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "256_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\256_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "257_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\257_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "258_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\258_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "259_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\259_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "260_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\260_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "261_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\261_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "262_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\262_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "263_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\263_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "264_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\264_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "265_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\265_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "266_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\266_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "267_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\267_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "268_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\268_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "269_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\269_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "270_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\270_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "271_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\271_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "272_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\272_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "273_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\273_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "274_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\274_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "275_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\275_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "276_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\276_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "277_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\277_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "278_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\278_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "279_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\279_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "280_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\280_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "281_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\281_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "282_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\282_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "283_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\283_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "284_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\284_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "285_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\285_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "286_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\286_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "287_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\287_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "288_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\288_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "289_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\289_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "290_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\290_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "291_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\291_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "292_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\292_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "293_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\293_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "294_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\294_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "295_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\295_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "296_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\296_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "297_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\297_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "298_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\298_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "299_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\299_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "300_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\300_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "301_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\301_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "302_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\302_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "303_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\303_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "304_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\304_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "305_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\305_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "306_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\306_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "307_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\307_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "308_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\308_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "309_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\309_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "310_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\310_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "311_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\311_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "312_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\312_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "313_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\313_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "314_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\314_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "315_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\315_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "316_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\316_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "317_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\317_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "318_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\318_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "319_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\319_swv_ch10.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "320_swv_ch1.ms (MUX ch 1)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\320_swv_ch1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "321_swv_ch2.ms (MUX ch 2)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\321_swv_ch2.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "322_swv_ch3.ms (MUX ch 3)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\322_swv_ch3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "323_swv_ch4.ms (MUX ch 4)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\323_swv_ch4.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "324_swv_ch5.ms (MUX ch 5)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\324_swv_ch5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "325_swv_ch6.ms (MUX ch 6)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\325_swv_ch6.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "326_swv_ch7.ms (MUX ch 7)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\326_swv_ch7.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "327_swv_ch8.ms (MUX ch 8)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\327_swv_ch8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "328_swv_ch9.ms (MUX ch 9)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\328_swv_ch9.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "329_swv_ch10.ms (MUX ch 10)",
+      "script_path": "measurement_data\\immobilization_manual_auto_comparison_20260211_115905\\DS_emelt_zap_20260212_094357\\scripts\\329_swv_ch10.ms"
+    }
+  ]
+}

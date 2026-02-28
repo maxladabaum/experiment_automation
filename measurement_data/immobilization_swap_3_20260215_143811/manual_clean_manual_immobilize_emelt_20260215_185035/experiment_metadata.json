@@ -1,0 +1,8 @@
+{
+  "experiment_name": "manual_clean_manual_immobilize_emelt",
+  "experiment_folder": "manual_clean_manual_immobilize_emelt_20260215_185035",
+  "session_folder": "immobilization_swap_3_20260215_143811",
+  "notes": "trithiol amp0 on unknown used chip. Not solvent cleaned beforehand. Manual EC3 and EC4 with manual immobilization. Cleaned system (line 8) with IPA soak prior to experiment.",
+  "started_at": "2026-02-15T18:50:35",
+  "ended_at": null
+}
