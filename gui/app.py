@@ -23,7 +23,8 @@ from config import (
 )
 from core.session  import SessionState
 from core.runner   import SerialMeasurementRunner
-
+from core.session_manager import SessionManager
+from gui.session_bar import SessionBar
 from gui.tab_script  import ScriptTab
 from gui.tab_plotter import PlotterTab
 from gui.tab_method  import MethodTab
@@ -68,10 +69,12 @@ class ElectrochemGUI:
         self._nb.pack(fill="both", expand=True, padx=5, pady=5)
 
         # ── Session state (shared by all tabs) ────────────────────────────────
+        # NEW
         self._session = SessionState(
             log_callback    = self._log,
             status_callback = self._set_status,
         )
+        self._session_mgr = SessionManager(log_callback=self._log)
 
         # ── Tab frames ────────────────────────────────────────────────────────
         pump_frame    = ttk.Frame(self._nb)
@@ -125,7 +128,14 @@ class ElectrochemGUI:
             )
         else:
             self._pump_tab = None
-
+        # ── Session bar (bottom of window) ───────────────────────────────────────
+        self._session_bar = SessionBar(
+            root            = root,
+            session_manager = self._session_mgr,
+        )
+        # Give all tabs access to the session manager for require_experiment() guards
+        self._session.session_manager = self._session_mgr
+    
     # ── Inter-tab wiring helpers ──────────────────────────────────────────────
 
     def _log(self, msg: str):

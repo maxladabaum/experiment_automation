@@ -20,7 +20,7 @@ import serial.tools.list_ports
 from core.mscript_parser import to_si_string
 from core.runner import SerialMeasurementRunner
 from core.session import SessionState
-
+from gui.tab_custom_script import CustomScriptPanel
 
 class MethodTab:
     """Manages the 'Method Creation' notebook tab.
@@ -79,7 +79,12 @@ class MethodTab:
         ttk.Button(tech_frame, text="Cyclic Voltammetry (CV)",
                    command=self._show_cv_params, width=28).pack(pady=5)
         ttk.Button(tech_frame, text="Square Wave Voltammetry (SWV)",
-                   command=self._show_swv_params, width=28).pack(pady=5)
+           command=self._show_swv_params, width=28).pack(pady=5)
+        ttk.Button(tech_frame, text="Custom Script (File)",
+                command=self._show_custom_params, width=28).pack(pady=5)
+        ttk.Separator(tech_frame, orient="horizontal").pack(fill="x", pady=6)
+        ttk.Button(tech_frame, text="PStrace SWV Preset",
+                command=self._run_pstrace_preset, width=28).pack(pady=5)
         ttk.Separator(tech_frame, orient="horizontal").pack(fill="x", pady=6)
         ttk.Button(tech_frame, text="Pause / Alert",
                    command=self._show_pause_params, width=28).pack(pady=5)
@@ -543,3 +548,55 @@ class MethodTab:
 
         threading.Thread(target=_do, daemon=True).start()
         self._session.log(f"Immediate pause started ({secs:.1f} sec)…")
+    def _show_custom_params(self):
+        self._clear_params()
+        self.current_technique = "CUSTOM"
+        self._custom_panel = CustomScriptPanel(
+            params_frame      = self._params_frame,
+            session           = self._session,
+            on_run_now        = self._run_now,
+            on_add_to_queue   = self._add_to_queue,
+            on_script_preview = self._script_preview,
+            save_script_fn    = self._session.registry.save_script,
+            wrap_mux_fn       = self._wrap_mux,
+            parse_mux_fn      = self._get_mux_channels,
+        )
+
+    def _run_pstrace_preset(self):
+        script = (
+            "e\n"
+            "set_gpio_cfg 0x3FFi 1\n"
+            "set_gpio 119i\n"
+            "var c\n"
+            "var p\n"
+            "var f\n"
+            "var g\n"
+            "set_pgstat_chan 1\n"
+            "set_pgstat_mode 0\n"
+            "set_pgstat_chan 0\n"
+            "set_pgstat_mode 3\n"
+            "set_max_bandwidth 4k\n"
+            "set_range_minmax da -536m 36m\n"
+            "set_range ba 59n\n"
+            "set_autoranging ba 59n 59n\n"
+            "set_e -500m\n"
+            "cell_on\n"
+            "meas_loop_ca p c -500m 200m 1\n"
+            "  pck_start\n"
+            "    pck_add p\n"
+            "    pck_add c\n"
+            "  pck_end\n"
+            "endloop\n"
+            "meas_loop_swv p c f g -500m 0 2m 36m 100\n"
+            "  pck_start\n"
+            "    pck_add p\n"
+            "    pck_add c\n"
+            "    pck_add f\n"
+            "    pck_add g\n"
+            "  pck_end\n"
+            "endloop\n"
+            "on_finished:\n"
+            "  cell_off\n"
+        )
+        self._script_preview(script)
+        self._run_now("SWV", script, None)

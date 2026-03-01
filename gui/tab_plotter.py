@@ -18,8 +18,8 @@ from tkinter import ttk
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from gui.widgets import AutoScaleToolbar
 from core.session import SessionState
 
 
@@ -85,8 +85,11 @@ class PlotterTab:
 
         toolbar_frame = ttk.Frame(self._frame)
         toolbar_frame.pack(side="top", fill="x")
-        toolbar = NavigationToolbar2Tk(self._canvas, toolbar_frame)
-        toolbar.update()
+        self._toolbar = AutoScaleToolbar(
+            self._canvas, toolbar_frame,
+            get_bounds=self._get_data_bounds,
+        )
+        self._toolbar.update()
 
         self._canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
@@ -266,3 +269,33 @@ class PlotterTab:
             if nc in norm_map:
                 return norm_map[nc]
         return None
+    def _get_data_bounds(self):
+        """Return (x_min, x_max, y_min, y_max) across all plotted lines, or None."""
+        x_min = x_max = y_min = y_max = None
+        for line in self._ax.lines:
+            try:
+                xs = line.get_xdata(orig=False)
+                ys = line.get_ydata(orig=False)
+            except Exception:
+                continue
+            for v in xs:
+                try:
+                    fv = float(v)
+                    x_min = fv if x_min is None else min(x_min, fv)
+                    x_max = fv if x_max is None else max(x_max, fv)
+                except Exception:
+                    pass
+            for v in ys:
+                try:
+                    fv = float(v)
+                    y_min = fv if y_min is None else min(y_min, fv)
+                    y_max = fv if y_max is None else max(y_max, fv)
+                except Exception:
+                    pass
+        if None in (x_min, x_max, y_min, y_max):
+            return None
+        # Add 5 % margin
+        xr = (x_max - x_min) or max(abs(x_min), 1.0) * 0.1
+        yr = (y_max - y_min) or max(abs(y_min), 1.0) * 0.1
+        return (x_min - xr*0.05, x_max + xr*0.05,
+                y_min - yr*0.05, y_max + yr*0.05)

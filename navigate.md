@@ -19,9 +19,9 @@ experiment_automation/
 ├── core/
 │   ├── __init__.py
 │   ├── runner.py                  # SerialMeasurementRunner (serial comms + data parsing)
-│   ├── method_registry.py         TODO: (bug_fix) # Hash registry, save_script_file, deduplication
+│   ├── method_registry.py         # Hash registry, save_script_file, deduplication
 │   ├── session.py                 # Shared state — queue, counter, is_running, runner ref
-│   └── mscript_parser.py          TODO: (bug_fix) # VarType, SI prefixes, parse_mscript_data_package
+│   └── mscript_parser.py          # VarType, SI prefixes, parse_mscript_data_package
 │
 ├── tecancavro/
 │   ├── __init__.py
@@ -39,8 +39,8 @@ experiment_automation/
 │       └── ...
 │   └── archive
 │       └── ...
-│   └── library_map.py             TODO: # Hashmap, also include the method finder tool
-│   └── library                    TODO: # Methods library
+│   └── library_map.py             # Hashmap, also include the method finder tool
+│   └── library                    # Methods library
 │       └── ...
 │
 ├── measurement_data/              # CSV output saved at runtime by runner.py

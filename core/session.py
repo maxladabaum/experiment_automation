@@ -37,7 +37,8 @@ class SessionState:
     ):
         self._log    = log_callback
         self._status = status_callback
-
+        # NEW — wired by app.py after construction
+        self.session_manager = None
         # ── Queue ─────────────────────────────────────────────────────────────
         self.measurement_queue: List[dict] = []
         self.is_running  = False

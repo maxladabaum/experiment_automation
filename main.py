@@ -16,7 +16,7 @@ On 64-bit Python (no pump hardware):
 # electrochemistry_automation_gui.py
 # For bash use -> source venv_gui/Scripts/activate
 # For powershell use -> venv_gui\Scripts\Activate.ps1
-# To run -> python -m gui_script
+# To run -> python -m main
 
 import sys
 import os

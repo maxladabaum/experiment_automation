@@ -514,10 +514,18 @@ class QueueTab:
                         meas_tag = self._session.next_meas_tag()
                         self.log(f"[Tag] {meas_tag}")
                         self._root.after(0, self.refresh_labels)
+                        data_folder = None
+                        if self._session.session_manager is not None:
+                            data_folder = self._session.session_manager.require_experiment()
+                            if data_folder is None:
+                                self._session.measurement_queue[i]["status"] = "failed"
+                                self._root.after(0, self.refresh)
+                                break
                         runner = SerialMeasurementRunner(
                             Path(item["script_path"]),
                             log_callback=self.log,
                             data_callback=self._plotter.push_live_point,
+                            data_folder=data_folder,
                         )
                         self._session.current_runner = runner
                         success, csv_path = runner.execute(meas_tag=meas_tag)
