@@ -12,6 +12,11 @@ On 64-bit Python (no pump hardware):
     python main.py
     (pump tab will be hidden / disabled automatically)
 """
+#!/usr/bin/env python3
+# electrochemistry_automation_gui.py
+# For bash use -> source venv_gui/Scripts/activate
+# For powershell use -> venv_gui\Scripts\Activate.ps1
+# To run -> python -m gui_script
 
 import sys
 import os
