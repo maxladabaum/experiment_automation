@@ -1,0 +1,36 @@
+{
+  "cv_795893": {
+    "technique": "CV",
+    "mux_channel": null,
+    "params": {
+      "begin_potential": "0",
+      "vertex1": "-0.5",
+      "vertex2": "0.5",
+      "step_potential": "0.002",
+      "scan_rate": "0.1",
+      "n_scans": "1",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "added_at": "2026-03-01T01:06:23",
+    "filepath": "methods\\library\\cv_795893.ms"
+  },
+  "cv_e97ce8": {
+    "technique": "CV",
+    "mux_channel": null,
+    "params": {
+      "begin_potential": "0",
+      "vertex1": "-0.8",
+      "vertex2": "0.5",
+      "step_potential": "0.002",
+      "scan_rate": "0.1",
+      "n_scans": "1",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "added_at": "2026-03-01T01:06:56",
+    "filepath": "methods\\library\\cv_e97ce8.ms"
+  }
+}

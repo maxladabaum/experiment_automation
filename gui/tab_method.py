@@ -388,9 +388,9 @@ class MethodTab:
 
     # ── Add to queue ──────────────────────────────────────────────────────────
 
-    def _add_one(self, technique: str, script: str, mux_channel=None):
+    def _add_one(self, technique: str, script: str, params: dict, mux_channel=None):
         """Save script via registry and enqueue one item."""
-        fp, fn = self._session.registry.save_script(technique, script, mux_channel)
+        fp, fn = self._session.registry.save_script(technique, script, params, mux_channel)
         details = fn if mux_channel is None else f"{fn} (MUX ch {mux_channel})"
         self._add_to_queue({
             "type":        technique,
@@ -404,17 +404,17 @@ class MethodTab:
             base = self._build_cv_script()
         except Exception as exc:
             messagebox.showerror("Error", str(exc)); return
-        mux = self._get_mux_channels(self.cv_params)
+        mux    = self._get_mux_channels(self.cv_params)
         if mux is None:
             return
-        saved = []
+        # Extract raw string values for hashing
+        raw_params = {k: v.get() for k, v in self.cv_params.items()}
         if mux:
             for ch in mux:
-                self._add_one("CV", self._wrap_mux(base, ch), mux_channel=ch)
-                saved.append(f"ch {ch}")
-            messagebox.showinfo("Success", f"CV added for MUX channels: {', '.join(saved)}")
+                self._add_one("CV", self._wrap_mux(base, ch), raw_params, mux_channel=ch)
+            messagebox.showinfo("Success", f"CV added for MUX channels: {', '.join(map(str, mux))}")
         else:
-            self._add_one("CV", base)
+            self._add_one("CV", base, raw_params)
             messagebox.showinfo("Success", "CV added to queue")
         self._refresh_queue()
 
@@ -429,20 +429,21 @@ class MethodTab:
         n_scans, delay = self._get_swv_cycles_and_delay()
         if n_scans is None:
             return
+        raw_params = {k: v.get() for k, v in self.swv_params.items()}
 
         added = []
         for cycle in range(1, n_scans + 1):
             if mux:
                 for ch in mux:
                     script = self._wrap_mux(base, ch)
-                    fp, fn = self._session.registry.save_script("SWV", script, ch)
+                    fp, fn = self._session.registry.save_script("SWV", script, raw_params, ch)
                     self._add_to_queue({
                         "type": "SWV", "script_path": str(fp),
                         "status": "pending", "details": f"{fn} (MUX ch {ch})",
                     })
                     added.append(f"{fn} (ch {ch})")
             else:
-                fp, fn = self._session.registry.save_script("SWV", base)
+                fp, fn = self._session.registry.save_script("SWV", base, raw_params)
                 self._add_to_queue({
                     "type": "SWV", "script_path": str(fp),
                     "status": "pending", "details": fn,

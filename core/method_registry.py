@@ -20,7 +20,7 @@ import hashlib
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
-
+from methods.library_map import compute_hash, lookup, register
 from config import METHODS_DIR
 
 
@@ -54,43 +54,50 @@ class MethodRegistry:
 
     def save_script(
         self,
-        technique: str,
-        script: str,
+        technique:   str,
+        script:      str,
+        params:      dict,                  # ← NEW: raw param values for hashing
         mux_channel: Optional[int] = None,
     ) -> Tuple[Path, str]:
-        """Save a MethodSCRIPT to disk, deduplicating identical scripts.
+        """Save a MethodSCRIPT, checking session cache then library before writing.
 
-        If the same (technique, script_content, mux_channel) triple has
-        already been saved this session, the existing path is returned and
-        **no new file is written**.
-
-        Returns
-        -------
-        (filepath, filename)
+        Level 1 — session registry (in-memory, fastest, lost on restart)
+        Level 2 — persistent library (methods/library/, survives restarts)
+        Level 3 — genuinely new: write to library + dated working copy
         """
-        key = self._make_key(technique, script, mux_channel)
+        key = self._make_key(technique, params, mux_channel)
 
+        # Level 1: session cache
         if key in self._registry:
             fp, fn = self._registry[key]
-            self._log(f"[Registry] Reusing '{fn}'  (hash: {key})")
+            self._log(f"[Registry] Session hit  '{fn}'  ({key})")
             return fp, fn
 
-        # New script — persist to disk
+        # Level 2: persistent library
+        lib_path = lookup(key)
+        if lib_path is not None:
+            fn = lib_path.name
+            self._registry[key]           = (lib_path, fn)
+            self._path_to_key[str(lib_path)] = key
+            self._log(f"[Library]  Found        '{fn}'  ({key})")
+            return lib_path, fn
+
+        # Level 3: new — write to library and a dated working copy
+        lib_path = register(key, technique, params, mux_channel, script)
+
         date_folder = self.base_path / datetime.now().strftime("%Y-%m-%d")
         date_folder.mkdir(exist_ok=True)
-
         slug     = technique.lower().replace(" ", "_")
         if mux_channel is not None:
             slug = f"{slug}_ch{mux_channel}"
         existing = len(list(date_folder.glob("*.ms")))
         filename = f"{existing + 1:03d}_{slug}.ms"
         filepath = date_folder / filename
+        filepath.write_text(script, encoding="utf-8")
 
-        filepath.write_text(script)
-
-        self._registry[key]           = (filepath, filename)
+        self._registry[key]              = (filepath, filename)
         self._path_to_key[str(filepath)] = key
-        self._log(f"[Registry] Saved '{filename}'  (hash: {key})")
+        self._log(f"[Library]  Saved new    '{filename}'  ({key})")
         return filepath, filename
 
     def hash_key_for(self, filepath) -> str:
@@ -119,15 +126,6 @@ class MethodRegistry:
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     @staticmethod
-    def _make_key(technique: str, script: str, mux_channel: Optional[int]) -> str:
-        """Compute a short, stable hash key for a (technique, script, channel)
-        triple.
-
-        Format: ``<slug>_<6hexchars>``
-        """
-        slug = technique.lower().replace(" ", "_")
-        if mux_channel is not None:
-            slug = f"{slug}_ch{mux_channel}"
-        raw = f"{slug}||{script}"
-        h   = hashlib.md5(raw.encode("utf-8"), usedforsecurity=False).hexdigest()[:6]
-        return f"{slug}_{h}"
+    def _make_key(technique: str, params: dict, mux_channel: Optional[int]) -> str:
+        """Delegate to library_map.compute_hash — hash is param-based, not script-based."""
+        return compute_hash(technique, params, mux_channel)
