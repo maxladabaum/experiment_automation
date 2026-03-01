@@ -2,65 +2,87 @@ experiment_automation/
 │
 ├── main.py                        # Entry point — root + ElectrochemGUI + mainloop()
 ├── config.py                      # All constants (syringe, baud, steps, paths, etc.)
-├── requirements.txt               # Already exists — keep as-is
-├── README_txt.txt                 # Already exists — rename to README.md eventually
-├── navigate.md                    # This file for folder navigation
+├── requirements.txt               # Keep as-is
+├── README_txt.txt                 # TODO: rename to README.md eventually
+├── navigate.md                    # This file
 │
 ├── gui/
 │   ├── __init__.py
-│   ├── app.py                     # Thin shell — creates notebook, wires tabs together
-│   ├── tab_method.py              # CV/SWV param forms, generate/run/add-to-queue
-│   ├── tab_queue.py               # Queue tree, copy/paste, run/stop, save/load
+│   ├── app.py                     # Thin shell — creates notebook, SessionManager,
+│   │                              #   SessionBar, wires all tabs together
+│   ├── tab_method.py              # CV/SWV/Custom param forms, generate/run/add-to-queue,
+│   │                              #   PStrace SWV preset button
+│   ├── tab_queue.py               # Queue tree, copy/paste, run/stop, save/load,
+│   │                              #   routes data_folder to active experiment
 │   ├── tab_pump.py                # Pump Control tab UI
 │   ├── tab_script.py              # Script Preview tab
-│   └── tab_plotter.py             # Plotter tab (matplotlib, live plot, load CSV)
-│   └── tab_recipe_maker.py        TODO: # Recipe maker UI 
+│   ├── tab_plotter.py             # Plotter tab — matplotlib, live plot, load CSV,
+│   │                              #   uses AutoScaleToolbar for smart Home button
+│   ├── tab_custom_script.py       # NEW — Custom .ms file loader panel (rendered
+│   │                              #   inside tab_method params frame)
+│   ├── session_bar.py             # NEW — Bottom-of-window Session + Experiment bar
+│   │                              #   (Start/End session, Start/End experiment,
+│   │                              #    user/chip-ID/notes fields, status label)
+│   ├── widgets.py                 # NEW — Shared custom widgets:
+│   │                              #   AutoScaleToolbar (smart Home, left-click zoom)
+│   └── tab_recipe_maker.py        # TODO: Recipe maker UI (not implemented yet)
 │
 ├── core/
 │   ├── __init__.py
-│   ├── runner.py                  # SerialMeasurementRunner (serial comms + data parsing)
+│   ├── runner.py                  # SerialMeasurementRunner — serial comms, data
+│   │                              #   parsing, CSV save; accepts data_folder arg
+│   │                              #   to route output into experiment subfolder
 │   ├── method_registry.py         # Hash registry, save_script_file, deduplication
-│   ├── session.py                 # Shared state — queue, counter, is_running, runner ref
-│   └── mscript_parser.py          # VarType, SI prefixes, parse_mscript_data_package
+│   ├── session.py                 # Shared state — measurement_queue, counter,
+│   │                              #   is_running, runner ref, session_manager slot
+│   ├── session_manager.py         # NEW — Session/Experiment lifecycle:
+│   │                              #   folder creation, metadata JSON, session_log.txt,
+│   │                              #   require_session() / require_experiment() guards
+│   └── mscript_parser.py         # VarType, SI prefixes, parse_mscript_data_package
 │
 ├── tecancavro/
 │   ├── __init__.py
-│   ├── pump_gui.py                # PumpCtrl class (moved + cleaned from pump_gui.py)
-│   ├── centris_pure.py            # Already exists — minimal driver, keep here
-│   ├── tecanapi.py                # Already exists — Tecan/Cavro API wrapper
-│   ├── transport.py               # Already exists — low-level serial transport
-│   └── models.py                  # Already exists — pump models/enums
-│
+│   ├── pump_gui.py                # PumpCtrl class
+│   ├── centris_pure.py            # Minimal Cavro Centris driver
+│   ├── tecanapi.py                # Tecan/Cavro API wrapper
+│   ├── transport.py               # Low-level serial transport
+│   └── models.py                  # Pump models / enums
 │
 ├── methods/                       # MethodSCRIPT .ms files saved at runtime
-│   └── YYYY-MM-DD/                # Auto-created per day by method_registry.py, to be safe
-│       ├── 001_cv.ms
-│       ├── 002_swv_ch3.ms
-│       └── ...
-│   └── archive
-│       └── ...
-│   └── library_map.py             # Hashmap, also include the method finder tool
-│   └── library                    # Methods library
+│   ├── YYYY-MM-DD/                # Auto-created per day by method_registry.py
+│   │   ├── 001_cv.ms
+│   │   ├── 002_swv_ch3.ms
+│   │   └── ...
+│   ├── archive/
+│   ├── library_map.py             # Hashmap + method finder tool
+│   └── library/                   # Curated methods library
 │       └── ...
 │
-├── measurement_data/              # CSV output saved at runtime by runner.py
-│   └── YYYY-MM-DD/                TODO: # Auto-created per day, add day tag for saving (bug fix needed here)
-│       ├── 001_cv_meas_001.csv
-│       ├── 002_swv_ch3_meas_002.csv
-│       └── ...
-├── tests/                         #old tests
+├── measurement_data/              # CSV output — now organised by session/experiment
+│   └── <session_name>_<timestamp>/          # Created on "Start Session"
+│       ├── session_metadata.json            # name, user, chip_id, notes, timestamps
+│       ├── session_log.txt                  # timestamped log of every run in session
+│       └── <experiment_name>_<timestamp>/   # Created on "Start Experiment"
+│           ├── experiment_metadata.json     # name, notes, timestamps
+│           ├── 001_cv_143022.csv
+│           ├── 002_swv_143145.csv
+│           └── ...
 │
+│   # NOTE: runner.py falls back to a flat YYYY-MM-DD/ subfolder if no
+│   # active experiment is set (e.g. during direct "Run Now" without a session).
+│
+├── tests/                         # Old tests
 │
 ├── queues/                        # Saved queue .json files (user-facing save/load)
 │   ├── my_experiment.json
 │   └── ...
 │
-└── recipe_maker/                  TODO # Not implemented yet
-    └── default blocks
-        └── flush.json
-        └── add_flush.json
-        └── add_c6.json
-        └── add_aptamer.json
-        └── add_ec4.json
-        └── add_ec3.json
-    └── queue_reference.json       #Including all pump actions, path to methods
+└── recipe_maker/                  # TODO: not implemented yet
+    ├── default_blocks/
+    │   ├── flush.json
+    │   ├── add_flush.json
+    │   ├── add_c6.json
+    │   ├── add_aptamer.json
+    │   ├── add_ec4.json
+    │   └── add_ec3.json
+    └── queue_reference.json       # All pump actions + paths to methods
