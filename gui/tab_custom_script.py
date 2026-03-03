@@ -29,6 +29,7 @@ Usage (called from MethodTab._show_custom_params)
 """
 
 from pathlib import Path
+from typing import Optional
 from tkinter import filedialog, messagebox
 import tkinter as tk
 from tkinter import ttk
@@ -86,9 +87,9 @@ class CustomScriptPanel:
         self._parse_mux       = parse_mux_fn
 
         # State kept across calls (survives re-renders of the param panel)
-        self.script_text: str        = ""
-        self.script_path: str | None = None
-        self.script_name: str | None = None
+        self.script_text: str             = ""
+        self.script_path: Optional[str]   = None
+        self.script_name: Optional[str]   = None
         self._has_mux_header: bool   = False
 
         # Param dict (mimics the cv/swv_params dict so _parse_mux works)

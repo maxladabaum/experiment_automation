@@ -28,6 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox
 import tkinter as tk
+from typing import Optional
 
 from config import DATA_DIR
 
@@ -51,14 +52,15 @@ class SessionManager:
         self._data_root.mkdir(exist_ok=True)
 
         # ── State ──────────────────────────────────────────────────────────────
-        self.current_session_path:    Path | None = None
-        self.current_experiment_path: Path | None = None
+        self.current_session_path:    Optional[Path] = None
+        self.current_experiment_path: Optional[Path] = None
 
-        self._session_metadata_path:    Path | None = None
-        self._experiment_metadata_path: Path | None = None
-        self._session_log_path:         Path | None = None
-        self._session_started_at:  str | None = None
-        self._experiment_started_at: str | None = None
+        self._session_metadata_path:    Optional[Path] = None
+        self._experiment_metadata_path: Optional[Path] = None
+        self._session_log_path:         Optional[Path] = None
+        self._session_started_at:  Optional[str] = None
+        self._experiment_started_at: Optional[str] = None
+
 
         # Raw field values (kept so update_session_metadata can re-read them)
         self._session_raw: dict = {}
@@ -275,7 +277,7 @@ class SessionManager:
 
     # ── Guard helpers ─────────────────────────────────────────────────────────
 
-    def require_session(self) -> Path | None:
+    def require_session(self) -> Optional[Path]:
         """Return the session path, or show an error dialog and return None."""
         if not self.current_session_path:
             messagebox.showerror(
@@ -285,7 +287,7 @@ class SessionManager:
             return None
         return self.current_session_path
 
-    def require_experiment(self) -> Path | None:
+    def require_experiment(self) -> Optional[Path]:
         """Return the experiment data folder, or show an error dialog and return None."""
         if not self.current_session_path:
             messagebox.showerror(
