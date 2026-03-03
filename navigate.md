@@ -1,6 +1,6 @@
 experiment_automation/
-│
-├── main.py                        # TODO: dont enable anything before starting a session. Entry point — root + ElectrochemGUI + mainloop()
+│ # Session-gated UI: tabs stay hidden until a session is started.
+├── main.py                        # Entry point - root + ElectrochemGUI + mainloop()
 ├── config.py                      # All constants (syringe, baud, steps, paths, etc.)
 ├── requirements.txt               # Keep as-is
 ├── README.txt                 

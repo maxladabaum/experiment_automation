@@ -252,7 +252,7 @@ class SerialMeasurementRunner:
         self.is_running = True
         self.partial_packet = ""
 
-        self.data_base_path = Path("measurement_data")
+        self.data_base_path = Path("measurement_data") #TODO: change this to the DataDrive Path
         self.data_base_path.mkdir(exist_ok=True)
         date_folder = datetime.now().strftime('%Y-%m-%d')
         self.data_folder = self.data_base_path / date_folder
@@ -779,7 +779,7 @@ class ElectrochemGUI:
         ttk.Button(button_frame, text="Run Pause Now", command=self.run_pause_immediately).pack(side='left', padx=5)
         ttk.Button(button_frame, text="Add Alert Pause", command=self.add_alert_pause_to_queue).pack(side='left', padx=5)
 
-    def setup_pump_tab(self):
+    def setup_pump_tab(self): #TODO: pump autoconnect on start
         if not PUMP_AVAILABLE or PumpCtrl is None:
             ttk.Label(self.pump_frame, text="Pump controls unavailable.").pack(pady=20)
             return

@@ -89,6 +89,9 @@ class ElectrochemGUI:
         self._nb.add(script_frame,  text="Script Preview")
         self._nb.add(queue_frame,   text="Queue & Execution")
         self._nb.add(plotter_frame, text="Plotter")
+        self._session_gated_tabs = [method_frame, script_frame, queue_frame, plotter_frame]
+        if PUMP_AVAILABLE:
+            self._session_gated_tabs.insert(0, pump_frame)
 
         # ── Instantiate tabs ──────────────────────────────────────────────────
         self._script_tab = ScriptTab(script_frame)
@@ -135,6 +138,8 @@ class ElectrochemGUI:
         )
         # Give all tabs access to the session manager for require_experiment() guards
         self._session.session_manager = self._session_mgr
+        self._session_mgr.status_var.trace_add("write", self._on_session_state_change)
+        self._apply_session_gate()
     
     # ── Inter-tab wiring helpers ──────────────────────────────────────────────
 
@@ -154,6 +159,14 @@ class ElectrochemGUI:
     def _pump_tab_log(self, msg: str):
         if self._pump_tab is not None:
             self._pump_tab.log(msg)
+
+    def _on_session_state_change(self, *_):
+        self._apply_session_gate()
+
+    def _apply_session_gate(self):
+        state = "normal" if self._session_mgr.has_session else "hidden"
+        for tab in self._session_gated_tabs:
+            self._nb.tab(tab, state=state)
 
     # ── Immediate run dispatcher ──────────────────────────────────────────────
 

@@ -69,6 +69,7 @@ class SerialMeasurementRunner:
         self._pump_com_port = pump_com_port
         self.save_raw_packets = bool(save_raw_packets)
         self._raw_fh = None
+        self._fallback_tag_counter = 0
 
         # Prepare per-day data folder
         if data_folder is not None:
@@ -271,7 +272,7 @@ class SerialMeasurementRunner:
             return None
 
         base     = self.script_path.stem
-        tag      = meas_tag or datetime.now().strftime("meas_%H%M%S")
+        tag      = meas_tag or self._fallback_meas_tag()
         csv_path = self.data_folder / f"{base}_{tag}.csv"
 
         with open(csv_path, "w", newline="") as fh:
@@ -283,7 +284,6 @@ class SerialMeasurementRunner:
         return csv_path
 
     # ── High-level entry point ────────────────────────────────────────────────
-
     def execute(self, meas_tag: Optional[str] = None) -> Tuple[bool, Optional[Path]]:
         """Connect, send the script, collect data, save CSV, disconnect.
 
@@ -305,7 +305,7 @@ class SerialMeasurementRunner:
             self.log("ERROR: Failed to connect to device")
             return False, None
 
-        tag = meas_tag or datetime.now().strftime("meas_%H%M%S")
+        tag = meas_tag or self._fallback_meas_tag()
         if self.save_raw_packets:
             raw_path = self.data_folder / f"{self.script_path.stem}_{tag}_raw.txt"
             try:
@@ -333,3 +333,9 @@ class SerialMeasurementRunner:
                 self._raw_fh = None
 
         return success, csv_path
+
+    def _fallback_meas_tag(self) -> str:
+        """Build a collision-resistant fallback tag when SessionState is not used."""
+        self._fallback_tag_counter += 1
+        now = datetime.now()
+        return f"meas_{now:%Y%m%d_%H%M%S}_{self._fallback_tag_counter:04d}"
