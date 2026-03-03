@@ -526,6 +526,7 @@ class QueueTab:
                             log_callback=self.log,
                             data_callback=self._plotter.push_live_point,
                             data_folder=data_folder,
+                            save_raw_packets=self._session.save_raw_packets,
                         )
                         self._session.current_runner = runner
                         success, csv_path = runner.execute(meas_tag=meas_tag)
@@ -544,7 +545,10 @@ class QueueTab:
                 self._root.after(0, self._plotter.plot_data, csv_path,
                                  self._session.last_live_plot_color)
             self._root.after(0, self.refresh)
-            time.sleep(1)
+            step_delay = getattr(self._session, "step_delay", 0.0) or 0.0
+            if step_delay > 0 and i < len(queue) - 1:
+                if not self._exec_pause(step_delay):
+                    break
 
         self._session.is_running = False
         self._root.after(0, self.set_status, "Queue Complete")

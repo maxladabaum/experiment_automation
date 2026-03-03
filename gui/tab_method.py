@@ -94,10 +94,47 @@ class MethodTab:
         ttk.Button(left, text="Check Device Connection",
                    command=self._check_device).pack(pady=5)
 
+        # Execution options (global)
+        exec_frame = ttk.LabelFrame(left, text="Execution Options")
+        exec_frame.pack(fill="x", pady=(12, 0), padx=5)
+        exec_frame.columnconfigure(1, weight=1)
+
+        self._var_save_raw = tk.BooleanVar(value=self._session.save_raw_packets)
+        ttk.Checkbutton(exec_frame, text="Save raw packets",
+                        variable=self._var_save_raw,
+                        command=self._sync_save_raw).grid(
+                            row=0, column=0, columnspan=2, sticky="w", pady=2)
+
+        ttk.Label(exec_frame, text="Delay between steps (s):").grid(
+            row=1, column=0, sticky="w", pady=2)
+        self._var_step_delay = tk.StringVar(value=str(self._session.step_delay))
+        delay_entry = ttk.Entry(exec_frame, width=10, textvariable=self._var_step_delay)
+        delay_entry.grid(row=1, column=1, sticky="w", pady=2)
+        delay_entry.bind("<Return>", self._sync_step_delay)
+        delay_entry.bind("<FocusOut>", self._sync_step_delay)
+
         self._params_frame = ttk.LabelFrame(self._frame, text="Parameters", padding=10)
         self._params_frame.pack(side="right", fill="both", expand=True, padx=5)
 
         self._show_cv_params()
+
+    def _sync_save_raw(self):
+        self._session.save_raw_packets = bool(self._var_save_raw.get())
+
+    def _sync_step_delay(self, _event=None):
+        raw = self._var_step_delay.get().strip()
+        if not raw:
+            self._var_step_delay.set(str(self._session.step_delay))
+            return
+        try:
+            value = float(raw)
+        except ValueError:
+            self._var_step_delay.set(str(self._session.step_delay))
+            return
+        if value < 0:
+            value = 0.0
+        self._session.step_delay = value
+        self._var_step_delay.set(str(value))
 
     # ── Device check ──────────────────────────────────────────────────────────
 

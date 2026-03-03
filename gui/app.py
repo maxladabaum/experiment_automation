@@ -214,6 +214,7 @@ class ElectrochemGUI:
                 fp,
                 log_callback  = self._log,
                 data_callback = self._plotter_tab.push_live_point,
+                save_raw_packets = self._session.save_raw_packets,
             )
             self._session.current_runner = runner
             success, csv_path = runner.execute(meas_tag=meas_tag)
@@ -269,7 +270,8 @@ class ElectrochemGUI:
                 self.root.after(0, self._queue_tab.refresh_labels)
                 runner = SerialMeasurementRunner(
                     fp, log_callback=self._log,
-                    data_callback=self._plotter_tab.push_live_point)
+                    data_callback=self._plotter_tab.push_live_point,
+                    save_raw_packets=self._session.save_raw_packets)
                 self._session.current_runner = runner
                 ok, csv_path = runner.execute(meas_tag=meas_tag)
                 self._session.current_runner = None
@@ -322,7 +324,8 @@ class ElectrochemGUI:
                 self.root.after(0, self._queue_tab.refresh_labels)
                 runner = SerialMeasurementRunner(
                     fp, log_callback=self._log,
-                    data_callback=self._plotter_tab.push_live_point)
+                    data_callback=self._plotter_tab.push_live_point,
+                    save_raw_packets=self._session.save_raw_packets)
                 self._session.current_runner = runner
                 ok, csv_path = runner.execute(meas_tag=meas_tag)
                 self._session.current_runner = None
@@ -382,7 +385,8 @@ class ElectrochemGUI:
                     self.root.after(0, self._queue_tab.refresh_labels)
                     runner = SerialMeasurementRunner(
                         fp, log_callback=self._log,
-                        data_callback=self._plotter_tab.push_live_point)
+                        data_callback=self._plotter_tab.push_live_point,
+                        save_raw_packets=self._session.save_raw_packets)
                     self._session.current_runner = runner
                     ok, csv_path = runner.execute(meas_tag=meas_tag)
                     self._session.current_runner = None

@@ -1,9 +1,9 @@
 experiment_automation/
 │
-├── main.py                        # Entry point — root + ElectrochemGUI + mainloop()
+├── main.py                        # TODO: dont enable anything before starting a session. Entry point — root + ElectrochemGUI + mainloop()
 ├── config.py                      # All constants (syringe, baud, steps, paths, etc.)
 ├── requirements.txt               # Keep as-is
-├── README_txt.txt                 # TODO: rename to README.md eventually
+├── README.txt                 
 ├── navigate.md                    # This file
 │
 ├── gui/
@@ -14,8 +14,8 @@ experiment_automation/
 │   │                              #   PStrace SWV preset button
 │   ├── tab_queue.py               # Queue tree, copy/paste, run/stop, save/load,
 │   │                              #   routes data_folder to active experiment
-│   ├── tab_pump.py                # Pump Control tab UI
-│   ├── tab_script.py              # Script Preview tab
+│   ├── tab_pump.py                # TODO: Autoconnect, Pump Control tab UI
+│   ├── tab_script.py              # Script Preview tab + execution options (raw packet save, step delay)
 │   ├── tab_plotter.py             # Plotter tab — matplotlib, live plot, load CSV,
 │   │                              #   uses AutoScaleToolbar for smart Home button
 │   ├── tab_custom_script.py       # NEW — Custom .ms file loader panel (rendered
@@ -80,7 +80,6 @@ experiment_automation/
 └── recipe_maker/                  # TODO: not implemented yet
     ├── default_blocks/
     │   ├── flush.json
-    │   ├── add_flush.json
     │   ├── add_c6.json
     │   ├── add_aptamer.json
     │   ├── add_ec4.json

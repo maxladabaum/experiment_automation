@@ -40,6 +40,10 @@ class SerialMeasurementRunner:
         Optional callable that receives a ``{'potential': float,
         'current': float}`` dict for each parsed data point (used for
         live plotting).
+    data_folder:
+        Optional override for where CSV and raw packet logs are written.
+    save_raw_packets:
+        If True, write raw device output lines to a ``*_raw.txt`` file.
     pump_com_port:
         The COM port used by the pump (as a string like ``"COM8"`` or
         an int) so it can be deprioritised when auto-detecting the
@@ -51,6 +55,8 @@ class SerialMeasurementRunner:
         script_path,
         log_callback: Callable[[str], None] = print,
         data_callback: Optional[Callable[[dict], None]] = None,
+        data_folder: Optional[Path] = None,
+        save_raw_packets: bool = False,
         pump_com_port=None,
     ):
         self.script_path    = Path(script_path)
@@ -61,13 +67,19 @@ class SerialMeasurementRunner:
         self.is_running     = True
         self.partial_packet = ""
         self._pump_com_port = pump_com_port
+        self.save_raw_packets = bool(save_raw_packets)
+        self._raw_fh = None
 
         # Prepare per-day data folder
-        self._data_base = Path(DATA_DIR)
-        self._data_base.mkdir(exist_ok=True)
-        date_folder = self._data_base / datetime.now().strftime("%Y-%m-%d")
-        date_folder.mkdir(exist_ok=True)
-        self.data_folder = date_folder
+        if data_folder is not None:
+            self.data_folder = Path(data_folder)
+            self.data_folder.mkdir(parents=True, exist_ok=True)
+        else:
+            self._data_base = Path(DATA_DIR)
+            self._data_base.mkdir(exist_ok=True)
+            date_folder = self._data_base / datetime.now().strftime("%Y-%m-%d")
+            date_folder.mkdir(exist_ok=True)
+            self.data_folder = date_folder
 
     # ── Port discovery ────────────────────────────────────────────────────────
 
@@ -174,6 +186,12 @@ class SerialMeasurementRunner:
                         self.partial_packet = ""
 
                     self.log(text)
+                    if self._raw_fh is not None:
+                        try:
+                            self._raw_fh.write(text + "\n")
+                        except OSError:
+                            self.log("Warning: failed to write raw packet log.")
+                            self._raw_fh = None
 
                     if text.startswith("P"):
                         if not self._is_complete_packet(text):
@@ -287,15 +305,31 @@ class SerialMeasurementRunner:
             self.log("ERROR: Failed to connect to device")
             return False, None
 
+        tag = meas_tag or datetime.now().strftime("meas_%H%M%S")
+        if self.save_raw_packets:
+            raw_path = self.data_folder / f"{self.script_path.stem}_{tag}_raw.txt"
+            try:
+                self._raw_fh = open(raw_path, "w", encoding="utf-8", newline="\n")
+                self.log(f"Saving raw packets to: {raw_path}")
+            except OSError as exc:
+                self.log(f"Warning: could not open raw packet log: {exc}")
+                self._raw_fh = None
+
         csv_path = None
         success  = False
         try:
             if self.run_script(script):
                 if self.data_points:
-                    csv_path = self.save_data_to_csv(meas_tag=meas_tag)
+                    csv_path = self.save_data_to_csv(meas_tag=tag)
                 self.log(f"Total data points: {len(self.data_points)}")
                 success = True
         finally:
             self.disconnect()
+            if self._raw_fh is not None:
+                try:
+                    self._raw_fh.close()
+                except OSError:
+                    pass
+                self._raw_fh = None
 
         return success, csv_path

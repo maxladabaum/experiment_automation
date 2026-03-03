@@ -1,9 +1,7 @@
 """
 gui/tab_script.py — Script Preview tab.
 
-A simple read-only (editable for inspection) text widget that shows the
-last generated MethodSCRIPT.  Other tabs call :meth:`ScriptTab.update`
-to push new content here.
+Shows the last generated MethodSCRIPT.
 """
 
 import tkinter as tk

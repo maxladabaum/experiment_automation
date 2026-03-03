@@ -83,7 +83,10 @@ def compute_hash(technique: str, params: dict, mux_channel: Optional[int]) -> st
         separators=(",", ":")
     )
     raw = f"{slug}||{canonical}"
-    h = hashlib.md5(raw.encode("utf-8"), usedforsecurity=False).hexdigest()[:6]
+    try:
+        h = hashlib.md5(raw.encode("utf-8"), usedforsecurity=False).hexdigest()[:6]
+    except TypeError:
+        h = hashlib.md5(raw.encode("utf-8")).hexdigest()[:6]
     return f"{slug}_{h}"
 
 

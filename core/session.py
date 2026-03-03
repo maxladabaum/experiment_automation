@@ -63,6 +63,10 @@ class SessionState:
         self.last_live_plot_color: Optional[str]  = None
         self.last_live_plot_label: Optional[str]  = None
 
+        # —— Execution options ———————————————————————————————————————————————————
+        self.save_raw_packets: bool = False
+        self.step_delay: float = 1.0
+
     # ── Measurement tag ───────────────────────────────────────────────────────
 
     def next_meas_tag(self) -> str:
