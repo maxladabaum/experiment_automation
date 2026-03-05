@@ -1,18 +1,18 @@
-﻿{
+{
   "metadata": {
-    "block": "add_ec3",
-    "description": "Aspirate EC3 from valve 5 and dispense into flow cell (valve 1)",
+    "block": "clean",
+    "description": "DI water wash into flow cell (valve 1) — used between EC3/EC4 additions",
     "version": 1
   },
   "items": [
     {
       "type": "PUMP_VALVE",
       "status": "pending",
-      "details": "Pump: Valve -> 5",
+      "details": "Pump: Valve -> 3",
       "pump_action": {
         "name": "VALVE",
         "params": {
-          "port": 5
+          "port": 3
         }
       }
     },

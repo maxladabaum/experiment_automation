@@ -1,18 +1,18 @@
-﻿{
+{
   "metadata": {
-    "block": "add_ec3",
-    "description": "Aspirate EC3 from valve 5 and dispense into flow cell (valve 1)",
+    "block": "add_buffer",
+    "description": "Aspirate buffer from valve 6 and dispense into flow cell (valve 1)",
     "version": 1
   },
   "items": [
     {
       "type": "PUMP_VALVE",
       "status": "pending",
-      "details": "Pump: Valve -> 5",
+      "details": "Pump: Valve -> 6",
       "pump_action": {
         "name": "VALVE",
         "params": {
-          "port": 5
+          "port": 6
         }
       }
     },

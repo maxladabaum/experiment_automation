@@ -78,7 +78,7 @@ class RecipeMakerTab:
 
 
         # ── Recipe Treeview
-        cols = ("Type", "Details")
+        cols = ("Type", "Block", "Details")
         self._style.configure("Recipe.Treeview", background="white", fieldbackground="white")
         self._style.map("Recipe.Treeview", background=[("selected", "#cce4ff")])
         self._tree = ttk.Treeview(
@@ -86,10 +86,12 @@ class RecipeMakerTab:
         )
         self._tree.heading("#0", text="#")
         self._tree.heading("Type", text="Type")
+        self._tree.heading("Block", text="Block")
         self._tree.heading("Details", text="Details")
         self._tree.column("#0", width=50)
         self._tree.column("Type", width=160)
-        self._tree.column("Details", width=500)
+        self._tree.column("Block", width=180)
+        self._tree.column("Details", width=420)
         self._tree.pack(fill="both", expand=True, padx=10, pady=5)
         self._tree.tag_configure("volt", background="#dff5d8")
         self._tree.tag_configure("block", background="#fff3cd")
@@ -272,6 +274,39 @@ class RecipeMakerTab:
         ttk.Button(top, text="Refresh",
                    command=self._load_method_map).pack(side="left", padx=6)
 
+        sweep = ttk.Frame(parent)
+        sweep.pack(fill="x", padx=6, pady=(0, 4))
+
+        ttk.Label(sweep, text="Sweep Start:").grid(row=0, column=0, **pad, sticky="e")
+        self._sweep_start = tk.IntVar(value=1)
+        ttk.Entry(sweep, width=6, textvariable=self._sweep_start).grid(row=0, column=1, **pad, sticky="w")
+
+        ttk.Label(sweep, text="End:").grid(row=0, column=2, **pad, sticky="e")
+        self._sweep_end = tk.IntVar(value=16)
+        ttk.Entry(sweep, width=6, textvariable=self._sweep_end).grid(row=0, column=3, **pad, sticky="w")
+
+        ttk.Label(sweep, text="Step:").grid(row=0, column=4, **pad, sticky="e")
+        self._sweep_step = tk.IntVar(value=1)
+        ttk.Entry(sweep, width=6, textvariable=self._sweep_step).grid(row=0, column=5, **pad, sticky="w")
+
+        self._sweep_reverse = tk.BooleanVar(value=False)
+        ttk.Checkbutton(sweep, text="Reverse", variable=self._sweep_reverse).grid(
+            row=0, column=6, **pad, sticky="w"
+        )
+
+        ttk.Label(sweep, text="Custom order:").grid(row=1, column=0, **pad, sticky="e")
+        self._sweep_custom = tk.StringVar(value="")
+        ttk.Entry(sweep, width=44, textvariable=self._sweep_custom).grid(
+            row=1, column=1, columnspan=5, **pad, sticky="we"
+        )
+        ttk.Label(sweep, text="e.g. 1,3,5,2,4").grid(row=1, column=6, **pad, sticky="w")
+
+        ttk.Button(
+            sweep,
+            text="Add Channel Sweep Block",
+            command=self._add_method_sweep_block,
+        ).grid(row=0, column=7, rowspan=2, padx=(12, 6), pady=4, sticky="ns")
+
         cols = ("Hash", "Technique", "Params")
         self._method_tree = ttk.Treeview(parent, columns=cols, show="headings", height=8)
         self._method_tree.heading("Hash", text="Hash")
@@ -286,7 +321,10 @@ class RecipeMakerTab:
 
         hint = ttk.Label(
             parent,
-            text="Select a method above and click 'Add Method Step' to add it to the recipe.",
+            text=(
+                "Select a method and use Add Method Step, or configure channels and use "
+                "'Add Channel Sweep Block'."
+            ),
             foreground="#666",
         )
         hint.pack(side="bottom", anchor="w", padx=8, pady=(0, 6))
@@ -357,6 +395,75 @@ class RecipeMakerTab:
         self._recipe.append(item)
         self._refresh()
 
+    def _parse_sweep_channels(self):
+        custom = (self._sweep_custom.get() or "").strip()
+        if custom:
+            tokens = custom.replace(";", ",").split(",")
+            channels = []
+            for tok in tokens:
+                t = tok.strip()
+                if not t:
+                    continue
+                try:
+                    ch = int(t)
+                except ValueError:
+                    raise ValueError(f"Invalid channel in custom order: '{t}'")
+                if ch < 1 or ch > 16:
+                    raise ValueError("Channel numbers must be between 1 and 16.")
+                channels.append(ch)
+            if not channels:
+                raise ValueError("Custom order is empty.")
+            return channels
+
+        start = int(self._sweep_start.get())
+        end = int(self._sweep_end.get())
+        step = abs(int(self._sweep_step.get()))
+        if step == 0:
+            raise ValueError("Step must be >= 1.")
+        if start < 1 or start > 16 or end < 1 or end > 16:
+            raise ValueError("Sweep start/end must be between 1 and 16.")
+
+        if start <= end:
+            channels = list(range(start, end + 1, step))
+        else:
+            channels = list(range(start, end - 1, -step))
+        if self._sweep_reverse.get():
+            channels.reverse()
+        if not channels:
+            raise ValueError("Sweep channel list is empty.")
+        return channels
+
+    def _add_method_sweep_block(self):
+        selected = self._selected_method_entry()
+        if not selected:
+            messagebox.showwarning("No selection", "Select a method from the library list.")
+            return
+        try:
+            channels = self._parse_sweep_channels()
+        except Exception as exc:
+            messagebox.showerror("Invalid sweep channels", str(exc))
+            return
+
+        key, entry = selected
+        technique = entry.get("technique", "")
+        params = copy.deepcopy(entry.get("params", {}))
+        block_name = f"Sweep {technique} ({len(channels)} ch)"
+        for ch in channels:
+            item = {
+                "type": technique,
+                "status": "pending",
+                "details": f"{key}.ms | MUX ch {ch}",
+                "block_name": block_name,
+                "method_ref": {
+                    "hash_key": key,
+                    "technique": technique,
+                    "params": copy.deepcopy(params),
+                    "mux_channel": ch,
+                },
+            }
+            self._recipe.append(item)
+        self._refresh()
+
     # ── Recipe list ops ────────────────────────────────────────────────────
 
     def _row_tag_for_item(self, item: dict) -> str:
@@ -376,7 +483,11 @@ class RecipeMakerTab:
             tag = self._row_tag_for_item(item)
             self._tree.insert(
                 "", "end", iid=str(i), text=str(i + 1),
-                values=(item.get("type", ""), item.get("details", "")),
+                values=(
+                    item.get("type", ""),
+                    item.get("block_name", ""),
+                    item.get("details", ""),
+                ),
                 tags=(tag,),
             )
 

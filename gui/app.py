@@ -66,7 +66,26 @@ class ElectrochemGUI:
             self._pump_ctrl = None
 
         # ── Notebook ──────────────────────────────────────────────────────────
-        self._nb = ttk.Notebook(root)
+        self._layout_root = ttk.Frame(root)
+        self._layout_root.pack(fill="both", expand=True)
+
+        self._content_frame = ttk.Frame(self._layout_root)
+        self._content_frame.pack(side="top", fill="both", expand=True)
+        self._content_frame.pack_propagate(False)
+
+        self._session_bar_frame = ttk.Frame(self._layout_root, height=170)
+        self._session_bar_frame.pack(side="bottom", fill="x")
+        self._session_bar_frame.pack_propagate(False)
+
+        self._session_bar_resize_grip = ttk.Frame(self._session_bar_frame, height=8)
+        self._session_bar_resize_grip.pack(side="top", fill="x")
+        self._session_bar_resize_grip.configure(cursor="sb_v_double_arrow")
+        self._session_bar_resize_grip.bind("<ButtonPress-1>", self._start_session_bar_resize)
+
+        self._session_bar_body = ttk.Frame(self._session_bar_frame)
+        self._session_bar_body.pack(side="top", fill="both", expand=True)
+
+        self._nb = ttk.Notebook(self._content_frame)
         self._nb.pack(fill="both", expand=True, padx=5, pady=5)
 
         # ── Session state (shared by all tabs) ────────────────────────────────
@@ -140,7 +159,7 @@ class ElectrochemGUI:
             self._pump_tab = None
         # ── Session bar (bottom of window) ───────────────────────────────────────
         self._session_bar = SessionBar(
-            root             = root,
+            root             = self._session_bar_body,
             session_manager  = self._session_mgr,
             on_start_session = self._on_session_started,
         )
@@ -185,6 +204,24 @@ class ElectrochemGUI:
         except Exception:
             pass
         self._pump_tab.autoconnect()
+
+    def _start_session_bar_resize(self, event):
+        self._resize_start_y = event.y_root
+        self._resize_start_h = self._session_bar_frame.winfo_height()
+        self.root.bind("<B1-Motion>", self._do_session_bar_resize)
+        self.root.bind("<ButtonRelease-1>", self._stop_session_bar_resize)
+
+    def _do_session_bar_resize(self, event):
+        delta = self._resize_start_y - event.y_root
+        new_h = self._resize_start_h + delta
+        root_h = max(1, self.root.winfo_height())
+        max_h = max(180, root_h - 24)
+        new_h = max(90, min(max_h, new_h))
+        self._session_bar_frame.configure(height=new_h)
+
+    def _stop_session_bar_resize(self, _event):
+        self.root.unbind("<B1-Motion>")
+        self.root.unbind("<ButtonRelease-1>")
 
     # ── Immediate run dispatcher ──────────────────────────────────────────────
 

@@ -1,18 +1,18 @@
 ﻿{
   "metadata": {
-    "block": "add_ec3",
-    "description": "Aspirate EC3 from valve 5 and dispense into flow cell (valve 1)",
+    "block": "air_flush",
+    "description": "Air flush through flow cell (valve 1) — aspirate air from valve 9 and push through",
     "version": 1
   },
   "items": [
     {
       "type": "PUMP_VALVE",
       "status": "pending",
-      "details": "Pump: Valve -> 5",
+      "details": "Pump: Valve -> 9",
       "pump_action": {
         "name": "VALVE",
         "params": {
-          "port": 5
+          "port": 9
         }
       }
     },
