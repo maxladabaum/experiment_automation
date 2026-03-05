@@ -294,18 +294,24 @@ class RecipeMakerTab:
             row=0, column=6, **pad, sticky="w"
         )
 
+        ttk.Label(sweep, text="Repeats/ch:").grid(row=0, column=7, **pad, sticky="e")
+        self._sweep_repeats = tk.IntVar(value=1)
+        ttk.Entry(sweep, width=6, textvariable=self._sweep_repeats).grid(
+            row=0, column=8, **pad, sticky="w"
+        )
+
         ttk.Label(sweep, text="Custom order:").grid(row=1, column=0, **pad, sticky="e")
         self._sweep_custom = tk.StringVar(value="")
         ttk.Entry(sweep, width=44, textvariable=self._sweep_custom).grid(
             row=1, column=1, columnspan=5, **pad, sticky="we"
         )
-        ttk.Label(sweep, text="e.g. 1,3,5,2,4").grid(row=1, column=6, **pad, sticky="w")
+        ttk.Label(sweep, text="e.g. 1,3,5,2,4").grid(row=1, column=6, columnspan=3, **pad, sticky="w")
 
         ttk.Button(
             sweep,
             text="Add Channel Sweep Block",
             command=self._add_method_sweep_block,
-        ).grid(row=0, column=7, rowspan=2, padx=(12, 6), pady=4, sticky="ns")
+        ).grid(row=0, column=9, rowspan=2, padx=(12, 6), pady=4, sticky="ns")
 
         cols = ("Hash", "Technique", "Params")
         self._method_tree = ttk.Treeview(parent, columns=cols, show="headings", height=8)
@@ -433,6 +439,14 @@ class RecipeMakerTab:
             raise ValueError("Sweep channel list is empty.")
         return channels
 
+    def _parse_sweep_repeats(self):
+        repeats = int(self._sweep_repeats.get())
+        if repeats < 1:
+            raise ValueError("Repeats/ch must be >= 1.")
+        if repeats > 1000:
+            raise ValueError("Repeats/ch is too large (max 1000).")
+        return repeats
+
     def _add_method_sweep_block(self):
         selected = self._selected_method_entry()
         if not selected:
@@ -440,28 +454,31 @@ class RecipeMakerTab:
             return
         try:
             channels = self._parse_sweep_channels()
+            repeats = self._parse_sweep_repeats()
         except Exception as exc:
-            messagebox.showerror("Invalid sweep channels", str(exc))
+            messagebox.showerror("Invalid sweep settings", str(exc))
             return
 
         key, entry = selected
         technique = entry.get("technique", "")
         params = copy.deepcopy(entry.get("params", {}))
-        block_name = f"Sweep {technique} ({len(channels)} ch)"
+        block_name = f"Sweep {technique} ({len(channels)} ch x {repeats})"
         for ch in channels:
-            item = {
-                "type": technique,
-                "status": "pending",
-                "details": f"{key}.ms | MUX ch {ch}",
-                "block_name": block_name,
-                "method_ref": {
-                    "hash_key": key,
-                    "technique": technique,
-                    "params": copy.deepcopy(params),
-                    "mux_channel": ch,
-                },
-            }
-            self._recipe.append(item)
+            for rep in range(1, repeats + 1):
+                rep_suffix = f" | rep {rep}/{repeats}" if repeats > 1 else ""
+                item = {
+                    "type": technique,
+                    "status": "pending",
+                    "details": f"{key}.ms | MUX ch {ch}{rep_suffix}",
+                    "block_name": block_name,
+                    "method_ref": {
+                        "hash_key": key,
+                        "technique": technique,
+                        "params": copy.deepcopy(params),
+                        "mux_channel": ch,
+                    },
+                }
+                self._recipe.append(item)
         self._refresh()
 
     # ── Recipe list ops ────────────────────────────────────────────────────
@@ -592,7 +609,7 @@ class RecipeMakerTab:
         except Exception as exc:
             messagebox.showerror("Load failed", str(exc))
 
-    # â”€â”€ Blocks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -----Blocks ---------------------------------------------
 
     def _build_blocks_library(self, parent):
         top = ttk.Frame(parent)
