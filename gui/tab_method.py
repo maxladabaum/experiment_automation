@@ -64,6 +64,7 @@ class MethodTab:
         self.cv_params:  dict  = {}
         self.swv_params: dict  = {}
         self.pause_params: dict = {}
+        self._library_note = tk.StringVar(value="")
 
         self._build()
 
@@ -179,8 +180,13 @@ class MethodTab:
             entry.grid(row=i, column=1, pady=2)
             self.cv_params[key] = entry
 
+        ttk.Label(self._params_frame, text="Library note (optional):").grid(
+            row=len(params), column=0, sticky="w", pady=2)
+        ttk.Entry(self._params_frame, width=40, textvariable=self._library_note).grid(
+            row=len(params), column=1, sticky="w", pady=2)
+
         btn_frame = ttk.Frame(self._params_frame)
-        btn_frame.grid(row=len(params), column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=len(params) + 1, column=0, columnspan=2, pady=20)
         ttk.Button(btn_frame, text="Generate Script",
                    command=self._generate_cv_script).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Run Now",
@@ -212,8 +218,13 @@ class MethodTab:
             entry.grid(row=i, column=1, pady=2)
             self.swv_params[key] = entry
 
+        ttk.Label(self._params_frame, text="Library note (optional):").grid(
+            row=len(params), column=0, sticky="w", pady=2)
+        ttk.Entry(self._params_frame, width=40, textvariable=self._library_note).grid(
+            row=len(params), column=1, sticky="w", pady=2)
+
         btn_frame = ttk.Frame(self._params_frame)
-        btn_frame.grid(row=len(params), column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=len(params) + 1, column=0, columnspan=2, pady=20)
         ttk.Button(btn_frame, text="Generate Script",
                    command=self._generate_swv_script).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Run Now",
@@ -430,9 +441,11 @@ class MethodTab:
 
     # ── Add to queue ──────────────────────────────────────────────────────────
 
-    def _add_one(self, technique: str, script: str, params: dict, mux_channel=None):
+    def _add_one(self, technique: str, script: str, params: dict, mux_channel=None, note: str = ""):
         """Save script via registry and enqueue one item."""
-        fp, fn = self._session.registry.save_script(technique, script, params, mux_channel)
+        fp, fn = self._session.registry.save_script(
+            technique, script, params, mux_channel, note=note
+        )
         details = fn if mux_channel is None else f"{fn} (MUX ch {mux_channel})"
         self._add_to_queue({
             "type":        technique,
@@ -451,12 +464,13 @@ class MethodTab:
             return
         # Extract raw string values for hashing
         raw_params = {k: v.get() for k, v in self.cv_params.items()}
+        note = (self._library_note.get() or "").strip()
         if mux:
             for ch in mux:
-                self._add_one("CV", self._wrap_mux(base, ch), raw_params, mux_channel=ch)
+                self._add_one("CV", self._wrap_mux(base, ch), raw_params, mux_channel=ch, note=note)
             messagebox.showinfo("Success", f"CV added for MUX channels: {', '.join(map(str, mux))}")
         else:
-            self._add_one("CV", base, raw_params)
+            self._add_one("CV", base, raw_params, note=note)
             messagebox.showinfo("Success", "CV added to queue")
         self._refresh_queue()
 
@@ -472,20 +486,23 @@ class MethodTab:
         if n_scans is None:
             return
         raw_params = {k: v.get() for k, v in self.swv_params.items()}
+        note = (self._library_note.get() or "").strip()
 
         added = []
         for cycle in range(1, n_scans + 1):
             if mux:
                 for ch in mux:
                     script = self._wrap_mux(base, ch)
-                    fp, fn = self._session.registry.save_script("SWV", script, raw_params, ch)
+                    fp, fn = self._session.registry.save_script(
+                        "SWV", script, raw_params, ch, note=note
+                    )
                     self._add_to_queue({
                         "type": "SWV", "script_path": str(fp),
                         "status": "pending", "details": f"{fn} (MUX ch {ch})",
                     })
                     added.append(f"{fn} (ch {ch})")
             else:
-                fp, fn = self._session.registry.save_script("SWV", base, raw_params)
+                fp, fn = self._session.registry.save_script("SWV", base, raw_params, note=note)
                 self._add_to_queue({
                     "type": "SWV", "script_path": str(fp),
                     "status": "pending", "details": fn,

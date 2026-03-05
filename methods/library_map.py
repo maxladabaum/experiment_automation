@@ -5,20 +5,9 @@ Persistent library of MethodSCRIPT files.
 The library_map is a JSON file that survives across sessions. It maps a
 parameter-based hash to a canonical .ms file stored in methods/library/.
 
-The hash is computed from the *parameters* (technique + raw param values +
-mux channel), NOT from the generated script text — so the same experimental
-setup always maps to the same hash, even if the script generator changes
-whitespace or comments.
-
-Folder layout
--------------
-methods/
-  library_map.json          ← persistent { hash_key: entry_dict }
-  library/
-    swv_a3f2c1.ms           ← canonical files, named by hash
-    cv_00ff12.ms
-  archive/                  ← old dated folders moved here manually
-  YYYY-MM-DD/               ← dated working copies written each session
+The hash is computed from parameters (technique + raw param values +
+mux channel), NOT from generated script text, so the same experimental
+setup always maps to the same hash.
 """
 
 import json
@@ -28,11 +17,11 @@ from datetime import datetime
 from typing import Optional
 
 _METHODS_ROOT = Path("methods")
-_LIBRARY_DIR  = _METHODS_ROOT / "library"
-_ARCHIVE_DIR  = _METHODS_ROOT / "archive"
-_MAP_FILE     = _METHODS_ROOT / "library_map.json"
+_LIBRARY_DIR = _METHODS_ROOT / "library"
+_ARCHIVE_DIR = _METHODS_ROOT / "archive"
+_MAP_FILE = _METHODS_ROOT / "library_map.json"
 
-_map: dict = {}   # in-memory cache
+_map: dict = {}
 
 
 def _ensure_dirs():
@@ -60,27 +49,14 @@ def _persist():
 
 
 def compute_hash(technique: str, params: dict, mux_channel: Optional[int]) -> str:
-    """Compute a stable hash from *parameters*, not generated script text.
-
-    Parameters
-    ----------
-    technique:   "CV" or "SWV"
-    params:      raw param values as strings, e.g. {"begin_potential": "-0.5", ...}
-                 Keys are sorted before hashing so insertion order doesn't matter.
-    mux_channel: integer channel or None
-
-    Returns
-    -------
-    Hash key like ``swv_a3f2c1`` or ``cv_ch3_00ff12``
-    """
+    """Compute a stable hash from parameters, not script text."""
     slug = technique.lower().replace(" ", "_")
     if mux_channel is not None:
         slug = f"{slug}_ch{mux_channel}"
 
-    # Sort params so key order never affects the hash
     canonical = json.dumps(
         {k: str(v).strip() for k, v in sorted(params.items())},
-        separators=(",", ":")
+        separators=(",", ":"),
     )
     raw = f"{slug}||{canonical}"
     try:
@@ -91,53 +67,69 @@ def compute_hash(technique: str, params: dict, mux_channel: Optional[int]) -> st
 
 
 def lookup(hash_key: str) -> Optional[Path]:
-    """Return the library Path if this hash exists and the file is on disk."""
+    """Return the library path if this hash exists and file is on disk."""
     load_map()
     entry = _map.get(hash_key)
     if entry is None:
         return None
-    p = Path(entry["filepath"])
-    if p.exists():
-        return p
-    # Stale entry — file was deleted externally
+    path = Path(entry["filepath"])
+    if path.exists():
+        return path
     del _map[hash_key]
     _persist()
     return None
 
 
-def register(hash_key: str, technique: str, params: dict,
-             mux_channel: Optional[int], script: str) -> Path:
-    """Write script into the library and record in the map.
-
-    Only called when lookup() returned None.
-    """
+def register(
+    hash_key: str,
+    technique: str,
+    params: dict,
+    mux_channel: Optional[int],
+    script: str,
+    note: Optional[str] = None,
+) -> Path:
+    """Write script into the library and record in the map."""
     _ensure_dirs()
     lib_path = _LIBRARY_DIR / f"{hash_key}.ms"
     lib_path.write_text(script, encoding="utf-8")
 
     _map[hash_key] = {
-        "technique":   technique,
+        "technique": technique,
         "mux_channel": mux_channel,
-        "params":      {k: str(v).strip() for k, v in params.items()},
-        "added_at":    datetime.now().isoformat(timespec="seconds"),
-        "filepath":    str(lib_path),
+        "params": {k: str(v).strip() for k, v in params.items()},
+        "note": (note or "").strip(),
+        "added_at": datetime.now().isoformat(timespec="seconds"),
+        "filepath": str(lib_path),
     }
     _persist()
     return lib_path
 
 
 def all_entries() -> dict:
-    """Return full map — used by the hash-finder UI tool."""
+    """Return full map."""
     load_map()
     return dict(_map)
+
+
+def update_note(hash_key: str, note: Optional[str]) -> bool:
+    """Update note for an existing entry. Returns True if changed."""
+    load_map()
+    entry = _map.get(hash_key)
+    if not entry:
+        return False
+    new_note = (note or "").strip()
+    if entry.get("note", "") == new_note:
+        return False
+    entry["note"] = new_note
+    _persist()
+    return True
 
 
 def find_by_technique(technique: str) -> dict:
     """Return all entries for a given technique."""
     load_map()
     t = technique.upper()
-    return {k: v for k, v in _map.items()
-            if v.get("technique", "").upper() == t}
+    return {k: v for k, v in _map.items() if v.get("technique", "").upper() == t}
 
 
 def reload():

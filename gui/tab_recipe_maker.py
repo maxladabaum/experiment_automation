@@ -313,14 +313,16 @@ class RecipeMakerTab:
             command=self._add_method_sweep_block,
         ).grid(row=0, column=9, rowspan=2, padx=(12, 6), pady=4, sticky="ns")
 
-        cols = ("Hash", "Technique", "Params")
+        cols = ("Hash", "Note", "Technique", "Params")
         self._method_tree = ttk.Treeview(parent, columns=cols, show="headings", height=8)
         self._method_tree.heading("Hash", text="Hash")
+        self._method_tree.heading("Note", text="Note")
         self._method_tree.heading("Technique", text="Technique")
         self._method_tree.heading("Params", text="Params")
         self._method_tree.column("Hash", width=140)
+        self._method_tree.column("Note", width=220)
         self._method_tree.column("Technique", width=100)
-        self._method_tree.column("Params", width=520)
+        self._method_tree.column("Params", width=320)
         self._method_tree.pack(fill="both", expand=True, padx=6, pady=6)
 
         self._load_method_map()
@@ -349,18 +351,19 @@ class RecipeMakerTab:
 
         for key, entry in sorted(self._method_entries.items()):
             technique = entry.get("technique", "")
+            note = entry.get("note", "")
             if tech != "ALL" and technique.upper() != tech:
                 continue
 
             params = entry.get("params", {})
             params_str = ", ".join(f"{k}={v}" for k, v in params.items())
-            hay = f"{key} {technique} {params_str}".lower()
+            hay = f"{key} {note} {technique} {params_str}".lower()
             if search and search not in hay:
                 continue
 
             iid = self._method_tree.insert(
                 "", "end",
-                values=(key, technique, params_str),
+                values=(key, note, technique, params_str),
             )
             self._method_iid_to_key[iid] = key
 

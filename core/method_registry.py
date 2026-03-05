@@ -20,7 +20,7 @@ import hashlib
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
-from methods.library_map import compute_hash, lookup, register
+from methods.library_map import compute_hash, lookup, register, update_note
 from config import METHODS_DIR
 
 
@@ -58,6 +58,7 @@ class MethodRegistry:
         script:      str,
         params:      dict,                  # ← NEW: raw param values for hashing
         mux_channel: Optional[int] = None,
+        note:        Optional[str] = None,
     ) -> Tuple[Path, str]:
         """Save a MethodSCRIPT, checking session cache then library before writing.
 
@@ -70,6 +71,8 @@ class MethodRegistry:
         # Level 1: session cache
         if key in self._registry:
             fp, fn = self._registry[key]
+            if note is not None:
+                update_note(key, note)
             self._log(f"[Registry] Session hit  '{fn}'  ({key})")
             return fp, fn
 
@@ -79,11 +82,13 @@ class MethodRegistry:
             fn = lib_path.name
             self._registry[key]           = (lib_path, fn)
             self._path_to_key[str(lib_path)] = key
+            if note is not None:
+                update_note(key, note)
             self._log(f"[Library]  Found        '{fn}'  ({key})")
             return lib_path, fn
 
         # Level 3: new — write to library and a dated working copy
-        lib_path = register(key, technique, params, mux_channel, script)
+        lib_path = register(key, technique, params, mux_channel, script, note=note)
 
         date_folder = self.base_path / datetime.now().strftime("%Y-%m-%d")
         date_folder.mkdir(exist_ok=True)

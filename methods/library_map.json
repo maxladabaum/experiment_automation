@@ -32,5 +32,77 @@
     },
     "added_at": "2026-03-01T01:06:56",
     "filepath": "methods\\library\\cv_e97ce8.ms"
+  },
+  "cv_850b2a": {
+    "technique": "CV",
+    "mux_channel": null,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.5",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "added_at": "2026-03-05T10:34:30",
+    "filepath": "methods\\library\\cv_850b2a.ms",
+    "note": "ec3_clean"
+  },
+  "cv_297021": {
+    "technique": "CV",
+    "mux_channel": null,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.5",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec4_clean",
+    "added_at": "2026-03-05T10:46:25",
+    "filepath": "methods\\library\\cv_297021.ms"
+  },
+  "cv_f2add5": {
+    "technique": "CV",
+    "mux_channel": null,
+    "params": {
+      "begin_potential": "-1",
+      "vertex1": "-1",
+      "vertex2": "0.7",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec4_clean_0.8V_left_shifted",
+    "added_at": "2026-03-05T10:49:07",
+    "filepath": "methods\\library\\cv_f2add5.ms"
+  },
+  "cv_e829e4": {
+    "technique": "CV",
+    "mux_channel": null,
+    "params": {
+      "begin_potential": "-1",
+      "vertex1": "-1",
+      "vertex2": "0.7",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec3_clean_0.8V_left_shifted",
+    "added_at": "2026-03-05T10:49:38",
+    "filepath": "methods\\library\\cv_e829e4.ms"
   }
 }
