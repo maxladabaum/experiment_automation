@@ -1,0 +1,114 @@
+﻿{
+  "metadata": {
+    "generated_at": "2026-03-05T00:00:00",
+    "version": 2,
+    "parameterized": true,
+    "template_syntax": "${var}",
+    "notes": [
+      "Reference-only templates: replace ${var} with UI-provided values.",
+      "Method entries should be resolved via methods/library_map.json using compute_hash(params)."
+    ],
+    "source_examples": [
+      "methods\\archive\\example_queues\\test.json",
+      "methods\\archive\\example_queues\\ec3_example.json",
+      "methods\\archive\\example_queues\\aptamer_immobilization_second_half.json",
+      "methods\\archive\\example_queues\\clean_and_immobilize.json"
+    ]
+  },
+  "items": [
+    {
+      "type": "PUMP_INIT",
+      "status": "pending",
+      "details": "Pump: Initialize (ZR)",
+      "pump_action": {
+        "name": "INIT",
+        "params": {}
+      }
+    },
+    {
+      "type": "PUMP_SET_SPEED",
+      "status": "pending",
+      "details": "Pump: Set speed S${pump_speed}R",
+      "pump_action": {
+        "name": "SET_SPEED",
+        "params": {
+          "speed": "${pump_speed}"
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> ${pump_valve_port}",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": "${pump_valve_port}"
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate ${pump_volume} µL @ S${pump_speed}R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": "${pump_volume}",
+          "speed": "${pump_speed}"
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense ${pump_volume} µL @ S${pump_speed}R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": "${pump_volume}",
+          "speed": "${pump_speed}"
+        }
+      }
+    },
+    {
+      "type": "PAUSE",
+      "status": "pending",
+      "details": "Pause for ${pause_seconds} sec",
+      "pause_seconds": "${pause_seconds}"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "${method_name}",
+      "method_ref": {
+        "hash_key": "${method_hash}",
+        "technique": "CV",
+        "params": "${method_params}",
+        "mux_channel": "${method_mux_channel}"
+      }
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "${method_name}",
+      "method_ref": {
+        "hash_key": "${method_hash}",
+        "technique": "CV",
+        "params": "${method_params}",
+        "mux_channel": "${method_mux_channel}"
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "${method_name}",
+      "method_ref": {
+        "hash_key": "${method_hash}",
+        "technique": "SWV",
+        "params": "${method_params}",
+        "mux_channel": "${method_mux_channel}"
+      }
+    }
+  ]
+}

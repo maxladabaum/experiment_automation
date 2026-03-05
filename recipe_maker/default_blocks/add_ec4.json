@@ -1,0 +1,47 @@
+﻿{
+  "name": "add_ec4",
+  "items": [
+    {
+      "type": "PUMP_SET_SPEED",
+      "status": "pending",
+      "details": "Pump: Set speed S18R",
+      "pump_action": {
+        "name": "SET_SPEED",
+        "params": {"speed": 18}
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 4",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {"port": 4}
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 40.00 uL @ S18R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {"volume": 40.0, "speed": 18}
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 40.00 uL @ S18R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {"volume": 40.0, "speed": 18}
+      }
+    },
+    {
+      "type": "PAUSE",
+      "status": "pending",
+      "details": "Pause for 60.0 sec",
+      "pause_seconds": 60.0
+    }
+  ]
+}

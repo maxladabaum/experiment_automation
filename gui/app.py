@@ -30,6 +30,7 @@ from gui.tab_plotter import PlotterTab
 from gui.tab_method  import MethodTab
 from gui.tab_queue   import QueueTab
 from gui.tab_pump    import PumpTab
+from gui.tab_recipe_maker import RecipeMakerTab
 
 try:
     from pump_gui import PumpCtrl, HAS_COM as PUMP_HAS_COM
@@ -81,6 +82,7 @@ class ElectrochemGUI:
         method_frame  = ttk.Frame(self._nb)
         script_frame  = ttk.Frame(self._nb)
         queue_frame   = ttk.Frame(self._nb)
+        recipe_frame  = ttk.Frame(self._nb)
         plotter_frame = ttk.Frame(self._nb)
 
         if PUMP_AVAILABLE:
@@ -88,8 +90,9 @@ class ElectrochemGUI:
         self._nb.add(method_frame,  text="Method Creation")
         self._nb.add(script_frame,  text="Script Preview")
         self._nb.add(queue_frame,   text="Queue & Execution")
+        self._nb.add(recipe_frame,  text="Recipe Maker")
         self._nb.add(plotter_frame, text="Plotter")
-        self._session_gated_tabs = [method_frame, script_frame, queue_frame, plotter_frame]
+        self._session_gated_tabs = [method_frame, script_frame, queue_frame, recipe_frame, plotter_frame]
         if PUMP_AVAILABLE:
             self._session_gated_tabs.insert(0, pump_frame)
 
@@ -108,6 +111,10 @@ class ElectrochemGUI:
             plotter      = self._plotter_tab,
             pump_ctrl    = self._pump_ctrl,
             root         = self.root,
+        )
+
+        self._recipe_tab = RecipeMakerTab(
+            parent_frame = recipe_frame,
         )
         # Wire session callbacks now that queue tab (with its log widget) exists
         self._session._log    = self._log
@@ -133,8 +140,9 @@ class ElectrochemGUI:
             self._pump_tab = None
         # ── Session bar (bottom of window) ───────────────────────────────────────
         self._session_bar = SessionBar(
-            root            = root,
-            session_manager = self._session_mgr,
+            root             = root,
+            session_manager  = self._session_mgr,
+            on_start_session = self._on_session_started,
         )
         # Give all tabs access to the session manager for require_experiment() guards
         self._session.session_manager = self._session_mgr
@@ -167,6 +175,16 @@ class ElectrochemGUI:
         state = "normal" if self._session_mgr.has_session else "hidden"
         for tab in self._session_gated_tabs:
             self._nb.tab(tab, state=state)
+    
+    def _on_session_started(self):
+        if self._pump_tab is None:
+            return
+        try:
+            if self._pump_ctrl and self._pump_ctrl.connected:
+                return
+        except Exception:
+            pass
+        self._pump_tab.autoconnect()
 
     # ── Immediate run dispatcher ──────────────────────────────────────────────
 

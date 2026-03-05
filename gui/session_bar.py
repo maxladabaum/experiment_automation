@@ -12,8 +12,9 @@ Usage (in app.py)
     from gui.session_bar import SessionBar
 
     self._session_bar = SessionBar(
-        root            = root,
-        session_manager = self._session_mgr,   # core.session_manager.SessionManager
+        root             = root,
+        session_manager  = self._session_mgr,   # core.session_manager.SessionManager
+        on_start_session = self._on_session_started,
     )
 """
 
@@ -34,9 +35,15 @@ class SessionBar:
         The shared :class:`~core.session_manager.SessionManager` instance.
     """
 
-    def __init__(self, root: tk.Tk, session_manager: SessionManager):
+    def __init__(
+        self,
+        root: tk.Tk,
+        session_manager: SessionManager,
+        on_start_session=None,
+    ):
         self._root  = root
         self._mgr   = session_manager
+        self._on_start_session_cb = on_start_session
 
         # ── Tk variables wired to the manager ─────────────────────────────────
         self._session_name_var    = tk.StringVar()
@@ -126,12 +133,14 @@ class SessionBar:
     # ── Handlers ──────────────────────────────────────────────────────────────
 
     def _on_start_session(self):
-        self._mgr.start_session(
+        started = self._mgr.start_session(
             name    = self._session_name_var.get(),
             user    = self._session_user_var.get(),
             chip_id = self._session_chip_id_var.get(),
             notes   = self._session_notes_var.get(),
         )
+        if started and self._on_start_session_cb:
+            self._on_start_session_cb()
 
     def _on_end_session(self):
         self._mgr.end_session()

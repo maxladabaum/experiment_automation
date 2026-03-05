@@ -269,6 +269,23 @@ class PumpTab:
 
     def _set_busy(self, busy: bool):
         self._busy = busy
+    
+    def autoconnect(self):
+        if self._ctrl is None:
+            return
+        if getattr(self._ctrl, "connected", False):
+            return
+        if self._busy:
+            return
+        if not hasattr(self, "_var_sim"):
+            return
+        self._launch(
+            self._do_connect,
+            lambda: bool(self._var_sim.get()),
+            lambda: int(self._var_com.get()),
+            lambda: int(self._var_baud.get()),
+            lambda: int(self._var_dev.get()),
+        )
 
     # ── Pump action implementations ───────────────────────────────────────────
 
