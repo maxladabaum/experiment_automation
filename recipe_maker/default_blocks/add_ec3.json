@@ -19,11 +19,11 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 500.00 µL @ S20R",
+      "details": "Pump: Aspirate 225.00 µL @ S20R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
-          "volume": 500.0,
+          "volume": 225.0,
           "speed": 20
         }
       }
@@ -42,11 +42,11 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 500.00 µL @ S20R",
+      "details": "Pump: Dispense 225.00 µL @ S20R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
-          "volume": 500.0,
+          "volume": 225.0,
           "speed": 20
         }
       }

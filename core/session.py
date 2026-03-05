@@ -98,6 +98,15 @@ class SessionState:
     def set_status(self, msg: str):
         self._status(msg)
 
+    def require_session(self):
+        """Return session path if available, otherwise None.
+
+        Delegates to SessionManager when wired by app.py.
+        """
+        if self.session_manager is None:
+            return None
+        return self.session_manager.require_session()
+
     def stop_current_runner(self):
         """Signal the active runner (if any) to stop."""
         if self.current_runner is not None:

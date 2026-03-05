@@ -56,7 +56,7 @@ class MethodRegistry:
         self,
         technique:   str,
         script:      str,
-        params:      dict,                  # ← NEW: raw param values for hashing
+        params:      Optional[dict] = None,
         mux_channel: Optional[int] = None,
         note:        Optional[str] = None,
     ) -> Tuple[Path, str]:
@@ -66,6 +66,11 @@ class MethodRegistry:
         Level 2 — persistent library (methods/library/, survives restarts)
         Level 3 — genuinely new: write to library + dated working copy
         """
+        if params is None:
+            # Fall back to script-content hashing for ad-hoc scripts.
+            params = {
+                "_script_hash": hashlib.sha1(script.encode("utf-8")).hexdigest()[:12]
+            }
         key = self._make_key(technique, params, mux_channel)
 
         # Level 1: session cache

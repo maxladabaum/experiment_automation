@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 from tkinter import filedialog, messagebox
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, simpledialog
 
 from methods import library_map
 from config import BLOCKS_DIR
@@ -29,12 +29,15 @@ class RecipeMakerTab:
         self._clipboard: list = []
         self._method_entries: dict = {}
         self._method_iid_to_key: dict = {}
+        self._last_selected = None
         self._style = ttk.Style(self._frame)
         self._repo_root = Path(__file__).resolve().parents[1]
         self._recipe_root = self._repo_root / "recipe_maker"
-        self._blocks_dir = (self._repo_root / BLOCKS_DIR).resolve()
+        self._default_blocks_dir = (self._repo_root / BLOCKS_DIR).resolve()
+        self._custom_blocks_dir = (self._repo_root / "recipe_maker" / "custom_blocks").resolve()
         self._recipe_root.mkdir(parents=True, exist_ok=True)
-        self._blocks_dir.mkdir(parents=True, exist_ok=True)
+        self._default_blocks_dir.mkdir(parents=True, exist_ok=True)
+        self._custom_blocks_dir.mkdir(parents=True, exist_ok=True)
         self._build()
 
     # ── Build ──────────────────────────────────────────────────────────────
@@ -81,8 +84,15 @@ class RecipeMakerTab:
         cols = ("Type", "Block", "Details")
         self._style.configure("Recipe.Treeview", background="white", fieldbackground="white")
         self._style.map("Recipe.Treeview", background=[("selected", "#cce4ff")])
+        tree_frame = ttk.Frame(top)
+        tree_frame.pack(fill="both", expand=True, padx=10, pady=5)
         self._tree = ttk.Treeview(
-            top, columns=cols, show="tree headings", height=10, style="Recipe.Treeview"
+            tree_frame,
+            columns=cols,
+            show="tree headings",
+            height=10,
+            style="Recipe.Treeview",
+            selectmode="extended",
         )
         self._tree.heading("#0", text="#")
         self._tree.heading("Type", text="Type")
@@ -92,7 +102,10 @@ class RecipeMakerTab:
         self._tree.column("Type", width=160)
         self._tree.column("Block", width=180)
         self._tree.column("Details", width=420)
-        self._tree.pack(fill="both", expand=True, padx=10, pady=5)
+        self._tree.pack(side="left", fill="both", expand=True)
+        tree_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self._tree.yview)
+        tree_scroll.pack(side="right", fill="y")
+        self._tree.configure(yscrollcommand=tree_scroll.set)
         self._tree.tag_configure("volt", background="#dff5d8")
         self._tree.tag_configure("block", background="#fff3cd")
         self._tree.tag_configure("alert", background="#f8d7da")
@@ -110,9 +123,11 @@ class RecipeMakerTab:
         self._ctx.add_command(label="Copy", command=self._copy_selected)
         self._ctx.add_command(label="Paste After", command=self._paste_after_selected)
         self._ctx.add_command(label="Duplicate", command=self._duplicate_selected)
+        self._ctx.add_command(label="Select Range…", command=self._select_range_prompt)
         self._ctx.add_separator()
         self._ctx.add_command(label="Delete", command=self._delete_selected)
         self._tree.bind("<Button-3>", self._show_ctx)
+        self._tree.bind("<Shift-Button-1>", self._select_range)
         self._tree.bind("<Control-c>", lambda e: self._copy_selected())
         self._tree.bind("<Control-v>", lambda e: self._paste_after_selected())
         self._tree.bind("<Control-d>", lambda e: self._duplicate_selected())
@@ -516,6 +531,50 @@ class RecipeMakerTab:
             self._tree.index(iid) for iid in self._tree.selection() if iid
         )
 
+    def _select_range(self, event):
+        row = self._tree.identify_row(event.y)
+        if not row:
+            return
+        if self._last_selected is None:
+            self._tree.selection_set(row)
+            self._last_selected = row
+            return
+        try:
+            start = self._tree.index(self._last_selected)
+            end = self._tree.index(row)
+        except Exception:
+            self._tree.selection_set(row)
+            self._last_selected = row
+            return
+        if start > end:
+            start, end = end, start
+        self._tree.selection_set(self._tree.get_children()[start:end + 1])
+        self._last_selected = row
+
+    def _select_range_prompt(self):
+        total = len(self._tree.get_children())
+        if total == 0:
+            return
+        start = simpledialog.askinteger(
+            "Select Range",
+            f"Start row (1-{total}):",
+            minvalue=1, maxvalue=total
+        )
+        if start is None:
+            return
+        end = simpledialog.askinteger(
+            "Select Range",
+            f"End row (1-{total}):",
+            minvalue=1, maxvalue=total
+        )
+        if end is None:
+            return
+        if start > end:
+            start, end = end, start
+        children = self._tree.get_children()
+        self._tree.selection_set(children[start - 1:end])
+        self._last_selected = children[end - 1]
+
     def _copy_selected(self):
         indices = self._selected_indices()
         if not indices:
@@ -543,6 +602,10 @@ class RecipeMakerTab:
         self._refresh()
 
     def _show_ctx(self, event):
+        row = self._tree.identify_row(event.y)
+        if row:
+            self._tree.selection_set(row)
+            self._last_selected = row
         self._ctx.tk_popup(event.x_root, event.y_root)
 
     def _delete_selected(self):
@@ -621,6 +684,16 @@ class RecipeMakerTab:
                    command=self._load_blocks).pack(side="left", padx=4)
         ttk.Button(top, text="Add Block",
                    command=self._add_selected_block).pack(side="left", padx=4)
+        ttk.Label(top, text="View:").pack(side="left", padx=(12, 2))
+        self._block_filter = tk.StringVar(value="All")
+        ttk.Combobox(
+            top,
+            textvariable=self._block_filter,
+            values=["All", "Default", "Custom"],
+            state="readonly",
+            width=10,
+        ).pack(side="left", padx=4)
+        self._block_filter.trace_add("write", lambda *_: self._load_blocks())
 
         cols = ("Block", "Items")
         self._block_tree = ttk.Treeview(parent, columns=cols, show="headings", height=8)
@@ -636,7 +709,7 @@ class RecipeMakerTab:
 
         hint = ttk.Label(
             parent,
-            text="Blocks are predefined sequences stored in recipe_maker/default_blocks/.",
+            text="Blocks are predefined sequences stored in recipe_maker/default_blocks/ and recipe_maker/custom_blocks/.",
             foreground="#666",
         )
         hint.pack(side="bottom", anchor="w", padx=8, pady=(0, 6))
@@ -647,11 +720,18 @@ class RecipeMakerTab:
         for row in self._block_tree.get_children():
             self._block_tree.delete(row)
 
-        blocks_dir = self._blocks_dir
-        if not blocks_dir.exists():
-            return
-
-        files = list(blocks_dir.glob("*.json")) + list(blocks_dir.glob("*.JSON"))
+        view = (getattr(self, "_block_filter", tk.StringVar(value="All")).get() or "All").lower()
+        if view == "default":
+            blocks_dirs = [self._default_blocks_dir]
+        elif view == "custom":
+            blocks_dirs = [self._custom_blocks_dir]
+        else:
+            blocks_dirs = [self._default_blocks_dir, self._custom_blocks_dir]
+        files = []
+        for blocks_dir in blocks_dirs:
+            if not blocks_dir.exists():
+                continue
+            files.extend(list(blocks_dir.glob("*.json")) + list(blocks_dir.glob("*.JSON")))
         seen = set()
         for path in sorted(files):
             norm = path.resolve().as_posix().lower()
@@ -686,7 +766,7 @@ class RecipeMakerTab:
         if not self._blocks:
             self._block_tree.insert(
                 "", "end",
-                values=("No blocks found", str(blocks_dir)),
+                values=("No blocks found", "recipe_maker/default_blocks or recipe_maker/custom_blocks"),
             )
 
     def _add_selected_block(self):

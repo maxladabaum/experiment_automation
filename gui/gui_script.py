@@ -26,6 +26,8 @@ import itertools
 import hashlib
 from typing import Dict, List, Optional
 
+from config import DATA_DIR
+
 # ── Canonical version of this file ──────────────────────────────────────────
 APP_VERSION = "2.0.0"          # Phase 0 consolidation + Phase 1 bug-fixes
 # ────────────────────────────────────────────────────────────────────────────
@@ -252,7 +254,7 @@ class SerialMeasurementRunner:
         self.is_running = True
         self.partial_packet = ""
 
-        self.data_base_path = Path("measurement_data") #TODO: change this to the DataDrive Path
+        self.data_base_path = Path(DATA_DIR)
         self.data_base_path.mkdir(exist_ok=True)
         date_folder = datetime.now().strftime('%Y-%m-%d')
         self.data_folder = self.data_base_path / date_folder

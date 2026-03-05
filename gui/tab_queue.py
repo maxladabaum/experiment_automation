@@ -18,9 +18,10 @@ from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, simpledialog
 
 from core.runner import SerialMeasurementRunner
+from methods import library_map
 from core.session import SessionState
 
 
@@ -53,6 +54,7 @@ class QueueTab:
         self._reorder_snapshot = None
         self._drag_item        = None
         self._clipboard:list   = []
+        self._last_selected    = None
 
         self._build()
 
@@ -86,7 +88,11 @@ class QueueTab:
 
         # ── Treeview ──────────────────────────────────────────────────────────
         cols = ("Type", "Status", "Details")
-        self._tree = ttk.Treeview(top, columns=cols, show="tree headings", height=10)
+        tree_frame = ttk.Frame(top)
+        tree_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        self._tree = ttk.Treeview(
+            tree_frame, columns=cols, show="tree headings", height=10, selectmode="extended"
+        )
         self._tree.heading("#0",      text="#")
         self._tree.heading("Type",    text="Type")
         self._tree.heading("Status",  text="Status")
@@ -95,18 +101,23 @@ class QueueTab:
         self._tree.column("Type",    width=150)
         self._tree.column("Status",  width=100)
         self._tree.column("Details", width=400)
-        self._tree.pack(fill="both", expand=True, padx=10, pady=5)
+        self._tree.pack(side="left", fill="both", expand=True)
+        tree_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self._tree.yview)
+        tree_scroll.pack(side="right", fill="y")
+        self._tree.configure(yscrollcommand=tree_scroll.set)
 
         # Drag reorder
         self._tree.bind("<ButtonPress-1>",   self._drag_start)
         self._tree.bind("<B1-Motion>",       self._drag_motion)
         self._tree.bind("<ButtonRelease-1>", self._drag_release)
+        self._tree.bind("<Shift-Button-1>",  self._select_range)
 
         # Right-click context menu
         self._ctx = tk.Menu(self._tree, tearoff=0)
         self._ctx.add_command(label="📋 Copy",        command=self.copy_selected)
         self._ctx.add_command(label="📌 Paste After", command=self.paste_after_selected)
         self._ctx.add_command(label="⧉ Duplicate",   command=self.duplicate_selected)
+        self._ctx.add_command(label="Select Range…",  command=self._select_range_prompt)
         self._ctx.add_separator()
         self._ctx.add_command(label="🗑 Delete",      command=self.delete_selected)
         self._tree.bind("<Button-3>", self._show_ctx)
@@ -197,10 +208,55 @@ class QueueTab:
             if iid
         )
 
+    def _select_range(self, event):
+        row = self._tree.identify_row(event.y)
+        if not row:
+            return
+        if self._last_selected is None:
+            self._tree.selection_set(row)
+            self._last_selected = row
+            return
+        try:
+            start = self._tree.index(self._last_selected)
+            end = self._tree.index(row)
+        except Exception:
+            self._tree.selection_set(row)
+            self._last_selected = row
+            return
+        if start > end:
+            start, end = end, start
+        self._tree.selection_set(self._tree.get_children()[start:end + 1])
+        self._last_selected = row
+
+    def _select_range_prompt(self):
+        total = len(self._tree.get_children())
+        if total == 0:
+            return
+        start = simpledialog.askinteger(
+            "Select Range",
+            f"Start row (1-{total}):",
+            minvalue=1, maxvalue=total
+        )
+        if start is None:
+            return
+        end = simpledialog.askinteger(
+            "Select Range",
+            f"End row (1-{total}):",
+            minvalue=1, maxvalue=total
+        )
+        if end is None:
+            return
+        if start > end:
+            start, end = end, start
+        children = self._tree.get_children()
+        self._tree.selection_set(children[start - 1:end])
+        self._last_selected = children[end - 1]
+
     def _show_ctx(self, event):
         row = self._tree.identify_row(event.y)
         if row:
             self._tree.selection_set(row)
+            self._last_selected = row
         try:
             self._ctx.tk_popup(event.x_root, event.y_root)
         finally:
@@ -275,6 +331,7 @@ class QueueTab:
             return
         item = self._tree.identify_row(event.y)
         if item:
+            self._last_selected = item
             self._drag_item = item
             if not self._reorder_pending:
                 self._reorder_snapshot = list(self._session.measurement_queue)
@@ -428,9 +485,22 @@ class QueueTab:
         else:
             sp = raw.get("script_path")
             if not sp:
-                return None
+                method_ref = raw.get("method_ref") or {}
+                hash_key = method_ref.get("hash_key")
+                if hash_key:
+                    path = library_map.lookup(hash_key)
+                    if path is None:
+                        return None
+                    sp = str(path)
+                    mux = method_ref.get("mux_channel")
+                    if mux:
+                        item["details"] = details or f"{path.name} (MUX ch {mux})"
+                    else:
+                        item["details"] = details or path.name
+                else:
+                    return None
             item["script_path"] = sp
-            item["details"]     = details or Path(sp).name
+            item["details"]     = item.get("details") or details or Path(sp).name
         return item
 
     # ── Run queue ─────────────────────────────────────────────────────────────

@@ -104,5 +104,34 @@
     "note": "ec3_clean_0.8V_left_shifted",
     "added_at": "2026-03-05T10:49:38",
     "filepath": "methods\\library\\cv_e829e4.ms"
+  },
+  "custom_0441ab": {
+    "technique": "Custom",
+    "mux_channel": null,
+    "params": {
+      "custom_hash": "96bc3378ee86"
+    },
+    "note": "linear_sweep",
+    "added_at": "2026-03-05T12:08:51",
+    "filepath": "methods\\library\\custom_0441ab.ms"
+  },
+  "swv_39a560": {
+    "technique": "SWV",
+    "mux_channel": null,
+    "params": {
+      "begin_potential": "-0.6",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.036",
+      "frequency": "200",
+      "n_scans": "1",
+      "cycle_delay": "0",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "",
+    "added_at": "2026-03-05T12:20:00",
+    "filepath": "methods\\library\\swv_39a560.ms"
   }
 }
