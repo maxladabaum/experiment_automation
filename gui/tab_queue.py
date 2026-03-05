@@ -23,6 +23,7 @@ from tkinter import ttk, scrolledtext, simpledialog
 from core.runner import SerialMeasurementRunner
 from methods import library_map
 from core.session import SessionState
+from core.queue_eta import estimate_queue_eta, eta_finish_time, format_duration
 
 
 class QueueTab:
@@ -189,6 +190,21 @@ class QueueTab:
             text=f"Measurements this session: {self._session.measurement_counter}")
         self._lbl_registry.config(
             text=f"Script registry: {self._session.registry.size} unique")
+
+    def _eta_text_for_queue(self, start_index: int = 0) -> str:
+        """Return a short ETA summary for the queue."""
+        eta = estimate_queue_eta(
+            self._session.measurement_queue,
+            start_index=start_index,
+            step_delay_seconds=self._session.step_delay,
+        )
+        finish = eta_finish_time(eta.total_seconds).strftime("%H:%M")
+        text = f"ETA {format_duration(eta.total_seconds)} (finish ~{finish})"
+        if eta.excluded_alert_count:
+            text += f", excludes {eta.excluded_alert_count} alert pause(s)"
+        if eta.unknown_item_count:
+            text += f", {eta.unknown_item_count} unknown item(s)"
+        return text
 
     # ── Session info bar buttons ──────────────────────────────────────────────
 
@@ -432,7 +448,9 @@ class QueueTab:
 
         self._session.measurement_queue = new_queue
         self.refresh()
-        self.set_status(f"Queue loaded ({len(new_queue)} items)")
+        eta_text = self._eta_text_for_queue(start_index=0)
+        self.set_status(f"Queue loaded ({len(new_queue)} items) • {eta_text}")
+        self.log(f"[ETA] {eta_text}")
         if skipped:
             self.log(f"Queue load skipped {skipped} invalid item(s).")
         messagebox.showinfo("Queue Loaded", f"Loaded {len(new_queue)} item(s).")
