@@ -8,7 +8,7 @@ All other modules import from here — never hardcode constants elsewhere.
 from pathlib import Path
 
 # ── Version ──────────────────────────────────────────────────────────────────
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.1.0"
 
 # ── Pump hardware defaults ────────────────────────────────────────────────────
 PUMP_DEFAULT_COM_PORT   = 8
