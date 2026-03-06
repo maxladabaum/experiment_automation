@@ -136,7 +136,7 @@ class ElectrochemGUI:
             parent_frame = recipe_frame,
         )
         # Wire session callbacks now that queue tab (with its log widget) exists
-        self._session._log    = self._log
+        self._session._log    = self._session_mgr.log
         self._session._status = self._set_status
 
         self._method_tab = MethodTab(
@@ -173,7 +173,7 @@ class ElectrochemGUI:
     def _log(self, msg: str):
         """Route log messages to the queue tab's log panel."""
         try:
-            self._queue_tab.log(msg)
+            self._queue_tab._append_log_gui(msg)
         except Exception:
             print(msg)
 
@@ -184,6 +184,10 @@ class ElectrochemGUI:
             pass
 
     def _pump_tab_log(self, msg: str):
+        try:
+            self._session_mgr.log(msg)
+        except Exception:
+            pass
         if self._pump_tab is not None:
             self._pump_tab.log(msg)
 
@@ -275,12 +279,12 @@ class ElectrochemGUI:
         self._plotter_tab.start_live(f"{technique} (live)", label=technique)
 
         def worker():
-            meas_tag = self._session.next_meas_tag()
-            self._log(f"[Tag] {meas_tag}")
+            meas_tag = self._session.next_meas_tag_with_mux(mux_channel)
+            self._session_mgr.log(f"[Tag] {meas_tag}")
             self.root.after(0, self._queue_tab.refresh_labels)
             runner = SerialMeasurementRunner(
                 fp,
-                log_callback  = self._log,
+                log_callback  = self._session_mgr.log,
                 data_callback = self._plotter_tab.push_live_point,
                 save_raw_packets = self._session.save_raw_packets,
             )
@@ -333,11 +337,11 @@ class ElectrochemGUI:
                                 f"{technique} ch {ch} (live)", color, label)
                 self.root.after(0, self._queue_tab.set_status,
                                 f"Running: {technique} MUX ch {ch}")
-                meas_tag = self._session.next_meas_tag()
-                self._log(f"[Tag] {meas_tag}")
+                meas_tag = self._session.next_meas_tag_with_mux(ch)
+                self._session_mgr.log(f"[Tag] {meas_tag}")
                 self.root.after(0, self._queue_tab.refresh_labels)
                 runner = SerialMeasurementRunner(
-                    fp, log_callback=self._log,
+                    fp, log_callback=self._session_mgr.log,
                     data_callback=self._plotter_tab.push_live_point,
                     save_raw_packets=self._session.save_raw_packets)
                 self._session.current_runner = runner
@@ -387,11 +391,11 @@ class ElectrochemGUI:
                                 f"SWV (scan {scan}/{n_scans} live)", color, label)
                 self.root.after(0, self._queue_tab.set_status,
                                 f"Running: SWV scan {scan}/{n_scans}")
-                meas_tag = self._session.next_meas_tag()
-                self._log(f"[Tag] {meas_tag}")
+                meas_tag = self._session.next_meas_tag_with_mux(None)
+                self._session_mgr.log(f"[Tag] {meas_tag}")
                 self.root.after(0, self._queue_tab.refresh_labels)
                 runner = SerialMeasurementRunner(
-                    fp, log_callback=self._log,
+                    fp, log_callback=self._session_mgr.log,
                     data_callback=self._plotter_tab.push_live_point,
                     save_raw_packets=self._session.save_raw_packets)
                 self._session.current_runner = runner
@@ -448,11 +452,11 @@ class ElectrochemGUI:
                                     f"SWV MUX ch {ch} ({scan}/{n_scans})", color, label)
                     self.root.after(0, self._queue_tab.set_status,
                                     f"Running: SWV MUX ch {ch} scan {scan}/{n_scans}")
-                    meas_tag = self._session.next_meas_tag()
-                    self._log(f"[Tag] {meas_tag}")
+                    meas_tag = self._session.next_meas_tag_with_mux(ch)
+                    self._session_mgr.log(f"[Tag] {meas_tag}")
                     self.root.after(0, self._queue_tab.refresh_labels)
                     runner = SerialMeasurementRunner(
-                        fp, log_callback=self._log,
+                        fp, log_callback=self._session_mgr.log,
                         data_callback=self._plotter_tab.push_live_point,
                         save_raw_packets=self._session.save_raw_packets)
                     self._session.current_runner = runner

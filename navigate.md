@@ -3,8 +3,13 @@ experiment_automation/
 |-- main.py                        # Entry point - root + ElectrochemGUI + mainloop()
 |-- config.py                      # All constants (syringe, baud, steps, paths, etc.)
 |-- requirements.txt               # Keep as-is
+|-- requirements_pump_py38.txt     # Pump GUI legacy deps (py38)
 |-- README.txt
 |-- navigate.md                    # This file
+|-- pump_gui.py                    # Pump GUI + PumpCtrl (top-level)
+|-- centris_pure.py                # Minimal Cavro Centris driver (top-level)
+|-- PumpCommServer.dll             # Pump COM server dependency
+|-- MethodSCRIPT-v1_8.pdf           # MethodSCRIPT reference
 |
 |-- gui/
 |   |-- __init__.py
@@ -38,12 +43,12 @@ experiment_automation/
 |   |-- session_manager.py         # NEW - Session/Experiment lifecycle:
 |   |                              #   folder creation, metadata JSON, session_log.txt,
 |   |                              #   require_session() / require_experiment() guards
-|   `-- mscript_parser.py          # VarType, SI prefixes, parse_mscript_data_package
+|   |-- mscript_parser.py          # VarType, SI prefixes, parse_mscript_data_package
+|   `-- queue_eta.py               # TODO: Either fix this or set a notification sending mechanism, Queue ETA helpers (script-aware estimates)
 |
 |-- tecancavro/
 |   |-- __init__.py
 |   |-- pump_gui.py                # PumpCtrl class
-|   |-- centris_pure.py            # Minimal Cavro Centris driver
 |   |-- tecanapi.py                # Tecan/Cavro API wrapper
 |   |-- transport.py               # Low-level serial transport
 |   `-- models.py                  # Pump models / enums
@@ -73,10 +78,6 @@ experiment_automation/
 |
 |-- tests/                         # Old tests
 |
-|-- queues/                        # Saved queue .json files (user-facing save/load)
-|   |-- my_experiment.json
-|   `-- ...
-|
 `-- recipe_maker/                  # Recipe maker presets and blocks
     |-- default_blocks/
     |   |-- flush.json
@@ -84,6 +85,7 @@ experiment_automation/
     |   |-- add_aptamer.json
     |   |-- add_ec4.json
     |   `-- add_ec3.json
+    |-- custom_blocks/
     `-- queue_reference.json
 
 Pump actions (queue types) and handlers:

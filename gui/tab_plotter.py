@@ -190,7 +190,7 @@ class PlotterTab:
         self._notebook.select(self._frame)
 
         if self._live_job is None:
-            self._live_job = self._frame.after(100, self._poll)
+            self._live_job = self._frame.after(250, self._poll)
 
     def stop_live(self):
         """Stop the live streaming plot."""
@@ -232,13 +232,14 @@ class PlotterTab:
                 )
             else:
                 self._plot_line.set_data(self._live_x, self._live_y)
-            self._ax.relim()
-            self._ax.autoscale_view()
-            if self._session.last_live_plot_label:
-                self._ax.legend(loc="best")
+            # Autoscale less often to avoid UI slowdowns on dense streams.
+            n = len(self._live_x)
+            if n <= 50 or (n % 200 == 0):
+                self._ax.relim()
+                self._ax.autoscale_view()
             self._canvas.draw_idle()
 
-        self._live_job = self._frame.after(100, self._poll)
+        self._live_job = self._frame.after(250, self._poll)
 
     # ── CSV helpers ───────────────────────────────────────────────────────────
 

@@ -10,6 +10,7 @@ the shared ``SessionState`` object.
 """
 
 import itertools
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
@@ -75,7 +76,15 @@ class SessionState:
         Format: ``meas_NNN`` (grows beyond 999 automatically).
         """
         self.measurement_counter += 1
-        return f"meas_{self.measurement_counter:03d}"
+        ts = datetime.now().strftime("%Y%m%d_%H%M")
+        return f"meas_{ts}_{self.measurement_counter:03d}"
+
+    def next_meas_tag_with_mux(self, mux_channel: Optional[int] = None) -> str:
+        """Return a timestamped measurement tag with optional MUX channel suffix."""
+        tag = self.next_meas_tag()
+        if mux_channel is None:
+            return tag
+        return f"{tag}_ch{int(mux_channel)}"
 
     def reset_counter(self):
         """Reset measurement counter to zero."""

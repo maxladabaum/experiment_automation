@@ -109,7 +109,10 @@ class SerialMeasurementRunner:
 
         if len(candidates) > 1:
             self.log(f"Multiple devices found: {candidates}")
-        self.log(f"Using device: {candidates[0]}")
+        if pump_upper is not None:
+            self.log(f"Using first device: {candidates[0]} (pump port {pump_upper} deprioritized)")
+        else:
+            self.log(f"Using first device: {candidates[0]}")
         return candidates[0]
 
     # ── Connection ────────────────────────────────────────────────────────────
@@ -310,7 +313,7 @@ class SerialMeasurementRunner:
             raw_path = self.data_folder / f"{self.script_path.stem}_{tag}_raw.txt"
             try:
                 self._raw_fh = open(raw_path, "w", encoding="utf-8", newline="\n")
-                self.log(f"Saving raw packets to: {raw_path}")
+                self.log(f"Raw packet log: {raw_path}")
             except OSError as exc:
                 self.log(f"Warning: could not open raw packet log: {exc}")
                 self._raw_fh = None

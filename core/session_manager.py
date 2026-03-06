@@ -110,7 +110,7 @@ class SessionManager:
 
     def log(self, message: str):
         """Write *message* to the on-disk session log and forward to the GUI."""
-        if self._session_log_path:
+        if self._session_log_path and self._should_log_to_file(message):
             ts   = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             line = f"[{ts}] {message}"
             try:
@@ -119,6 +119,17 @@ class SessionManager:
             except OSError:
                 pass
         self._log_cb(message)
+
+    @staticmethod
+    def _should_log_to_file(message: str) -> bool:
+        """Filter out high-volume raw packet lines from the session log file."""
+        msg = (message or "").strip()
+        if not msg:
+            return False
+        # Raw device packet lines look like: Pda...;ba...,<meta>
+        if msg.startswith("P") and ";" in msg and "ba" in msg:
+            return False
+        return True
 
     # ── Session lifecycle ──────────────────────────────────────────────────────
 
@@ -180,7 +191,7 @@ class SessionManager:
         }
         self._write_json(self._session_metadata_path, self._session_raw)
         self._update_status_var()
-        self.log(f"Session started: {session_path.name}")
+        self.log(f"Session started: {session_path}")
         return True
 
     def end_session(self):
@@ -192,7 +203,7 @@ class SessionManager:
         self._session_raw["ended_at"] = datetime.now().isoformat(timespec="seconds")
         if self._session_metadata_path:
             self._write_json(self._session_metadata_path, self._session_raw)
-        self.log(f"Session ended: {self.current_session_path.name}")
+        self.log(f"Session ended: {self.current_session_path}")
         self.current_session_path      = None
         self.current_experiment_path   = None
         self._session_metadata_path    = None
@@ -254,7 +265,7 @@ class SessionManager:
             "ended_at":          None,
         })
         self._update_status_var()
-        self.log(f"Experiment started: {exp_path.name}")
+        self.log(f"Experiment started: {exp_path}")
         return True
 
     def end_experiment(self):
@@ -269,7 +280,7 @@ class SessionManager:
                 self._write_json(self._experiment_metadata_path, data)
             except Exception:
                 pass
-        self.log(f"Experiment ended: {self.current_experiment_path.name}")
+        self.log(f"Experiment ended: {self.current_experiment_path}")
         self.current_experiment_path   = None
         self._experiment_metadata_path = None
         self._experiment_started_at    = None

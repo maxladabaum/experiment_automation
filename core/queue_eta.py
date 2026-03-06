@@ -5,11 +5,16 @@ This module is intentionally standalone. Nothing imports it by default, so
 adding this file does not change runtime behavior unless you call it.
 """
 
+# TODO: Calibrate ETA accuracy against real runs (per-measurement overhead,
+# device handshake time, and additional MethodSCRIPT loop types).
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, Iterable, List, Mapping, Optional
+from pathlib import Path
+import re
+from typing import Dict, Iterable, List, Mapping, Optional, Tuple
 
 
 # Conservative defaults; tune these to match your lab timing.
@@ -37,6 +42,144 @@ class QueueETA:
     @property
     def has_unknowns(self) -> bool:
         return self.unknown_item_count > 0
+
+
+_SCRIPT_ETA_CACHE: Dict[str, Tuple[float, float]] = {}
+
+
+def _parse_si_value(token: str) -> Optional[float]:
+    """Parse MethodSCRIPT SI tokens (e.g., 100m, 2k). Returns None on failure."""
+    if token is None:
+        return None
+    token = str(token).strip()
+    if not token:
+        return None
+    try:
+        return float(token)
+    except ValueError:
+        pass
+    m = re.match(r"^([+-]?\d+(?:\.\d+)?)([afpnumkMGTPE])$", token)
+    if not m:
+        return None
+    val = float(m.group(1))
+    prefix = m.group(2)
+    factors = {
+        "a": 1e-18, "f": 1e-15, "p": 1e-12, "n": 1e-9, "u": 1e-6,
+        "m": 1e-3, "k": 1e3, "M": 1e6, "G": 1e9, "T": 1e12, "P": 1e15, "E": 1e18,
+    }
+    return val * factors[prefix]
+
+
+def _sum_wait_seconds(script_text: str) -> float:
+    total = 0.0
+    for raw in script_text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("wait "):
+            token = line.split(maxsplit=1)[1]
+            secs = _parse_si_value(token)
+            if secs is not None:
+                total += max(0.0, float(secs))
+    return total
+
+
+def _estimate_from_script(script_text: str) -> Optional[float]:
+    wait_seconds = _sum_wait_seconds(script_text)
+    for raw in script_text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("meas_loop_cv"):
+            tokens = line.split()
+            if len(tokens) < 8:
+                return None
+            begin = _parse_si_value(tokens[3])
+            v1 = _parse_si_value(tokens[4])
+            v2 = _parse_si_value(tokens[5])
+            scan_rate = _parse_si_value(tokens[7])
+            if None in (begin, v1, v2, scan_rate):
+                return None
+            if scan_rate <= 0:
+                return None
+            n_scans = 1
+            for tok in tokens[8:]:
+                if tok.startswith("nscans(") and tok.endswith(")"):
+                    try:
+                        n_scans = max(1, int(tok[len("nscans("):-1]))
+                    except ValueError:
+                        n_scans = 1
+                    break
+            # Path length: begin -> v1 -> v2 -> begin
+            path = abs(v1 - begin) + abs(v2 - v1) + abs(begin - v2)
+            per_scan = path / scan_rate
+            return max(0.0, wait_seconds + (per_scan * n_scans))
+
+        if line.startswith("meas_loop_swv"):
+            tokens = line.split()
+            if len(tokens) < 10:
+                return None
+            begin = _parse_si_value(tokens[5])
+            end = _parse_si_value(tokens[6])
+            step = _parse_si_value(tokens[7])
+            freq = _parse_si_value(tokens[9]) if len(tokens) > 9 else None
+            if None in (begin, end, step, freq):
+                return None
+            if step <= 0 or freq <= 0:
+                return None
+            n_scans = 1
+            for tok in tokens[10:]:
+                if tok.startswith("nscans(") and tok.endswith(")"):
+                    try:
+                        n_scans = max(1, int(tok[len("nscans("):-1]))
+                    except ValueError:
+                        n_scans = 1
+                    break
+            steps = int(abs(end - begin) / step) + 1
+            per_scan = steps / freq
+            return max(0.0, wait_seconds + (per_scan * n_scans))
+
+        if line.startswith("meas_loop_lsv"):
+            tokens = line.split()
+            if len(tokens) < 7:
+                return None
+            begin = _parse_si_value(tokens[3])
+            end = _parse_si_value(tokens[4])
+            scan_rate = _parse_si_value(tokens[6])
+            if None in (begin, end, scan_rate):
+                return None
+            if scan_rate <= 0:
+                return None
+            path = abs(end - begin)
+            total = path / scan_rate
+            return max(0.0, wait_seconds + total)
+    return None
+
+
+def _estimate_from_script_path(script_path: str) -> Optional[float]:
+    try:
+        path = Path(script_path)
+    except Exception:
+        return None
+    if not path.exists():
+        return None
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        mtime = None
+    cache_key = str(path.resolve())
+    if mtime is not None:
+        cached = _SCRIPT_ETA_CACHE.get(cache_key)
+        if cached and cached[0] == mtime:
+            return cached[1]
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    est = _estimate_from_script(text)
+    if est is not None and mtime is not None:
+        _SCRIPT_ETA_CACHE[cache_key] = (mtime, est)
+    return est
 
 
 def estimate_item_seconds(
@@ -74,6 +217,13 @@ def estimate_item_seconds(
 
     if item_type.startswith("PUMP_"):
         return default_item_seconds.get(item_type)
+
+    # Prefer script-based ETA when available (CV/SWV/Custom).
+    script_path = item.get("script_path")
+    if script_path:
+        est = _estimate_from_script_path(str(script_path))
+        if est is not None:
+            return est
 
     # Measurement techniques: CV/SWV/etc.
     return default_item_seconds.get(item_type)

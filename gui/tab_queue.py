@@ -12,6 +12,7 @@ Responsible for:
 
 import copy
 import json
+import re
 import threading
 import time
 from datetime import datetime
@@ -19,11 +20,11 @@ from pathlib import Path
 from tkinter import filedialog, messagebox
 import tkinter as tk
 from tkinter import ttk, scrolledtext, simpledialog
+from typing import Optional
 
 from core.runner import SerialMeasurementRunner
 from methods import library_map
 from core.session import SessionState
-from core.queue_eta import estimate_queue_eta, eta_finish_time, format_duration
 
 
 class QueueTab:
@@ -56,6 +57,7 @@ class QueueTab:
         self._drag_item        = None
         self._clipboard:list   = []
         self._last_selected    = None
+        self._last_queue_path  = None
 
         self._build()
 
@@ -157,6 +159,7 @@ class QueueTab:
         """Append a queue item dict and refresh the display."""
         self._session.measurement_queue.append(item)
         self.refresh()
+        self.log(f"Queue add: {item.get('details', item.get('type'))}")
 
     def refresh(self):
         """Rebuild the Treeview from session.measurement_queue."""
@@ -172,6 +175,13 @@ class QueueTab:
         self._status.config(text=f"Status: {msg}")
 
     def log(self, msg: str):
+        session_mgr = getattr(self._session, "session_manager", None)
+        if session_mgr is not None:
+            session_mgr.log(msg)
+            return
+        self._append_log_gui(msg)
+
+    def _append_log_gui(self, msg: str):
         def _append():
             self._log_text.config(state="normal")
             self._log_text.insert(tk.END, msg + "\n")
@@ -191,20 +201,6 @@ class QueueTab:
         self._lbl_registry.config(
             text=f"Script registry: {self._session.registry.size} unique")
 
-    def _eta_text_for_queue(self, start_index: int = 0) -> str:
-        """Return a short ETA summary for the queue."""
-        eta = estimate_queue_eta(
-            self._session.measurement_queue,
-            start_index=start_index,
-            step_delay_seconds=self._session.step_delay,
-        )
-        finish = eta_finish_time(eta.total_seconds).strftime("%H:%M")
-        text = f"ETA {format_duration(eta.total_seconds)} (finish ~{finish})"
-        if eta.excluded_alert_count:
-            text += f", excludes {eta.excluded_alert_count} alert pause(s)"
-        if eta.unknown_item_count:
-            text += f", {eta.unknown_item_count} unknown item(s)"
-        return text
 
     # ── Session info bar buttons ──────────────────────────────────────────────
 
@@ -327,7 +323,7 @@ class QueueTab:
             return
         for idx in reversed(idxs):
             removed = self._session.measurement_queue.pop(idx)
-            self.log(f"Deleted: {removed.get('details', removed.get('type'))}")
+            self.log(f"Queue item deleted: {removed.get('details', removed.get('type'))}")
         self.refresh()
         self.set_status(f"Deleted {len(idxs)} item(s)")
 
@@ -339,6 +335,7 @@ class QueueTab:
         self._session.measurement_queue.clear()
         self.refresh()
         self.set_status("Queue cleared")
+        self.log("Queue cleared.")
 
     # ── Drag reorder ──────────────────────────────────────────────────────────
 
@@ -413,6 +410,8 @@ class QueueTab:
             with open(path, "w", encoding="utf-8") as fh:
                 json.dump(payload, fh, indent=2)
             messagebox.showinfo("Saved", f"Queue saved to:\n{path}")
+            self.log(f"Queue saved: {path}")
+            self._last_queue_path = path
         except OSError as exc:
             messagebox.showerror("Save Failed", str(exc))
 
@@ -448,9 +447,9 @@ class QueueTab:
 
         self._session.measurement_queue = new_queue
         self.refresh()
-        eta_text = self._eta_text_for_queue(start_index=0)
-        self.set_status(f"Queue loaded ({len(new_queue)} items) • {eta_text}")
-        self.log(f"[ETA] {eta_text}")
+        self.set_status(f"Queue loaded ({len(new_queue)} items)")
+        self.log(f"Queue loaded: {path} ({len(new_queue)} items)")
+        self._last_queue_path = path
         if skipped:
             self.log(f"Queue load skipped {skipped} invalid item(s).")
         messagebox.showinfo("Queue Loaded", f"Loaded {len(new_queue)} item(s).")
@@ -531,6 +530,8 @@ class QueueTab:
             messagebox.showwarning("Already Running", "Queue already running."); return
         self._session.is_running = True
         self.clear_log()
+        self.log("Queue start requested.")
+        self._copy_queue_file("run_queue")
         self._queue_thread = threading.Thread(
             target=self._execute_queue, args=(0,), daemon=True
         )
@@ -553,6 +554,8 @@ class QueueTab:
             return
         self._session.is_running = True
         self.clear_log()
+        self.log("Queue start from selected requested.")
+        self._copy_queue_file("run_queue_from_selected")
         self._queue_thread = threading.Thread(
             target=self._execute_queue, args=(idx,), daemon=True
         )
@@ -561,6 +564,7 @@ class QueueTab:
     def stop_queue(self):
         if not self._session.is_running:
             return
+        self.log("Queue stop requested.")
         self._session.is_running = False
         self._session.stop_current_runner()
         self.set_status("Queue Stopped")
@@ -575,6 +579,7 @@ class QueueTab:
             self._root.after(0, self.refresh)
             self._root.after(0, self.set_status,
                              f"Running: {item['type']} — {item.get('details', '')}")
+            self.log(f"Queue start -> {item.get('details', item.get('type'))}")
 
             csv_path = None
             success  = False
@@ -599,7 +604,8 @@ class QueueTab:
                     self._root.after(0, self._plotter.start_live,
                                      f"{item['type']} (live)", None, item["type"])
                     try:
-                        meas_tag = self._session.next_meas_tag()
+                        mux_channel = self._extract_mux_channel(item)
+                        meas_tag = self._session.next_meas_tag_with_mux(mux_channel)
                         self.log(f"[Tag] {meas_tag}")
                         self._root.after(0, self.refresh_labels)
                         data_folder = None
@@ -639,7 +645,56 @@ class QueueTab:
                     break
 
         self._session.is_running = False
+        self.log("Queue completed.")
         self._root.after(0, self.set_status, "Queue Complete")
+
+    def _queue_payload(self) -> dict:
+        return {
+            "metadata": {"saved_at": datetime.now().isoformat(timespec="seconds"),
+                         "version": 1},
+            "items": [self._serialize(i) for i in self._session.measurement_queue],
+        }
+
+    def _copy_queue_file(self, prefix: str):
+        session_mgr = getattr(self._session, "session_manager", None)
+        exp_path = getattr(session_mgr, "current_experiment_path", None) if session_mgr else None
+        if exp_path is None:
+            return
+        try:
+            queue_dir = Path(exp_path) / "queue_files"
+            queue_dir.mkdir(parents=True, exist_ok=True)
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            suffix = ""
+            if self._last_queue_path:
+                try:
+                    suffix = f"_{Path(self._last_queue_path).name}"
+                except Exception:
+                    suffix = ""
+            filename = f"{prefix}_{ts}{suffix}"
+            dst = queue_dir / filename
+            with open(dst, "w", encoding="utf-8") as fh:
+                json.dump(self._queue_payload(), fh, indent=2)
+            self.log(f"Queue file copied to: {dst}")
+        except Exception as exc:
+            self.log(f"Queue file copy failed: {exc}")
+
+    @staticmethod
+    def _extract_mux_channel(item: dict) -> Optional[int]:
+        method_ref = item.get("method_ref") or {}
+        mux = method_ref.get("mux_channel")
+        if mux is not None:
+            try:
+                return int(mux)
+            except (TypeError, ValueError):
+                pass
+        details = str(item.get("details") or "")
+        m = re.search(r"\bMUX\s*ch\s*(\d+)\b", details, flags=re.IGNORECASE)
+        if m:
+            try:
+                return int(m.group(1))
+            except ValueError:
+                return None
+        return None
 
     # ── Pause / alert helpers ─────────────────────────────────────────────────
 
