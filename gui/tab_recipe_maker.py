@@ -286,6 +286,17 @@ class RecipeMakerTab:
         ).pack(side="left", padx=6)
         self._tech_filter.trace_add("write", lambda *_: self._refresh_methods())
 
+        ttk.Label(top, text="View:").pack(side="left", padx=(10, 0))
+        self._mux_filter = tk.StringVar(value="ALL")
+        ttk.Combobox(
+            top,
+            textvariable=self._mux_filter,
+            values=["ALL", "BASE", "MUX"],
+            state="readonly",
+            width=8,
+        ).pack(side="left", padx=6)
+        self._mux_filter.trace_add("write", lambda *_: self._refresh_methods())
+
         ttk.Button(top, text="Refresh",
                    command=self._load_method_map).pack(side="left", padx=6)
 
@@ -363,11 +374,18 @@ class RecipeMakerTab:
 
         search = (self._method_search.get() or "").strip().lower()
         tech = (self._tech_filter.get() or "ALL").upper()
+        view = (getattr(self, "_mux_filter", tk.StringVar(value="ALL")).get() or "ALL").upper()
 
         for key, entry in sorted(self._method_entries.items()):
             technique = entry.get("technique", "")
             note = entry.get("note", "")
+            mux_raw = entry.get("mux_channel")
+            is_mux = mux_raw not in (None, "", 0, "0")
             if tech != "ALL" and technique.upper() != tech:
+                continue
+            if view == "BASE" and is_mux:
+                continue
+            if view == "MUX" and not is_mux:
                 continue
 
             params = entry.get("params", {})

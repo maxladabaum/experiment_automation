@@ -83,7 +83,7 @@ class SessionState:
     def next_meas_tag_with_mux(self, mux_channel: Optional[int] = None) -> str:
         """Return a timestamped measurement tag with optional MUX channel suffix."""
         tag = self.next_meas_tag()
-        if mux_channel is None:
+        if mux_channel in (None, 0, "0", ""):
             return tag
         return f"{tag}_ch{int(mux_channel)}"
 

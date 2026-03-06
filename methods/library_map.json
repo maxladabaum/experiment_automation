@@ -1,7 +1,7 @@
 {
   "cv_795893": {
     "technique": "CV",
-    "mux_channel": null,
+    "mux_channel": 0,
     "params": {
       "begin_potential": "0",
       "vertex1": "-0.5",
@@ -18,7 +18,7 @@
   },
   "cv_e97ce8": {
     "technique": "CV",
-    "mux_channel": null,
+    "mux_channel": 0,
     "params": {
       "begin_potential": "0",
       "vertex1": "-0.8",
@@ -35,7 +35,7 @@
   },
   "cv_850b2a": {
     "technique": "CV",
-    "mux_channel": null,
+    "mux_channel": 0,
     "params": {
       "begin_potential": "-0.2",
       "vertex1": "-0.2",
@@ -53,7 +53,7 @@
   },
   "cv_297021": {
     "technique": "CV",
-    "mux_channel": null,
+    "mux_channel": 0,
     "params": {
       "begin_potential": "-0.2",
       "vertex1": "-0.2",
@@ -71,7 +71,7 @@
   },
   "cv_f2add5": {
     "technique": "CV",
-    "mux_channel": null,
+    "mux_channel": 0,
     "params": {
       "begin_potential": "-1",
       "vertex1": "-1",
@@ -89,7 +89,7 @@
   },
   "cv_e829e4": {
     "technique": "CV",
-    "mux_channel": null,
+    "mux_channel": 0,
     "params": {
       "begin_potential": "-1",
       "vertex1": "-1",
@@ -107,7 +107,7 @@
   },
   "custom_0441ab": {
     "technique": "Custom",
-    "mux_channel": null,
+    "mux_channel": 0,
     "params": {
       "custom_hash": "96bc3378ee86"
     },
@@ -117,7 +117,7 @@
   },
   "swv_39a560": {
     "technique": "SWV",
-    "mux_channel": null,
+    "mux_channel": 0,
     "params": {
       "begin_potential": "-0.6",
       "end_potential": "0",
@@ -136,7 +136,7 @@
   },
   "cv_451827": {
     "technique": "CV",
-    "mux_channel": null,
+    "mux_channel": 0,
     "params": {
       "begin_potential": "-0.2",
       "vertex1": "-0.2",
@@ -154,7 +154,7 @@
   },
   "cv_ac2f8b": {
     "technique": "CV",
-    "mux_channel": null,
+    "mux_channel": 0,
     "params": {
       "begin_potential": "-0.2",
       "vertex1": "-0.2",
@@ -186,7 +186,7 @@
     },
     "note": "ec_4_narrow | MUX ch 1",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch1_9bebe0.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch1_9bebe0.ms"
   },
   "cv_ch2_ed2c59": {
     "technique": "CV",
@@ -204,7 +204,7 @@
     },
     "note": "ec_4_narrow | MUX ch 2",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch2_ed2c59.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch2_ed2c59.ms"
   },
   "cv_ch3_4c0d8b": {
     "technique": "CV",
@@ -222,7 +222,7 @@
     },
     "note": "ec_4_narrow | MUX ch 3",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch3_4c0d8b.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch3_4c0d8b.ms"
   },
   "cv_ch4_1524dc": {
     "technique": "CV",
@@ -240,7 +240,7 @@
     },
     "note": "ec_4_narrow | MUX ch 4",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch4_1524dc.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch4_1524dc.ms"
   },
   "cv_ch5_af0757": {
     "technique": "CV",
@@ -258,7 +258,7 @@
     },
     "note": "ec_4_narrow | MUX ch 5",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch5_af0757.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch5_af0757.ms"
   },
   "cv_ch6_1e8de3": {
     "technique": "CV",
@@ -276,7 +276,7 @@
     },
     "note": "ec_4_narrow | MUX ch 6",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch6_1e8de3.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch6_1e8de3.ms"
   },
   "cv_ch7_4edc6f": {
     "technique": "CV",
@@ -294,7 +294,7 @@
     },
     "note": "ec_4_narrow | MUX ch 7",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch7_4edc6f.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch7_4edc6f.ms"
   },
   "cv_ch8_47786e": {
     "technique": "CV",
@@ -312,7 +312,7 @@
     },
     "note": "ec_4_narrow | MUX ch 8",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch8_47786e.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch8_47786e.ms"
   },
   "cv_ch9_b9f109": {
     "technique": "CV",
@@ -330,7 +330,7 @@
     },
     "note": "ec_4_narrow | MUX ch 9",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch9_b9f109.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch9_b9f109.ms"
   },
   "cv_ch10_da9867": {
     "technique": "CV",
@@ -348,7 +348,7 @@
     },
     "note": "ec_4_narrow | MUX ch 10",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch10_da9867.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch10_da9867.ms"
   },
   "cv_ch1_5a254d": {
     "technique": "CV",
@@ -366,7 +366,7 @@
     },
     "note": "ec_3_narrow | MUX ch 1",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch1_5a254d.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch1_5a254d.ms"
   },
   "cv_ch2_e9305f": {
     "technique": "CV",
@@ -384,7 +384,7 @@
     },
     "note": "ec_3_narrow | MUX ch 2",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch2_e9305f.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch2_e9305f.ms"
   },
   "cv_ch3_1df535": {
     "technique": "CV",
@@ -402,7 +402,7 @@
     },
     "note": "ec_3_narrow | MUX ch 3",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch3_1df535.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch3_1df535.ms"
   },
   "cv_ch4_2db74c": {
     "technique": "CV",
@@ -420,7 +420,7 @@
     },
     "note": "ec_3_narrow | MUX ch 4",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch4_2db74c.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch4_2db74c.ms"
   },
   "cv_ch5_ecd8ef": {
     "technique": "CV",
@@ -438,7 +438,7 @@
     },
     "note": "ec_3_narrow | MUX ch 5",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch5_ecd8ef.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch5_ecd8ef.ms"
   },
   "cv_ch6_f2f003": {
     "technique": "CV",
@@ -456,7 +456,7 @@
     },
     "note": "ec_3_narrow | MUX ch 6",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch6_f2f003.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch6_f2f003.ms"
   },
   "cv_ch7_88634c": {
     "technique": "CV",
@@ -474,7 +474,7 @@
     },
     "note": "ec_3_narrow | MUX ch 7",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch7_88634c.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch7_88634c.ms"
   },
   "cv_ch8_d4ad0c": {
     "technique": "CV",
@@ -492,7 +492,7 @@
     },
     "note": "ec_3_narrow | MUX ch 8",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch8_d4ad0c.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch8_d4ad0c.ms"
   },
   "cv_ch9_c98273": {
     "technique": "CV",
@@ -510,7 +510,7 @@
     },
     "note": "ec_3_narrow | MUX ch 9",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch9_c98273.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch9_c98273.ms"
   },
   "cv_ch10_2df296": {
     "technique": "CV",
@@ -528,7 +528,7 @@
     },
     "note": "ec_3_narrow | MUX ch 10",
     "added_at": "2026-03-06T01:02:43",
-    "filepath": "methods\\library\\cv_ch10_2df296.ms"
+    "filepath": "methods\\library\\mux_methods\\cv_ch10_2df296.ms"
   },
   "swv_ch1_e0091b": {
     "technique": "SWV",
@@ -547,7 +547,7 @@
     },
     "note": "MUX ch 1",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\swv_ch1_e0091b.ms"
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_e0091b.ms"
   },
   "swv_ch2_abeb1a": {
     "technique": "SWV",
@@ -566,7 +566,7 @@
     },
     "note": "MUX ch 2",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\swv_ch2_abeb1a.ms"
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_abeb1a.ms"
   },
   "swv_ch3_fdedbe": {
     "technique": "SWV",
@@ -585,7 +585,7 @@
     },
     "note": "MUX ch 3",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\swv_ch3_fdedbe.ms"
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_fdedbe.ms"
   },
   "swv_ch4_b23a37": {
     "technique": "SWV",
@@ -604,7 +604,7 @@
     },
     "note": "MUX ch 4",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\swv_ch4_b23a37.ms"
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_b23a37.ms"
   },
   "swv_ch5_bcda5d": {
     "technique": "SWV",
@@ -623,7 +623,7 @@
     },
     "note": "MUX ch 5",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\swv_ch5_bcda5d.ms"
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_bcda5d.ms"
   },
   "swv_ch6_db762b": {
     "technique": "SWV",
@@ -642,7 +642,7 @@
     },
     "note": "MUX ch 6",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\swv_ch6_db762b.ms"
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_db762b.ms"
   },
   "swv_ch7_436f90": {
     "technique": "SWV",
@@ -661,7 +661,7 @@
     },
     "note": "MUX ch 7",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\swv_ch7_436f90.ms"
+    "filepath": "methods\\library\\mux_methods\\swv_ch7_436f90.ms"
   },
   "swv_ch8_5c33ce": {
     "technique": "SWV",
@@ -680,7 +680,7 @@
     },
     "note": "MUX ch 8",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\swv_ch8_5c33ce.ms"
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_5c33ce.ms"
   },
   "swv_ch9_6adeb4": {
     "technique": "SWV",
@@ -699,7 +699,7 @@
     },
     "note": "MUX ch 9",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\swv_ch9_6adeb4.ms"
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_6adeb4.ms"
   },
   "swv_ch10_35489b": {
     "technique": "SWV",
@@ -718,7 +718,7 @@
     },
     "note": "MUX ch 10",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\swv_ch10_35489b.ms"
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_35489b.ms"
   },
   "custom_ch1_f9121a": {
     "technique": "Custom",
@@ -728,7 +728,7 @@
     },
     "note": "linear_sweep | MUX ch 1",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\custom_ch1_f9121a.ms"
+    "filepath": "methods\\library\\mux_methods\\custom_ch1_f9121a.ms"
   },
   "custom_ch2_2bc84d": {
     "technique": "Custom",
@@ -738,7 +738,7 @@
     },
     "note": "linear_sweep | MUX ch 2",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\custom_ch2_2bc84d.ms"
+    "filepath": "methods\\library\\mux_methods\\custom_ch2_2bc84d.ms"
   },
   "custom_ch3_74905f": {
     "technique": "Custom",
@@ -748,7 +748,7 @@
     },
     "note": "linear_sweep | MUX ch 3",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\custom_ch3_74905f.ms"
+    "filepath": "methods\\library\\mux_methods\\custom_ch3_74905f.ms"
   },
   "custom_ch4_c289b1": {
     "technique": "Custom",
@@ -758,7 +758,7 @@
     },
     "note": "linear_sweep | MUX ch 4",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\custom_ch4_c289b1.ms"
+    "filepath": "methods\\library\\mux_methods\\custom_ch4_c289b1.ms"
   },
   "custom_ch5_8e67df": {
     "technique": "Custom",
@@ -768,7 +768,7 @@
     },
     "note": "linear_sweep | MUX ch 5",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\custom_ch5_8e67df.ms"
+    "filepath": "methods\\library\\mux_methods\\custom_ch5_8e67df.ms"
   },
   "custom_ch6_54cd6f": {
     "technique": "Custom",
@@ -778,7 +778,7 @@
     },
     "note": "linear_sweep | MUX ch 6",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\custom_ch6_54cd6f.ms"
+    "filepath": "methods\\library\\mux_methods\\custom_ch6_54cd6f.ms"
   },
   "custom_ch7_32a080": {
     "technique": "Custom",
@@ -788,7 +788,7 @@
     },
     "note": "linear_sweep | MUX ch 7",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\custom_ch7_32a080.ms"
+    "filepath": "methods\\library\\mux_methods\\custom_ch7_32a080.ms"
   },
   "custom_ch8_a36bb4": {
     "technique": "Custom",
@@ -798,7 +798,7 @@
     },
     "note": "linear_sweep | MUX ch 8",
     "added_at": "2026-03-06T13:22:04",
-    "filepath": "methods\\library\\custom_ch8_a36bb4.ms"
+    "filepath": "methods\\library\\mux_methods\\custom_ch8_a36bb4.ms"
   },
   "custom_ch9_c94192": {
     "technique": "Custom",
@@ -808,7 +808,7 @@
     },
     "note": "linear_sweep | MUX ch 9",
     "added_at": "2026-03-06T13:22:05",
-    "filepath": "methods\\library\\custom_ch9_c94192.ms"
+    "filepath": "methods\\library\\mux_methods\\custom_ch9_c94192.ms"
   },
   "custom_ch10_8c0246": {
     "technique": "Custom",
@@ -818,6 +818,6 @@
     },
     "note": "linear_sweep | MUX ch 10",
     "added_at": "2026-03-06T13:22:05",
-    "filepath": "methods\\library\\custom_ch10_8c0246.ms"
+    "filepath": "methods\\library\\mux_methods\\custom_ch10_8c0246.ms"
   }
 }

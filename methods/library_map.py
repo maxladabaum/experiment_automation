@@ -18,6 +18,7 @@ from typing import Optional
 
 _METHODS_ROOT = Path("methods")
 _LIBRARY_DIR = _METHODS_ROOT / "library"
+_MUX_LIBRARY_DIR = _LIBRARY_DIR / "mux_methods"
 _ARCHIVE_DIR = _METHODS_ROOT / "archive"
 _MAP_FILE = _METHODS_ROOT / "library_map.json"
 
@@ -27,7 +28,24 @@ _map: dict = {}
 def _ensure_dirs():
     _METHODS_ROOT.mkdir(exist_ok=True)
     _LIBRARY_DIR.mkdir(exist_ok=True)
+    _MUX_LIBRARY_DIR.mkdir(exist_ok=True)
     _ARCHIVE_DIR.mkdir(exist_ok=True)
+
+
+def _normalize_mux_channel(mux_channel) -> Optional[int]:
+    if mux_channel in (None, "", 0, "0"):
+        return None
+    try:
+        return int(mux_channel)
+    except (TypeError, ValueError):
+        return None
+
+
+def _library_dir_for(mux_channel) -> Path:
+    mux_channel = _normalize_mux_channel(mux_channel)
+    if mux_channel is not None:
+        return _MUX_LIBRARY_DIR
+    return _LIBRARY_DIR
 
 
 def load_map() -> dict:
@@ -51,6 +69,7 @@ def _persist():
 def compute_hash(technique: str, params: dict, mux_channel: Optional[int]) -> str:
     """Compute a stable hash from parameters, not script text."""
     slug = technique.lower().replace(" ", "_")
+    mux_channel = _normalize_mux_channel(mux_channel)
     if mux_channel is not None:
         slug = f"{slug}_ch{mux_channel}"
 
@@ -75,6 +94,13 @@ def lookup(hash_key: str) -> Optional[Path]:
     path = Path(entry["filepath"])
     if path.exists():
         return path
+    # If a mux method was relocated into the mux_methods folder, fix the map.
+    mux_channel = entry.get("mux_channel")
+    alt_path = _library_dir_for(mux_channel) / f"{hash_key}.ms"
+    if alt_path.exists():
+        entry["filepath"] = str(alt_path)
+        _persist()
+        return alt_path
     del _map[hash_key]
     _persist()
     return None
@@ -90,12 +116,13 @@ def register(
 ) -> Path:
     """Write script into the library and record in the map."""
     _ensure_dirs()
-    lib_path = _LIBRARY_DIR / f"{hash_key}.ms"
+    mux_channel = _normalize_mux_channel(mux_channel)
+    lib_path = _library_dir_for(mux_channel) / f"{hash_key}.ms"
     lib_path.write_text(script, encoding="utf-8")
 
     _map[hash_key] = {
         "technique": technique,
-        "mux_channel": mux_channel,
+        "mux_channel": mux_channel if mux_channel is not None else 0,
         "params": {k: str(v).strip() for k, v in params.items()},
         "note": (note or "").strip(),
         "added_at": datetime.now().isoformat(timespec="seconds"),
