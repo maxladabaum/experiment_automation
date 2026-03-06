@@ -32391,6 +32391,12 @@
       }
     },
     {
+      "type": "ALERT",
+      "status": "pending",
+      "details": "Alert: Load Duplex Strands",
+      "alert_message": "Load Duplex Strands"
+    },
+    {
       "type": "PUMP_VALVE",
       "status": "pending",
       "details": "Pump: Valve -> 7",

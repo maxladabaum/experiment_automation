@@ -426,9 +426,12 @@ class QueueTab:
         if not path:
             return
         try:
-            with open(path, "r", encoding="utf-8") as fh:
+            with open(path, "r", encoding="utf-8-sig") as fh:
                 payload = json.load(fh)
-            items = payload.get("items")
+            if isinstance(payload, list):
+                items = payload
+            else:
+                items = payload.get("items")
             if not isinstance(items, list):
                 raise ValueError("Queue file missing 'items' list")
         except Exception as exc:
