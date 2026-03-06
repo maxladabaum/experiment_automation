@@ -133,5 +133,401 @@
     "note": "",
     "added_at": "2026-03-05T12:20:00",
     "filepath": "methods\\library\\swv_39a560.ms"
+  },
+  "cv_451827": {
+    "technique": "CV",
+    "mux_channel": null,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_4_narrow",
+    "added_at": "2026-03-06T00:47:59",
+    "filepath": "methods\\library\\cv_451827.ms"
+  },
+  "cv_ac2f8b": {
+    "technique": "CV",
+    "mux_channel": null,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_3_narrow",
+    "added_at": "2026-03-06T00:50:35",
+    "filepath": "methods\\library\\cv_ac2f8b.ms"
+  },
+  "cv_ch1_9bebe0": {
+    "technique": "CV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_4_narrow | MUX ch 1",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch1_9bebe0.ms"
+  },
+  "cv_ch2_ed2c59": {
+    "technique": "CV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_4_narrow | MUX ch 2",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch2_ed2c59.ms"
+  },
+  "cv_ch3_4c0d8b": {
+    "technique": "CV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_4_narrow | MUX ch 3",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch3_4c0d8b.ms"
+  },
+  "cv_ch4_1524dc": {
+    "technique": "CV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_4_narrow | MUX ch 4",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch4_1524dc.ms"
+  },
+  "cv_ch5_af0757": {
+    "technique": "CV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_4_narrow | MUX ch 5",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch5_af0757.ms"
+  },
+  "cv_ch6_1e8de3": {
+    "technique": "CV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_4_narrow | MUX ch 6",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch6_1e8de3.ms"
+  },
+  "cv_ch7_4edc6f": {
+    "technique": "CV",
+    "mux_channel": 7,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_4_narrow | MUX ch 7",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch7_4edc6f.ms"
+  },
+  "cv_ch8_47786e": {
+    "technique": "CV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_4_narrow | MUX ch 8",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch8_47786e.ms"
+  },
+  "cv_ch9_b9f109": {
+    "technique": "CV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_4_narrow | MUX ch 9",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch9_b9f109.ms"
+  },
+  "cv_ch10_da9867": {
+    "technique": "CV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_4_narrow | MUX ch 10",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch10_da9867.ms"
+  },
+  "cv_ch1_5a254d": {
+    "technique": "CV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_3_narrow | MUX ch 1",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch1_5a254d.ms"
+  },
+  "cv_ch2_e9305f": {
+    "technique": "CV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_3_narrow | MUX ch 2",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch2_e9305f.ms"
+  },
+  "cv_ch3_1df535": {
+    "technique": "CV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_3_narrow | MUX ch 3",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch3_1df535.ms"
+  },
+  "cv_ch4_2db74c": {
+    "technique": "CV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_3_narrow | MUX ch 4",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch4_2db74c.ms"
+  },
+  "cv_ch5_ecd8ef": {
+    "technique": "CV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_3_narrow | MUX ch 5",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch5_ecd8ef.ms"
+  },
+  "cv_ch6_f2f003": {
+    "technique": "CV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_3_narrow | MUX ch 6",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch6_f2f003.ms"
+  },
+  "cv_ch7_88634c": {
+    "technique": "CV",
+    "mux_channel": 7,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_3_narrow | MUX ch 7",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch7_88634c.ms"
+  },
+  "cv_ch8_d4ad0c": {
+    "technique": "CV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_3_narrow | MUX ch 8",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch8_d4ad0c.ms"
+  },
+  "cv_ch9_c98273": {
+    "technique": "CV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_3_narrow | MUX ch 9",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch9_c98273.ms"
+  },
+  "cv_ch10_2df296": {
+    "technique": "CV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "0.9",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0"
+    },
+    "note": "ec_3_narrow | MUX ch 10",
+    "added_at": "2026-03-06T01:02:43",
+    "filepath": "methods\\library\\cv_ch10_2df296.ms"
   }
 }

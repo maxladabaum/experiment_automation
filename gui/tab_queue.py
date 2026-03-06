@@ -469,10 +469,11 @@ class QueueTab:
         else:
             if "script_path" in item:
                 data["script_path"] = item["script_path"]
+            if "method_ref" in item:
+                data["method_ref"] = dict(item.get("method_ref") or {})
         return data
 
-    @staticmethod
-    def _deserialize(raw: dict):
+    def _deserialize(self, raw: dict):
         if not isinstance(raw, dict):
             return None
         t = raw.get("type")
@@ -508,17 +509,147 @@ class QueueTab:
                     path = library_map.lookup(hash_key)
                     if path is None:
                         return None
-                    sp = str(path)
                     mux = method_ref.get("mux_channel")
-                    if mux:
-                        item["details"] = details or f"{path.name} (MUX ch {mux})"
+                    if mux not in (None, "", 0, "0"):
+                        try:
+                            mux_ch = int(mux)
+                        except (TypeError, ValueError):
+                            mux_ch = None
+
+                        if mux_ch is not None and 1 <= mux_ch <= 16:
+                            technique = method_ref.get("technique") or t
+                            params = method_ref.get("params")
+                            resolved = None
+
+                            if isinstance(params, dict):
+                                try:
+                                    mux_key = library_map.compute_hash(technique, params, mux_ch)
+                                    resolved = library_map.lookup(mux_key)
+                                except Exception:
+                                    resolved = None
+
+                            if resolved is None:
+                                # Fallback: wrap the referenced base script with the requested channel.
+                                try:
+                                    base_script = path.read_text(encoding="utf-8")
+                                    wrapped = self._wrap_mux(
+                                        self._strip_first_mux_header(base_script),
+                                        mux_ch,
+                                    )
+                                    mux_note = self._compose_mux_note(
+                                        method_ref=method_ref,
+                                        mux_channel=mux_ch,
+                                        fallback=f"MUX ch {mux_ch}",
+                                    )
+                                    saved_path, _ = self._session.registry.save_script(
+                                        technique=technique,
+                                        script=wrapped,
+                                        params=params if isinstance(params, dict) else None,
+                                        mux_channel=mux_ch,
+                                        note=mux_note,
+                                    )
+                                    resolved = saved_path
+                                except Exception as exc:
+                                    self.log(f"Failed to generate MUX ch {mux_ch} script from method_ref: {exc}")
+                                    return None
+
+                            sp = str(resolved)
+                            item["details"] = details or f"{Path(sp).name} (MUX ch {mux_ch})"
+                        else:
+                            sp = str(path)
+                            item["details"] = details or path.name
                     else:
+                        sp = str(path)
                         item["details"] = details or path.name
                 else:
                     return None
             item["script_path"] = sp
+            if "method_ref" in raw and isinstance(raw.get("method_ref"), dict):
+                item["method_ref"] = dict(raw.get("method_ref") or {})
             item["details"]     = item.get("details") or details or Path(sp).name
         return item
+
+    @staticmethod
+    def _mux_channel_address(channel: int) -> int:
+        idx = channel - 1
+        return (idx << 4) | idx
+
+    @classmethod
+    def _wrap_mux(cls, base_script: str, channel: int) -> str:
+        lines = base_script.splitlines()
+        header = lines[0].strip() if lines and lines[0].strip() in ("e", "l") else "e"
+        rest = lines[1:] if lines and lines[0].strip() in ("e", "l") else lines
+        addr = cls._mux_channel_address(channel)
+        prefix = [
+            header,
+            "# MUX16 channel select",
+            "set_gpio_cfg 0x3FFi 1",
+            f"set_gpio {addr}i",
+        ]
+        return "\n".join(prefix + rest)
+
+    @staticmethod
+    def _strip_first_mux_header(script: str) -> str:
+        lines = script.splitlines()
+        cfg_idx = None
+        gpio_idx = None
+        for i, line in enumerate(lines):
+            s = line.strip()
+            if cfg_idx is None and s == "set_gpio_cfg 0x3FFi 1":
+                cfg_idx = i
+                continue
+            if cfg_idx is not None and gpio_idx is None and s.startswith("set_gpio ") and not s.startswith("set_gpio_cfg"):
+                gpio_idx = i
+                break
+        if cfg_idx is not None and gpio_idx is not None:
+            del lines[gpio_idx]
+            del lines[cfg_idx]
+        return "\n".join(lines)
+
+    @staticmethod
+    def _extract_mux_from_script(script: str) -> Optional[int]:
+        """Read first set_gpio value and decode nibble-pair channel (0x11 -> ch2)."""
+        for line in script.splitlines():
+            s = line.strip()
+            if not s.startswith("set_gpio ") or s.startswith("set_gpio_cfg"):
+                continue
+            token = s[len("set_gpio "):].strip()
+            if token.endswith("i"):
+                token = token[:-1]
+            try:
+                value = int(token, 16) if token.lower().startswith("0x") else int(token)
+            except ValueError:
+                continue
+            lo = value & 0x0F
+            hi = (value >> 4) & 0x0F
+            if lo == hi and 0 <= lo <= 15:
+                return lo + 1
+            return None
+        return None
+
+    def _compose_mux_note(self, method_ref: dict, mux_channel: int, fallback: str) -> str:
+        """Build note using original method note (if any) + current channel tag."""
+        base_note = ""
+        if isinstance(method_ref, dict):
+            hash_key = method_ref.get("hash_key")
+            if hash_key:
+                try:
+                    entry = library_map.all_entries().get(hash_key) or {}
+                    base_note = (entry.get("note") or "").strip()
+                except Exception:
+                    base_note = ""
+
+        tag = f"MUX ch {mux_channel}"
+        if base_note:
+            if re.search(r"\bMUX\s*ch\s*\d+\b", base_note, flags=re.IGNORECASE):
+                return re.sub(
+                    r"\bMUX\s*ch\s*\d+\b",
+                    tag,
+                    base_note,
+                    flags=re.IGNORECASE,
+                )
+            return f"{base_note} | {tag}"
+        return fallback
 
     # ── Run queue ─────────────────────────────────────────────────────────────
 
@@ -531,6 +662,7 @@ class QueueTab:
         self._session.is_running = True
         self.clear_log()
         self.log("Queue start requested.")
+        self.log(f"Measurement simulation: {'ON' if self._session.simulate_measurements else 'OFF'}")
         self._copy_queue_file("run_queue")
         self._queue_thread = threading.Thread(
             target=self._execute_queue, args=(0,), daemon=True
@@ -555,6 +687,7 @@ class QueueTab:
         self._session.is_running = True
         self.clear_log()
         self.log("Queue start from selected requested.")
+        self.log(f"Measurement simulation: {'ON' if self._session.simulate_measurements else 'OFF'}")
         self._copy_queue_file("run_queue_from_selected")
         self._queue_thread = threading.Thread(
             target=self._execute_queue, args=(idx,), daemon=True
@@ -601,6 +734,7 @@ class QueueTab:
                     success = ok
 
                 else:
+                    self._ensure_mux_script_for_item(item)
                     self._root.after(0, self._plotter.start_live,
                                      f"{item['type']} (live)", None, item["type"])
                     try:
@@ -621,6 +755,7 @@ class QueueTab:
                             data_callback=self._plotter.push_live_point,
                             data_folder=data_folder,
                             save_raw_packets=self._session.save_raw_packets,
+                            simulate_measurements=self._session.simulate_measurements,
                         )
                         self._session.current_runner = runner
                         success, csv_path = runner.execute(meas_tag=meas_tag)
@@ -647,6 +782,49 @@ class QueueTab:
         self._session.is_running = False
         self.log("Queue completed.")
         self._root.after(0, self.set_status, "Queue Complete")
+
+    def _ensure_mux_script_for_item(self, item: dict):
+        """Auto-correct script_path to requested MUX channel before execution."""
+        mux_channel = self._extract_mux_channel(item)
+        if mux_channel is None:
+            return
+        script_path = item.get("script_path")
+        if not script_path:
+            return
+
+        src = Path(script_path)
+        try:
+            base_script = src.read_text(encoding="utf-8")
+        except Exception as exc:
+            self.log(f"Warning: could not read script for MUX verification: {exc}")
+            return
+
+        current_mux = self._extract_mux_from_script(base_script)
+        if current_mux == mux_channel:
+            return
+
+        wrapped = self._wrap_mux(self._strip_first_mux_header(base_script), mux_channel)
+        method_ref = item.get("method_ref") or {}
+        params = method_ref.get("params")
+        try:
+            mux_note = self._compose_mux_note(
+                method_ref=method_ref,
+                mux_channel=mux_channel,
+                fallback=f"MUX ch {mux_channel}",
+            )
+            saved_path, saved_name = self._session.registry.save_script(
+                technique=item.get("type", ""),
+                script=wrapped,
+                params=params if isinstance(params, dict) else None,
+                mux_channel=mux_channel,
+                note=mux_note,
+            )
+            item["script_path"] = str(saved_path)
+            self.log(
+                f"Adjusted script for MUX ch {mux_channel}: {src.name} -> {saved_name}"
+            )
+        except Exception as exc:
+            self.log(f"Warning: failed to adjust script for MUX ch {mux_channel}: {exc}")
 
     def _queue_payload(self) -> dict:
         return {

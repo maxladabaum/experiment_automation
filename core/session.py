@@ -66,6 +66,7 @@ class SessionState:
 
         # —— Execution options ———————————————————————————————————————————————————
         self.save_raw_packets: bool = False
+        self.simulate_measurements: bool = False
         self.step_delay: float = 1.0
 
     # ── Measurement tag ───────────────────────────────────────────────────────

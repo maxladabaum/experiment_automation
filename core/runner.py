@@ -13,6 +13,7 @@ and data_callback callables so the GUI can wire them to whatever it likes.
 """
 
 import csv
+import math
 import time
 import traceback
 from datetime import datetime
@@ -57,6 +58,7 @@ class SerialMeasurementRunner:
         data_callback: Optional[Callable[[dict], None]] = None,
         data_folder: Optional[Path] = None,
         save_raw_packets: bool = False,
+        simulate_measurements: bool = False,
         pump_com_port=None,
     ):
         self.script_path    = Path(script_path)
@@ -68,6 +70,7 @@ class SerialMeasurementRunner:
         self.partial_packet = ""
         self._pump_com_port = pump_com_port
         self.save_raw_packets = bool(save_raw_packets)
+        self.simulate_measurements = bool(simulate_measurements)
         self._raw_fh = None
         self._fallback_tag_counter = 0
 
@@ -304,11 +307,16 @@ class SerialMeasurementRunner:
             self.log(f"ERROR: Failed to read script: {exc}")
             return False, None
 
+        tag = meas_tag or self._fallback_meas_tag()
+        self._save_used_method_copy(script, tag)
+        if self.simulate_measurements:
+            self.log("Simulation mode: skipping serial connection and simulating data.")
+            return self._execute_simulated_run(script, tag)
+
         if not self.connect():
             self.log("ERROR: Failed to connect to device")
             return False, None
 
-        tag = meas_tag or self._fallback_meas_tag()
         if self.save_raw_packets:
             raw_path = self.data_folder / f"{self.script_path.stem}_{tag}_raw.txt"
             try:
@@ -342,3 +350,84 @@ class SerialMeasurementRunner:
         self._fallback_tag_counter += 1
         now = datetime.now()
         return f"meas_{now:%Y%m%d_%H%M%S}_{self._fallback_tag_counter:04d}"
+
+    def _save_used_method_copy(self, script: str, tag: str) -> Optional[Path]:
+        """Save the exact method text used for this run under data_folder/methods_used."""
+        try:
+            methods_used_dir = self.data_folder / "methods_used"
+            methods_used_dir.mkdir(parents=True, exist_ok=True)
+            base_name = f"{self.script_path.stem}_{tag}.ms"
+            path = methods_used_dir / base_name
+            if path.exists():
+                idx = 2
+                while True:
+                    candidate = methods_used_dir / f"{self.script_path.stem}_{tag}_{idx:02d}.ms"
+                    if not candidate.exists():
+                        path = candidate
+                        break
+                    idx += 1
+            path.write_text(script, encoding="utf-8")
+            self.log(f"Method snapshot: {path}")
+            return path
+        except Exception as exc:
+            # Snapshot logging should never block measurement execution.
+            self.log(f"Warning: could not save method snapshot: {exc}")
+            return None
+
+    def _execute_simulated_run(self, script: str, tag: str) -> Tuple[bool, Optional[Path]]:
+        points = self._generate_simulated_points(script)
+        if not points:
+            self.log("Simulation generated no points.")
+            return True, None
+
+        for point in points:
+            if not self.is_running:
+                self.log("Simulated measurement stopped by user.")
+                break
+            self.data_points.append(point)
+            if self.data_callback:
+                try:
+                    self.data_callback(point)
+                except Exception as exc:
+                    self.log(f"Live plot callback error: {exc}")
+            time.sleep(0.01)
+
+        csv_path = self.save_data_to_csv(meas_tag=tag) if self.data_points else None
+        self.log(f"Total data points: {len(self.data_points)}")
+        return True, csv_path
+
+    def _generate_simulated_points(self, script: str) -> list:
+        script_lower = script.lower()
+        if "meas_loop_swv" in script_lower:
+            return self._sim_swv_points()
+        return self._sim_cv_points()
+
+    @staticmethod
+    def _sim_cv_points() -> list:
+        points = []
+        n_half = 80
+        start, vertex, end = -0.5, 0.5, -0.5
+        for i in range(n_half):
+            frac = i / max(1, n_half - 1)
+            p = start + (vertex - start) * frac
+            c = 25.0 * math.sin((p + 0.5) * math.pi) + 3.0 * math.sin(8.0 * p)
+            points.append({"potential": p, "current": c})
+        for i in range(n_half):
+            frac = i / max(1, n_half - 1)
+            p = vertex + (end - vertex) * frac
+            c = -20.0 * math.sin((p + 0.5) * math.pi) + 2.5 * math.sin(7.5 * p)
+            points.append({"potential": p, "current": c})
+        return points
+
+    @staticmethod
+    def _sim_swv_points() -> list:
+        points = []
+        n = 120
+        start, end = -0.5, 0.5
+        for i in range(n):
+            frac = i / max(1, n - 1)
+            p = start + (end - start) * frac
+            peak = 40.0 * math.exp(-((p - 0.1) ** 2) / 0.02)
+            baseline = 4.0 * math.sin(10.0 * p)
+            points.append({"potential": p, "current": peak + baseline})
+        return points

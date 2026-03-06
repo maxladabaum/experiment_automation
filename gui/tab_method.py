@@ -106,11 +106,17 @@ class MethodTab:
                         command=self._sync_save_raw).grid(
                             row=0, column=0, columnspan=2, sticky="w", pady=2)
 
+        self._var_sim_meas = tk.BooleanVar(value=self._session.simulate_measurements)
+        ttk.Checkbutton(exec_frame, text="Simulate measurements (no device)",
+                        variable=self._var_sim_meas,
+                        command=self._sync_sim_meas).grid(
+                            row=1, column=0, columnspan=2, sticky="w", pady=2)
+
         ttk.Label(exec_frame, text="Delay between steps (s):").grid(
-            row=1, column=0, sticky="w", pady=2)
+            row=2, column=0, sticky="w", pady=2)
         self._var_step_delay = tk.StringVar(value=str(self._session.step_delay))
         delay_entry = ttk.Entry(exec_frame, width=10, textvariable=self._var_step_delay)
-        delay_entry.grid(row=1, column=1, sticky="w", pady=2)
+        delay_entry.grid(row=2, column=1, sticky="w", pady=2)
         delay_entry.bind("<Return>", self._sync_step_delay)
         delay_entry.bind("<FocusOut>", self._sync_step_delay)
 
@@ -121,6 +127,9 @@ class MethodTab:
 
     def _sync_save_raw(self):
         self._session.save_raw_packets = bool(self._var_save_raw.get())
+
+    def _sync_sim_meas(self):
+        self._session.simulate_measurements = bool(self._var_sim_meas.get())
 
     def _sync_step_delay(self, _event=None):
         raw = self._var_step_delay.get().strip()

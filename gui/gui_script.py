@@ -1786,6 +1786,7 @@ class ElectrochemGUI:
                     Path(filepath),
                     log_callback=self.log_message,
                     data_callback=self.queue_live_point,
+                    simulate_measurements=bool(self.pump_var_sim.get()) if hasattr(self, "pump_var_sim") else False,
                 )
                 self.current_runner = runner
                 success, csv_path = runner.execute()
@@ -1912,6 +1913,7 @@ class ElectrochemGUI:
                         Path(filepath),
                         log_callback=self.log_message,
                         data_callback=self.queue_live_point,
+                        simulate_measurements=bool(self.pump_var_sim.get()) if hasattr(self, "pump_var_sim") else False,
                     )
                     self.current_runner = runner
                     ok, csv_path = runner.execute()
@@ -2000,6 +2002,7 @@ class ElectrochemGUI:
                         Path(filepath),
                         log_callback=self.log_message,
                         data_callback=self.queue_live_point,
+                        simulate_measurements=bool(self.pump_var_sim.get()) if hasattr(self, "pump_var_sim") else False,
                     )
                     self.current_runner = runner
                     ok, csv_path = runner.execute()
@@ -2106,6 +2109,7 @@ class ElectrochemGUI:
                             Path(filepath),
                             log_callback=self.log_message,
                             data_callback=self.queue_live_point,
+                            simulate_measurements=bool(self.pump_var_sim.get()) if hasattr(self, "pump_var_sim") else False,
                         )
                         self.current_runner = runner
                         ok, csv_path = runner.execute()
@@ -2385,6 +2389,7 @@ class ElectrochemGUI:
                             Path(item['script_path']),
                             log_callback=self.log_message,
                             data_callback=self.queue_live_point,
+                            simulate_measurements=bool(self.pump_var_sim.get()) if hasattr(self, "pump_var_sim") else False,
                         )
                         success, csv_path = self.current_runner.execute()
                         self.measurement_queue[i]['status'] = 'completed' if success else 'failed'
