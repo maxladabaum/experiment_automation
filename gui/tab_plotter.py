@@ -104,12 +104,13 @@ class PlotterTab:
     # ── Static CSV plotting ───────────────────────────────────────────────────
 
     def _load_and_plot_csv(self):
-        path = filedialog.askopenfilename(
+        paths = filedialog.askopenfilenames(
             title="Select a measurement CSV",
             filetypes=(("CSV files", "*.csv"), ("All files", "*.*")),
         )
-        if path:
-            self.plot_data(path)
+        for path in paths:
+            if path:
+                self.plot_data(path)
 
     def plot_data(self, csv_path, color=None, label=None):
         """Load a CSV and add it to the plot."""

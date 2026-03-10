@@ -505,8 +505,40 @@ class QueueTab:
             item["details"] = details or f"Pump action {action['name']}"
         else:
             sp = raw.get("script_path")
+            method_ref = raw.get("method_ref") or {}
+
+            if sp:
+                # Prefer exact library_map entry when provided.
+                hash_key = method_ref.get("hash_key")
+                if hash_key:
+                    resolved = library_map.lookup(hash_key)
+                    if resolved is not None:
+                        sp = str(resolved)
+
+                # Prefer MUX-specific library file if method_ref requests a channel.
+                mux = method_ref.get("mux_channel")
+                mux_ch = None
+                if mux not in (None, "", 0, "0"):
+                    try:
+                        mux_ch = int(mux)
+                    except (TypeError, ValueError):
+                        mux_ch = None
+
+                if mux_ch is not None and 1 <= mux_ch <= 16:
+                    technique = method_ref.get("technique") or t
+                    params = method_ref.get("params")
+                    resolved = None
+                    if isinstance(params, dict):
+                        try:
+                            mux_key = library_map.compute_hash(technique, params, mux_ch)
+                            resolved = library_map.lookup(mux_key)
+                        except Exception:
+                            resolved = None
+                    if resolved is not None:
+                        sp = str(resolved)
+                        item["details"] = details or f"{Path(sp).name} (MUX ch {mux_ch})"
+
             if not sp:
-                method_ref = raw.get("method_ref") or {}
                 hash_key = method_ref.get("hash_key")
                 if hash_key:
                     path = library_map.lookup(hash_key)
@@ -566,6 +598,7 @@ class QueueTab:
                         item["details"] = details or path.name
                 else:
                     return None
+
             item["script_path"] = sp
             if "method_ref" in raw and isinstance(raw.get("method_ref"), dict):
                 item["method_ref"] = dict(raw.get("method_ref") or {})
