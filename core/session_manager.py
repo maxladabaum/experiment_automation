@@ -106,6 +106,21 @@ class SessionManager:
         e = self.current_experiment_path.name if self.current_experiment_path else "(none)"
         self.status_var.set(f"Session: {s}  |  Experiment: {e}")
 
+    def _load_session_metadata(self, path: Path) -> Optional[dict]:
+        if not path.exists():
+            messagebox.showerror("Invalid Session", f"Missing session_metadata.json:\n{path}")
+            return None
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception as exc:
+            messagebox.showerror("Invalid Session", f"Could not read session metadata:\n{exc}")
+            return None
+        if not isinstance(data, dict):
+            messagebox.showerror("Invalid Session", "session_metadata.json is not a JSON object.")
+            return None
+        return data
+
     # ── Session log ────────────────────────────────────────────────────────────
 
     def log(self, message: str):
@@ -194,6 +209,37 @@ class SessionManager:
         self.log(f"Session started: {session_path}")
         return True
 
+    def open_session(self, session_path: Path) -> bool:
+        """Open an existing session folder and load its metadata."""
+        session_path = Path(session_path)
+        if not session_path.exists() or not session_path.is_dir():
+            messagebox.showerror("Invalid Session", f"Session folder not found:\n{session_path}")
+            return False
+
+        metadata_path = session_path / "session_metadata.json"
+        data = self._load_session_metadata(metadata_path)
+        if data is None:
+            return False
+        data.setdefault("session_folder", session_path.name)
+        data.setdefault("session_name", data.get("session_folder", session_path.name))
+
+        # If a session is already open, close it first
+        if self.current_session_path:
+            self.end_session()
+
+        self.current_session_path      = session_path
+        self.current_experiment_path   = None
+        self._session_metadata_path    = metadata_path
+        self._session_log_path         = session_path / "session_log.txt"
+        self._session_started_at       = data.get("started_at")
+        self._experiment_started_at    = None
+        self._experiment_metadata_path = None
+        self._session_raw              = data
+
+        self._update_status_var()
+        self.log(f"Session opened: {session_path}")
+        return True
+
     def end_session(self):
         """Mark the session as ended and update metadata."""
         if not self.current_session_path:
@@ -228,6 +274,10 @@ class SessionManager:
         })
         self._write_json(self._session_metadata_path, self._session_raw)
         self.log("Session metadata updated.")
+
+    def session_metadata(self) -> dict:
+        """Return a shallow copy of the current session metadata."""
+        return dict(self._session_raw) if self._session_raw else {}
 
     # ── Experiment lifecycle ───────────────────────────────────────────────────
 
@@ -323,3 +373,7 @@ class SessionManager:
     @property
     def has_experiment(self) -> bool:
         return self.current_experiment_path is not None
+
+    @property
+    def data_root(self) -> Path:
+        return self._data_root

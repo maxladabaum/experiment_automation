@@ -3,7 +3,7 @@ gui/session_bar.py - Bottom-of-window Session & Experiment control bar.
 """
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import filedialog, messagebox, ttk
 
 from core.session_manager import SessionManager
 
@@ -60,6 +60,9 @@ class SessionBar:
         ttk.Button(sess, text="End Session", command=self._on_end_session).grid(
             row=0, column=3, padx=4, pady=2
         )
+        ttk.Button(sess, text="Choose Session", command=self._on_choose_session).grid(
+            row=0, column=4, padx=4, pady=2
+        )
 
         ttk.Label(sess, text="User:").grid(row=1, column=0, sticky="w", padx=5, pady=2)
         ttk.Entry(sess, textvariable=self._session_user_var, width=14).grid(
@@ -112,6 +115,29 @@ class SessionBar:
 
     def _on_end_session(self):
         self._mgr.end_session()
+
+    def _on_choose_session(self):
+        path = filedialog.askdirectory(
+            initialdir=str(self._mgr.data_root),
+            title="Choose Existing Session Folder",
+        )
+        if not path:
+            return
+        opened = self._mgr.open_session(path)
+        if opened:
+            self._apply_session_metadata(self._mgr.session_metadata())
+            if self._on_start_session_cb:
+                self._on_start_session_cb()
+        else:
+            messagebox.showerror("Session Not Opened", "Could not open the selected session.")
+
+    def _apply_session_metadata(self, data: dict):
+        if not data:
+            return
+        self._session_name_var.set(data.get("session_name", ""))
+        self._session_user_var.set(data.get("user", ""))
+        self._session_chip_id_var.set(data.get("chip_id", ""))
+        self._session_notes_var.set(data.get("notes", ""))
 
     def _on_update_session(self):
         self._mgr.update_session_metadata(

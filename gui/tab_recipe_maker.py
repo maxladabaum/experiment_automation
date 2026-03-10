@@ -35,9 +35,11 @@ class RecipeMakerTab:
         self._recipe_root = self._repo_root / "recipe_maker"
         self._default_blocks_dir = (self._repo_root / BLOCKS_DIR).resolve()
         self._custom_blocks_dir = (self._repo_root / "recipe_maker" / "custom_blocks").resolve()
+        self._saved_blocks_dir = (self._repo_root / "recipe_maker" / "saved_recipes").resolve()
         self._recipe_root.mkdir(parents=True, exist_ok=True)
         self._default_blocks_dir.mkdir(parents=True, exist_ok=True)
         self._custom_blocks_dir.mkdir(parents=True, exist_ok=True)
+        self._saved_blocks_dir.mkdir(parents=True, exist_ok=True)
         self._build()
 
     # ── Build ──────────────────────────────────────────────────────────────
@@ -707,7 +709,7 @@ class RecipeMakerTab:
         ttk.Combobox(
             top,
             textvariable=self._block_filter,
-            values=["All", "Default", "Custom"],
+            values=["All", "Default", "Custom", "Saved"],
             state="readonly",
             width=10,
         ).pack(side="left", padx=4)
@@ -727,7 +729,10 @@ class RecipeMakerTab:
 
         hint = ttk.Label(
             parent,
-            text="Blocks are predefined sequences stored in recipe_maker/default_blocks/ and recipe_maker/custom_blocks/.",
+            text=(
+                "Blocks are predefined sequences stored in recipe_maker/default_blocks/, "
+                "recipe_maker/custom_blocks/, and recipe_maker/saved_recipes/."
+            ),
             foreground="#666",
         )
         hint.pack(side="bottom", anchor="w", padx=8, pady=(0, 6))
@@ -743,8 +748,10 @@ class RecipeMakerTab:
             blocks_dirs = [self._default_blocks_dir]
         elif view == "custom":
             blocks_dirs = [self._custom_blocks_dir]
+        elif view == "saved":
+            blocks_dirs = [self._saved_blocks_dir]
         else:
-            blocks_dirs = [self._default_blocks_dir, self._custom_blocks_dir]
+            blocks_dirs = [self._default_blocks_dir, self._custom_blocks_dir, self._saved_blocks_dir]
         files = []
         for blocks_dir in blocks_dirs:
             if not blocks_dir.exists():
@@ -774,6 +781,8 @@ class RecipeMakerTab:
                 continue
 
             name = payload.get("name") or path.stem
+            if name in self._blocks:
+                name = f"{name} ({path.parent.name})"
             self._blocks[name] = items
             summary = ", ".join(item.get("type", "") for item in items[:5])
             if len(items) > 5:
@@ -784,7 +793,7 @@ class RecipeMakerTab:
         if not self._blocks:
             self._block_tree.insert(
                 "", "end",
-                values=("No blocks found", "recipe_maker/default_blocks or recipe_maker/custom_blocks"),
+                values=("No blocks found", "recipe_maker/default_blocks, custom_blocks, or saved_recipes"),
             )
 
     def _add_selected_block(self):
