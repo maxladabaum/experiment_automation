@@ -30,7 +30,8 @@ from tkinter import messagebox
 import tkinter as tk
 from typing import Optional
 
-from config import DATA_DIR
+from config import DATA_DIR, SLACK_BOT_TOKEN, SLACK_TARGET
+from .slack_notifier import SlackNotifier
 
 
 class SessionManager:
@@ -50,6 +51,11 @@ class SessionManager:
         self._log_cb   = log_callback or (lambda m: print(m))
         self._data_root = Path(data_root) if data_root else Path(DATA_DIR)
         self._data_root.mkdir(exist_ok=True)
+        self._slack = SlackNotifier(
+            bot_token=SLACK_BOT_TOKEN,
+            default_target=SLACK_TARGET,
+            log_callback=self._log_cb,
+        )
 
         # ── State ──────────────────────────────────────────────────────────────
         self.current_session_path:    Optional[Path] = None
@@ -322,6 +328,7 @@ class SessionManager:
         """Mark the experiment as ended."""
         if not self.current_experiment_path:
             return
+        ended_path = self.current_experiment_path
         if self._experiment_metadata_path and self._experiment_metadata_path.exists():
             try:
                 with open(self._experiment_metadata_path, "r", encoding="utf-8") as fh:
@@ -331,10 +338,17 @@ class SessionManager:
             except Exception:
                 pass
         self.log(f"Experiment ended: {self.current_experiment_path}")
+        self.notify_slack(f"Experiment ended: {ended_path.name}")
         self.current_experiment_path   = None
         self._experiment_metadata_path = None
         self._experiment_started_at    = None
         self._update_status_var()
+
+    def notify_slack(self, message: str, target: Optional[str] = None) -> bool:
+        """Send a Slack notification if configured."""
+        if not self._slack.enabled:
+            return False
+        return self._slack.send_message(message, target=target)
 
     # ── Guard helpers ─────────────────────────────────────────────────────────
 

@@ -20,10 +20,12 @@ from tkinter import ttk
 from config import (
     APP_VERSION, WINDOW_TITLE, WINDOW_GEOMETRY,
     PREFERRED_STEPS_PER_STROKE, PREFERRED_SYRINGE_UL,
+    SLACK_ENABLE, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_PORT,
 )
 from core.session  import SessionState
 from core.runner   import SerialMeasurementRunner
 from core.session_manager import SessionManager
+from core.slack_bot import SlackBotServer
 from gui.session_bar import SessionBar
 from gui.tab_script  import ScriptTab
 from gui.tab_plotter import PlotterTab
@@ -167,6 +169,33 @@ class ElectrochemGUI:
         self._session.session_manager = self._session_mgr
         self._session_mgr.status_var.trace_add("write", self._on_session_state_change)
         self._apply_session_gate()
+
+        # Slack bot listener (optional)
+        self._slack_bot = None
+        if SLACK_ENABLE and SLACK_BOT_TOKEN and SLACK_SIGNING_SECRET:
+            def _status_provider():
+                status = self._session.get_queue_status()
+                status["session_name"] = (
+                    self._session_mgr.current_session_path.name
+                    if self._session_mgr.current_session_path is not None
+                    else None
+                )
+                status["experiment_name"] = (
+                    self._session_mgr.current_experiment_path.name
+                    if self._session_mgr.current_experiment_path is not None
+                    else None
+                )
+                return status
+
+            self._slack_bot = SlackBotServer(
+                host="0.0.0.0",
+                port=SLACK_PORT,
+                signing_secret=SLACK_SIGNING_SECRET,
+                notifier=self._session_mgr._slack,
+                status_provider=_status_provider,
+                log_callback=self._session_mgr.log,
+            )
+            self._slack_bot.start()
     
     # ── Inter-tab wiring helpers ──────────────────────────────────────────────
 

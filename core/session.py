@@ -10,6 +10,7 @@ the shared ``SessionState`` object.
 """
 
 import itertools
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
@@ -44,6 +45,17 @@ class SessionState:
         self.measurement_queue: List[dict] = []
         self.is_running  = False
         self.current_runner: Optional[SerialMeasurementRunner] = None
+
+        # ── Queue status (for external status polling) ────────────────────────
+        self._queue_status_lock = threading.Lock()
+        self._queue_status: Dict[str, Optional[str]] = {
+            "state": "idle",
+            "current_index": None,
+            "total": None,
+            "current_label": None,
+            "started_at": None,
+            "updated_at": None,
+        }
 
         # ── Measurement tagging ───────────────────────────────────────────────
         self.measurement_counter = 0
@@ -121,3 +133,14 @@ class SessionState:
         """Signal the active runner (if any) to stop."""
         if self.current_runner is not None:
             self.current_runner.stop()
+
+    def update_queue_status(self, **updates):
+        """Update queue status fields in a threadsafe way."""
+        with self._queue_status_lock:
+            self._queue_status.update(updates)
+            self._queue_status["updated_at"] = datetime.now().isoformat(timespec="seconds")
+
+    def get_queue_status(self) -> Dict[str, Optional[str]]:
+        """Return a copy of the current queue status."""
+        with self._queue_status_lock:
+            return dict(self._queue_status)

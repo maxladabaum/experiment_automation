@@ -696,9 +696,17 @@ class QueueTab:
         if self._session.is_running:
             messagebox.showwarning("Already Running", "Queue already running."); return
         self._session.is_running = True
+        self._session.update_queue_status(
+            state="running",
+            current_index=0,
+            total=len(self._session.measurement_queue),
+            current_label="(starting)",
+            started_at=datetime.now().isoformat(timespec="seconds"),
+        )
         self.clear_log()
         self.log("Queue start requested.")
         self.log(f"Measurement simulation: {'ON' if self._session.simulate_measurements else 'OFF'}")
+        self._announce_queue_start(start_index=0)
         self._copy_queue_file("run_queue")
         self._queue_thread = threading.Thread(
             target=self._execute_queue, args=(0,), daemon=True
@@ -721,9 +729,17 @@ class QueueTab:
             messagebox.showerror("Selection Error", "Could not determine selected item.")
             return
         self._session.is_running = True
+        self._session.update_queue_status(
+            state="running",
+            current_index=0,
+            total=len(self._session.measurement_queue) - idx,
+            current_label="(starting)",
+            started_at=datetime.now().isoformat(timespec="seconds"),
+        )
         self.clear_log()
         self.log("Queue start from selected requested.")
         self.log(f"Measurement simulation: {'ON' if self._session.simulate_measurements else 'OFF'}")
+        self._announce_queue_start(start_index=idx)
         self._copy_queue_file("run_queue_from_selected")
         self._queue_thread = threading.Thread(
             target=self._execute_queue, args=(idx,), daemon=True
@@ -736,6 +752,7 @@ class QueueTab:
         self.log("Queue stop requested.")
         self._session.is_running = False
         self._session.stop_current_runner()
+        self._session.update_queue_status(state="stopping")
         self.set_status("Queue Stopped")
 
     def _execute_queue(self, start_index: int = 0):
@@ -748,6 +765,12 @@ class QueueTab:
             self._root.after(0, self.refresh)
             self._root.after(0, self.set_status,
                              f"Running: {item['type']} — {item.get('details', '')}")
+            self._session.update_queue_status(
+                state="running",
+                current_index=(i - start_index + 1),
+                total=len(queue) - start_index,
+                current_label=(item.get("details") or item.get("type") or ""),
+            )
             self.log(f"Queue start -> {item.get('details', item.get('type'))}")
 
             csv_path = None
@@ -818,6 +841,73 @@ class QueueTab:
         self._session.is_running = False
         self.log("Queue completed.")
         self._root.after(0, self.set_status, "Queue Complete")
+        self._announce_queue_end(start_index=start_index)
+
+    def _announce_queue_start(self, start_index: int):
+        session_mgr = getattr(self._session, "session_manager", None)
+        if session_mgr is None:
+            return
+        total = max(0, len(self._session.measurement_queue) - start_index)
+        session_name = (
+            session_mgr.current_session_path.name
+            if session_mgr.current_session_path is not None
+            else "(none)"
+        )
+        experiment_name = (
+            session_mgr.current_experiment_path.name
+            if session_mgr.current_experiment_path is not None
+            else "(none)"
+        )
+        msg = (
+            f"Queue started: {total} item(s). "
+            f"Session={session_name}; Experiment={experiment_name}."
+        )
+        session_mgr.notify_slack(msg)
+
+    def _announce_queue_end(self, start_index: int):
+        session_mgr = getattr(self._session, "session_manager", None)
+        if session_mgr is None:
+            return
+
+        ran = self._session.measurement_queue[start_index:]
+        if not ran:
+            return
+
+        total = len(ran)
+        completed = sum(1 for item in ran if item.get("status") == "completed")
+        failed = sum(1 for item in ran if item.get("status") == "failed")
+        stopped = sum(1 for item in ran if item.get("status") == "stopped")
+
+        if stopped > 0:
+            state = "STOPPED"
+        elif failed > 0:
+            state = "FAILED"
+        else:
+            state = "COMPLETED"
+
+        self._session.update_queue_status(
+            state=state.lower(),
+            current_index=total,
+            total=total,
+            current_label="(finished)",
+        )
+
+        session_name = (
+            session_mgr.current_session_path.name
+            if session_mgr.current_session_path is not None
+            else "(none)"
+        )
+        experiment_name = (
+            session_mgr.current_experiment_path.name
+            if session_mgr.current_experiment_path is not None
+            else "(none)"
+        )
+        msg = (
+            f"Queue {state}: completed={completed}/{total}, "
+            f"failed={failed}, stopped={stopped}. "
+            f"Session={session_name}; Experiment={experiment_name}."
+        )
+        session_mgr.notify_slack(msg)
 
     def _ensure_mux_script_for_item(self, item: dict):
         """Auto-correct script_path to requested MUX channel before execution."""

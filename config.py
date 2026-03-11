@@ -6,6 +6,7 @@ All other modules import from here — never hardcode constants elsewhere.
 """
 
 from pathlib import Path
+import os
 
 # ── Version ──────────────────────────────────────────────────────────────────
 APP_VERSION = "2.1.1"
@@ -25,8 +26,8 @@ PREFERRED_SYRINGE_UL        = 250.0
 
 # ── File / folder paths ───────────────────────────────────────────────────────
 METHODS_DIR     = Path("methods")           # where .ms scripts are saved
-DATA_DIR        = Path(r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)")  # where measurement CSVs land
-#DATA_DIR        = Path("measurement_data") #for local testing purposes
+#DATA_DIR        = Path(r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)")  # where measurement CSVs land
+DATA_DIR        = Path("measurement_data") #for local testing purposes
 BLOCKS_DIR      = Path("recipe_maker") / "default_blocks"  # where block definitions are saved
 SAVE_DATED_METHOD_COPIES = False            # if True, also write methods/YYYY-MM-DD/*.ms working copies
 #keep in mind that methods are already double saved under library and the experiments where they are used
@@ -38,3 +39,11 @@ DEVICE_BAUDRATE = 230_400
 # ── GUI geometry ──────────────────────────────────────────────────────────────
 WINDOW_GEOMETRY = "1400x900"
 WINDOW_TITLE    = f"Electrochemistry Automation System  v{APP_VERSION}"
+
+# Slack integration (optional)
+# Set these via environment variables on the machine running the GUI.
+SLACK_ENABLE         = os.getenv("EA_SLACK_ENABLE", "0").strip().lower() in ("1", "true", "yes", "on")
+SLACK_BOT_TOKEN      = os.getenv("EA_SLACK_BOT_TOKEN", "").strip()
+SLACK_SIGNING_SECRET = os.getenv("EA_SLACK_SIGNING_SECRET", "").strip()
+SLACK_TARGET         = os.getenv("EA_SLACK_TARGET", "").strip()  # channel ID (C/G) or DM ID (D)
+SLACK_PORT           = int(os.getenv("EA_SLACK_PORT", "8765"))
