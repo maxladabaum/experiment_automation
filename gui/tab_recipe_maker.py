@@ -130,6 +130,7 @@ class RecipeMakerTab:
         self._ctx.add_command(label="Delete", command=self._delete_selected)
         self._tree.bind("<Button-3>", self._show_ctx)
         self._tree.bind("<Shift-Button-1>", self._select_range)
+        self._tree.bind("<Double-1>", self._on_tree_double_click)
         self._tree.bind("<Control-c>", lambda e: self._copy_selected())
         self._tree.bind("<Control-v>", lambda e: self._paste_after_selected())
         self._tree.bind("<Control-d>", lambda e: self._duplicate_selected())
@@ -202,65 +203,18 @@ class RecipeMakerTab:
         action = self._pump_action.get().strip().upper()
         if not action:
             return
-
-        if action == "PAUSE":
-            seconds = float(self._pause_seconds.get())
-            item = {
-                "type": "PAUSE",
-                "status": "pending",
-                "details": f"Pause for {seconds:.1f} sec",
-                "pause_seconds": seconds,
-            }
-            self._recipe.append(item)
-            self._refresh()
+        try:
+            item = self._build_pump_item(
+                action=action,
+                speed=int(self._pump_speed.get()),
+                volume=float(self._pump_volume.get()),
+                port=int(self._pump_port.get()),
+                pause=float(self._pause_seconds.get()),
+                alert=(self._alert_message.get() or "").strip(),
+            )
+        except Exception as exc:
+            messagebox.showerror("Invalid pump step", str(exc))
             return
-        if action == "ALERT":
-            msg = (self._alert_message.get() or "").strip()
-            if not msg:
-                messagebox.showerror("Invalid alert", "Alert message cannot be empty.")
-                return
-            item = {
-                "type": "ALERT",
-                "status": "pending",
-                "details": f"Alert: {msg}",
-                "alert_message": msg,
-            }
-            self._recipe.append(item)
-            self._refresh()
-            return
-
-        details = ""
-        pump_action = {"name": action, "params": {}}
-        if action == "INIT":
-            details = "Pump: Initialize (ZR)"
-        elif action == "SET_SPEED":
-            speed = int(self._pump_speed.get())
-            details = f"Pump: Set speed S{speed}R"
-            pump_action["params"]["speed"] = speed
-        elif action == "VALVE":
-            port = int(self._pump_port.get())
-            details = f"Pump: Valve -> {port}"
-            pump_action["params"]["port"] = port
-        elif action == "ASPIRATE":
-            speed = int(self._pump_speed.get())
-            volume = float(self._pump_volume.get())
-            details = f"Pump: Aspirate {volume:.2f} uL @ S{speed}R"
-            pump_action["params"].update({"speed": speed, "volume": volume})
-        elif action == "DISPENSE":
-            speed = int(self._pump_speed.get())
-            volume = float(self._pump_volume.get())
-            details = f"Pump: Dispense {volume:.2f} uL @ S{speed}R"
-            pump_action["params"].update({"speed": speed, "volume": volume})
-        else:
-            messagebox.showerror("Invalid action", f"Unsupported pump action: {action}")
-            return
-
-        item = {
-            "type": f"PUMP_{action}",
-            "status": "pending",
-            "details": details,
-            "pump_action": pump_action,
-        }
         self._recipe.append(item)
         self._refresh()
 
@@ -532,6 +486,7 @@ class RecipeMakerTab:
         return "default"
 
     def _refresh(self):
+        self._apply_pump_speeds()
         for row in self._tree.get_children():
             self._tree.delete(row)
         for i, item in enumerate(self._recipe):
@@ -659,6 +614,227 @@ class RecipeMakerTab:
             return
         self._recipe.clear()
         self._refresh()
+
+    def _build_pump_item(
+        self,
+        *,
+        action: str,
+        speed: int,
+        volume: float,
+        port: int,
+        pause: float,
+        alert: str,
+    ) -> dict:
+        action = (action or "").strip().upper()
+        if not action:
+            raise ValueError("Pump action is required.")
+
+        if action == "PAUSE":
+            seconds = float(pause)
+            return {
+                "type": "PAUSE",
+                "status": "pending",
+                "details": f"Pause for {seconds:.1f} sec",
+                "pause_seconds": seconds,
+            }
+        if action == "ALERT":
+            msg = (alert or "").strip()
+            if not msg:
+                raise ValueError("Alert message cannot be empty.")
+            return {
+                "type": "ALERT",
+                "status": "pending",
+                "details": f"Alert: {msg}",
+                "alert_message": msg,
+            }
+
+        details = ""
+        pump_action = {"name": action, "params": {}}
+        if action == "INIT":
+            details = "Pump: Initialize (ZR)"
+        elif action == "SET_SPEED":
+            details = f"Pump: Set speed S{int(speed)}R"
+            pump_action["params"]["speed"] = int(speed)
+        elif action == "VALVE":
+            details = f"Pump: Valve -> {int(port)}"
+            pump_action["params"]["port"] = int(port)
+        elif action == "ASPIRATE":
+            details = f"Pump: Aspirate {float(volume):.2f} uL @ S{int(speed)}R"
+            pump_action["params"].update({"speed": int(speed), "volume": float(volume)})
+        elif action == "DISPENSE":
+            details = f"Pump: Dispense {float(volume):.2f} uL @ S{int(speed)}R"
+            pump_action["params"].update({"speed": int(speed), "volume": float(volume)})
+        else:
+            raise ValueError(f"Unsupported pump action: {action}")
+
+        return {
+            "type": f"PUMP_{action}",
+            "status": "pending",
+            "details": details,
+            "pump_action": pump_action,
+        }
+
+    def _apply_pump_speeds(self):
+        current_speed = None
+        for item in self._recipe:
+            item_type = (item.get("type") or "").upper()
+            if item_type == "PUMP_SET_SPEED":
+                params = (item.get("pump_action") or {}).get("params") or {}
+                try:
+                    current_speed = int(params.get("speed"))
+                except (TypeError, ValueError):
+                    current_speed = None
+                if current_speed is not None:
+                    item["details"] = f"Pump: Set speed S{current_speed}R"
+                continue
+
+            if item_type in ("PUMP_ASPIRATE", "PUMP_DISPENSE") and current_speed is not None:
+                action_info = item.get("pump_action")
+                if not isinstance(action_info, dict):
+                    action_info = {"name": item_type.replace("PUMP_", ""), "params": {}}
+                    item["pump_action"] = action_info
+                params = action_info.get("params")
+                if not isinstance(params, dict):
+                    params = {}
+                    action_info["params"] = params
+
+                params["speed"] = current_speed
+                try:
+                    volume = float(params.get("volume"))
+                except (TypeError, ValueError):
+                    volume = None
+
+                label = "Aspirate" if item_type == "PUMP_ASPIRATE" else "Dispense"
+                if volume is None:
+                    item["details"] = f"Pump: {label} @ S{current_speed}R"
+                else:
+                    item["details"] = f"Pump: {label} {volume:.2f} uL @ S{current_speed}R"
+
+    def _on_tree_double_click(self, event):
+        row = self._tree.identify_row(event.y)
+        if not row:
+            return
+        try:
+            idx = self._tree.index(row)
+        except Exception:
+            return
+        if idx < 0 or idx >= len(self._recipe):
+            return
+        item = self._recipe[idx]
+        if not self._is_pump_editable(item):
+            return
+        self._edit_pump_step(idx)
+
+    def _is_pump_editable(self, item: dict) -> bool:
+        item_type = (item.get("type") or "").upper()
+        return item_type.startswith("PUMP_") or item_type in ("PAUSE", "ALERT")
+
+    def _extract_pump_fields(self, item: dict) -> dict:
+        item_type = (item.get("type") or "").upper()
+        if item_type == "PAUSE":
+            return {
+                "action": "PAUSE",
+                "speed": 20,
+                "volume": 100.0,
+                "port": 1,
+                "pause": float(item.get("pause_seconds", 10.0)),
+                "alert": "Check setup",
+            }
+        if item_type == "ALERT":
+            return {
+                "action": "ALERT",
+                "speed": 20,
+                "volume": 100.0,
+                "port": 1,
+                "pause": 10.0,
+                "alert": str(item.get("alert_message") or ""),
+            }
+
+        action_info = item.get("pump_action") or {}
+        action = (action_info.get("name") or item_type.replace("PUMP_", "")).upper()
+        params = action_info.get("params") or {}
+        return {
+            "action": action,
+            "speed": int(params.get("speed", 20)),
+            "volume": float(params.get("volume", 100.0)),
+            "port": int(params.get("port", 1)),
+            "pause": 10.0,
+            "alert": "Check setup",
+        }
+
+    def _edit_pump_step(self, index: int):
+        item = self._recipe[index]
+        fields = self._extract_pump_fields(item)
+
+        win = tk.Toplevel(self._frame)
+        win.title("Edit Pump Step")
+        win.transient(self._frame.winfo_toplevel())
+        win.grab_set()
+
+        pad = {"padx": 6, "pady": 4}
+        ttk.Label(win, text="Pump action:").grid(row=0, column=0, **pad, sticky="e")
+        action_var = tk.StringVar(value=fields["action"])
+        ttk.Combobox(
+            win,
+            textvariable=action_var,
+            values=["INIT", "SET_SPEED", "VALVE", "ASPIRATE", "DISPENSE", "PAUSE", "ALERT"],
+            width=16,
+            state="readonly",
+        ).grid(row=0, column=1, **pad, sticky="w")
+
+        ttk.Label(win, text="Speed:").grid(row=0, column=2, **pad, sticky="e")
+        speed_var = tk.IntVar(value=fields["speed"])
+        ttk.Entry(win, width=8, textvariable=speed_var).grid(row=0, column=3, **pad, sticky="w")
+
+        ttk.Label(win, text="Volume (uL):").grid(row=0, column=4, **pad, sticky="e")
+        volume_var = tk.DoubleVar(value=fields["volume"])
+        ttk.Entry(win, width=10, textvariable=volume_var).grid(row=0, column=5, **pad, sticky="w")
+
+        ttk.Label(win, text="Valve port:").grid(row=0, column=6, **pad, sticky="e")
+        port_var = tk.IntVar(value=fields["port"])
+        ttk.Entry(win, width=8, textvariable=port_var).grid(row=0, column=7, **pad, sticky="w")
+
+        ttk.Label(win, text="Pause (sec):").grid(row=0, column=8, **pad, sticky="e")
+        pause_var = tk.DoubleVar(value=fields["pause"])
+        ttk.Entry(win, width=10, textvariable=pause_var).grid(row=0, column=9, **pad, sticky="w")
+
+        ttk.Label(win, text="Alert message:").grid(row=1, column=0, **pad, sticky="e")
+        alert_var = tk.StringVar(value=fields["alert"])
+        ttk.Entry(win, width=50, textvariable=alert_var).grid(
+            row=1, column=1, columnspan=6, **pad, sticky="w"
+        )
+
+        btns = ttk.Frame(win)
+        btns.grid(row=2, column=0, columnspan=10, pady=(6, 8))
+
+        def _apply():
+            try:
+                new_item = self._build_pump_item(
+                    action=action_var.get(),
+                    speed=int(speed_var.get()),
+                    volume=float(volume_var.get()),
+                    port=int(port_var.get()),
+                    pause=float(pause_var.get()),
+                    alert=(alert_var.get() or "").strip(),
+                )
+            except Exception as exc:
+                messagebox.showerror("Invalid pump step", str(exc))
+                return
+
+            for key in ("block_name", "block_ref"):
+                if key in item and key not in new_item:
+                    new_item[key] = item[key]
+            if "status" in item:
+                new_item["status"] = item.get("status")
+
+            self._recipe[index] = new_item
+            self._refresh()
+            win.destroy()
+
+        ttk.Button(btns, text="Update", command=_apply).pack(side="left", padx=6)
+        ttk.Button(btns, text="Cancel", command=win.destroy).pack(side="left", padx=6)
+        win.bind("<Return>", lambda _e: _apply())
+        win.bind("<Escape>", lambda _e: win.destroy())
 
     # ── Save / load ────────────────────────────────────────────────────────
 
