@@ -22,6 +22,7 @@ from config import (
     PREFERRED_STEPS_PER_STROKE, PREFERRED_SYRINGE_UL,
     SLACK_ENABLE, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_PORT,
     SLACK_ONLY_WHEN_EXPERIMENT,
+    NGROK_AUTOSTART, NGROK_PATH, NGROK_DOMAIN,
 )
 from core.session  import SessionState
 from core.runner   import SerialMeasurementRunner
@@ -55,6 +56,7 @@ class ElectrochemGUI:
         self.root = root
         self.root.title(WINDOW_TITLE)
         self.root.geometry(WINDOW_GEOMETRY)
+        self._ngrok_proc = None
 
         # ── Pump controller (optional) ────────────────────────────────────────
         if PUMP_AVAILABLE and PumpCtrl is not None:
@@ -199,8 +201,8 @@ class ElectrochemGUI:
             if not SLACK_ONLY_WHEN_EXPERIMENT:
                 self._slack_bot.start()
             self._session_mgr.set_experiment_callbacks(
-                on_start=lambda _p: self._slack_bot.start(),
-                on_end=lambda _p: self._slack_bot.stop(),
+                on_start=lambda _p: self._on_experiment_start_slack(),
+                on_end=lambda _p: self._on_experiment_end_slack(),
             )
     
     # ── Inter-tab wiring helpers ──────────────────────────────────────────────
@@ -243,6 +245,50 @@ class ElectrochemGUI:
         except Exception:
             pass
         self._pump_tab.autoconnect()
+
+    def _on_experiment_start_slack(self):
+        if NGROK_AUTOSTART:
+            self._start_ngrok_tunnel()
+        if self._slack_bot is not None:
+            self._slack_bot.start()
+
+    def _on_experiment_end_slack(self):
+        if self._slack_bot is not None:
+            self._slack_bot.stop()
+        if NGROK_AUTOSTART:
+            self._stop_ngrok_tunnel()
+
+    def _start_ngrok_tunnel(self):
+        if self._ngrok_proc is not None:
+            return
+        if not NGROK_PATH:
+            self._session_mgr.log("ngrok autostart skipped: EA_NGROK_PATH not set.")
+            return
+        args = [NGROK_PATH, "http"]
+        if NGROK_DOMAIN:
+            args.extend(["--domain", NGROK_DOMAIN])
+        args.append(str(SLACK_PORT))
+        try:
+            self._ngrok_proc = threading.Thread  # keep type-checkers calm
+            self._ngrok_proc = __import__("subprocess").Popen(
+                args,
+                stdout=__import__("subprocess").DEVNULL,
+                stderr=__import__("subprocess").DEVNULL,
+            )
+            self._session_mgr.log("ngrok tunnel started.")
+        except Exception as exc:
+            self._ngrok_proc = None
+            self._session_mgr.log(f"ngrok autostart failed: {exc}")
+
+    def _stop_ngrok_tunnel(self):
+        proc = self._ngrok_proc
+        if proc is None:
+            return
+        try:
+            proc.terminate()
+        except Exception:
+            pass
+        self._ngrok_proc = None
 
     def _start_session_bar_resize(self, event):
         self._resize_start_y = event.y_root
