@@ -56,6 +56,8 @@ class SessionManager:
             default_target=SLACK_TARGET,
             log_callback=self._log_cb,
         )
+        self._on_experiment_started = None
+        self._on_experiment_ended = None
 
         # ── State ──────────────────────────────────────────────────────────────
         self.current_session_path:    Optional[Path] = None
@@ -322,6 +324,11 @@ class SessionManager:
         })
         self._update_status_var()
         self.log(f"Experiment started: {exp_path}")
+        if callable(self._on_experiment_started):
+            try:
+                self._on_experiment_started(exp_path)
+            except Exception as exc:
+                self.log(f"Experiment start hook failed: {exc}")
         return True
 
     def end_experiment(self):
@@ -339,6 +346,11 @@ class SessionManager:
                 pass
         self.log(f"Experiment ended: {self.current_experiment_path}")
         self.notify_slack(f"Experiment ended: {ended_path.name}")
+        if callable(self._on_experiment_ended):
+            try:
+                self._on_experiment_ended(ended_path)
+            except Exception as exc:
+                self.log(f"Experiment end hook failed: {exc}")
         self.current_experiment_path   = None
         self._experiment_metadata_path = None
         self._experiment_started_at    = None
@@ -349,6 +361,10 @@ class SessionManager:
         if not self._slack.enabled:
             return False
         return self._slack.send_message(message, target=target)
+
+    def set_experiment_callbacks(self, on_start=None, on_end=None):
+        self._on_experiment_started = on_start
+        self._on_experiment_ended = on_end
 
     # ── Guard helpers ─────────────────────────────────────────────────────────
 

@@ -47,3 +47,6 @@ SLACK_BOT_TOKEN      = os.getenv("EA_SLACK_BOT_TOKEN", "").strip()
 SLACK_SIGNING_SECRET = os.getenv("EA_SLACK_SIGNING_SECRET", "").strip()
 SLACK_TARGET         = os.getenv("EA_SLACK_TARGET", "").strip()  # channel ID (C/G) or DM ID (D)
 SLACK_PORT           = int(os.getenv("EA_SLACK_PORT", "8765"))
+SLACK_ONLY_WHEN_EXPERIMENT = os.getenv("EA_SLACK_ONLY_WHEN_EXPERIMENT", "0").strip().lower() in (
+    "1", "true", "yes", "on"
+)

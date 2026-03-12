@@ -35,6 +35,8 @@ class SlackBotServer:
         self._thread: Optional[threading.Thread] = None
 
     def start(self):
+        if self._server is not None:
+            return
         if not self._signing_secret:
             self._log("Slack bot not started: missing signing secret.")
             return

@@ -21,6 +21,7 @@ from config import (
     APP_VERSION, WINDOW_TITLE, WINDOW_GEOMETRY,
     PREFERRED_STEPS_PER_STROKE, PREFERRED_SYRINGE_UL,
     SLACK_ENABLE, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_PORT,
+    SLACK_ONLY_WHEN_EXPERIMENT,
 )
 from core.session  import SessionState
 from core.runner   import SerialMeasurementRunner
@@ -195,7 +196,12 @@ class ElectrochemGUI:
                 status_provider=_status_provider,
                 log_callback=self._session_mgr.log,
             )
-            self._slack_bot.start()
+            if not SLACK_ONLY_WHEN_EXPERIMENT:
+                self._slack_bot.start()
+            self._session_mgr.set_experiment_callbacks(
+                on_start=lambda _p: self._slack_bot.start(),
+                on_end=lambda _p: self._slack_bot.stop(),
+            )
     
     # ── Inter-tab wiring helpers ──────────────────────────────────────────────
 
