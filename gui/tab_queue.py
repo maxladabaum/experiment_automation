@@ -157,9 +157,14 @@ class QueueTab:
 
     def add_item(self, item: dict):
         """Append a queue item dict and refresh the display."""
-        self._session.measurement_queue.append(item)
+        prepared = item
+        if isinstance(item, dict) and "script_path" not in item and "method_ref" in item:
+            resolved = self._deserialize(item)
+            if resolved is not None:
+                prepared = resolved
+        self._session.measurement_queue.append(prepared)
         self.refresh()
-        self.log(f"Queue add: {item.get('details', item.get('type'))}")
+        self.log(f"Queue add: {prepared.get('details', prepared.get('type'))}")
 
     def refresh(self):
         """Rebuild the Treeview from session.measurement_queue."""
@@ -783,7 +788,11 @@ class QueueTab:
                     success = ok
 
                 elif t == "ALERT":
-                    ok = self._exec_alert(item.get("alert_message", "Paused — click OK."))
+                    alert_msg = item.get("alert_message", "Paused — click OK.")
+                    session_mgr = getattr(self._session, "session_manager", None)
+                    if session_mgr is not None:
+                        session_mgr.notify_slack(f"Queue alert: {alert_msg}")
+                    ok = self._exec_alert(alert_msg)
                     self._session.measurement_queue[i]["status"] = "completed" if ok else "stopped"
                     success = ok
 

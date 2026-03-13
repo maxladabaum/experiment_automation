@@ -175,49 +175,88 @@ class SerialMeasurementRunner:
             self.log("Script sent. Collecting data...")
             self.log("-" * 40)
 
-            empty_reads = 0
+            buffer = b""
+            packet_start_time = None
+            packet_timeout_sec = 1.0
+            idle_timeout_sec = 5.0
+            last_data_time = time.time()
+            measurement_completed = False
+
             while self.is_running:
                 try:
-                    raw = self.connection.readline()
-                    if not raw:
-                        if self.partial_packet:
-                            empty_reads += 1
-                            if empty_reads >= 3:
-                                self.log("Warning: incomplete data packet timed out")
-                                break
-                        continue
-                    empty_reads = 0
-                    text = raw.decode("utf-8", errors="ignore").rstrip("\r\n")
-                    if not text:
-                        continue
+                    waiting = self.connection.in_waiting
+                    chunk = self.connection.read(waiting or 1)
 
-                    # Discard stale partial packet on new 'P' line
-                    if self.partial_packet:
-                        self.log("Warning: dropped incomplete data packet")
-                        self.partial_packet = ""
-
-                    self.log(text)
-                    if self._raw_fh is not None:
-                        try:
-                            self._raw_fh.write(text + "\n")
-                        except OSError:
-                            self.log("Warning: failed to write raw packet log.")
-                            self._raw_fh = None
-
-                    if text.startswith("P"):
-                        if not self._is_complete_packet(text):
-                            self.partial_packet = text
-                            continue
-                        self._parse_data_line(text)
-
-                    if text in ("*", "Measurement completed", "Script completed"):
-                        self.log("\nMeasurement completed")
-                        break
-
-                    if text.startswith("!"):
-                        self.log(f"Device error: {text}")
-                        if "abort" in text.lower():
+                    if not chunk:
+                        if measurement_completed:
                             break
+
+                        if (time.time() - last_data_time) >= idle_timeout_sec:
+                            self.log("Warning: data stream idle timed out")
+                            break
+
+                        if buffer:
+                            if packet_start_time is None:
+                                packet_start_time = time.time()
+                            elif (time.time() - packet_start_time) >= packet_timeout_sec:
+                                self.log("Warning: incomplete data packet timed out (dropping buffer)")
+                                buffer = b""
+                                packet_start_time = None
+                        continue
+
+                    last_data_time = time.time()
+                    buffer += chunk
+                    packet_start_time = None
+
+                    while b"\n" in buffer:
+                        line_bytes, _, buffer = buffer.partition(b"\n")
+                        text_line = line_bytes.decode("utf-8", errors="ignore").rstrip("\r")
+                        if not text_line:
+                            continue
+
+                        if self.partial_packet:
+                            if text_line.startswith("P"):
+                                self.log("Warning: dropped incomplete data packet")
+                                self.partial_packet = ""
+                            else:
+                                combined = self.partial_packet + text_line
+                                if self._is_complete_packet(combined):
+                                    self._parse_data_line(combined)
+                                    self.partial_packet = ""
+                                else:
+                                    self.partial_packet = combined
+                                continue
+
+                        if not text_line.startswith("P"):
+                            self.log(text_line)
+
+                        if self._raw_fh is not None:
+                            try:
+                                self._raw_fh.write(text_line + "\n")
+                            except OSError:
+                                self.log("Warning: failed to write raw packet log.")
+                                self._raw_fh = None
+
+                        if text_line.startswith("P"):
+                            if not self._is_complete_packet(text_line):
+                                self.partial_packet = text_line
+                                continue
+                            self._parse_data_line(text_line)
+
+                        if text_line in ("*", "Measurement completed", "Script completed"):
+                            self.log("\nMeasurement completed")
+                            measurement_completed = True
+                            self.partial_packet = ""
+                            buffer = b""
+                            break
+
+                        if text_line.startswith("!"):
+                            self.log(f"Device error: {text_line}")
+                            if "abort" in text_line.lower():
+                                break
+
+                    if measurement_completed:
+                        break
 
                 except serial.SerialException as exc:
                     self.log(f"Serial Error: {exc}")

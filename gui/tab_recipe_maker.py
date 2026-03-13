@@ -23,8 +23,9 @@ from config import BLOCKS_DIR
 class RecipeMakerTab:
     """Manages the 'Recipe Maker' notebook tab."""
 
-    def __init__(self, parent_frame):
+    def __init__(self, parent_frame, on_send_to_queue=None):
         self._frame = parent_frame
+        self._on_send_to_queue = on_send_to_queue
         self._recipe: list = []
         self._clipboard: list = []
         self._method_entries: dict = {}
@@ -80,6 +81,9 @@ class RecipeMakerTab:
                    command=self._load_recipe).pack(side="left", padx=4)
         ttk.Button(ctrl, text="Clear",
                    command=self._clear_recipe).pack(side="left", padx=4)
+        ttk.Separator(ctrl, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Button(ctrl, text="Send to Queue",
+                   command=self._send_to_queue).pack(side="left", padx=4)
 
 
         # ── Recipe Treeview
@@ -614,6 +618,18 @@ class RecipeMakerTab:
             return
         self._recipe.clear()
         self._refresh()
+
+    def _send_to_queue(self):
+        if not self._recipe:
+            messagebox.showwarning("Empty", "No recipe items to send.")
+            return
+        if not callable(self._on_send_to_queue):
+            messagebox.showwarning("Unavailable", "Queue is not available.")
+            return
+        for item in self._recipe:
+            cloned = copy.deepcopy(item)
+            cloned["status"] = "pending"
+            self._on_send_to_queue(cloned)
 
     def _build_pump_item(
         self,

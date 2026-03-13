@@ -320,13 +320,18 @@ class MethodTab:
 
         parts = [
             "e", "var c", "var p", "var f", "var r",
-            "set_pgstat_mode 2", "set_max_bandwidth 1600",
+            "set_pgstat_chan 1",
+            "set_pgstat_mode 0",
+            "set_pgstat_chan 0",
+            "set_pgstat_mode 3",
+            "set_max_bandwidth 4k",
             f"set_range_minmax da {min_mv}m {max_mv}m",
-            "set_range ba 5m", "set_autoranging ba 100n 5m", "cell_on",
+            "set_range ba 59n", "set_autoranging ba 59n 59n", "cell_on",
         ]
         if float(cond_time) > 0:
             parts += [f"# Equilibrate at {cond_pot} for {cond_time}s",
                       f"set_e {cond_pot}", f"wait {cond_time}"]
+        parts += [f"set_e {begin}"]
         parts += [
             f"meas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}",
             "\tpck_start", "\t\tpck_add p", "\t\tpck_add c",

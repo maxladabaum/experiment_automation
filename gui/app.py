@@ -139,6 +139,7 @@ class ElectrochemGUI:
 
         self._recipe_tab = RecipeMakerTab(
             parent_frame = recipe_frame,
+            on_send_to_queue = self._queue_tab.add_item,
         )
         # Wire session callbacks now that queue tab (with its log widget) exists
         self._session._log    = self._session_mgr.log
