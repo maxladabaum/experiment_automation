@@ -61,4 +61,41 @@ C:\Users\Chien Lab>C:\pump32_py38_new\Scripts\activate.bat
 or run C:\Users\Chien Lab>python "C:\Users\Chien Lab\Documents\GitHub\experiment_automation\gui_script.py"
 
 
+RUNNING THE PROJECT (IMPORTANT ON WINDOWS)
+
+If you see steps being "skipped" when running in different shells, it is almost always because
+the current working directory (CWD) or Python environment is different.
+
+Always do both of these before running:
+1) cd to the project folder
+2) activate the correct venv (venv_gui)
+
+CMD.EXE
+
+cd "C:\Users\Chien Lab\Desktop\experiment_automation"
+"C:\Users\Chien Lab\Desktop\experiment_automation\venv_gui\Scripts\activate.bat"
+python -m main
+
+POWERSHELL
+
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+cd "C:\Users\Chien Lab\Desktop\experiment_automation"
+& "C:\Users\Chien Lab\Desktop\experiment_automation\venv_gui\Scripts\Activate.ps1"
+python -m main
+
+GIT BASH
+
+cd "/c/Users/Chien Lab/Desktop/experiment_automation"
+source "/c/Users/Chien Lab/Desktop/experiment_automation/venv_gui/Scripts/activate"
+python -m main
+
+SANITY CHECKS (IF BEHAVIOR DIFFERS)
+
+pwd
+which python
+python -c "import sys,os; print(sys.executable); print(os.getcwd())"
+
+If these differ between shells (or VS Code vs. external Git Bash), your run will differ too.
+
+
 
