@@ -841,7 +841,7 @@ class QueueTab:
 
             if csv_path:
                 self._root.after(0, self._plotter.plot_data, csv_path,
-                                 self._session.last_live_plot_color)
+                                 self._session.last_live_plot_color, None, True, False)
             self._root.after(0, self.refresh)
             step_delay = getattr(self._session, "step_delay", 0.0) or 0.0
             if step_delay > 0 and i < len(queue) - 1:

@@ -385,6 +385,7 @@ class ElectrochemGUI:
                         csv_path,
                         self._session.last_live_plot_color,
                         self._session.last_live_plot_label,
+                        allow_overlay=False,
                     )
                 if stopped:
                     self._queue_tab.set_status("Ready (stopped)")
@@ -437,7 +438,7 @@ class ElectrochemGUI:
                 if csv_path:
                     last_csv = csv_path
                     self.root.after(0, self._plotter_tab.plot_data,
-                                   csv_path, color, label)
+                                   csv_path, color, label, True, False)
                 if not ok:
                     success = False
                     if not runner.is_running:
@@ -493,7 +494,7 @@ class ElectrochemGUI:
                 if csv_path:
                     last_csv = csv_path
                     self.root.after(0, self._plotter_tab.plot_data,
-                                   csv_path, color, label)
+                                   csv_path, color, label, True, False)
                 if not ok:
                     success = False
                     if not runner.is_running:
@@ -556,7 +557,7 @@ class ElectrochemGUI:
                     if csv_path:
                         last_csv = csv_path
                         self.root.after(0, self._plotter_tab.plot_data,
-                                       csv_path, color, label)
+                                       csv_path, color, label, True, False)
                     if not ok:
                         success = False
                         if not runner.is_running: stopped = True

@@ -10,6 +10,7 @@ Handles:
 import io
 import itertools
 import queue
+from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox
 import tkinter as tk
@@ -78,6 +79,9 @@ class PlotterTab:
                    command=self.clear_plot).pack(side="left", padx=5)
         ttk.Button(controls, text="Legend",
                    command=self._toggle_legend).pack(side="left")
+        self._overlay_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(controls, text="Overlay",
+                        variable=self._overlay_var).pack(side="left", padx=6)
         ttk.Label(controls, text="Plot Y:").pack(side="left", padx=(15, 5))
         self._plot_series_var = tk.StringVar(value="Auto")
         self._plot_series_combo = ttk.Combobox(
@@ -134,7 +138,7 @@ class PlotterTab:
             if path:
                 self.plot_data(path)
 
-    def plot_data(self, csv_path, color=None, label=None, track: bool = True):
+    def plot_data(self, csv_path, color=None, label=None, track: bool = True, allow_overlay: bool = True):
         """Load a CSV and add it to the plot."""
         try:
             df = self._read_csv(csv_path)
@@ -165,6 +169,9 @@ class PlotterTab:
             return
 
         try:
+            if not allow_overlay or not self._overlay_var.get():
+                self._ax.clear()
+                self._reset_axes()
             if color is None:
                 color = next(self._color_cycle)
             base_label = label or Path(csv_path).name
@@ -182,8 +189,8 @@ class PlotterTab:
             self._legend = self._ax.legend(loc="best")
             if self._legend is not None:
                 self._legend.set_draggable(True)
+                self._legend.set_visible(self._legend_visible)
             self._canvas.draw()
-            self._notebook.select(self._frame)
             if track:
                 self._remember_plotted_file(csv_path, color, base_label)
         except Exception as exc:
@@ -198,7 +205,6 @@ class PlotterTab:
         self._live_y.clear()
         self._plotted_files.clear()
         self._legend = None
-        self._legend_visible = True
         self._session.last_live_plot_color = None
         self._session.last_live_plot_label = None
         self._canvas.draw()
@@ -212,6 +218,7 @@ class PlotterTab:
         self._live_y      = []
         self._live_active = True
         self._plot_line   = None
+        self._ax.clear()
 
         if color is None:
             color = next(self._color_cycle)
@@ -219,20 +226,17 @@ class PlotterTab:
 
         if label is None:
             label = title or "Live"
+        if label:
+            label = f"{label} @ {datetime.now().strftime('%H:%M:%S')}"
         self._session.last_live_plot_label = label
 
-        self._ax.set_title(title or "Live Voltammogram")
-        self._ax.set_xlabel("Potential (V)")
-        self._ax.set_ylabel("Current (uA)")
-        self._ax.grid(visible=True, which="major", linestyle="-")
-        self._ax.grid(visible=True, which="minor", linestyle="--", alpha=0.2)
-        self._ax.minorticks_on()
+        self._reset_axes(title or "Live Voltammogram")
         (self._plot_line,) = self._ax.plot([], [], lw=1, color=color, label=label)
         self._legend = self._ax.legend(loc="best")
         if self._legend is not None:
             self._legend.set_draggable(True)
+            self._legend.set_visible(self._legend_visible)
         self._canvas.draw()
-        self._notebook.select(self._frame)
 
         if self._live_job is None:
             self._live_job = self._frame.after(250, self._poll)
