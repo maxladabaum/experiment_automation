@@ -30,7 +30,7 @@ from tkinter import messagebox
 import tkinter as tk
 from typing import Optional
 
-from config import DATA_DIR, SLACK_BOT_TOKEN, SLACK_TARGET
+from config import DATA_DIR, SLACK_BOT_TOKEN, SLACK_TARGET, APP_VERSION
 from .slack_notifier import SlackNotifier
 
 
@@ -211,10 +211,12 @@ class SessionManager:
             "notes": notes.strip(),
             "started_at": self._session_started_at,
             "ended_at": None,
+            "software_version": APP_VERSION,
         }
         self._write_json(self._session_metadata_path, self._session_raw)
         self._update_status_var()
         self.log(f"Session started: {session_path}")
+        self.log(f"Software version: {APP_VERSION}")
         return True
 
     def open_session(self, session_path: Path) -> bool:

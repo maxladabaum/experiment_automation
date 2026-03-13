@@ -45,6 +45,8 @@ class SerialMeasurementRunner:
         Optional override for where CSV and raw packet logs are written.
     save_raw_packets:
         If True, write raw device output lines to a ``*_raw.txt`` file.
+    invert_current:
+        If True, multiply measured currents by -1 before processing.
     pump_com_port:
         The COM port used by the pump (as a string like ``"COM8"`` or
         an int) so it can be deprioritised when auto-detecting the
@@ -59,6 +61,7 @@ class SerialMeasurementRunner:
         data_folder: Optional[Path] = None,
         save_raw_packets: bool = False,
         simulate_measurements: bool = False,
+        invert_current: bool = False,
         pump_com_port=None,
     ):
         self.script_path    = Path(script_path)
@@ -71,6 +74,7 @@ class SerialMeasurementRunner:
         self._pump_com_port = pump_com_port
         self.save_raw_packets = bool(save_raw_packets)
         self.simulate_measurements = bool(simulate_measurements)
+        self.invert_current = bool(invert_current)
         self._raw_fh = None
         self._fallback_tag_counter = 0
 
@@ -236,11 +240,31 @@ class SerialMeasurementRunner:
             return
         try:
             point = {}
+            currents = []
             for var in package:
                 if var.id in ("ab", "da"):
                     point["potential"] = var.value
                 elif var.id == "ba":
-                    point["current"] = var.value * 1e6   # A → µA
+                    current_amp = var.value
+                    if self.invert_current:
+                        current_amp = -current_amp
+                    currents.append(current_amp * 1e6)   # A -> uA
+
+            if currents:
+                if len(currents) >= 3:
+                    # PalmSens SWV typically emits three WE current values.
+                    # Empirically: [diff (negated), reverse, forward].
+                    point["current_diff"] = -currents[0]
+                    point["current_reverse"] = currents[1]
+                    point["current_forward"] = currents[2]
+                    point["current"] = point["current_diff"]
+                elif len(currents) == 2:
+                    point["current_forward"] = currents[0]
+                    point["current_reverse"] = currents[1]
+                    point["current"] = currents[1]
+                else:
+                    point["current"] = currents[0]
+
             if "potential" in point and "current" in point:
                 self.data_points.append(point)
                 if self.data_callback:
@@ -249,7 +273,7 @@ class SerialMeasurementRunner:
                     except Exception as exc:
                         self.log(f"Live plot callback error: {exc}")
         except Exception as exc:
-            self.log(f"Error parsing data package: {line!r} → {exc}")
+            self.log(f"Error parsing data package: {line!r} -> {exc}")
 
     @staticmethod
     def _is_complete_packet(line: str) -> bool:
@@ -282,8 +306,23 @@ class SerialMeasurementRunner:
         csv_path = self.data_folder / f"{base}_{tag}.csv"
 
         with open(csv_path, "w", newline="") as fh:
-            writer = csv.DictWriter(fh, fieldnames=["potential", "current"])
-            writer.writerow({"potential": "Potential (V)", "current": "Current (uA)"})
+            fieldnames = ["potential", "current"]
+            label_map = {
+                "potential": "Potential (V)",
+                "current": "Current (uA)",
+            }
+            if any("current_forward" in dp for dp in self.data_points):
+                fieldnames.append("current_forward")
+                label_map["current_forward"] = "Current Forward (uA)"
+            if any("current_reverse" in dp for dp in self.data_points):
+                fieldnames.append("current_reverse")
+                label_map["current_reverse"] = "Current Reverse (uA)"
+            if any("current_diff" in dp for dp in self.data_points):
+                fieldnames.append("current_diff")
+                label_map["current_diff"] = "Current Diff (uA)"
+
+            writer = csv.DictWriter(fh, fieldnames=fieldnames)
+            writer.writerow({key: label_map.get(key, key) for key in fieldnames})
             writer.writerows(self.data_points)
 
         self.log(f"\nData saved to: {csv_path}")
@@ -429,5 +468,16 @@ class SerialMeasurementRunner:
             p = start + (end - start) * frac
             peak = 40.0 * math.exp(-((p - 0.1) ** 2) / 0.02)
             baseline = 4.0 * math.sin(10.0 * p)
-            points.append({"potential": p, "current": peak + baseline})
+            forward = peak + baseline
+            reverse = -0.5 * peak + 0.6 * baseline
+            diff = forward - reverse
+            points.append(
+                {
+                    "potential": p,
+                    "current": diff,
+                    "current_forward": forward,
+                    "current_reverse": reverse,
+                    "current_diff": diff,
+                }
+            )
         return points

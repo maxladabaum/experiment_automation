@@ -9,7 +9,7 @@ from pathlib import Path
 import os
 
 # ── Version ──────────────────────────────────────────────────────────────────
-APP_VERSION = "2.1.1"
+APP_VERSION = "2.1.2"
 
 # ── Pump hardware defaults ────────────────────────────────────────────────────
 PUMP_DEFAULT_COM_PORT   = 8

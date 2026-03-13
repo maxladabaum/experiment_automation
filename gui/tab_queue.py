@@ -815,6 +815,7 @@ class QueueTab:
                             data_folder=data_folder,
                             save_raw_packets=self._session.save_raw_packets,
                             simulate_measurements=self._session.simulate_measurements,
+                            invert_current=(item.get("type") == "SWV"),
                         )
                         self._session.current_runner = runner
                         success, csv_path = runner.execute(meas_tag=meas_tag)

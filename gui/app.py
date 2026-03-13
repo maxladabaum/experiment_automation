@@ -369,6 +369,7 @@ class ElectrochemGUI:
                 data_callback = self._plotter_tab.push_live_point,
                 save_raw_packets = self._session.save_raw_packets,
                 simulate_measurements = self._session.simulate_measurements,
+                invert_current = (technique == "SWV"),
             )
             self._session.current_runner = runner
             success, csv_path = runner.execute(meas_tag=meas_tag)
@@ -426,7 +427,8 @@ class ElectrochemGUI:
                     fp, log_callback=self._session_mgr.log,
                     data_callback=self._plotter_tab.push_live_point,
                     save_raw_packets=self._session.save_raw_packets,
-                    simulate_measurements=self._session.simulate_measurements)
+                    simulate_measurements=self._session.simulate_measurements,
+                    invert_current=(technique == "SWV"))
                 self._session.current_runner = runner
                 ok, csv_path = runner.execute(meas_tag=meas_tag)
                 self._session.current_runner = None
@@ -481,7 +483,8 @@ class ElectrochemGUI:
                     fp, log_callback=self._session_mgr.log,
                     data_callback=self._plotter_tab.push_live_point,
                     save_raw_packets=self._session.save_raw_packets,
-                    simulate_measurements=self._session.simulate_measurements)
+                    simulate_measurements=self._session.simulate_measurements,
+                    invert_current=True)
                 self._session.current_runner = runner
                 ok, csv_path = runner.execute(meas_tag=meas_tag)
                 self._session.current_runner = None
@@ -543,7 +546,8 @@ class ElectrochemGUI:
                         fp, log_callback=self._session_mgr.log,
                         data_callback=self._plotter_tab.push_live_point,
                         save_raw_packets=self._session.save_raw_packets,
-                        simulate_measurements=self._session.simulate_measurements)
+                        simulate_measurements=self._session.simulate_measurements,
+                        invert_current=True)
                     self._session.current_runner = runner
                     ok, csv_path = runner.execute(meas_tag=meas_tag)
                     self._session.current_runner = None
