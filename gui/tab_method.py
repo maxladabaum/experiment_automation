@@ -18,7 +18,8 @@ from tkinter import ttk
 import serial.tools.list_ports
 
 from core.mscript_parser import to_si_string
-from core.runner import SerialMeasurementRunner
+from core.runner import SerialMeasurementRunner, format_port_info
+from config import DEVICE_KEYWORDS
 from core.session import SessionState
 from gui.tab_custom_script import CustomScriptPanel
 
@@ -65,6 +66,9 @@ class MethodTab:
         self.swv_params: dict  = {}
         self.pause_params: dict = {}
         self._library_note = tk.StringVar(value="")
+        self._device_port_var = tk.StringVar(value="Auto (detect)")
+        self._device_port_choices = []
+        self._device_port_info_by_device = {}
 
         self._build()
 
@@ -94,6 +98,20 @@ class MethodTab:
         self._device_status.pack(pady=10)
         ttk.Button(left, text="Check Device Connection",
                    command=self._check_device).pack(pady=5)
+        device_pick = ttk.Frame(left)
+        device_pick.pack(pady=6, fill="x")
+        ttk.Label(device_pick, text="Device port:").pack(side="left")
+        self._device_port_box = ttk.Combobox(
+            device_pick,
+            textvariable=self._device_port_var,
+            values=[],
+            state="readonly",
+            width=45,
+        )
+        self._device_port_box.pack(side="left", padx=6, fill="x", expand=True)
+        self._device_port_box.bind("<<ComboboxSelected>>", self._on_device_port_selected)
+        ttk.Button(device_pick, text="Refresh",
+                   command=self._refresh_device_ports).pack(side="left")
 
         # Execution options (global)
         exec_frame = ttk.LabelFrame(left, text="Execution Options")
@@ -124,6 +142,7 @@ class MethodTab:
         self._params_frame.pack(side="right", fill="both", expand=True, padx=5)
 
         self._show_cv_params()
+        self._refresh_device_ports(select_existing=True)
 
     def _sync_save_raw(self):
         self._session.save_raw_packets = bool(self._var_save_raw.get())
@@ -149,16 +168,72 @@ class MethodTab:
     # ── Device check ──────────────────────────────────────────────────────────
 
     def _check_device(self):
-        ports = list(serial.tools.list_ports.comports())
+        ports = self._refresh_device_ports(select_existing=True)
         if ports:
+            selected = self._session.device_port or "Auto"
+            if self._session.device_port is None:
+                resolved = self._auto_detect_port(ports)
+                if resolved:
+                    selected = f"Auto -> {resolved}"
+                else:
+                    selected = "Auto -> (no match)"
             self._device_status.config(
-                text="Devices found (check console)", foreground="green"
+                text=f"Devices found: {len(ports)} | Selected: {selected}", foreground="green"
             )
-            print("Available serial devices:")
-            for p in ports:
-                print(f"  {p.device}: {p.description}")
         else:
             self._device_status.config(text="No devices found", foreground="red")
+
+    def _refresh_device_ports(self, select_existing: bool = False):
+        ports = list(serial.tools.list_ports.comports())
+        choices = ["Auto (detect)"]
+        info_by_device = {}
+        for p in ports:
+            summary = format_port_info(p)
+            choices.append(summary)
+            info_by_device[p.device] = summary
+        self._device_port_choices = choices
+        self._device_port_info_by_device = info_by_device
+        self._device_port_box["values"] = choices
+
+        if select_existing:
+            current = self._session.device_port
+            if not current:
+                self._device_port_var.set("Auto (detect)")
+            else:
+                match = next((c for c in choices if c.startswith(f"{current}:")), None)
+                self._device_port_var.set(match or "Auto (detect)")
+        else:
+            if self._device_port_var.get() not in choices:
+                self._device_port_var.set("Auto (detect)")
+
+        self._on_device_port_selected()
+        return ports
+
+    def _on_device_port_selected(self, _event=None):
+        sel = (self._device_port_var.get() or "").strip()
+        if not sel or sel.startswith("Auto"):
+            self._session.device_port = None
+            return
+        device = sel.split(":", 1)[0].strip()
+        self._session.device_port = device or None
+
+    @staticmethod
+    def _auto_detect_port(ports):
+        candidates = []
+        for port in ports:
+            haystack = " ".join(
+                str(s) for s in (
+                    getattr(port, "description", None),
+                    getattr(port, "manufacturer", None),
+                    getattr(port, "product", None),
+                    getattr(port, "hwid", None),
+                ) if s
+            ).lower()
+            if any(str(kw).lower() in haystack for kw in DEVICE_KEYWORDS):
+                candidates.append(port.device)
+        if not candidates:
+            return None
+        return sorted(candidates)[0]
 
     # ── Parameter forms ───────────────────────────────────────────────────────
 

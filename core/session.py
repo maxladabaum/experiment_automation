@@ -80,6 +80,8 @@ class SessionState:
         self.save_raw_packets: bool = False
         self.simulate_measurements: bool = False
         self.step_delay: float = 1.0
+        # Selected device COM port (None = auto-detect)
+        self.device_port: Optional[str] = None
 
     # ── Measurement tag ───────────────────────────────────────────────────────
 

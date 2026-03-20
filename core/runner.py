@@ -27,6 +27,28 @@ from .mscript_parser import parse_mscript_data_package
 from config import DATA_DIR, DEVICE_KEYWORDS, DEVICE_BAUDRATE
 
 
+def format_port_info(port) -> str:
+    """Return a human-friendly one-liner for a pyserial ListPortInfo."""
+    parts = []
+    description = getattr(port, "description", None)
+    if description:
+        parts.append(description)
+    manufacturer = getattr(port, "manufacturer", None)
+    if manufacturer:
+        parts.append(manufacturer)
+    product = getattr(port, "product", None)
+    if product and product not in parts:
+        parts.append(product)
+    serial_number = getattr(port, "serial_number", None)
+    if serial_number:
+        parts.append(f"S/N {serial_number}")
+    hwid = getattr(port, "hwid", None)
+    if hwid and hwid not in parts:
+        parts.append(hwid)
+    suffix = " | ".join(parts) if parts else "Unknown device"
+    return f"{port.device}: {suffix}"
+
+
 class SerialMeasurementRunner:
     """Run a single MethodSCRIPT measurement over a serial port.
 
@@ -62,6 +84,7 @@ class SerialMeasurementRunner:
         save_raw_packets: bool = False,
         simulate_measurements: bool = False,
         invert_current: bool = False,
+        device_port: Optional[str] = None,
         pump_com_port=None,
     ):
         self.script_path    = Path(script_path)
@@ -72,6 +95,7 @@ class SerialMeasurementRunner:
         self.is_running     = True
         self.partial_packet = ""
         self._pump_com_port = pump_com_port
+        self._device_port = device_port
         self.save_raw_packets = bool(save_raw_packets)
         self.simulate_measurements = bool(simulate_measurements)
         self.invert_current = bool(invert_current)
@@ -96,9 +120,17 @@ class SerialMeasurementRunner:
         ports = serial.tools.list_ports.comports(include_links=False)
         candidates = []
         for port in ports:
-            self.log(f"  Found port: {port.description} ({port.device})")
-            if any(kw in port.description for kw in DEVICE_KEYWORDS):
-                candidates.append(port.device)
+            self.log(f"  Found port: {format_port_info(port)}")
+            haystack = " ".join(
+                str(s) for s in (
+                    getattr(port, "description", None),
+                    getattr(port, "manufacturer", None),
+                    getattr(port, "product", None),
+                    getattr(port, "hwid", None),
+                ) if s
+            ).lower()
+            if any(str(kw).lower() in haystack for kw in DEVICE_KEYWORDS):
+                candidates.append((port.device, format_port_info(port)))
 
         if not candidates:
             self.log("ERROR: No measurement device found")
@@ -112,19 +144,30 @@ class SerialMeasurementRunner:
             except (TypeError, ValueError):
                 pump_upper = str(self._pump_com_port).upper()
 
-        candidates.sort(key=lambda dev: (pump_upper is not None and dev.upper() == pump_upper, dev))
+        candidates.sort(
+            key=lambda item: (
+                pump_upper is not None and item[0].upper() == pump_upper,
+                item[0],
+            )
+        )
 
         if len(candidates) > 1:
-            self.log(f"Multiple devices found: {candidates}")
+            self.log("Multiple devices found:")
+            for _dev, summary in candidates:
+                self.log(f"  {summary}")
         if pump_upper is not None:
-            self.log(f"Using first device: {candidates[0]} (pump port {pump_upper} deprioritized)")
+            self.log(
+                f"Using first device: {candidates[0][0]} (pump port {pump_upper} deprioritized)"
+            )
         else:
-            self.log(f"Using first device: {candidates[0]}")
-        return candidates[0]
+            self.log(f"Using first device: {candidates[0][0]}")
+        return candidates[0][0]
 
     # ── Connection ────────────────────────────────────────────────────────────
 
     def connect(self, port: Optional[str] = None) -> bool:
+        if port is None and self._device_port:
+            port = self._device_port
         if port is None:
             port = self.find_device_port()
         if port is None:
