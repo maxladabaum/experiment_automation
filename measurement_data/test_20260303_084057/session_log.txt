@@ -1,3 +1,5 @@
 [2026-03-03 08:40:57] Session started: test_20260303_084057
 [2026-03-11 12:14:33] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
 [2026-03-11 12:14:33] [SIM] Connected (COM8)
+[2026-03-22 16:31:00] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
+[2026-03-22 16:31:00] [SIM] Connected (COM8)

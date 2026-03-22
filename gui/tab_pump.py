@@ -15,6 +15,12 @@ import tkinter as tk
 from tkinter import ttk
 
 try:
+    import serial.tools.list_ports
+    HAS_SERIAL_PORTS = True
+except ImportError:
+    HAS_SERIAL_PORTS = False
+
+try:
     import pythoncom   # type: ignore
     HAS_PYTHONCOM = True
 except ImportError:
@@ -52,6 +58,7 @@ class PumpTab:
         self._early_logs:list = []
         self._log_text      = None
         self._disable_group: list = []
+        self._pump_port_choices: list[str] = []
 
         if pump_ctrl is None:
             ttk.Label(self._frame,
@@ -80,26 +87,28 @@ class PumpTab:
         chk.grid(row=0, column=0, columnspan=2, **pad, sticky="w")
 
         ttk.Label(conn, text="COM port:").grid(row=1, column=0, **pad, sticky="e")
-        self._var_com  = tk.IntVar(value=int(PUMP_DEFAULT_COM_PORT))
-        ttk.Spinbox(conn, from_=1, to=60, width=6,
-                    textvariable=self._var_com).grid(row=1, column=1, **pad)
+        self._var_com  = tk.StringVar(value=f"COM{int(PUMP_DEFAULT_COM_PORT)}")
+        self._com_box = ttk.Combobox(conn, width=18, textvariable=self._var_com)
+        self._com_box.grid(row=1, column=1, **pad)
+        ttk.Button(conn, text="Refresh",
+                   command=self._refresh_com_ports).grid(row=1, column=2, **pad)
 
-        ttk.Label(conn, text="Baud:").grid(row=1, column=2, **pad, sticky="e")
+        ttk.Label(conn, text="Baud:").grid(row=1, column=3, **pad, sticky="e")
         self._var_baud = tk.StringVar(value=str(PUMP_DEFAULT_BAUD))
         combo = ttk.Combobox(conn, values=["9600", "38400"], width=8,
                              textvariable=self._var_baud)
-        combo.grid(row=1, column=3, **pad)
+        combo.grid(row=1, column=4, **pad)
         combo.set(str(PUMP_DEFAULT_BAUD))
 
-        ttk.Label(conn, text="Device #:").grid(row=1, column=4, **pad, sticky="e")
+        ttk.Label(conn, text="Device #:").grid(row=1, column=5, **pad, sticky="e")
         self._var_dev  = tk.IntVar(value=int(PUMP_DEFAULT_DEV))
         ttk.Spinbox(conn, from_=0, to=30, width=6,
-                    textvariable=self._var_dev).grid(row=1, column=5, **pad)
+                    textvariable=self._var_dev).grid(row=1, column=6, **pad)
 
         btn_connect = ttk.Button(conn, text="Connect",
             command=lambda: self._launch(self._do_connect,
                 lambda: bool(self._var_sim.get()),
-                lambda: int(self._var_com.get()),
+                self._get_selected_com_port,
                 lambda: int(self._var_baud.get()),
                 lambda: int(self._var_dev.get())))
         btn_connect.grid(row=2, column=0, columnspan=2, **pad)
@@ -203,6 +212,7 @@ class PumpTab:
         self._log_text.grid(row=0, column=0, sticky="nsew", padx=6, pady=6)
 
         self._flush_early_logs()
+        self._refresh_com_ports()
 
     # ── Logging ───────────────────────────────────────────────────────────────
 
@@ -269,6 +279,47 @@ class PumpTab:
 
     def _set_busy(self, busy: bool):
         self._busy = busy
+
+    def _refresh_com_ports(self):
+        current = (self._var_com.get() or "").strip() or f"COM{int(PUMP_DEFAULT_COM_PORT)}"
+        choices = []
+        seen = set()
+
+        def add_choice(label: str):
+            norm = label.strip()
+            if norm and norm not in seen:
+                seen.add(norm)
+                choices.append(norm)
+
+        add_choice(f"COM{int(PUMP_DEFAULT_COM_PORT)}")
+        add_choice(current)
+
+        if HAS_SERIAL_PORTS:
+            try:
+                for port in serial.tools.list_ports.comports():
+                    desc = getattr(port, "description", "") or ""
+                    label = port.device
+                    if desc and desc != port.device:
+                        label = f"{port.device} - {desc}"
+                    add_choice(label)
+            except Exception:
+                pass
+
+        self._pump_port_choices = choices
+        self._com_box["values"] = choices
+        if current in choices:
+            self._var_com.set(current)
+        else:
+            self._var_com.set(choices[0] if choices else f"COM{int(PUMP_DEFAULT_COM_PORT)}")
+
+    def _get_selected_com_port(self):
+        raw = (self._var_com.get() or "").strip()
+        if not raw:
+            raise ValueError("Please select a COM port.")
+        token = raw.split("-", 1)[0].strip()
+        if token.upper().startswith("COM"):
+            token = token[3:].strip()
+        return int(token)
     
     def autoconnect(self):
         if self._ctrl is None:
@@ -282,7 +333,7 @@ class PumpTab:
         self._launch(
             self._do_connect,
             lambda: bool(self._var_sim.get()),
-            lambda: int(self._var_com.get()),
+            self._get_selected_com_port,
             lambda: int(self._var_baud.get()),
             lambda: int(self._var_dev.get()),
         )

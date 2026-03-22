@@ -10,6 +10,12 @@ import sys, time, threading, argparse
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+try:
+    import serial.tools.list_ports
+    HAS_SERIAL_PORTS = True
+except Exception:
+    HAS_SERIAL_PORTS = False
+
 # Optional COM imports (Windows real mode). In sim mode we don't need them.
 HAS_COM = False
 try:
@@ -299,6 +305,7 @@ class PumpGUI(tk.Tk):
         self.ctrl = PumpCtrl(use_sim=self.force_sim, log_cb=self.log)
         self._busy = False
         self._early_logs = []   # buffer logs before widget exists
+        self._pump_port_choices = []
 
         self._build_ui()
 
@@ -366,19 +373,20 @@ class PumpGUI(tk.Tk):
             self.log("COM not available; defaulting to SIM mode.")
 
         ttk.Label(f_conn, text="COM port:").grid(row=1, column=0, **pad, sticky="e")
-        self.var_com = tk.IntVar(value=DEFAULT_COM_PORT)
-        self.ent_com = ttk.Spinbox(f_conn, from_=1, to=60, width=6, textvariable=self.var_com)
+        self.var_com = tk.StringVar(value=f"COM{DEFAULT_COM_PORT}")
+        self.ent_com = ttk.Combobox(f_conn, width=18, textvariable=self.var_com)
         self.ent_com.grid(row=1, column=1, **pad)
+        ttk.Button(f_conn, text="Refresh", command=self.refresh_com_ports).grid(row=1, column=2, **pad)
 
-        ttk.Label(f_conn, text="Baud:").grid(row=1, column=2, **pad, sticky="e")
+        ttk.Label(f_conn, text="Baud:").grid(row=1, column=3, **pad, sticky="e")
         self.var_baud = tk.IntVar(value=DEFAULT_BAUD)
         self.ent_baud = ttk.Combobox(f_conn, values=[9600, 38400], width=8, textvariable=self.var_baud)
-        self.ent_baud.grid(row=1, column=3, **pad); self.ent_baud.set(str(DEFAULT_BAUD))
+        self.ent_baud.grid(row=1, column=4, **pad); self.ent_baud.set(str(DEFAULT_BAUD))
 
-        ttk.Label(f_conn, text="Device #:").grid(row=1, column=4, **pad, sticky="e")
+        ttk.Label(f_conn, text="Device #:").grid(row=1, column=5, **pad, sticky="e")
         self.var_dev = tk.IntVar(value=DEFAULT_DEV)
         self.ent_dev = ttk.Spinbox(f_conn, from_=0, to=30, width=6, textvariable=self.var_dev)
-        self.ent_dev.grid(row=1, column=5, **pad)
+        self.ent_dev.grid(row=1, column=6, **pad)
 
         self.btn_connect = ttk.Button(f_conn, text="Connect", command=lambda: self.threaded(self.on_connect))
         self.btn_disconnect = ttk.Button(f_conn, text="Disconnect", command=lambda: self.threaded(self.on_disconnect))
@@ -448,6 +456,45 @@ class PumpGUI(tk.Tk):
 
         # flush any early logs now that log_text exists
         self._flush_early_logs()
+        self.refresh_com_ports()
+
+    def refresh_com_ports(self):
+        current = (self.var_com.get() or "").strip() or f"COM{DEFAULT_COM_PORT}"
+        choices = []
+        seen = set()
+
+        def add_choice(label):
+            norm = str(label).strip()
+            if norm and norm not in seen:
+                seen.add(norm)
+                choices.append(norm)
+
+        add_choice(f"COM{DEFAULT_COM_PORT}")
+        add_choice(current)
+
+        if HAS_SERIAL_PORTS:
+            try:
+                for port in serial.tools.list_ports.comports():
+                    desc = getattr(port, "description", "") or ""
+                    label = port.device
+                    if desc and desc != port.device:
+                        label = f"{port.device} - {desc}"
+                    add_choice(label)
+            except Exception:
+                pass
+
+        self._pump_port_choices = choices
+        self.ent_com["values"] = choices
+        self.var_com.set(current if current in choices else choices[0])
+
+    def _selected_com_port(self):
+        raw = (self.var_com.get() or "").strip()
+        if not raw:
+            raise ValueError("Please select a COM port.")
+        token = raw.split("-", 1)[0].strip()
+        if token.upper().startswith("COM"):
+            token = token[3:].strip()
+        return int(token)
 
     # ---------------- handlers (run in worker thread) ----------------
     def on_connect(self):
@@ -455,7 +502,7 @@ class PumpGUI(tk.Tk):
             self.ctrl.use_sim = bool(self.var_sim.get()) or (not HAS_COM)
             mode = "[SIM]" if self.ctrl.use_sim else "[REAL]"
             self.log(f"{mode} Connecting…")
-            self.ctrl.connect(self.var_com.get(), int(self.var_baud.get()), self.var_dev.get())
+            self.ctrl.connect(self._selected_com_port(), int(self.var_baud.get()), self.var_dev.get())
             if self.ctrl.use_sim:
                 self.log("Sim mode ready: speed/valve/A-D behave with realistic timing.")
             else:
