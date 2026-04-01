@@ -12,6 +12,7 @@ Responsible for:
 
 import copy
 import json
+import subprocess
 import re
 import threading
 import time
@@ -470,6 +471,14 @@ class QueueTab:
             data["pause_seconds"] = item.get("pause_seconds", 0.0)
         elif t == "ALERT":
             data["alert_message"] = item.get("alert_message", "")
+        elif t == "OTHER":
+            action = item.get("other_action") or {}
+            data["other_action"] = {
+                "name": action.get("name"),
+                "script_path": action.get("script_path"),
+                "source": action.get("source"),
+                "folder_path": action.get("folder_path"),
+            }
         elif t and t.startswith("PUMP_"):
             action = item.get("pump_action") or {}
             data["pump_action"] = {"name": action.get("name"),
@@ -501,6 +510,17 @@ class QueueTab:
                 return None
             item["alert_message"] = msg.strip()
             item["details"]       = details or "Alert pause"
+        elif t == "OTHER":
+            action = raw.get("other_action") or {}
+            if not action.get("name"):
+                return None
+            item["other_action"] = {
+                "name": action.get("name"),
+                "script_path": action.get("script_path"),
+                "source": action.get("source") or "session",
+                "folder_path": action.get("folder_path") or "",
+            }
+            item["details"] = details or "Other step"
         elif t.startswith("PUMP_"):
             action = raw.get("pump_action") or {}
             if not action.get("name"):
@@ -796,6 +816,11 @@ class QueueTab:
                     self._session.measurement_queue[i]["status"] = "completed" if ok else "stopped"
                     success = ok
 
+                elif t == "OTHER":
+                    ok = self._exec_other(item)
+                    self._session.measurement_queue[i]["status"] = "completed" if ok else "failed"
+                    success = ok
+
                 elif t.startswith("PUMP_"):
                     ok = self._exec_pump(item)
                     self._session.measurement_queue[i]["status"] = "completed" if ok else "failed"
@@ -1039,6 +1064,66 @@ class QueueTab:
         return done.is_set()
 
     # ── Pump execution ────────────────────────────────────────────────────────
+
+    def _exec_other(self, item: dict) -> bool:
+        action = item.get("other_action") or {}
+        name = (action.get("name") or "").strip().upper()
+        if name != "COMPRESS_AND_SEND_TO_DRIVE":
+            self.log(f"Unsupported other action: {name or '(missing)'}")
+            return False
+
+        script_path = action.get("script_path")
+        if not script_path:
+            self.log("Other action failed: missing batch script path.")
+            return False
+
+        batch_file = Path(script_path)
+        if not batch_file.exists():
+            self.log(f"Other action failed: script not found: {batch_file}")
+            return False
+
+        session_mgr = getattr(self._session, "session_manager", None)
+        if session_mgr is None:
+            self.log("Other action failed: session manager is unavailable.")
+            return False
+
+        source_kind = (action.get("source") or "session").strip().lower()
+        if source_kind == "folder":
+            raw_folder = (action.get("folder_path") or "").strip()
+            if not raw_folder:
+                self.log("Other action failed: no folder was selected.")
+                return False
+            source_path = Path(raw_folder)
+            if not source_path.exists() or not source_path.is_dir():
+                self.log(f"Other action failed: folder not found: {source_path}")
+                return False
+        else:
+            source_path = session_mgr.require_session()
+        if source_path is None:
+            self.log("Other action skipped: no active source folder.")
+            return False
+
+        source_path = Path(source_path)
+        self.log(f"Queue other -> launching {batch_file.name} for {source_path}")
+        session_mgr.notify_slack(
+            f"Queue other step: starting Drive transfer for folder '{source_path.name}'."
+        )
+        try:
+            subprocess.Popen(
+                ["cmd.exe", "/c", "start", "", str(batch_file), str(source_path)],
+                cwd=str(batch_file.parent),
+                shell=False,
+            )
+            session_mgr.notify_slack(
+                f"Queue other step: launched Drive transfer for '{source_path.name}'."
+            )
+            return True
+        except Exception as exc:
+            self.log(f"Other action failed: {exc}")
+            session_mgr.notify_slack(
+                f"Queue other step FAILED for '{source_path.name}': {exc}"
+            )
+            return False
 
     def _exec_pump(self, item: dict) -> bool:
         if self._pump_ctrl is None:

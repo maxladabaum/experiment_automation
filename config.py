@@ -26,11 +26,13 @@ PREFERRED_SYRINGE_UL        = 250.0
 
 # ── File / folder paths ───────────────────────────────────────────────────────
 METHODS_DIR     = Path("methods")           # where .ms scripts are saved
-DATA_DIR        = Path(r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)")  # where measurement CSVs land
+DATA_DIR        = Path(r"C:\Users\chienlab355\Desktop\Automation_Data_Local")  # where measurement CSVs land
+#DATA_DIR        = Path(r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)")  # where measurement CSVs land
 #DATA_DIR        = Path("measurement_data") #for local testing purposes
 BLOCKS_DIR      = Path("recipe_maker") / "default_blocks"  # where block definitions are saved
 SAVE_DATED_METHOD_COPIES = False            # if True, also write methods/YYYY-MM-DD/*.ms working copies
 #keep in mind that methods are already double saved under library and the experiments where they are used
+COMPRESS_AND_SEND_SCRIPT = Path(r"C:\Users\chienlab355\Desktop\Compress_n_SendToDrive.bat")
 
 # ── Serial device detection keywords ─────────────────────────────────────────
 DEVICE_KEYWORDS = ["ESPicoDev", "EmStat", "USB Serial Port", "FTDI"]
@@ -42,7 +44,7 @@ WINDOW_TITLE    = f"Electrochemistry Automation System  v{APP_VERSION}"
 
 # Slack integration (optional)
 # Set these via environment variables on the machine running the GUI.
-SLACK_ENABLE         = os.getenv("EA_SLACK_ENABLE", "0").strip().lower() in ("1", "true", "yes", "on")
+SLACK_ENABLE         = os.getenv("EA_SLACK_ENABLE", "1").strip().lower() in ("1", "true", "yes", "on")
 SLACK_BOT_TOKEN      = os.getenv("EA_SLACK_BOT_TOKEN", "").strip()
 SLACK_SIGNING_SECRET = os.getenv("EA_SLACK_SIGNING_SECRET", "").strip()
 SLACK_TARGET         = os.getenv("EA_SLACK_TARGET", "").strip()  # channel ID (C/G) or DM ID (D)

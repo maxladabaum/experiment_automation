@@ -1,4 +1,4 @@
-venv_gui/
+venv_gui_py38/
 __pycache__/
 *.pyc
  

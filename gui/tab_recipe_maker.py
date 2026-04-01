@@ -17,7 +17,7 @@ import tkinter as tk
 from tkinter import ttk, simpledialog
 
 from methods import library_map
-from config import BLOCKS_DIR
+from config import BLOCKS_DIR, COMPRESS_AND_SEND_SCRIPT
 
 
 class RecipeMakerTab:
@@ -56,7 +56,7 @@ class RecipeMakerTab:
         ctrl = ttk.Frame(top)
         ctrl.pack(pady=8, fill="x", padx=10)
 
-        ttk.Button(ctrl, text="Add Pump Step",
+        ttk.Button(ctrl, text="Add Step",
                    command=self._add_pump_step).pack(side="left", padx=4)
         ttk.Button(ctrl, text="Add Method Step",
                    command=self._add_method_step).pack(side="left", padx=4)
@@ -165,13 +165,16 @@ class RecipeMakerTab:
     def _build_pump_editor(self, parent):
         pad = {"padx": 6, "pady": 4}
 
-        ttk.Label(parent, text="Pump action:").grid(row=0, column=0, **pad, sticky="e")
+        ttk.Label(parent, text="Step action:").grid(row=0, column=0, **pad, sticky="e")
         self._pump_action = tk.StringVar(value="INIT")
         ttk.Combobox(
             parent,
             textvariable=self._pump_action,
-            values=["INIT", "SET_SPEED", "VALVE", "ASPIRATE", "DISPENSE", "PAUSE", "ALERT"],
-            width=16,
+            values=[
+                "INIT", "SET_SPEED", "VALVE", "ASPIRATE", "DISPENSE", "PAUSE", "ALERT",
+                "ZIP_CURRENT_FOLDER", "ZIP_BROWSE_FOLDER",
+            ],
+            width=20,
             state="readonly",
         ).grid(row=0, column=1, **pad, sticky="w")
 
@@ -197,11 +200,20 @@ class RecipeMakerTab:
             row=1, column=1, columnspan=6, **pad, sticky="w"
         )
 
+        ttk.Label(parent, text="Folder:").grid(row=2, column=0, **pad, sticky="e")
+        self._other_folder = tk.StringVar(value="")
+        ttk.Entry(parent, width=50, textvariable=self._other_folder).grid(
+            row=2, column=1, columnspan=6, **pad, sticky="w"
+        )
+        ttk.Button(parent, text="Browse...", command=self._browse_other_folder).grid(
+            row=2, column=7, **pad, sticky="w"
+        )
+
         ttk.Label(
             parent,
             text="Tip: Only relevant fields are used based on action type.",
             foreground="#666",
-        ).grid(row=2, column=0, columnspan=10, padx=6, pady=(0, 6), sticky="w")
+        ).grid(row=3, column=0, columnspan=10, padx=6, pady=(0, 6), sticky="w")
 
     def _add_pump_step(self):
         action = self._pump_action.get().strip().upper()
@@ -215,12 +227,18 @@ class RecipeMakerTab:
                 port=int(self._pump_port.get()),
                 pause=float(self._pause_seconds.get()),
                 alert=(self._alert_message.get() or "").strip(),
+                folder=(self._other_folder.get() or "").strip(),
             )
         except Exception as exc:
             messagebox.showerror("Invalid pump step", str(exc))
             return
         self._recipe.append(item)
         self._refresh()
+
+    def _browse_other_folder(self):
+        path = filedialog.askdirectory(title="Select folder to compress and send")
+        if path:
+            self._other_folder.set(path)
 
     # ── Method library ─────────────────────────────────────────────────────
 
@@ -640,6 +658,7 @@ class RecipeMakerTab:
         port: int,
         pause: float,
         alert: str,
+        folder: str,
     ) -> dict:
         action = (action or "").strip().upper()
         if not action:
@@ -663,6 +682,10 @@ class RecipeMakerTab:
                 "details": f"Alert: {msg}",
                 "alert_message": msg,
             }
+        if action == "ZIP_CURRENT_FOLDER":
+            return self._build_other_item(source="session", folder_path="")
+        if action == "ZIP_BROWSE_FOLDER":
+            return self._build_other_item(source="folder", folder_path=folder)
 
         details = ""
         pump_action = {"name": action, "params": {}}
@@ -688,6 +711,29 @@ class RecipeMakerTab:
             "status": "pending",
             "details": details,
             "pump_action": pump_action,
+        }
+
+    def _build_other_item(self, *, source: str, folder_path: str) -> dict:
+        source = (source or "").strip().lower()
+        if source == "folder":
+            folder = Path((folder_path or "").strip())
+            if not str(folder):
+                raise ValueError("Choose a folder to compress.")
+            details = f"Other: Compress folder and send to Drive -> {folder}"
+        else:
+            details = "Other: Compress current session folder and send to Drive"
+            folder = None
+
+        return {
+            "type": "OTHER",
+            "status": "pending",
+            "details": details,
+            "other_action": {
+                "name": "COMPRESS_AND_SEND_TO_DRIVE",
+                "script_path": str(COMPRESS_AND_SEND_SCRIPT),
+                "source": "folder" if source == "folder" else "session",
+                "folder_path": str(folder) if folder is not None else "",
+            },
         }
 
     def _apply_pump_speeds(self):
@@ -743,7 +789,7 @@ class RecipeMakerTab:
 
     def _is_pump_editable(self, item: dict) -> bool:
         item_type = (item.get("type") or "").upper()
-        return item_type.startswith("PUMP_") or item_type in ("PAUSE", "ALERT")
+        return item_type.startswith("PUMP_") or item_type in ("PAUSE", "ALERT", "OTHER")
 
     def _extract_pump_fields(self, item: dict) -> dict:
         item_type = (item.get("type") or "").upper()
@@ -755,6 +801,7 @@ class RecipeMakerTab:
                 "port": 1,
                 "pause": float(item.get("pause_seconds", 10.0)),
                 "alert": "Check setup",
+                "folder": "",
             }
         if item_type == "ALERT":
             return {
@@ -764,6 +811,19 @@ class RecipeMakerTab:
                 "port": 1,
                 "pause": 10.0,
                 "alert": str(item.get("alert_message") or ""),
+                "folder": "",
+            }
+        if item_type == "OTHER":
+            other_action = item.get("other_action") or {}
+            source = (other_action.get("source") or "session").strip().lower()
+            return {
+                "action": "ZIP_BROWSE_FOLDER" if source == "folder" else "ZIP_CURRENT_FOLDER",
+                "speed": 20,
+                "volume": 100.0,
+                "port": 1,
+                "pause": 10.0,
+                "alert": "Check setup",
+                "folder": str(other_action.get("folder_path") or ""),
             }
 
         action_info = item.get("pump_action") or {}
@@ -776,6 +836,7 @@ class RecipeMakerTab:
             "port": int(params.get("port", 1)),
             "pause": 10.0,
             "alert": "Check setup",
+            "folder": "",
         }
 
     def _edit_pump_step(self, index: int):
@@ -783,18 +844,21 @@ class RecipeMakerTab:
         fields = self._extract_pump_fields(item)
 
         win = tk.Toplevel(self._frame)
-        win.title("Edit Pump Step")
+        win.title("Edit Step")
         win.transient(self._frame.winfo_toplevel())
         win.grab_set()
 
         pad = {"padx": 6, "pady": 4}
-        ttk.Label(win, text="Pump action:").grid(row=0, column=0, **pad, sticky="e")
+        ttk.Label(win, text="Step action:").grid(row=0, column=0, **pad, sticky="e")
         action_var = tk.StringVar(value=fields["action"])
         ttk.Combobox(
             win,
             textvariable=action_var,
-            values=["INIT", "SET_SPEED", "VALVE", "ASPIRATE", "DISPENSE", "PAUSE", "ALERT"],
-            width=16,
+            values=[
+                "INIT", "SET_SPEED", "VALVE", "ASPIRATE", "DISPENSE", "PAUSE", "ALERT",
+                "ZIP_CURRENT_FOLDER", "ZIP_BROWSE_FOLDER",
+            ],
+            width=20,
             state="readonly",
         ).grid(row=0, column=1, **pad, sticky="w")
 
@@ -820,8 +884,23 @@ class RecipeMakerTab:
             row=1, column=1, columnspan=6, **pad, sticky="w"
         )
 
+        ttk.Label(win, text="Folder:").grid(row=2, column=0, **pad, sticky="e")
+        folder_var = tk.StringVar(value=fields.get("folder", ""))
+        ttk.Entry(win, width=50, textvariable=folder_var).grid(
+            row=2, column=1, columnspan=6, **pad, sticky="w"
+        )
+
+        def _browse_folder():
+            path = filedialog.askdirectory(title="Select folder to compress and send")
+            if path:
+                folder_var.set(path)
+
+        ttk.Button(win, text="Browse...", command=_browse_folder).grid(
+            row=2, column=7, **pad, sticky="w"
+        )
+
         btns = ttk.Frame(win)
-        btns.grid(row=2, column=0, columnspan=10, pady=(6, 8))
+        btns.grid(row=3, column=0, columnspan=10, pady=(6, 8))
 
         def _apply():
             try:
@@ -832,6 +911,7 @@ class RecipeMakerTab:
                     port=int(port_var.get()),
                     pause=float(pause_var.get()),
                     alert=(alert_var.get() or "").strip(),
+                    folder=(folder_var.get() or "").strip(),
                 )
             except Exception as exc:
                 messagebox.showerror("Invalid pump step", str(exc))
