@@ -351,7 +351,11 @@ class ElectrochemGUI:
 
     def _run_single(self, technique: str, script: str, mux_channel=None):
         try:
-            fp, fn = self._session.registry.save_script(technique, script, mux_channel)
+            fp, fn = self._session.registry.save_script(
+                technique,
+                script,
+                mux_channel=mux_channel,
+            )
         except Exception as exc:
             messagebox.showerror("File Error", f"Failed to save script: {exc}"); return
 
@@ -416,7 +420,11 @@ class ElectrochemGUI:
                 if not self._session.is_running:
                     stopped = True; success = False; break
                 mux_script = self._method_tab._wrap_mux(base_script, ch)
-                fp, fn = self._session.registry.save_script(technique, mux_script, ch)
+                fp, fn = self._session.registry.save_script(
+                    technique,
+                    mux_script,
+                    mux_channel=ch,
+                )
                 color = self._session.next_plot_color()
                 label = f"MUX ch {ch}"
                 self.root.after(0, self._plotter_tab.start_live,
@@ -537,7 +545,11 @@ class ElectrochemGUI:
                     if not self._session.is_running:
                         stopped = True; success = False; break
                     mux_script = self._method_tab._wrap_mux(base_script, ch)
-                    fp, fn = self._session.registry.save_script("SWV", mux_script, ch)
+                    fp, fn = self._session.registry.save_script(
+                        "SWV",
+                        mux_script,
+                        mux_channel=ch,
+                    )
                     color = self._session.next_plot_color()
                     label = f"MUX ch {ch} scan {scan}"
                     self.root.after(0, self._plotter_tab.start_live,

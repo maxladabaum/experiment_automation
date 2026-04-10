@@ -66,6 +66,8 @@ class MethodTab:
         self.swv_params: dict  = {}
         self.pause_params: dict = {}
         self._library_note = tk.StringVar(value="")
+        self._cv_autorange = tk.BooleanVar(value=True)
+        self._swv_autorange = tk.BooleanVar(value=False)
         self._device_port_var = tk.StringVar(value="Auto (detect)")
         self._device_port_choices = []
         self._device_port_info_by_device = {}
@@ -264,13 +266,19 @@ class MethodTab:
             entry.grid(row=i, column=1, pady=2)
             self.cv_params[key] = entry
 
+        ttk.Checkbutton(
+            self._params_frame,
+            text="Enable BA autoranging",
+            variable=self._cv_autorange,
+        ).grid(row=len(params), column=0, columnspan=2, sticky="w", pady=(6, 2))
+
         ttk.Label(self._params_frame, text="Library note (optional):").grid(
-            row=len(params), column=0, sticky="w", pady=2)
+            row=len(params) + 1, column=0, sticky="w", pady=2)
         ttk.Entry(self._params_frame, width=40, textvariable=self._library_note).grid(
-            row=len(params), column=1, sticky="w", pady=2)
+            row=len(params) + 1, column=1, sticky="w", pady=2)
 
         btn_frame = ttk.Frame(self._params_frame)
-        btn_frame.grid(row=len(params) + 1, column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=len(params) + 2, column=0, columnspan=2, pady=20)
         ttk.Button(btn_frame, text="Generate Script",
                    command=self._generate_cv_script).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Run Now",
@@ -302,13 +310,19 @@ class MethodTab:
             entry.grid(row=i, column=1, pady=2)
             self.swv_params[key] = entry
 
+        ttk.Checkbutton(
+            self._params_frame,
+            text="Enable BA autoranging",
+            variable=self._swv_autorange,
+        ).grid(row=len(params), column=0, columnspan=2, sticky="w", pady=(6, 2))
+
         ttk.Label(self._params_frame, text="Library note (optional):").grid(
-            row=len(params), column=0, sticky="w", pady=2)
+            row=len(params) + 1, column=0, sticky="w", pady=2)
         ttk.Entry(self._params_frame, width=40, textvariable=self._library_note).grid(
-            row=len(params), column=1, sticky="w", pady=2)
+            row=len(params) + 1, column=1, sticky="w", pady=2)
 
         btn_frame = ttk.Frame(self._params_frame)
-        btn_frame.grid(row=len(params) + 1, column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=len(params) + 2, column=0, columnspan=2, pady=20)
         ttk.Button(btn_frame, text="Generate Script",
                    command=self._generate_swv_script).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Run Now",
@@ -346,6 +360,12 @@ class MethodTab:
 
     # ── Script generation ─────────────────────────────────────────────────────
 
+    @staticmethod
+    def _ba_range_lines(fixed_range: str, autorange_enabled: bool, auto_min: str, auto_max: str):
+        if autorange_enabled:
+            return [f"set_range ba {fixed_range}", f"set_autoranging ba {auto_min} {auto_max}"]
+        return [f"set_range ba {fixed_range}", f"set_autoranging ba {fixed_range} {fixed_range}"]
+
     def _build_cv_script(self) -> str:
         p = self.cv_params
         begin      = to_si_string(p["begin_potential"].get(), "V")
@@ -360,8 +380,8 @@ class MethodTab:
         parts = [
             "e", "var c", "var p",
             "set_pgstat_mode 2", "set_max_bandwidth 40",
-            "set_range ba 100u", "set_autoranging ba 1n 100u",
         ]
+        parts += self._ba_range_lines("100u", bool(self._cv_autorange.get()), "1n", "100u")
         if float(cond_time) > 0:
             parts += [f"set_e {cond_pot}", "cell_on",
                       f"# Condition for {cond_time}s", f"wait {cond_time}"]
@@ -401,8 +421,9 @@ class MethodTab:
             "set_pgstat_mode 3",
             "set_max_bandwidth 4k",
             f"set_range_minmax da {min_mv}m {max_mv}m",
-            "set_range ba 59n", "set_autoranging ba 59n 59n", "cell_on",
         ]
+        parts += self._ba_range_lines("59n", bool(self._swv_autorange.get()), "59n", "59n")
+        parts += ["cell_on"]
         if float(cond_time) > 0:
             parts += [f"# Equilibrate at {cond_pot} for {cond_time}s",
                       f"set_e {cond_pot}", f"wait {cond_time}"]
@@ -553,6 +574,7 @@ class MethodTab:
             return
         # Extract raw string values for hashing
         raw_params = {k: v.get() for k, v in self.cv_params.items()}
+        raw_params["ba_autorange"] = "1" if self._cv_autorange.get() else "0"
         note = (self._library_note.get() or "").strip()
         if mux:
             for ch in mux:
@@ -575,6 +597,7 @@ class MethodTab:
         if n_scans is None:
             return
         raw_params = {k: v.get() for k, v in self.swv_params.items()}
+        raw_params["ba_autorange"] = "1" if self._swv_autorange.get() else "0"
         note = (self._library_note.get() or "").strip()
 
         added = []

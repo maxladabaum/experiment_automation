@@ -47,6 +47,17 @@ class MethodRegistry:
         Level 2: persistent library (methods/library)
         Level 3: new script -> write to library (+ optional dated working copy)
         """
+        # Backward compatibility: older call sites passed mux_channel as the
+        # third positional argument.
+        if params is not None and not isinstance(params, dict):
+            if mux_channel is None:
+                mux_channel = params
+                params = None
+            else:
+                raise TypeError(
+                    "params must be a dict when provided; "
+                    f"got {type(params).__name__}"
+                )
         if params is None:
             # Fall back to script-content hashing for ad-hoc scripts.
             params = {"_script_hash": hashlib.sha1(script.encode("utf-8")).hexdigest()[:12]}
