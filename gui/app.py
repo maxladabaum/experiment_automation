@@ -329,14 +329,10 @@ class ElectrochemGUI:
             )
             return
 
-        if technique in ("CV", "SWV"):
-            mux_channel = extra   # int or None
-            self._run_single(technique, script_or_base, mux_channel)
-
-        elif technique in ("CV_MUX_SEQ", "SWV_MUX_SEQ"):
+        if technique.endswith("_MUX_SEQ"):
             base_script = script_or_base
             channels    = extra   # list[int]
-            tech        = "CV" if technique.startswith("CV") else "SWV"
+            tech        = technique[: -len("_MUX_SEQ")]
             self._run_mux_sequence(tech, base_script, channels)
 
         elif technique == "SWV_CYCLES":
@@ -347,9 +343,22 @@ class ElectrochemGUI:
             channels, n_scans, delay = extra
             self._run_mux_swv_cycles(script_or_base, channels, n_scans, delay)
 
+        else:
+            mux_channel = extra   # int or None
+            self._run_single(technique, script_or_base, mux_channel)
+
+    def _require_run_data_folder(self):
+        """Return the active experiment folder for immediate measurement runs."""
+        if self._session_mgr is None:
+            return None
+        return self._session_mgr.require_experiment()
+
     # ── Single run ────────────────────────────────────────────────────────────
 
     def _run_single(self, technique: str, script: str, mux_channel=None):
+        data_folder = self._require_run_data_folder()
+        if data_folder is None:
+            return
         try:
             fp, fn = self._session.registry.save_script(
                 technique,
@@ -372,6 +381,7 @@ class ElectrochemGUI:
                 fp,
                 log_callback  = self._session_mgr.log,
                 data_callback = self._plotter_tab.push_live_point,
+                data_folder = data_folder,
                 save_raw_packets = self._session.save_raw_packets,
                 simulate_measurements = self._session.simulate_measurements,
                 invert_current = (technique == "SWV"),
@@ -408,6 +418,9 @@ class ElectrochemGUI:
     # ── MUX sequence run ──────────────────────────────────────────────────────
 
     def _run_mux_sequence(self, technique: str, base_script: str, channels: list):
+        data_folder = self._require_run_data_folder()
+        if data_folder is None:
+            return
         self._queue_tab.clear_log()
         self._session.is_running = True
         last_csv = None
@@ -437,6 +450,7 @@ class ElectrochemGUI:
                 runner = SerialMeasurementRunner(
                     fp, log_callback=self._session_mgr.log,
                     data_callback=self._plotter_tab.push_live_point,
+                    data_folder=data_folder,
                     save_raw_packets=self._session.save_raw_packets,
                     simulate_measurements=self._session.simulate_measurements,
                     invert_current=(technique == "SWV"),
@@ -473,6 +487,9 @@ class ElectrochemGUI:
     # ── SWV multi-scan (no MUX) ───────────────────────────────────────────────
 
     def _run_swv_cycles(self, base_script: str, n_scans: int, delay: float):
+        data_folder = self._require_run_data_folder()
+        if data_folder is None:
+            return
         self._queue_tab.clear_log()
         self._session.is_running = True
 
@@ -494,6 +511,7 @@ class ElectrochemGUI:
                 runner = SerialMeasurementRunner(
                     fp, log_callback=self._session_mgr.log,
                     data_callback=self._plotter_tab.push_live_point,
+                    data_folder=data_folder,
                     save_raw_packets=self._session.save_raw_packets,
                     simulate_measurements=self._session.simulate_measurements,
                     invert_current=True,
@@ -535,6 +553,9 @@ class ElectrochemGUI:
     # ── SWV multi-scan + MUX ─────────────────────────────────────────────────
 
     def _run_mux_swv_cycles(self, base_script, channels, n_scans, delay):
+        data_folder = self._require_run_data_folder()
+        if data_folder is None:
+            return
         self._queue_tab.clear_log()
         self._session.is_running = True
 
@@ -562,6 +583,7 @@ class ElectrochemGUI:
                     runner = SerialMeasurementRunner(
                         fp, log_callback=self._session_mgr.log,
                         data_callback=self._plotter_tab.push_live_point,
+                        data_folder=data_folder,
                         save_raw_packets=self._session.save_raw_packets,
                         simulate_measurements=self._session.simulate_measurements,
                         invert_current=True,

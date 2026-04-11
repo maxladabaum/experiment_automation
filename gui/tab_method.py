@@ -23,6 +23,34 @@ from config import DEVICE_KEYWORDS
 from core.session import SessionState
 from gui.tab_custom_script import CustomScriptPanel
 
+EMSTAT_PICO_LOW_SPEED_BA_RANGES = (
+    ("100 nA", "48.9n"),
+    ("1.95 uA", "956n"),
+    ("3.91 uA", "1.91u"),
+    ("7.81 uA", "3.82u"),
+    ("15.63 uA", "7.65u"),
+    ("31.25 uA", "15.3u"),
+    ("62.5 uA", "30.6u"),
+    ("125 uA", "61.2u"),
+    ("250 uA", "122u"),
+    ("500 uA", "245u"),
+    ("1 mA", "489u"),
+    ("5 mA", "2.45m"),
+)
+
+EMSTAT_PICO_HIGH_SPEED_BA_RANGES = (
+    ("100 nA", "48.9n"),
+    ("1 uA", "489n"),
+    ("6.25 uA", "3.06u"),
+    ("12.5 uA", "6.12u"),
+    ("25 uA", "12.2u"),
+    ("50 uA", "24.5u"),
+    ("100 uA", "48.9u"),
+    ("200 uA", "97.9u"),
+    ("1 mA", "489u"),
+    ("5 mA", "2.45m"),
+)
+
 class MethodTab:
     """Manages the 'Method Creation' notebook tab.
 
@@ -63,11 +91,22 @@ class MethodTab:
 
         self.current_technique = "CV"
         self.cv_params:  dict  = {}
+        self.lsv_params: dict  = {}
         self.swv_params: dict  = {}
         self.pause_params: dict = {}
         self._library_note = tk.StringVar(value="")
-        self._cv_autorange = tk.BooleanVar(value=True)
-        self._swv_autorange = tk.BooleanVar(value=False)
+        self._cv_range_mode = tk.StringVar(value="auto")
+        self._cv_fixed_range = tk.StringVar(value="250 uA")
+        self._cv_auto_min = tk.StringVar(value="100 nA")
+        self._cv_auto_max = tk.StringVar(value="250 uA")
+        self._lsv_range_mode = tk.StringVar(value="fixed")
+        self._lsv_fixed_range = tk.StringVar(value="15.63 uA")
+        self._lsv_auto_min = tk.StringVar(value="100 nA")
+        self._lsv_auto_max = tk.StringVar(value="15.63 uA")
+        self._swv_range_mode = tk.StringVar(value="fixed")
+        self._swv_fixed_range = tk.StringVar(value="100 nA")
+        self._swv_auto_min = tk.StringVar(value="100 nA")
+        self._swv_auto_max = tk.StringVar(value="100 nA")
         self._device_port_var = tk.StringVar(value="Auto (detect)")
         self._device_port_choices = []
         self._device_port_info_by_device = {}
@@ -85,6 +124,8 @@ class MethodTab:
         tech_frame.pack(pady=10)
         ttk.Button(tech_frame, text="Cyclic Voltammetry (CV)",
                    command=self._show_cv_params, width=28).pack(pady=5)
+        ttk.Button(tech_frame, text="Linear Sweep Voltammetry (LSV)",
+                   command=self._show_lsv_params, width=28).pack(pady=5)
         ttk.Button(tech_frame, text="Square Wave Voltammetry (SWV)",
            command=self._show_swv_params, width=28).pack(pady=5)
         ttk.Button(tech_frame, text="Custom Script (File)",
@@ -266,14 +307,14 @@ class MethodTab:
             entry.grid(row=i, column=1, pady=2)
             self.cv_params[key] = entry
 
-        ttk.Checkbutton(
-            self._params_frame,
-            text="Enable BA autoranging",
-            variable=self._cv_autorange,
-        ).grid(row=len(params), column=0, columnspan=2, sticky="w", pady=(6, 2))
+        self._build_ba_range_controls(
+            row=len(params),
+            technique="CV",
+            title="Current Range (EmStat Pico low-speed mode)",
+        )
 
         ttk.Label(self._params_frame, text="Library note (optional):").grid(
-            row=len(params) + 1, column=0, sticky="w", pady=2)
+            row=len(params) + 1, column=0, sticky="w", pady=(8, 2))
         ttk.Entry(self._params_frame, width=40, textvariable=self._library_note).grid(
             row=len(params) + 1, column=1, sticky="w", pady=2)
 
@@ -285,6 +326,47 @@ class MethodTab:
                    command=self._run_cv_now).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Add to Queue",
                    command=self._add_cv_to_queue).pack(side="left", padx=5)
+
+    def _show_lsv_params(self):
+        self._clear_params()
+        self.current_technique = "LSV"
+        self.lsv_params = {}
+        params = [
+            ("Begin Potential (V):",                "begin_potential", "-0.7"),
+            ("End Potential (V):",                  "end_potential",   "-1.0"),
+            ("Step Potential (V):",                 "step_potential",  "0.001"),
+            ("Scan Rate (V/s):",                    "scan_rate",       "0.001"),
+            ("Conditioning Potential (V):",         "cond_potential",  "-0.7"),
+            ("Conditioning Time (s):",              "cond_time",       "0"),
+            ("MUX16 Channels (1-16, 0=off):",       "mux_channel",     "0"),
+        ]
+        for i, (label, key, default) in enumerate(params):
+            ttk.Label(self._params_frame, text=label).grid(
+                row=i, column=0, sticky="w", pady=2)
+            entry = ttk.Entry(self._params_frame, width=15)
+            entry.insert(0, default)
+            entry.grid(row=i, column=1, pady=2)
+            self.lsv_params[key] = entry
+
+        self._build_ba_range_controls(
+            row=len(params),
+            technique="LSV",
+            title="Current Range (EmStat Pico low-speed mode)",
+        )
+
+        ttk.Label(self._params_frame, text="Library note (optional):").grid(
+            row=len(params) + 1, column=0, sticky="w", pady=(8, 2))
+        ttk.Entry(self._params_frame, width=40, textvariable=self._library_note).grid(
+            row=len(params) + 1, column=1, sticky="w", pady=2)
+
+        btn_frame = ttk.Frame(self._params_frame)
+        btn_frame.grid(row=len(params) + 2, column=0, columnspan=2, pady=20)
+        ttk.Button(btn_frame, text="Generate Script",
+                   command=self._generate_lsv_script).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Run Now",
+                   command=self._run_lsv_now).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Add to Queue",
+                   command=self._add_lsv_to_queue).pack(side="left", padx=5)
 
     def _show_swv_params(self):
         self._clear_params()
@@ -310,14 +392,14 @@ class MethodTab:
             entry.grid(row=i, column=1, pady=2)
             self.swv_params[key] = entry
 
-        ttk.Checkbutton(
-            self._params_frame,
-            text="Enable BA autoranging",
-            variable=self._swv_autorange,
-        ).grid(row=len(params), column=0, columnspan=2, sticky="w", pady=(6, 2))
+        self._build_ba_range_controls(
+            row=len(params),
+            technique="SWV",
+            title="Current Range (EmStat Pico high-speed mode)",
+        )
 
         ttk.Label(self._params_frame, text="Library note (optional):").grid(
-            row=len(params) + 1, column=0, sticky="w", pady=2)
+            row=len(params) + 1, column=0, sticky="w", pady=(8, 2))
         ttk.Entry(self._params_frame, width=40, textvariable=self._library_note).grid(
             row=len(params) + 1, column=1, sticky="w", pady=2)
 
@@ -366,6 +448,145 @@ class MethodTab:
             return [f"set_range ba {fixed_range}", f"set_autoranging ba {auto_min} {auto_max}"]
         return [f"set_range ba {fixed_range}", f"set_autoranging ba {fixed_range} {fixed_range}"]
 
+    @staticmethod
+    def _range_labels(profile):
+        return [label for label, _selector in profile]
+
+    @staticmethod
+    def _range_selector(profile, label: str) -> str:
+        for option_label, selector in profile:
+            if option_label == label:
+                return selector
+        raise ValueError(f"Unsupported current range selection: {label}")
+
+    @staticmethod
+    def _range_index(profile, label: str) -> int:
+        for idx, (option_label, _selector) in enumerate(profile):
+            if option_label == label:
+                return idx
+        raise ValueError(f"Unsupported current range selection: {label}")
+
+    def _get_ba_range_state(self, technique: str):
+        tech = technique.upper()
+        if tech == "CV":
+            return (
+                EMSTAT_PICO_LOW_SPEED_BA_RANGES,
+                self._cv_range_mode,
+                self._cv_fixed_range,
+                self._cv_auto_min,
+                self._cv_auto_max,
+            )
+        if tech == "LSV":
+            return (
+                EMSTAT_PICO_LOW_SPEED_BA_RANGES,
+                self._lsv_range_mode,
+                self._lsv_fixed_range,
+                self._lsv_auto_min,
+                self._lsv_auto_max,
+            )
+        if tech == "SWV":
+            return (
+                EMSTAT_PICO_HIGH_SPEED_BA_RANGES,
+                self._swv_range_mode,
+                self._swv_fixed_range,
+                self._swv_auto_min,
+                self._swv_auto_max,
+            )
+        raise ValueError(f"Unsupported technique for BA range controls: {technique}")
+
+    def _build_ba_range_controls(self, row: int, technique: str, title: str):
+        profile, mode_var, fixed_var, auto_min_var, auto_max_var = self._get_ba_range_state(technique)
+        labels = self._range_labels(profile)
+
+        frame = ttk.LabelFrame(self._params_frame, text=title, padding=8)
+        frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(8, 2))
+        frame.columnconfigure(1, weight=1)
+
+        def _sync():
+            fixed_box.configure(state="readonly" if mode_var.get() == "fixed" else "disabled")
+            auto_state = "readonly" if mode_var.get() == "auto" else "disabled"
+            min_box.configure(state=auto_state)
+            max_box.configure(state=auto_state)
+
+        ttk.Radiobutton(
+            frame, text="Fixed", variable=mode_var, value="fixed", command=_sync
+        ).grid(row=0, column=0, sticky="w")
+        ttk.Radiobutton(
+            frame, text="Autorange", variable=mode_var, value="auto", command=_sync
+        ).grid(row=0, column=1, sticky="w")
+
+        ttk.Label(frame, text="Fixed range:").grid(row=1, column=0, sticky="w", pady=(6, 2))
+        fixed_box = ttk.Combobox(
+            frame, textvariable=fixed_var, values=labels, state="readonly", width=14
+        )
+        fixed_box.grid(row=1, column=1, sticky="w", pady=(6, 2))
+
+        ttk.Label(frame, text="Autorange min:").grid(row=2, column=0, sticky="w", pady=2)
+        min_box = ttk.Combobox(
+            frame, textvariable=auto_min_var, values=labels, state="readonly", width=14
+        )
+        min_box.grid(row=2, column=1, sticky="w", pady=2)
+
+        ttk.Label(frame, text="Autorange max:").grid(row=3, column=0, sticky="w", pady=2)
+        max_box = ttk.Combobox(
+            frame, textvariable=auto_max_var, values=labels, state="readonly", width=14
+        )
+        max_box.grid(row=3, column=1, sticky="w", pady=2)
+
+        ttk.Label(
+            frame,
+            text="Ranges are limited to EmStat Pico values for this measurement mode.",
+        ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 0))
+
+        _sync()
+
+    def _get_ba_range_config(self, technique: str) -> dict:
+        profile, mode_var, fixed_var, auto_min_var, auto_max_var = self._get_ba_range_state(technique)
+        mode = (mode_var.get() or "fixed").strip().lower()
+        fixed_label = fixed_var.get().strip()
+        auto_min_label = auto_min_var.get().strip()
+        auto_max_label = auto_max_var.get().strip()
+
+        labels = self._range_labels(profile)
+        if fixed_label not in labels:
+            raise ValueError(f"Invalid fixed current range: {fixed_label or '(empty)'}")
+        if auto_min_label not in labels:
+            raise ValueError(f"Invalid autorange minimum: {auto_min_label or '(empty)'}")
+        if auto_max_label not in labels:
+            raise ValueError(f"Invalid autorange maximum: {auto_max_label or '(empty)'}")
+        if self._range_index(profile, auto_min_label) > self._range_index(profile, auto_max_label):
+            raise ValueError("Autorange minimum must be less than or equal to autorange maximum.")
+
+        if mode == "auto":
+            set_range_value = self._range_selector(profile, auto_max_label)
+            auto_min_value = self._range_selector(profile, auto_min_label)
+            auto_max_value = self._range_selector(profile, auto_max_label)
+        else:
+            mode = "fixed"
+            set_range_value = self._range_selector(profile, fixed_label)
+            auto_min_value = set_range_value
+            auto_max_value = set_range_value
+
+        return {
+            "mode": mode,
+            "fixed_label": fixed_label,
+            "auto_min_label": auto_min_label,
+            "auto_max_label": auto_max_label,
+            "set_range_value": set_range_value,
+            "auto_min_value": auto_min_value,
+            "auto_max_value": auto_max_value,
+        }
+
+    def _serialize_ba_range_config(self, technique: str) -> dict:
+        cfg = self._get_ba_range_config(technique)
+        return {
+            "ba_autorange": "1" if cfg["mode"] == "auto" else "0",
+            "ba_range_mode": cfg["mode"],
+            "ba_fixed_range": cfg["fixed_label"],
+            "ba_auto_min": cfg["auto_min_label"],
+            "ba_auto_max": cfg["auto_max_label"],
+        }
+
     def _build_cv_script(self) -> str:
         p = self.cv_params
         begin      = to_si_string(p["begin_potential"].get(), "V")
@@ -376,12 +597,18 @@ class MethodTab:
         n_scans    = p["n_scans"].get()
         cond_pot   = to_si_string(p["cond_potential"].get(),  "V")
         cond_time  = p["cond_time"].get()
+        ba_cfg     = self._get_ba_range_config("CV")
 
         parts = [
             "e", "var c", "var p",
             "set_pgstat_mode 2", "set_max_bandwidth 40",
         ]
-        parts += self._ba_range_lines("100u", bool(self._cv_autorange.get()), "1n", "100u")
+        parts += self._ba_range_lines(
+            ba_cfg["set_range_value"],
+            ba_cfg["mode"] == "auto",
+            ba_cfg["auto_min_value"],
+            ba_cfg["auto_max_value"],
+        )
         if float(cond_time) > 0:
             parts += [f"set_e {cond_pot}", "cell_on",
                       f"# Condition for {cond_time}s", f"wait {cond_time}"]
@@ -394,6 +621,49 @@ class MethodTab:
         parts += ["# CV measurement loop", cv_cmd,
                   "\tpck_start", "\tpck_add p", "\tpck_add c", "\tpck_end",
                   "endloop", "on_finished:", "cell_off"]
+        return "\n".join(parts)
+
+    def _build_lsv_script(self) -> str:
+        p = self.lsv_params
+        begin_v    = float(p["begin_potential"].get())
+        end_v      = float(p["end_potential"].get())
+        begin      = to_si_string(p["begin_potential"].get(), "V")
+        end        = to_si_string(p["end_potential"].get(),   "V")
+        step       = to_si_string(p["step_potential"].get(),  "V")
+        scan_rate  = to_si_string(p["scan_rate"].get(),       "V/s")
+        cond_pot   = to_si_string(p["cond_potential"].get(),  "V")
+        cond_time  = p["cond_time"].get()
+        ba_cfg     = self._get_ba_range_config("LSV")
+
+        min_mv = int(min(begin_v, end_v) * 1000)
+        max_mv = int(max(begin_v, end_v) * 1000)
+
+        parts = [
+            "e", "var c", "var p",
+            "set_pgstat_chan 1",
+            "set_pgstat_mode 0",
+            "set_pgstat_chan 0",
+            "set_pgstat_mode 2",
+            "set_max_bandwidth 4",
+            f"set_range_minmax da {min_mv}m {max_mv}m",
+        ]
+        parts += self._ba_range_lines(
+            ba_cfg["set_range_value"],
+            ba_cfg["mode"] == "auto",
+            ba_cfg["auto_min_value"],
+            ba_cfg["auto_max_value"],
+        )
+        if float(cond_time) > 0:
+            parts += [f"set_e {cond_pot}", "cell_on",
+                      f"# Condition for {cond_time}s", f"wait {cond_time}"]
+            parts += [f"set_e {begin}"]
+        else:
+            parts += [f"set_e {begin}", "cell_on"]
+        parts += [
+            f"meas_loop_lsv p c {begin} {end} {step} {scan_rate}",
+            "\tpck_start", "\tpck_add p", "\tpck_add c", "\tpck_end",
+            "endloop", "on_finished:", "cell_off",
+        ]
         return "\n".join(parts)
 
     def _build_swv_script(self) -> str:
@@ -409,6 +679,7 @@ class MethodTab:
         frequency = to_si_string(p["frequency"].get(),       "Hz")
         cond_pot  = to_si_string(p["cond_potential"].get(),  "V")
         cond_time = p["cond_time"].get()
+        ba_cfg    = self._get_ba_range_config("SWV")
 
         min_mv = int((min(begin_v, end_v) - amp_v) * 1000)
         max_mv = int((max(begin_v, end_v) + amp_v) * 1000)
@@ -422,7 +693,12 @@ class MethodTab:
             "set_max_bandwidth 4k",
             f"set_range_minmax da {min_mv}m {max_mv}m",
         ]
-        parts += self._ba_range_lines("59n", bool(self._swv_autorange.get()), "59n", "59n")
+        parts += self._ba_range_lines(
+            ba_cfg["set_range_value"],
+            ba_cfg["mode"] == "auto",
+            ba_cfg["auto_min_value"],
+            ba_cfg["auto_max_value"],
+        )
         parts += ["cell_on"]
         if float(cond_time) > 0:
             parts += [f"# Equilibrate at {cond_pot} for {cond_time}s",
@@ -532,6 +808,23 @@ class MethodTab:
         except Exception as exc:
             messagebox.showerror("Error", f"Failed to generate script: {exc}")
 
+    def _generate_lsv_script(self):
+        try:
+            base   = self._build_lsv_script()
+            mux    = self._get_mux_channels(self.lsv_params)
+            if mux is None:
+                return
+            script = base
+            if mux:
+                script = self._wrap_mux(base, mux[0])
+                if len(mux) > 1:
+                    script = (f"# NOTE: Multiple channels selected "
+                               f"({', '.join(map(str, mux))}). "
+                               f"Preview shows ch {mux[0]}.\n") + script
+            self._script_preview(script)
+        except Exception as exc:
+            messagebox.showerror("Error", f"Failed to generate script: {exc}")
+
     def _generate_swv_script(self):
         try:
             base   = self._build_swv_script()
@@ -574,7 +867,7 @@ class MethodTab:
             return
         # Extract raw string values for hashing
         raw_params = {k: v.get() for k, v in self.cv_params.items()}
-        raw_params["ba_autorange"] = "1" if self._cv_autorange.get() else "0"
+        raw_params.update(self._serialize_ba_range_config("CV"))
         note = (self._library_note.get() or "").strip()
         if mux:
             for ch in mux:
@@ -583,6 +876,26 @@ class MethodTab:
         else:
             self._add_one("CV", base, raw_params, note=note)
             messagebox.showinfo("Success", "CV added to queue")
+        self._refresh_queue()
+
+    def _add_lsv_to_queue(self):
+        try:
+            base = self._build_lsv_script()
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc)); return
+        mux = self._get_mux_channels(self.lsv_params)
+        if mux is None:
+            return
+        raw_params = {k: v.get() for k, v in self.lsv_params.items()}
+        raw_params.update(self._serialize_ba_range_config("LSV"))
+        note = (self._library_note.get() or "").strip()
+        if mux:
+            for ch in mux:
+                self._add_one("LSV", self._wrap_mux(base, ch), raw_params, mux_channel=ch, note=note)
+            messagebox.showinfo("Success", f"LSV added for MUX channels: {', '.join(map(str, mux))}")
+        else:
+            self._add_one("LSV", base, raw_params, note=note)
+            messagebox.showinfo("Success", "LSV added to queue")
         self._refresh_queue()
 
     def _add_swv_to_queue(self):
@@ -597,7 +910,7 @@ class MethodTab:
         if n_scans is None:
             return
         raw_params = {k: v.get() for k, v in self.swv_params.items()}
-        raw_params["ba_autorange"] = "1" if self._swv_autorange.get() else "0"
+        raw_params.update(self._serialize_ba_range_config("SWV"))
         note = (self._library_note.get() or "").strip()
 
         added = []
@@ -677,6 +990,22 @@ class MethodTab:
                 self._run_now("CV_MUX_SEQ", base, mux)
         else:
             self._run_now("CV", base, None)
+
+    def _run_lsv_now(self):
+        try:
+            base = self._build_lsv_script()
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc)); return
+        mux = self._get_mux_channels(self.lsv_params)
+        if mux is None:
+            return
+        if mux:
+            if len(mux) == 1:
+                self._run_now("LSV", self._wrap_mux(base, mux[0]), mux[0])
+            else:
+                self._run_now("LSV_MUX_SEQ", base, mux)
+        else:
+            self._run_now("LSV", base, None)
 
     def _run_swv_now(self):
         try:
