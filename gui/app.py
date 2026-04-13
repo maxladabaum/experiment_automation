@@ -331,21 +331,44 @@ class ElectrochemGUI:
 
         if technique.endswith("_MUX_SEQ"):
             base_script = script_or_base
-            channels    = extra   # list[int]
+            if isinstance(extra, dict):
+                channels = extra.get("channels", [])
+                params = extra.get("params")
+            else:
+                channels = extra   # list[int]
+                params = None
             tech        = technique[: -len("_MUX_SEQ")]
-            self._run_mux_sequence(tech, base_script, channels)
+            self._run_mux_sequence(tech, base_script, channels, params=params)
 
         elif technique == "SWV_CYCLES":
-            n_scans, delay = extra
-            self._run_swv_cycles(script_or_base, n_scans, delay)
+            if isinstance(extra, dict):
+                n_scans = extra.get("n_scans")
+                delay = extra.get("delay")
+                params = extra.get("params")
+            else:
+                n_scans, delay = extra
+                params = None
+            self._run_swv_cycles(script_or_base, n_scans, delay, params=params)
 
         elif technique == "SWV_MUX_CYCLES":
-            channels, n_scans, delay = extra
-            self._run_mux_swv_cycles(script_or_base, channels, n_scans, delay)
+            if isinstance(extra, dict):
+                channels = extra.get("channels", [])
+                n_scans = extra.get("n_scans")
+                delay = extra.get("delay")
+                params = extra.get("params")
+            else:
+                channels, n_scans, delay = extra
+                params = None
+            self._run_mux_swv_cycles(script_or_base, channels, n_scans, delay, params=params)
 
         else:
-            mux_channel = extra   # int or None
-            self._run_single(technique, script_or_base, mux_channel)
+            if isinstance(extra, dict):
+                mux_channel = extra.get("mux_channel")
+                params = extra.get("params")
+            else:
+                mux_channel = extra   # int or None
+                params = None
+            self._run_single(technique, script_or_base, mux_channel, params=params)
 
     def _require_run_data_folder(self):
         """Return the active experiment folder for immediate measurement runs."""
@@ -355,7 +378,7 @@ class ElectrochemGUI:
 
     # ── Single run ────────────────────────────────────────────────────────────
 
-    def _run_single(self, technique: str, script: str, mux_channel=None):
+    def _run_single(self, technique: str, script: str, mux_channel=None, params=None):
         data_folder = self._require_run_data_folder()
         if data_folder is None:
             return
@@ -363,6 +386,7 @@ class ElectrochemGUI:
             fp, fn = self._session.registry.save_script(
                 technique,
                 script,
+                params=params,
                 mux_channel=mux_channel,
             )
         except Exception as exc:
@@ -417,7 +441,7 @@ class ElectrochemGUI:
 
     # ── MUX sequence run ──────────────────────────────────────────────────────
 
-    def _run_mux_sequence(self, technique: str, base_script: str, channels: list):
+    def _run_mux_sequence(self, technique: str, base_script: str, channels: list, params=None):
         data_folder = self._require_run_data_folder()
         if data_folder is None:
             return
@@ -436,6 +460,7 @@ class ElectrochemGUI:
                 fp, fn = self._session.registry.save_script(
                     technique,
                     mux_script,
+                    params=params,
                     mux_channel=ch,
                 )
                 color = self._session.next_plot_color()
@@ -486,7 +511,7 @@ class ElectrochemGUI:
 
     # ── SWV multi-scan (no MUX) ───────────────────────────────────────────────
 
-    def _run_swv_cycles(self, base_script: str, n_scans: int, delay: float):
+    def _run_swv_cycles(self, base_script: str, n_scans: int, delay: float, params=None):
         data_folder = self._require_run_data_folder()
         if data_folder is None:
             return
@@ -498,7 +523,7 @@ class ElectrochemGUI:
             for scan in range(1, n_scans + 1):
                 if not self._session.is_running:
                     stopped = True; success = False; break
-                fp, fn = self._session.registry.save_script("SWV", base_script)
+                fp, fn = self._session.registry.save_script("SWV", base_script, params=params)
                 color = self._session.next_plot_color()
                 label = f"SWV scan {scan}"
                 self.root.after(0, self._plotter_tab.start_live,
@@ -552,7 +577,7 @@ class ElectrochemGUI:
 
     # ── SWV multi-scan + MUX ─────────────────────────────────────────────────
 
-    def _run_mux_swv_cycles(self, base_script, channels, n_scans, delay):
+    def _run_mux_swv_cycles(self, base_script, channels, n_scans, delay, params=None):
         data_folder = self._require_run_data_folder()
         if data_folder is None:
             return
@@ -569,6 +594,7 @@ class ElectrochemGUI:
                     fp, fn = self._session.registry.save_script(
                         "SWV",
                         mux_script,
+                        params=params,
                         mux_channel=ch,
                     )
                     color = self._session.next_plot_color()

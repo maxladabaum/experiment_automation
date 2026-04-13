@@ -15,6 +15,12 @@ from methods.library_map import compute_hash, lookup, register, update_note
 from config import METHODS_DIR, SAVE_DATED_METHOD_COPIES
 
 
+def _normalized_script_hash(script: str) -> str:
+    """Hash script content while ignoring newline-only formatting changes."""
+    normalized = script.replace("\r\n", "\n").replace("\r", "\n").rstrip() + "\n"
+    return hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:12]
+
+
 class MethodRegistry:
     """Manages saving and deduplication of MethodSCRIPT files."""
 
@@ -60,7 +66,7 @@ class MethodRegistry:
                 )
         if params is None:
             # Fall back to script-content hashing for ad-hoc scripts.
-            params = {"_script_hash": hashlib.sha1(script.encode("utf-8")).hexdigest()[:12]}
+            params = {"_script_hash": _normalized_script_hash(script)}
         key = self._make_key(technique, params, mux_channel)
 
         # Level 1: session cache

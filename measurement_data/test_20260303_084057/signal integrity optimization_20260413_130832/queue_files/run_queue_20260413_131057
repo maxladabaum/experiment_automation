@@ -1,0 +1,14 @@
+{
+  "metadata": {
+    "saved_at": "2026-04-13T13:10:57",
+    "version": 1
+  },
+  "items": [
+    {
+      "type": "SWV",
+      "status": "completed",
+      "details": "swv_ch1_e197d4.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_e197d4.ms"
+    }
+  ]
+}

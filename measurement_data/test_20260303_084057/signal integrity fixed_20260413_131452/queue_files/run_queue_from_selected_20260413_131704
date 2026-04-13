@@ -1,0 +1,14 @@
+{
+  "metadata": {
+    "saved_at": "2026-04-13T13:17:04",
+    "version": 1
+  },
+  "items": [
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_58ac70.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_58ac70.ms"
+    }
+  ]
+}

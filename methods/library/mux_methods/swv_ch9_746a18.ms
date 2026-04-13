@@ -1,4 +1,7 @@
 e
+# MUX16 channel select
+set_gpio_cfg 0x3FFi 1
+set_gpio 136i
 var c
 var p
 var f
@@ -13,7 +16,7 @@ set_range ba 59n
 set_autoranging ba 59n 59n
 cell_on
 set_e -700m
-meas_loop_swv p c f r -700m -100m 2m 36m 200
+meas_loop_swv p c f r -700m -100m 2m 36m 400
 	pck_start
 		pck_add p
 		pck_add c

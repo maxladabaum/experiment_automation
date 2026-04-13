@@ -5,3 +5,1838 @@
 [2026-03-22 16:31:00] [SIM] Connected (COM8)
 [2026-04-11 16:04:26] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
 [2026-04-11 16:04:26] [SIM] Connected (COM8)
+[2026-04-13 13:04:10] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-13 13:04:10] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-13 13:04:10] Connected.
+[2026-04-13 13:08:32] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity optimization_20260413_130832
+[2026-04-13 13:08:32] ngrok tunnel started.
+[2026-04-13 13:10:08] Queue add: swv_a0df5f.ms
+[2026-04-13 13:10:15] Queue item deleted: swv_a0df5f.ms
+[2026-04-13 13:10:22] Queue add: swv_ch1_e197d4.ms (MUX ch 1)
+[2026-04-13 13:10:29] Queue start requested.
+[2026-04-13 13:10:29] Measurement simulation: OFF
+[2026-04-13 13:10:29] Queue file copied to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity optimization_20260413_130832\queue_files\run_queue_20260413_131029
+[2026-04-13 13:10:29] Queue start -> swv_ch1_e197d4.ms (MUX ch 1)
+[2026-04-13 13:10:29] [Tag] meas_20260413_1310_001_ch1
+[2026-04-13 13:10:29] ============================================================
+[2026-04-13 13:10:29] Starting measurement for: swv_ch1_e197d4.ms
+[2026-04-13 13:10:29] ============================================================
+[2026-04-13 13:10:29] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity optimization_20260413_130832\methods_used\swv_ch1_e197d4_meas_20260413_1310_001_ch1.ms
+[2026-04-13 13:10:29] Scanning for devices...
+[2026-04-13 13:10:29]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:10:29]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:10:29]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:10:29] Multiple devices found:
+[2026-04-13 13:10:29]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:10:29]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:10:29] Using first device: COM10
+[2026-04-13 13:10:29] Connecting to COM10...
+[2026-04-13 13:10:31] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:10:31] Sending script to device...
+[2026-04-13 13:10:32] Script sent. Collecting data...
+[2026-04-13 13:10:32] ----------------------------------------
+[2026-04-13 13:10:32] R*
+[2026-04-13 13:10:32] e!4004: Line 14, Col 16
+[2026-04-13 13:10:37] Warning: data stream idle timed out
+[2026-04-13 13:10:37] Total data points: 0
+[2026-04-13 13:10:37] Disconnected from device
+[2026-04-13 13:10:37] Queue completed.
+[2026-04-13 13:10:57] Queue start requested.
+[2026-04-13 13:10:57] Measurement simulation: OFF
+[2026-04-13 13:10:57] Queue file copied to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity optimization_20260413_130832\queue_files\run_queue_20260413_131057
+[2026-04-13 13:10:57] Queue start -> swv_ch1_e197d4.ms (MUX ch 1)
+[2026-04-13 13:10:57] [Tag] meas_20260413_1310_002_ch1
+[2026-04-13 13:10:57] ============================================================
+[2026-04-13 13:10:57] Starting measurement for: swv_ch1_e197d4.ms
+[2026-04-13 13:10:57] ============================================================
+[2026-04-13 13:10:57] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity optimization_20260413_130832\methods_used\swv_ch1_e197d4_meas_20260413_1310_002_ch1.ms
+[2026-04-13 13:10:57] Scanning for devices...
+[2026-04-13 13:10:57]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:10:57]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:10:57]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:10:57] Multiple devices found:
+[2026-04-13 13:10:57]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:10:57]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:10:57] Using first device: COM10
+[2026-04-13 13:10:57] Connecting to COM10...
+[2026-04-13 13:10:59] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:10:59] Sending script to device...
+[2026-04-13 13:11:00] Script sent. Collecting data...
+[2026-04-13 13:11:00] ----------------------------------------
+[2026-04-13 13:11:00] R*
+[2026-04-13 13:11:00] e!4004: Line 14, Col 16
+[2026-04-13 13:11:05] Warning: data stream idle timed out
+[2026-04-13 13:11:05] Total data points: 0
+[2026-04-13 13:11:05] Disconnected from device
+[2026-04-13 13:11:05] Queue completed.
+[2026-04-13 13:14:43] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-13 13:14:43] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-13 13:14:44] Connected.
+[2026-04-13 13:14:52] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452
+[2026-04-13 13:14:52] ngrok tunnel started.
+[2026-04-13 13:15:41] Queue add: swv_ch1_7995ab.ms (MUX ch 1)
+[2026-04-13 13:15:45] Queue start requested.
+[2026-04-13 13:15:45] Measurement simulation: OFF
+[2026-04-13 13:15:46] Queue file copied to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\queue_files\run_queue_20260413_131546
+[2026-04-13 13:15:46] Queue start -> swv_ch1_7995ab.ms (MUX ch 1)
+[2026-04-13 13:15:46] [Tag] meas_20260413_1315_001_ch1
+[2026-04-13 13:15:46] ============================================================
+[2026-04-13 13:15:46] Starting measurement for: swv_ch1_7995ab.ms
+[2026-04-13 13:15:46] ============================================================
+[2026-04-13 13:15:46] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\methods_used\swv_ch1_7995ab_meas_20260413_1315_001_ch1.ms
+[2026-04-13 13:15:46] Scanning for devices...
+[2026-04-13 13:15:46]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:15:46]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:15:46]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:15:46] Multiple devices found:
+[2026-04-13 13:15:46]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:15:46]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:15:46] Using first device: COM10
+[2026-04-13 13:15:46] Connecting to COM10...
+[2026-04-13 13:15:48] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:15:48] Sending script to device...
+[2026-04-13 13:15:48] Script sent. Collecting data...
+[2026-04-13 13:15:48] ----------------------------------------
+[2026-04-13 13:15:48] R*
+[2026-04-13 13:15:48] e
+[2026-04-13 13:15:49] M0002
+[2026-04-13 13:15:50] *
+[2026-04-13 13:15:50] 
+Measurement completed
+[2026-04-13 13:15:50] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\swv_ch1_7995ab_meas_20260413_1315_001_ch1.csv
+[2026-04-13 13:15:50] Total data points: 305
+[2026-04-13 13:15:50] Disconnected from device
+[2026-04-13 13:15:50] Queue completed.
+[2026-04-13 13:16:07] [Tag] meas_20260413_1316_002_ch1
+[2026-04-13 13:16:07] ============================================================
+[2026-04-13 13:16:07] Starting measurement for: swv_ch1_9a6801.ms
+[2026-04-13 13:16:07] ============================================================
+[2026-04-13 13:16:07] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\methods_used\swv_ch1_9a6801_meas_20260413_1316_002_ch1.ms
+[2026-04-13 13:16:07] Scanning for devices...
+[2026-04-13 13:16:07]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:16:07]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:16:07]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:16:07] Multiple devices found:
+[2026-04-13 13:16:07]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:16:07]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:16:07] Using first device: COM10
+[2026-04-13 13:16:07] Connecting to COM10...
+[2026-04-13 13:16:09] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:16:09] Sending script to device...
+[2026-04-13 13:16:09] Script sent. Collecting data...
+[2026-04-13 13:16:09] ----------------------------------------
+[2026-04-13 13:16:09] R*
+[2026-04-13 13:16:09] e
+[2026-04-13 13:16:09] M0002
+[2026-04-13 13:16:11] *
+[2026-04-13 13:16:11] 
+Measurement completed
+[2026-04-13 13:16:11] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\swv_ch1_9a6801_meas_20260413_1316_002_ch1.csv
+[2026-04-13 13:16:11] Total data points: 305
+[2026-04-13 13:16:11] Disconnected from device
+[2026-04-13 13:16:26] [Tag] meas_20260413_1316_003_ch1
+[2026-04-13 13:16:26] ============================================================
+[2026-04-13 13:16:26] Starting measurement for: swv_ch1_96169d.ms
+[2026-04-13 13:16:26] ============================================================
+[2026-04-13 13:16:26] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\methods_used\swv_ch1_96169d_meas_20260413_1316_003_ch1.ms
+[2026-04-13 13:16:26] Scanning for devices...
+[2026-04-13 13:16:26]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:16:26]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:16:26]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:16:26] Multiple devices found:
+[2026-04-13 13:16:26]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:16:26]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:16:26] Using first device: COM10
+[2026-04-13 13:16:26] Connecting to COM10...
+[2026-04-13 13:16:28] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:16:28] Sending script to device...
+[2026-04-13 13:16:28] Script sent. Collecting data...
+[2026-04-13 13:16:28] ----------------------------------------
+[2026-04-13 13:16:28] R*
+[2026-04-13 13:16:28] e
+[2026-04-13 13:16:28] M0002
+[2026-04-13 13:16:30] *
+[2026-04-13 13:16:30] 
+Measurement completed
+[2026-04-13 13:16:30] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\swv_ch1_96169d_meas_20260413_1316_003_ch1.csv
+[2026-04-13 13:16:30] Total data points: 305
+[2026-04-13 13:16:30] Disconnected from device
+[2026-04-13 13:16:54] Queue add: swv_ch1_58ac70.ms (MUX ch 1)
+[2026-04-13 13:17:01] Queue item deleted: swv_ch1_7995ab.ms (MUX ch 1)
+[2026-04-13 13:17:04] Queue start from selected requested.
+[2026-04-13 13:17:04] Measurement simulation: OFF
+[2026-04-13 13:17:04] Queue file copied to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\queue_files\run_queue_from_selected_20260413_131704
+[2026-04-13 13:17:04] Queue start -> swv_ch1_58ac70.ms (MUX ch 1)
+[2026-04-13 13:17:04] [Tag] meas_20260413_1317_004_ch1
+[2026-04-13 13:17:05] ============================================================
+[2026-04-13 13:17:05] Starting measurement for: swv_ch1_58ac70.ms
+[2026-04-13 13:17:05] ============================================================
+[2026-04-13 13:17:05] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\methods_used\swv_ch1_58ac70_meas_20260413_1317_004_ch1.ms
+[2026-04-13 13:17:05] Scanning for devices...
+[2026-04-13 13:17:05]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:17:05]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:17:05]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:17:05] Multiple devices found:
+[2026-04-13 13:17:05]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:17:05]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:17:05] Using first device: COM10
+[2026-04-13 13:17:05] Connecting to COM10...
+[2026-04-13 13:17:07] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:17:07] Sending script to device...
+[2026-04-13 13:17:07] Script sent. Collecting data...
+[2026-04-13 13:17:07] ----------------------------------------
+[2026-04-13 13:17:07] R*
+[2026-04-13 13:17:07] e
+[2026-04-13 13:17:07] M0002
+[2026-04-13 13:17:09] *
+[2026-04-13 13:17:09] 
+Measurement completed
+[2026-04-13 13:17:09] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\swv_ch1_58ac70_meas_20260413_1317_004_ch1.csv
+[2026-04-13 13:17:09] Total data points: 305
+[2026-04-13 13:17:09] Disconnected from device
+[2026-04-13 13:17:09] Queue completed.
+[2026-04-13 13:17:19] [Tag] meas_20260413_1317_005_ch1
+[2026-04-13 13:17:19] ============================================================
+[2026-04-13 13:17:19] Starting measurement for: swv_ch1_9a6801.ms
+[2026-04-13 13:17:19] ============================================================
+[2026-04-13 13:17:19] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\methods_used\swv_ch1_9a6801_meas_20260413_1317_005_ch1.ms
+[2026-04-13 13:17:19] Scanning for devices...
+[2026-04-13 13:17:19]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:17:19]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:17:19]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:17:19] Multiple devices found:
+[2026-04-13 13:17:19]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:17:19]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:17:19] Using first device: COM10
+[2026-04-13 13:17:19] Connecting to COM10...
+[2026-04-13 13:17:21] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:17:21] Sending script to device...
+[2026-04-13 13:17:22] Script sent. Collecting data...
+[2026-04-13 13:17:22] ----------------------------------------
+[2026-04-13 13:17:22] R*
+[2026-04-13 13:17:22] e
+[2026-04-13 13:17:22] M0002
+[2026-04-13 13:17:24] *
+[2026-04-13 13:17:24] 
+Measurement completed
+[2026-04-13 13:17:24] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\swv_ch1_9a6801_meas_20260413_1317_005_ch1.csv
+[2026-04-13 13:17:24] Total data points: 305
+[2026-04-13 13:17:24] Disconnected from device
+[2026-04-13 13:17:33] [Tag] meas_20260413_1317_006_ch1
+[2026-04-13 13:17:33] ============================================================
+[2026-04-13 13:17:33] Starting measurement for: swv_ch1_66d1cb.ms
+[2026-04-13 13:17:33] ============================================================
+[2026-04-13 13:17:33] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\methods_used\swv_ch1_66d1cb_meas_20260413_1317_006_ch1.ms
+[2026-04-13 13:17:33] Scanning for devices...
+[2026-04-13 13:17:33]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:17:33]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:17:33]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:17:33] Multiple devices found:
+[2026-04-13 13:17:33]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:17:33]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:17:33] Using first device: COM10
+[2026-04-13 13:17:33] Connecting to COM10...
+[2026-04-13 13:17:35] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:17:35] Sending script to device...
+[2026-04-13 13:17:35] Script sent. Collecting data...
+[2026-04-13 13:17:35] ----------------------------------------
+[2026-04-13 13:17:35] R*
+[2026-04-13 13:17:35] e
+[2026-04-13 13:17:35] M0002
+[2026-04-13 13:17:37] *
+[2026-04-13 13:17:37] 
+Measurement completed
+[2026-04-13 13:17:37] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\swv_ch1_66d1cb_meas_20260413_1317_006_ch1.csv
+[2026-04-13 13:17:37] Total data points: 305
+[2026-04-13 13:17:37] Disconnected from device
+[2026-04-13 13:17:44] [Tag] meas_20260413_1317_007_ch1
+[2026-04-13 13:17:44] ============================================================
+[2026-04-13 13:17:44] Starting measurement for: swv_ch1_9a6801.ms
+[2026-04-13 13:17:44] ============================================================
+[2026-04-13 13:17:44] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\methods_used\swv_ch1_9a6801_meas_20260413_1317_007_ch1.ms
+[2026-04-13 13:17:44] Scanning for devices...
+[2026-04-13 13:17:44]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:17:44]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:17:44]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:17:44] Multiple devices found:
+[2026-04-13 13:17:44]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:17:44]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:17:44] Using first device: COM10
+[2026-04-13 13:17:44] Connecting to COM10...
+[2026-04-13 13:17:46] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:17:46] Sending script to device...
+[2026-04-13 13:17:46] Script sent. Collecting data...
+[2026-04-13 13:17:46] ----------------------------------------
+[2026-04-13 13:17:46] R*
+[2026-04-13 13:17:46] e
+[2026-04-13 13:17:47] M0002
+[2026-04-13 13:17:48] *
+[2026-04-13 13:17:48] 
+Measurement completed
+[2026-04-13 13:17:48] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\swv_ch1_9a6801_meas_20260413_1317_007_ch1.csv
+[2026-04-13 13:17:48] Total data points: 305
+[2026-04-13 13:17:48] Disconnected from device
+[2026-04-13 13:18:16] [Tag] meas_20260413_1318_008_ch1
+[2026-04-13 13:18:16] ============================================================
+[2026-04-13 13:18:16] Starting measurement for: swv_ch1_cea06a.ms
+[2026-04-13 13:18:16] ============================================================
+[2026-04-13 13:18:16] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\methods_used\swv_ch1_cea06a_meas_20260413_1318_008_ch1.ms
+[2026-04-13 13:18:16] Scanning for devices...
+[2026-04-13 13:18:16]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:18:16]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:18:16]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:18:16] Multiple devices found:
+[2026-04-13 13:18:16]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:18:16]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:18:16] Using first device: COM10
+[2026-04-13 13:18:16] Connecting to COM10...
+[2026-04-13 13:18:18] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:18:18] Sending script to device...
+[2026-04-13 13:18:18] Script sent. Collecting data...
+[2026-04-13 13:18:18] ----------------------------------------
+[2026-04-13 13:18:18] R*
+[2026-04-13 13:18:19] e
+[2026-04-13 13:18:19] M0002
+[2026-04-13 13:18:20] *
+[2026-04-13 13:18:20] 
+Measurement completed
+[2026-04-13 13:18:20] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_131452\swv_ch1_cea06a_meas_20260413_1318_008_ch1.csv
+[2026-04-13 13:18:20] Total data points: 305
+[2026-04-13 13:18:20] Disconnected from device
+[2026-04-13 13:21:15] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-13 13:21:15] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-13 13:21:15] Connected.
+[2026-04-13 13:21:27] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127
+[2026-04-13 13:21:27] ngrok tunnel started.
+[2026-04-13 13:21:56] [Tag] meas_20260413_1321_001
+[2026-04-13 13:21:56] ============================================================
+[2026-04-13 13:21:56] Starting measurement for: swv_be13b4.ms
+[2026-04-13 13:21:56] ============================================================
+[2026-04-13 13:21:56] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_be13b4_meas_20260413_1321_001.ms
+[2026-04-13 13:21:56] Scanning for devices...
+[2026-04-13 13:21:56]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:21:56]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:21:56]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:21:56] Multiple devices found:
+[2026-04-13 13:21:56]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:21:56]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:21:56] Using first device: COM10
+[2026-04-13 13:21:56] Connecting to COM10...
+[2026-04-13 13:21:58] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:21:58] Sending script to device...
+[2026-04-13 13:21:58] Script sent. Collecting data...
+[2026-04-13 13:21:58] ----------------------------------------
+[2026-04-13 13:21:58] R*
+[2026-04-13 13:21:58] e
+[2026-04-13 13:21:58] M0007
+[2026-04-13 13:21:59] *
+[2026-04-13 13:21:59] 
+Measurement completed
+[2026-04-13 13:21:59] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\swv_be13b4_meas_20260413_1321_001.csv
+[2026-04-13 13:21:59] Total data points: 5
+[2026-04-13 13:22:00] Disconnected from device
+[2026-04-13 13:22:37] [Tag] meas_20260413_1322_002_ch1
+[2026-04-13 13:22:37] ============================================================
+[2026-04-13 13:22:37] Starting measurement for: swv_ch1_bb4629.ms
+[2026-04-13 13:22:37] ============================================================
+[2026-04-13 13:22:37] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_ch1_bb4629_meas_20260413_1322_002_ch1.ms
+[2026-04-13 13:22:37] Scanning for devices...
+[2026-04-13 13:22:37]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:22:37]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:22:37]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:22:37] Multiple devices found:
+[2026-04-13 13:22:37]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:22:37]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:22:37] Using first device: COM10
+[2026-04-13 13:22:37] Connecting to COM10...
+[2026-04-13 13:22:39] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:22:39] Sending script to device...
+[2026-04-13 13:22:40] Script sent. Collecting data...
+[2026-04-13 13:22:40] ----------------------------------------
+[2026-04-13 13:22:40] R*
+[2026-04-13 13:22:40] e
+[2026-04-13 13:22:41] M0002
+[2026-04-13 13:22:42] *
+[2026-04-13 13:22:42] 
+Measurement completed
+[2026-04-13 13:22:42] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\swv_ch1_bb4629_meas_20260413_1322_002_ch1.csv
+[2026-04-13 13:22:42] Total data points: 305
+[2026-04-13 13:22:43] Disconnected from device
+[2026-04-13 13:22:43] [Tag] meas_20260413_1322_003_ch1
+[2026-04-13 13:22:43] ============================================================
+[2026-04-13 13:22:43] Starting measurement for: swv_ch1_bb4629.ms
+[2026-04-13 13:22:43] ============================================================
+[2026-04-13 13:22:43] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_ch1_bb4629_meas_20260413_1322_003_ch1.ms
+[2026-04-13 13:22:43] Scanning for devices...
+[2026-04-13 13:22:43]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:22:43]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:22:43]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:22:43] Multiple devices found:
+[2026-04-13 13:22:43]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:22:43]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:22:43] Using first device: COM10
+[2026-04-13 13:22:43] Connecting to COM10...
+[2026-04-13 13:22:45] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:22:45] Sending script to device...
+[2026-04-13 13:22:46] Script sent. Collecting data...
+[2026-04-13 13:22:46] ----------------------------------------
+[2026-04-13 13:22:46] R*
+[2026-04-13 13:22:46] e
+[2026-04-13 13:22:47] M0002
+[2026-04-13 13:22:48] *
+[2026-04-13 13:22:48] 
+Measurement completed
+[2026-04-13 13:22:48] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\swv_ch1_bb4629_meas_20260413_1322_003_ch1.csv
+[2026-04-13 13:22:48] Total data points: 305
+[2026-04-13 13:22:48] Disconnected from device
+[2026-04-13 13:22:49] [Tag] meas_20260413_1322_004_ch1
+[2026-04-13 13:22:49] ============================================================
+[2026-04-13 13:22:49] Starting measurement for: swv_ch1_bb4629.ms
+[2026-04-13 13:22:49] ============================================================
+[2026-04-13 13:22:49] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_ch1_bb4629_meas_20260413_1322_004_ch1.ms
+[2026-04-13 13:22:49] Scanning for devices...
+[2026-04-13 13:22:49]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:22:49]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:22:49]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:22:49] Multiple devices found:
+[2026-04-13 13:22:49]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:22:49]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:22:49] Using first device: COM10
+[2026-04-13 13:22:49] Connecting to COM10...
+[2026-04-13 13:22:51] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:22:51] Sending script to device...
+[2026-04-13 13:22:51] Script sent. Collecting data...
+[2026-04-13 13:22:51] ----------------------------------------
+[2026-04-13 13:22:51] R*
+[2026-04-13 13:22:51] e
+[2026-04-13 13:22:52] M0002
+[2026-04-13 13:22:54] *
+[2026-04-13 13:22:54] 
+Measurement completed
+[2026-04-13 13:22:54] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\swv_ch1_bb4629_meas_20260413_1322_004_ch1.csv
+[2026-04-13 13:22:54] Total data points: 305
+[2026-04-13 13:22:54] Disconnected from device
+[2026-04-13 13:23:35] [Tag] meas_20260413_1323_005_ch1
+[2026-04-13 13:23:35] ============================================================
+[2026-04-13 13:23:35] Starting measurement for: swv_ch1_9a6801.ms
+[2026-04-13 13:23:35] ============================================================
+[2026-04-13 13:23:35] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_ch1_9a6801_meas_20260413_1323_005_ch1.ms
+[2026-04-13 13:23:35] Scanning for devices...
+[2026-04-13 13:23:35]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:23:35]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:23:35]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:23:35] Multiple devices found:
+[2026-04-13 13:23:35]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:23:35]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:23:35] Using first device: COM10
+[2026-04-13 13:23:35] Connecting to COM10...
+[2026-04-13 13:23:37] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:23:37] Sending script to device...
+[2026-04-13 13:23:38] Script sent. Collecting data...
+[2026-04-13 13:23:38] ----------------------------------------
+[2026-04-13 13:23:38] R*
+[2026-04-13 13:23:38] e
+[2026-04-13 13:23:38] M0002
+[2026-04-13 13:23:39] *
+[2026-04-13 13:23:39] 
+Measurement completed
+[2026-04-13 13:23:39] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\swv_ch1_9a6801_meas_20260413_1323_005_ch1.csv
+[2026-04-13 13:23:39] Total data points: 305
+[2026-04-13 13:23:40] Disconnected from device
+[2026-04-13 13:23:40] [Tag] meas_20260413_1323_006_ch1
+[2026-04-13 13:23:40] ============================================================
+[2026-04-13 13:23:40] Starting measurement for: swv_ch1_9a6801.ms
+[2026-04-13 13:23:40] ============================================================
+[2026-04-13 13:23:40] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_ch1_9a6801_meas_20260413_1323_006_ch1.ms
+[2026-04-13 13:23:40] Scanning for devices...
+[2026-04-13 13:23:40]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:23:40]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:23:40]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:23:40] Multiple devices found:
+[2026-04-13 13:23:40]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:23:40]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:23:40] Using first device: COM10
+[2026-04-13 13:23:40] Connecting to COM10...
+[2026-04-13 13:23:42] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:23:42] Sending script to device...
+[2026-04-13 13:23:42] Script sent. Collecting data...
+[2026-04-13 13:23:42] ----------------------------------------
+[2026-04-13 13:23:42] R*
+[2026-04-13 13:23:42] e
+[2026-04-13 13:23:42] M0002
+[2026-04-13 13:23:44] *
+[2026-04-13 13:23:44] 
+Measurement completed
+[2026-04-13 13:23:44] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\swv_ch1_9a6801_meas_20260413_1323_006_ch1.csv
+[2026-04-13 13:23:44] Total data points: 305
+[2026-04-13 13:23:44] Disconnected from device
+[2026-04-13 13:23:45] [Tag] meas_20260413_1323_007_ch1
+[2026-04-13 13:23:45] ============================================================
+[2026-04-13 13:23:45] Starting measurement for: swv_ch1_9a6801.ms
+[2026-04-13 13:23:45] ============================================================
+[2026-04-13 13:23:45] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_ch1_9a6801_meas_20260413_1323_007_ch1.ms
+[2026-04-13 13:23:45] Scanning for devices...
+[2026-04-13 13:23:45]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:23:45]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:23:45]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:23:45] Multiple devices found:
+[2026-04-13 13:23:45]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:23:45]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:23:45] Using first device: COM10
+[2026-04-13 13:23:45] Connecting to COM10...
+[2026-04-13 13:23:47] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:23:47] Sending script to device...
+[2026-04-13 13:23:47] Script sent. Collecting data...
+[2026-04-13 13:23:47] ----------------------------------------
+[2026-04-13 13:23:47] R*
+[2026-04-13 13:23:47] e
+[2026-04-13 13:23:47] M0002
+[2026-04-13 13:23:49] *
+[2026-04-13 13:23:49] 
+Measurement completed
+[2026-04-13 13:23:49] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\swv_ch1_9a6801_meas_20260413_1323_007_ch1.csv
+[2026-04-13 13:23:49] Total data points: 305
+[2026-04-13 13:23:49] Disconnected from device
+[2026-04-13 13:24:15] [Tag] meas_20260413_1324_008_ch1
+[2026-04-13 13:24:15] ============================================================
+[2026-04-13 13:24:15] Starting measurement for: swv_ch1_cea06a.ms
+[2026-04-13 13:24:15] ============================================================
+[2026-04-13 13:24:15] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_ch1_cea06a_meas_20260413_1324_008_ch1.ms
+[2026-04-13 13:24:15] Scanning for devices...
+[2026-04-13 13:24:15]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:24:15]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:24:15]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:24:15] Multiple devices found:
+[2026-04-13 13:24:15]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:24:15]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:24:15] Using first device: COM10
+[2026-04-13 13:24:15] Connecting to COM10...
+[2026-04-13 13:24:17] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:24:17] Sending script to device...
+[2026-04-13 13:24:18] Script sent. Collecting data...
+[2026-04-13 13:24:18] ----------------------------------------
+[2026-04-13 13:24:18] R*
+[2026-04-13 13:24:18] e
+[2026-04-13 13:24:18] M0002
+[2026-04-13 13:24:19] *
+[2026-04-13 13:24:19] 
+Measurement completed
+[2026-04-13 13:24:19] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\swv_ch1_cea06a_meas_20260413_1324_008_ch1.csv
+[2026-04-13 13:24:20] Total data points: 305
+[2026-04-13 13:24:20] Disconnected from device
+[2026-04-13 13:24:20] [Tag] meas_20260413_1324_009_ch1
+[2026-04-13 13:24:20] ============================================================
+[2026-04-13 13:24:20] Starting measurement for: swv_ch1_cea06a.ms
+[2026-04-13 13:24:20] ============================================================
+[2026-04-13 13:24:20] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_ch1_cea06a_meas_20260413_1324_009_ch1.ms
+[2026-04-13 13:24:20] Scanning for devices...
+[2026-04-13 13:24:20]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:24:20]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:24:20]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:24:20] Multiple devices found:
+[2026-04-13 13:24:20]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:24:20]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:24:20] Using first device: COM10
+[2026-04-13 13:24:20] Connecting to COM10...
+[2026-04-13 13:24:22] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:24:22] Sending script to device...
+[2026-04-13 13:24:23] Script sent. Collecting data...
+[2026-04-13 13:24:23] ----------------------------------------
+[2026-04-13 13:24:23] R*
+[2026-04-13 13:24:23] e
+[2026-04-13 13:24:23] M0002
+[2026-04-13 13:24:24] *
+[2026-04-13 13:24:24] 
+Measurement completed
+[2026-04-13 13:24:24] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\swv_ch1_cea06a_meas_20260413_1324_009_ch1.csv
+[2026-04-13 13:24:24] Total data points: 305
+[2026-04-13 13:24:24] Disconnected from device
+[2026-04-13 13:24:25] [Tag] meas_20260413_1324_010_ch1
+[2026-04-13 13:24:25] ============================================================
+[2026-04-13 13:24:25] Starting measurement for: swv_ch1_cea06a.ms
+[2026-04-13 13:24:25] ============================================================
+[2026-04-13 13:24:25] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_ch1_cea06a_meas_20260413_1324_010_ch1.ms
+[2026-04-13 13:24:25] Scanning for devices...
+[2026-04-13 13:24:25]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:24:25]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:24:25]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:24:25] Multiple devices found:
+[2026-04-13 13:24:25]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:24:25]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:24:25] Using first device: COM10
+[2026-04-13 13:24:25] Connecting to COM10...
+[2026-04-13 13:24:27] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:24:27] Sending script to device...
+[2026-04-13 13:24:27] Script sent. Collecting data...
+[2026-04-13 13:24:27] ----------------------------------------
+[2026-04-13 13:24:27] R*
+[2026-04-13 13:24:27] e
+[2026-04-13 13:24:27] M0002
+[2026-04-13 13:24:29] *
+[2026-04-13 13:24:29] 
+Measurement completed
+[2026-04-13 13:24:29] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\swv_ch1_cea06a_meas_20260413_1324_010_ch1.csv
+[2026-04-13 13:24:29] Total data points: 305
+[2026-04-13 13:24:29] Disconnected from device
+[2026-04-13 13:24:59] [Tag] meas_20260413_1324_011_ch1
+[2026-04-13 13:24:59] ============================================================
+[2026-04-13 13:24:59] Starting measurement for: swv_ch1_00c865.ms
+[2026-04-13 13:24:59] ============================================================
+[2026-04-13 13:24:59] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_ch1_00c865_meas_20260413_1324_011_ch1.ms
+[2026-04-13 13:24:59] Scanning for devices...
+[2026-04-13 13:24:59]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:24:59]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:24:59]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:24:59] Multiple devices found:
+[2026-04-13 13:24:59]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:24:59]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:24:59] Using first device: COM10
+[2026-04-13 13:24:59] Connecting to COM10...
+[2026-04-13 13:25:01] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:25:01] Sending script to device...
+[2026-04-13 13:25:02] Script sent. Collecting data...
+[2026-04-13 13:25:02] ----------------------------------------
+[2026-04-13 13:25:02] R*
+[2026-04-13 13:25:02] e!4004: Line 14, Col 15
+[2026-04-13 13:25:07] Warning: data stream idle timed out
+[2026-04-13 13:25:07] Total data points: 0
+[2026-04-13 13:25:07] Disconnected from device
+[2026-04-13 13:25:07] [Tag] meas_20260413_1325_012_ch1
+[2026-04-13 13:25:07] ============================================================
+[2026-04-13 13:25:07] Starting measurement for: swv_ch1_00c865.ms
+[2026-04-13 13:25:07] ============================================================
+[2026-04-13 13:25:07] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_ch1_00c865_meas_20260413_1325_012_ch1.ms
+[2026-04-13 13:25:07] Scanning for devices...
+[2026-04-13 13:25:07]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:25:07]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:25:07]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:25:07] Multiple devices found:
+[2026-04-13 13:25:07]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:25:07]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:25:07] Using first device: COM10
+[2026-04-13 13:25:07] Connecting to COM10...
+[2026-04-13 13:25:09] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:25:09] Sending script to device...
+[2026-04-13 13:25:10] Script sent. Collecting data...
+[2026-04-13 13:25:10] ----------------------------------------
+[2026-04-13 13:25:10] R*
+[2026-04-13 13:25:10] e!4004: Line 14, Col 15
+[2026-04-13 13:25:15] Warning: data stream idle timed out
+[2026-04-13 13:25:15] Total data points: 0
+[2026-04-13 13:25:15] Disconnected from device
+[2026-04-13 13:25:15] [Tag] meas_20260413_1325_013_ch1
+[2026-04-13 13:25:15] ============================================================
+[2026-04-13 13:25:15] Starting measurement for: swv_ch1_00c865.ms
+[2026-04-13 13:25:15] ============================================================
+[2026-04-13 13:25:15] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity fixed_20260413_132127\methods_used\swv_ch1_00c865_meas_20260413_1325_013_ch1.ms
+[2026-04-13 13:25:15] Scanning for devices...
+[2026-04-13 13:25:15]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:25:15]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:25:15]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:25:15] Multiple devices found:
+[2026-04-13 13:25:15]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:25:15]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:25:15] Using first device: COM10
+[2026-04-13 13:25:15] Connecting to COM10...
+[2026-04-13 13:25:17] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:25:17] Sending script to device...
+[2026-04-13 13:25:18] Script sent. Collecting data...
+[2026-04-13 13:25:18] ----------------------------------------
+[2026-04-13 13:25:18] R*
+[2026-04-13 13:25:18] e!4004: Line 14, Col 15
+[2026-04-13 13:25:23] Warning: data stream idle timed out
+[2026-04-13 13:25:23] Total data points: 0
+[2026-04-13 13:25:23] Disconnected from device
+[2026-04-13 13:34:32] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-13 13:34:32] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-13 13:34:32] Connected.
+[2026-04-13 13:34:56] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456
+[2026-04-13 13:34:56] ngrok tunnel started.
+[2026-04-13 13:34:57] [Tag] meas_20260413_1334_001
+[2026-04-13 13:34:57] ============================================================
+[2026-04-13 13:34:57] Starting measurement for: swv_0bbff2.ms
+[2026-04-13 13:34:57] ============================================================
+[2026-04-13 13:34:57] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_0bbff2_meas_20260413_1334_001.ms
+[2026-04-13 13:34:57] Scanning for devices...
+[2026-04-13 13:34:57]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:34:57]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:34:57]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:34:57] Multiple devices found:
+[2026-04-13 13:34:57]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:34:57]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:34:57] Using first device: COM10
+[2026-04-13 13:34:57] Connecting to COM10...
+[2026-04-13 13:34:59] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:34:59] Sending script to device...
+[2026-04-13 13:35:00] Script sent. Collecting data...
+[2026-04-13 13:35:00] ----------------------------------------
+[2026-04-13 13:35:00] R*
+[2026-04-13 13:35:00] e
+[2026-04-13 13:35:05] M0002
+[2026-04-13 13:35:25] *
+[2026-04-13 13:35:25] 
+Measurement completed
+[2026-04-13 13:35:25] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_0bbff2_meas_20260413_1334_001.csv
+[2026-04-13 13:35:25] Total data points: 507
+[2026-04-13 13:35:25] Disconnected from device
+[2026-04-13 13:35:26] [Tag] meas_20260413_1335_002
+[2026-04-13 13:35:26] ============================================================
+[2026-04-13 13:35:26] Starting measurement for: swv_0bbff2.ms
+[2026-04-13 13:35:26] ============================================================
+[2026-04-13 13:35:26] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_0bbff2_meas_20260413_1335_002.ms
+[2026-04-13 13:35:26] Scanning for devices...
+[2026-04-13 13:35:26]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:35:26]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:35:26]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:35:26] Multiple devices found:
+[2026-04-13 13:35:26]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:35:26]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:35:26] Using first device: COM10
+[2026-04-13 13:35:26] Connecting to COM10...
+[2026-04-13 13:35:28] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:35:28] Sending script to device...
+[2026-04-13 13:35:29] Script sent. Collecting data...
+[2026-04-13 13:35:29] ----------------------------------------
+[2026-04-13 13:35:29] R*
+[2026-04-13 13:35:29] e
+[2026-04-13 13:35:34] M0002
+[2026-04-13 13:35:45] Queue stop requested.
+[2026-04-13 13:35:45] Measurement stopped by user.
+[2026-04-13 13:35:45] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_0bbff2_meas_20260413_1335_002.csv
+[2026-04-13 13:35:45] Total data points: 267
+[2026-04-13 13:35:45] Disconnected from device
+[2026-04-13 13:35:52] Queue add: swv_c5eea6.ms
+[2026-04-13 13:35:52] Queue add: Pause for 1.0 sec
+[2026-04-13 13:35:52] Queue add: swv_c5eea6.ms
+[2026-04-13 13:35:52] Queue add: Pause for 1.0 sec
+[2026-04-13 13:35:52] Queue add: swv_c5eea6.ms
+[2026-04-13 13:36:00] Queue cleared.
+[2026-04-13 13:36:04] [Tag] meas_20260413_1336_003
+[2026-04-13 13:36:04] ============================================================
+[2026-04-13 13:36:04] Starting measurement for: swv_6e1543.ms
+[2026-04-13 13:36:04] ============================================================
+[2026-04-13 13:36:04] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_6e1543_meas_20260413_1336_003.ms
+[2026-04-13 13:36:04] Scanning for devices...
+[2026-04-13 13:36:04]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:36:04]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:36:04]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:36:04] Multiple devices found:
+[2026-04-13 13:36:04]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:36:04]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:36:04] Using first device: COM10
+[2026-04-13 13:36:04] Connecting to COM10...
+[2026-04-13 13:36:06] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:36:06] Sending script to device...
+[2026-04-13 13:36:07] Script sent. Collecting data...
+[2026-04-13 13:36:07] ----------------------------------------
+[2026-04-13 13:36:07] R*
+[2026-04-13 13:36:07] e
+[2026-04-13 13:36:12] M0002
+[2026-04-13 13:36:14] *
+[2026-04-13 13:36:14] 
+Measurement completed
+[2026-04-13 13:36:14] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_6e1543_meas_20260413_1336_003.csv
+[2026-04-13 13:36:14] Total data points: 507
+[2026-04-13 13:36:15] Disconnected from device
+[2026-04-13 13:36:16] [Tag] meas_20260413_1336_004
+[2026-04-13 13:36:16] ============================================================
+[2026-04-13 13:36:16] Starting measurement for: swv_6e1543.ms
+[2026-04-13 13:36:16] ============================================================
+[2026-04-13 13:36:16] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_6e1543_meas_20260413_1336_004.ms
+[2026-04-13 13:36:16] Scanning for devices...
+[2026-04-13 13:36:16]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:36:16]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:36:16]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:36:16] Multiple devices found:
+[2026-04-13 13:36:16]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:36:16]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:36:16] Using first device: COM10
+[2026-04-13 13:36:16] Connecting to COM10...
+[2026-04-13 13:36:18] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:36:18] Sending script to device...
+[2026-04-13 13:36:18] Script sent. Collecting data...
+[2026-04-13 13:36:18] ----------------------------------------
+[2026-04-13 13:36:18] R*
+[2026-04-13 13:36:18] e
+[2026-04-13 13:36:23] Warning: data stream idle timed out
+[2026-04-13 13:36:23] Total data points: 0
+[2026-04-13 13:36:24] Disconnected from device
+[2026-04-13 13:36:25] [Tag] meas_20260413_1336_005
+[2026-04-13 13:36:25] ============================================================
+[2026-04-13 13:36:25] Starting measurement for: swv_6e1543.ms
+[2026-04-13 13:36:25] ============================================================
+[2026-04-13 13:36:25] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_6e1543_meas_20260413_1336_005.ms
+[2026-04-13 13:36:25] Scanning for devices...
+[2026-04-13 13:36:25]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:36:25]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:36:25]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:36:25] Multiple devices found:
+[2026-04-13 13:36:25]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:36:25]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:36:25] Using first device: COM10
+[2026-04-13 13:36:25] Connecting to COM10...
+[2026-04-13 13:36:27] Device responded: 81;ba7900FE1f,14,281
+[2026-04-13 13:36:27] Sending script to device...
+[2026-04-13 13:36:27] Script sent. Collecting data...
+[2026-04-13 13:36:27] ----------------------------------------
+[2026-04-13 13:36:27] tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:36:27] R*
+[2026-04-13 13:36:27] e
+[2026-04-13 13:36:32] M0002
+[2026-04-13 13:36:33] Queue stop requested.
+[2026-04-13 13:36:33] Measurement stopped by user.
+[2026-04-13 13:36:33] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_6e1543_meas_20260413_1336_005.csv
+[2026-04-13 13:36:33] Total data points: 186
+[2026-04-13 13:36:34] Disconnected from device
+[2026-04-13 13:36:43] [Tag] meas_20260413_1336_006
+[2026-04-13 13:36:43] ============================================================
+[2026-04-13 13:36:43] Starting measurement for: swv_f4ddf4.ms
+[2026-04-13 13:36:43] ============================================================
+[2026-04-13 13:36:43] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_f4ddf4_meas_20260413_1336_006.ms
+[2026-04-13 13:36:43] Scanning for devices...
+[2026-04-13 13:36:43]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:36:43]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:36:43]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:36:43] Multiple devices found:
+[2026-04-13 13:36:43]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:36:43]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:36:43] Using first device: COM10
+[2026-04-13 13:36:43] Connecting to COM10...
+[2026-04-13 13:36:45] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:36:45] Sending script to device...
+[2026-04-13 13:36:45] Script sent. Collecting data...
+[2026-04-13 13:36:45] ----------------------------------------
+[2026-04-13 13:36:45] R*
+[2026-04-13 13:36:45] e
+[2026-04-13 13:36:50] Warning: data stream idle timed out
+[2026-04-13 13:36:50] Total data points: 0
+[2026-04-13 13:36:51] Disconnected from device
+[2026-04-13 13:36:52] [Tag] meas_20260413_1336_007
+[2026-04-13 13:36:52] ============================================================
+[2026-04-13 13:36:52] Starting measurement for: swv_f4ddf4.ms
+[2026-04-13 13:36:52] ============================================================
+[2026-04-13 13:36:52] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_f4ddf4_meas_20260413_1336_007.ms
+[2026-04-13 13:36:52] Scanning for devices...
+[2026-04-13 13:36:52]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:36:52]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:36:52]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:36:52] Multiple devices found:
+[2026-04-13 13:36:52]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:36:52]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:36:52] Using first device: COM10
+[2026-04-13 13:36:52] Connecting to COM10...
+[2026-04-13 13:36:54] Device responded: 281
+[2026-04-13 13:36:54] Sending script to device...
+[2026-04-13 13:36:54] Script sent. Collecting data...
+[2026-04-13 13:36:54] ----------------------------------------
+[2026-04-13 13:36:54] R*
+[2026-04-13 13:36:54] e
+[2026-04-13 13:36:59] M0002
+[2026-04-13 13:37:02] *
+[2026-04-13 13:37:02] 
+Measurement completed
+[2026-04-13 13:37:02] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_f4ddf4_meas_20260413_1336_007.csv
+[2026-04-13 13:37:02] Total data points: 573
+[2026-04-13 13:37:02] Disconnected from device
+[2026-04-13 13:37:03] [Tag] meas_20260413_1337_008
+[2026-04-13 13:37:03] ============================================================
+[2026-04-13 13:37:03] Starting measurement for: swv_f4ddf4.ms
+[2026-04-13 13:37:03] ============================================================
+[2026-04-13 13:37:03] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_f4ddf4_meas_20260413_1337_008.ms
+[2026-04-13 13:37:03] Scanning for devices...
+[2026-04-13 13:37:03]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:37:03]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:37:03]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:37:03] Multiple devices found:
+[2026-04-13 13:37:03]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:37:03]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:37:03] Using first device: COM10
+[2026-04-13 13:37:03] Connecting to COM10...
+[2026-04-13 13:37:05] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:37:05] Sending script to device...
+[2026-04-13 13:37:06] Script sent. Collecting data...
+[2026-04-13 13:37:06] ----------------------------------------
+[2026-04-13 13:37:06] R*
+[2026-04-13 13:37:06] e
+[2026-04-13 13:37:11] M0002
+[2026-04-13 13:37:13] *
+[2026-04-13 13:37:13] 
+Measurement completed
+[2026-04-13 13:37:13] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_f4ddf4_meas_20260413_1337_008.csv
+[2026-04-13 13:37:13] Total data points: 507
+[2026-04-13 13:37:14] Disconnected from device
+[2026-04-13 13:37:36] [Tag] meas_20260413_1337_009
+[2026-04-13 13:37:36] ============================================================
+[2026-04-13 13:37:36] Starting measurement for: swv_e3b259.ms
+[2026-04-13 13:37:36] ============================================================
+[2026-04-13 13:37:36] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_e3b259_meas_20260413_1337_009.ms
+[2026-04-13 13:37:36] Scanning for devices...
+[2026-04-13 13:37:36]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:37:36]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:37:36]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:37:36] Multiple devices found:
+[2026-04-13 13:37:36]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:37:36]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:37:36] Using first device: COM10
+[2026-04-13 13:37:36] Connecting to COM10...
+[2026-04-13 13:37:38] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:37:38] Sending script to device...
+[2026-04-13 13:37:38] Script sent. Collecting data...
+[2026-04-13 13:37:38] ----------------------------------------
+[2026-04-13 13:37:38] R*
+[2026-04-13 13:37:38] e
+[2026-04-13 13:37:39] M0002
+[2026-04-13 13:37:41] *
+[2026-04-13 13:37:41] 
+Measurement completed
+[2026-04-13 13:37:41] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_e3b259_meas_20260413_1337_009.csv
+[2026-04-13 13:37:41] Total data points: 305
+[2026-04-13 13:37:41] Disconnected from device
+[2026-04-13 13:37:42] [Tag] meas_20260413_1337_010
+[2026-04-13 13:37:42] ============================================================
+[2026-04-13 13:37:42] Starting measurement for: swv_e3b259.ms
+[2026-04-13 13:37:42] ============================================================
+[2026-04-13 13:37:42] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_e3b259_meas_20260413_1337_010.ms
+[2026-04-13 13:37:42] Scanning for devices...
+[2026-04-13 13:37:42]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:37:42]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:37:42]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:37:42] Multiple devices found:
+[2026-04-13 13:37:42]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:37:42]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:37:42] Using first device: COM10
+[2026-04-13 13:37:42] Connecting to COM10...
+[2026-04-13 13:37:44] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:37:44] Sending script to device...
+[2026-04-13 13:37:45] Script sent. Collecting data...
+[2026-04-13 13:37:45] ----------------------------------------
+[2026-04-13 13:37:45] R*
+[2026-04-13 13:37:45] e
+[2026-04-13 13:37:46] M0002
+[2026-04-13 13:37:47] *
+[2026-04-13 13:37:47] 
+Measurement completed
+[2026-04-13 13:37:47] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_e3b259_meas_20260413_1337_010.csv
+[2026-04-13 13:37:47] Total data points: 305
+[2026-04-13 13:37:48] Disconnected from device
+[2026-04-13 13:37:49] [Tag] meas_20260413_1337_011
+[2026-04-13 13:37:49] ============================================================
+[2026-04-13 13:37:49] Starting measurement for: swv_e3b259.ms
+[2026-04-13 13:37:49] ============================================================
+[2026-04-13 13:37:49] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_e3b259_meas_20260413_1337_011.ms
+[2026-04-13 13:37:49] Scanning for devices...
+[2026-04-13 13:37:49]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:37:49]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:37:49]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:37:49] Multiple devices found:
+[2026-04-13 13:37:49]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:37:49]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:37:49] Using first device: COM10
+[2026-04-13 13:37:49] Connecting to COM10...
+[2026-04-13 13:37:51] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:37:51] Sending script to device...
+[2026-04-13 13:37:51] Script sent. Collecting data...
+[2026-04-13 13:37:51] ----------------------------------------
+[2026-04-13 13:37:51] R*
+[2026-04-13 13:37:51] e
+[2026-04-13 13:37:52] M0002
+[2026-04-13 13:37:54] Queue stop requested.
+[2026-04-13 13:37:54] Measurement stopped by user.
+[2026-04-13 13:37:54] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_e3b259_meas_20260413_1337_011.csv
+[2026-04-13 13:37:54] Total data points: 240
+[2026-04-13 13:37:54] Disconnected from device
+[2026-04-13 13:37:57] [Tag] meas_20260413_1337_012
+[2026-04-13 13:37:57] ============================================================
+[2026-04-13 13:37:57] Starting measurement for: swv_6acef1.ms
+[2026-04-13 13:37:57] ============================================================
+[2026-04-13 13:37:57] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_6acef1_meas_20260413_1337_012.ms
+[2026-04-13 13:37:57] Scanning for devices...
+[2026-04-13 13:37:57]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:37:57]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:37:57]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:37:57] Multiple devices found:
+[2026-04-13 13:37:57]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:37:57]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:37:57] Using first device: COM10
+[2026-04-13 13:37:57] Connecting to COM10...
+[2026-04-13 13:37:59] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:37:59] Sending script to device...
+[2026-04-13 13:38:00] Script sent. Collecting data...
+[2026-04-13 13:38:00] ----------------------------------------
+[2026-04-13 13:38:00] R*
+[2026-04-13 13:38:00] e
+[2026-04-13 13:38:01] M0002
+[2026-04-13 13:38:02] *
+[2026-04-13 13:38:02] 
+Measurement completed
+[2026-04-13 13:38:02] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_6acef1_meas_20260413_1337_012.csv
+[2026-04-13 13:38:02] Total data points: 305
+[2026-04-13 13:38:03] Disconnected from device
+[2026-04-13 13:38:04] [Tag] meas_20260413_1338_013
+[2026-04-13 13:38:04] ============================================================
+[2026-04-13 13:38:04] Starting measurement for: swv_6acef1.ms
+[2026-04-13 13:38:04] ============================================================
+[2026-04-13 13:38:04] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_6acef1_meas_20260413_1338_013.ms
+[2026-04-13 13:38:04] Scanning for devices...
+[2026-04-13 13:38:04]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:38:04]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:38:04]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:38:04] Multiple devices found:
+[2026-04-13 13:38:04]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:38:04]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:38:04] Using first device: COM10
+[2026-04-13 13:38:04] Connecting to COM10...
+[2026-04-13 13:38:06] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:38:06] Sending script to device...
+[2026-04-13 13:38:06] Script sent. Collecting data...
+[2026-04-13 13:38:06] ----------------------------------------
+[2026-04-13 13:38:06] R*
+[2026-04-13 13:38:06] e
+[2026-04-13 13:38:07] M0002
+[2026-04-13 13:38:09] *
+[2026-04-13 13:38:09] 
+Measurement completed
+[2026-04-13 13:38:09] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_6acef1_meas_20260413_1338_013.csv
+[2026-04-13 13:38:09] Total data points: 305
+[2026-04-13 13:38:09] Disconnected from device
+[2026-04-13 13:38:10] [Tag] meas_20260413_1338_014
+[2026-04-13 13:38:10] ============================================================
+[2026-04-13 13:38:10] Starting measurement for: swv_6acef1.ms
+[2026-04-13 13:38:10] ============================================================
+[2026-04-13 13:38:10] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_6acef1_meas_20260413_1338_014.ms
+[2026-04-13 13:38:10] Scanning for devices...
+[2026-04-13 13:38:10]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:38:10]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:38:10]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:38:10] Multiple devices found:
+[2026-04-13 13:38:10]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:38:10]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:38:10] Using first device: COM10
+[2026-04-13 13:38:10] Connecting to COM10...
+[2026-04-13 13:38:12] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:38:12] Sending script to device...
+[2026-04-13 13:38:13] Script sent. Collecting data...
+[2026-04-13 13:38:13] ----------------------------------------
+[2026-04-13 13:38:13] R*
+[2026-04-13 13:38:13] e
+[2026-04-13 13:38:14] M0002
+[2026-04-13 13:38:15] *
+[2026-04-13 13:38:15] 
+Measurement completed
+[2026-04-13 13:38:15] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_6acef1_meas_20260413_1338_014.csv
+[2026-04-13 13:38:15] Total data points: 305
+[2026-04-13 13:38:15] Disconnected from device
+[2026-04-13 13:38:35] [Tag] meas_20260413_1338_015
+[2026-04-13 13:38:35] ============================================================
+[2026-04-13 13:38:35] Starting measurement for: swv_a5d20c.ms
+[2026-04-13 13:38:35] ============================================================
+[2026-04-13 13:38:35] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_a5d20c_meas_20260413_1338_015.ms
+[2026-04-13 13:38:35] Scanning for devices...
+[2026-04-13 13:38:35]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:38:35]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:38:35]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:38:35] Multiple devices found:
+[2026-04-13 13:38:35]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:38:35]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:38:35] Using first device: COM10
+[2026-04-13 13:38:35] Connecting to COM10...
+[2026-04-13 13:38:37] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:38:37] Sending script to device...
+[2026-04-13 13:38:37] Script sent. Collecting data...
+[2026-04-13 13:38:37] ----------------------------------------
+[2026-04-13 13:38:37] R*
+[2026-04-13 13:38:37] e
+[2026-04-13 13:38:39] M0002
+[2026-04-13 13:38:40] *
+[2026-04-13 13:38:40] 
+Measurement completed
+[2026-04-13 13:38:40] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_a5d20c_meas_20260413_1338_015.csv
+[2026-04-13 13:38:40] Total data points: 305
+[2026-04-13 13:38:40] Disconnected from device
+[2026-04-13 13:38:40] [Tag] meas_20260413_1338_016
+[2026-04-13 13:38:40] ============================================================
+[2026-04-13 13:38:40] Starting measurement for: swv_a5d20c.ms
+[2026-04-13 13:38:40] ============================================================
+[2026-04-13 13:38:40] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_a5d20c_meas_20260413_1338_016.ms
+[2026-04-13 13:38:40] Scanning for devices...
+[2026-04-13 13:38:40]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:38:40]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:38:40]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:38:40] Multiple devices found:
+[2026-04-13 13:38:40]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:38:40]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:38:40] Using first device: COM10
+[2026-04-13 13:38:40] Connecting to COM10...
+[2026-04-13 13:38:42] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:38:42] Sending script to device...
+[2026-04-13 13:38:43] Script sent. Collecting data...
+[2026-04-13 13:38:43] ----------------------------------------
+[2026-04-13 13:38:43] R*
+[2026-04-13 13:38:43] e
+[2026-04-13 13:38:44] M0002
+[2026-04-13 13:38:45] *
+[2026-04-13 13:38:45] 
+Measurement completed
+[2026-04-13 13:38:45] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_a5d20c_meas_20260413_1338_016.csv
+[2026-04-13 13:38:45] Total data points: 305
+[2026-04-13 13:38:46] Disconnected from device
+[2026-04-13 13:38:46] [Tag] meas_20260413_1338_017
+[2026-04-13 13:38:46] ============================================================
+[2026-04-13 13:38:46] Starting measurement for: swv_a5d20c.ms
+[2026-04-13 13:38:46] ============================================================
+[2026-04-13 13:38:46] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\methods_used\swv_a5d20c_meas_20260413_1338_017.ms
+[2026-04-13 13:38:46] Scanning for devices...
+[2026-04-13 13:38:46]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:38:46]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:38:46]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:38:46] Multiple devices found:
+[2026-04-13 13:38:46]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:38:46]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:38:46] Using first device: COM10
+[2026-04-13 13:38:46] Connecting to COM10...
+[2026-04-13 13:38:48] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:38:48] Sending script to device...
+[2026-04-13 13:38:49] Script sent. Collecting data...
+[2026-04-13 13:38:49] ----------------------------------------
+[2026-04-13 13:38:49] R*
+[2026-04-13 13:38:49] e
+[2026-04-13 13:38:50] M0002
+[2026-04-13 13:38:51] *
+[2026-04-13 13:38:51] 
+Measurement completed
+[2026-04-13 13:38:51] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\singal test final_20260413_133456\swv_a5d20c_meas_20260413_1338_017.csv
+[2026-04-13 13:38:51] Total data points: 305
+[2026-04-13 13:38:51] Disconnected from device
+[2026-04-13 13:39:25] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-13 13:39:25] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-13 13:39:25] Connected.
+[2026-04-13 13:39:29] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_133929
+[2026-04-13 13:39:29] ngrok tunnel started.
+[2026-04-13 13:40:02] [Tag] meas_20260413_1340_001_ch1
+[2026-04-13 13:40:02] ============================================================
+[2026-04-13 13:40:02] Starting measurement for: swv_ch1_9a6801.ms
+[2026-04-13 13:40:02] ============================================================
+[2026-04-13 13:40:02] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_133929\methods_used\swv_ch1_9a6801_meas_20260413_1340_001_ch1.ms
+[2026-04-13 13:40:02] Scanning for devices...
+[2026-04-13 13:40:02]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:40:02]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:40:02]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:40:02] Multiple devices found:
+[2026-04-13 13:40:02]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:40:02]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:40:02] Using first device: COM10
+[2026-04-13 13:40:02] Connecting to COM10...
+[2026-04-13 13:40:04] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:40:04] Sending script to device...
+[2026-04-13 13:40:04] Script sent. Collecting data...
+[2026-04-13 13:40:04] ----------------------------------------
+[2026-04-13 13:40:04] R*
+[2026-04-13 13:40:05] e
+[2026-04-13 13:40:05] M0002
+[2026-04-13 13:40:06] *
+[2026-04-13 13:40:06] 
+Measurement completed
+[2026-04-13 13:40:06] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_133929\swv_ch1_9a6801_meas_20260413_1340_001_ch1.csv
+[2026-04-13 13:40:06] Total data points: 305
+[2026-04-13 13:40:06] Disconnected from device
+[2026-04-13 13:41:37] Queue add: swv_ch1_e197d4.ms (MUX ch 1)
+[2026-04-13 13:42:07] Queue start requested.
+[2026-04-13 13:42:07] Measurement simulation: OFF
+[2026-04-13 13:42:08] Queue file copied to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_133929\queue_files\run_queue_20260413_134208
+[2026-04-13 13:42:08] Queue start -> swv_ch1_e197d4.ms (MUX ch 1)
+[2026-04-13 13:42:08] [Tag] meas_20260413_1342_002_ch1
+[2026-04-13 13:42:08] ============================================================
+[2026-04-13 13:42:08] Starting measurement for: swv_ch1_e197d4.ms
+[2026-04-13 13:42:08] ============================================================
+[2026-04-13 13:42:08] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_133929\methods_used\swv_ch1_e197d4_meas_20260413_1342_002_ch1.ms
+[2026-04-13 13:42:08] Scanning for devices...
+[2026-04-13 13:42:08]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:42:08]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:42:08]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:42:08] Multiple devices found:
+[2026-04-13 13:42:08]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:42:08]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:42:08] Using first device: COM10
+[2026-04-13 13:42:08] Connecting to COM10...
+[2026-04-13 13:42:10] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:42:10] Sending script to device...
+[2026-04-13 13:42:10] Script sent. Collecting data...
+[2026-04-13 13:42:10] ----------------------------------------
+[2026-04-13 13:42:10] R*
+[2026-04-13 13:42:10] e
+[2026-04-13 13:42:10] M0002
+[2026-04-13 13:42:12] *
+[2026-04-13 13:42:12] 
+Measurement completed
+[2026-04-13 13:42:12] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_133929\swv_ch1_e197d4_meas_20260413_1342_002_ch1.csv
+[2026-04-13 13:42:12] Total data points: 305
+[2026-04-13 13:42:12] Disconnected from device
+[2026-04-13 13:42:12] Queue completed.
+[2026-04-13 13:52:03] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-13 13:52:03] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-13 13:52:03] Connected.
+[2026-04-13 13:52:14] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity test_20260413_135214
+[2026-04-13 13:52:14] ngrok tunnel started.
+[2026-04-13 13:52:39] Queue add: swv_ch1_a67356.ms (MUX ch 1)
+[2026-04-13 13:52:39] Queue add: swv_ch1_a67356.ms (MUX ch 1)
+[2026-04-13 13:52:39] Queue add: swv_ch1_a67356.ms (MUX ch 1)
+[2026-04-13 13:52:46] Queue start requested.
+[2026-04-13 13:52:46] Measurement simulation: OFF
+[2026-04-13 13:52:46] Queue file copied to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity test_20260413_135214\queue_files\run_queue_20260413_135246
+[2026-04-13 13:52:46] Queue start -> swv_ch1_a67356.ms (MUX ch 1)
+[2026-04-13 13:52:46] [Tag] meas_20260413_1352_001_ch1
+[2026-04-13 13:52:46] ============================================================
+[2026-04-13 13:52:46] Starting measurement for: swv_ch1_a67356.ms
+[2026-04-13 13:52:46] ============================================================
+[2026-04-13 13:52:46] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity test_20260413_135214\methods_used\swv_ch1_a67356_meas_20260413_1352_001_ch1.ms
+[2026-04-13 13:52:46] Scanning for devices...
+[2026-04-13 13:52:46]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:52:46]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:52:46]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:52:46] Multiple devices found:
+[2026-04-13 13:52:46]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:52:47]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:52:47] Using first device: COM10
+[2026-04-13 13:52:47] Connecting to COM10...
+[2026-04-13 13:52:49] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:52:49] Sending script to device...
+[2026-04-13 13:52:49] Script sent. Collecting data...
+[2026-04-13 13:52:49] ----------------------------------------
+[2026-04-13 13:52:49] R*
+[2026-04-13 13:52:49] e
+[2026-04-13 13:52:49] M0002
+[2026-04-13 13:52:51] *
+[2026-04-13 13:52:51] 
+Measurement completed
+[2026-04-13 13:52:51] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity test_20260413_135214\swv_ch1_a67356_meas_20260413_1352_001_ch1.csv
+[2026-04-13 13:52:51] Total data points: 305
+[2026-04-13 13:52:51] Disconnected from device
+[2026-04-13 13:52:52] Queue start -> swv_ch1_a67356.ms (MUX ch 1)
+[2026-04-13 13:52:52] [Tag] meas_20260413_1352_002_ch1
+[2026-04-13 13:52:52] ============================================================
+[2026-04-13 13:52:52] Starting measurement for: swv_ch1_a67356.ms
+[2026-04-13 13:52:52] ============================================================
+[2026-04-13 13:52:52] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity test_20260413_135214\methods_used\swv_ch1_a67356_meas_20260413_1352_002_ch1.ms
+[2026-04-13 13:52:52] Scanning for devices...
+[2026-04-13 13:52:52]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:52:52]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:52:52]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:52:52] Multiple devices found:
+[2026-04-13 13:52:52]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:52:52]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:52:52] Using first device: COM10
+[2026-04-13 13:52:52] Connecting to COM10...
+[2026-04-13 13:52:54] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:52:54] Sending script to device...
+[2026-04-13 13:52:55] Script sent. Collecting data...
+[2026-04-13 13:52:55] ----------------------------------------
+[2026-04-13 13:52:55] R*
+[2026-04-13 13:52:55] e
+[2026-04-13 13:52:55] M0002
+[2026-04-13 13:52:56] *
+[2026-04-13 13:52:56] 
+Measurement completed
+[2026-04-13 13:52:56] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity test_20260413_135214\swv_ch1_a67356_meas_20260413_1352_002_ch1.csv
+[2026-04-13 13:52:56] Total data points: 305
+[2026-04-13 13:52:56] Disconnected from device
+[2026-04-13 13:52:58] Queue start -> swv_ch1_a67356.ms (MUX ch 1)
+[2026-04-13 13:52:58] [Tag] meas_20260413_1352_003_ch1
+[2026-04-13 13:52:58] ============================================================
+[2026-04-13 13:52:58] Starting measurement for: swv_ch1_a67356.ms
+[2026-04-13 13:52:58] ============================================================
+[2026-04-13 13:52:58] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity test_20260413_135214\methods_used\swv_ch1_a67356_meas_20260413_1352_003_ch1.ms
+[2026-04-13 13:52:58] Scanning for devices...
+[2026-04-13 13:52:58]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:52:58]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:52:58]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:52:58] Multiple devices found:
+[2026-04-13 13:52:58]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:52:58]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:52:58] Using first device: COM10
+[2026-04-13 13:52:58] Connecting to COM10...
+[2026-04-13 13:53:00] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:53:00] Sending script to device...
+[2026-04-13 13:53:00] Script sent. Collecting data...
+[2026-04-13 13:53:00] ----------------------------------------
+[2026-04-13 13:53:00] R*
+[2026-04-13 13:53:00] e
+[2026-04-13 13:53:01] M0002
+[2026-04-13 13:53:02] *
+[2026-04-13 13:53:02] 
+Measurement completed
+[2026-04-13 13:53:02] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\signal integrity test_20260413_135214\swv_ch1_a67356_meas_20260413_1352_003_ch1.csv
+[2026-04-13 13:53:02] Total data points: 305
+[2026-04-13 13:53:02] Disconnected from device
+[2026-04-13 13:53:02] Queue completed.
+[2026-04-13 13:55:15] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-13 13:55:15] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-13 13:55:15] Connected.
+[2026-04-13 13:56:25] Queue add: swv_ch1_0c8448.ms (MUX ch 1)
+[2026-04-13 13:56:25] Queue add: swv_ch2_b3b580.ms (MUX ch 2)
+[2026-04-13 13:56:25] Queue add: swv_ch3_3fd3b7.ms (MUX ch 3)
+[2026-04-13 13:56:25] Queue add: swv_ch4_c3c64c.ms (MUX ch 4)
+[2026-04-13 13:56:25] Queue add: swv_ch5_bd834e.ms (MUX ch 5)
+[2026-04-13 13:56:25] Queue add: swv_ch6_a72137.ms (MUX ch 6)
+[2026-04-13 13:56:25] Queue add: swv_ch7_c0f8f5.ms (MUX ch 7)
+[2026-04-13 13:56:25] Queue add: swv_ch8_550322.ms (MUX ch 8)
+[2026-04-13 13:56:25] Queue add: swv_ch9_f3b27e.ms (MUX ch 9)
+[2026-04-13 13:56:25] Queue add: swv_ch10_3641e3.ms (MUX ch 10)
+[2026-04-13 13:56:30] Queue start requested.
+[2026-04-13 13:56:30] Measurement simulation: OFF
+[2026-04-13 13:56:31] Queue start -> swv_ch1_0c8448.ms (MUX ch 1)
+[2026-04-13 13:56:31] [Tag] meas_20260413_1356_001_ch1
+[2026-04-13 13:56:32] Queue completed.
+[2026-04-13 13:56:35] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635
+[2026-04-13 13:56:36] ngrok tunnel started.
+[2026-04-13 13:56:37] Queue start requested.
+[2026-04-13 13:56:37] Measurement simulation: OFF
+[2026-04-13 13:56:37] Queue file copied to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\queue_files\run_queue_20260413_135637
+[2026-04-13 13:56:37] Queue start -> swv_ch1_0c8448.ms (MUX ch 1)
+[2026-04-13 13:56:37] [Tag] meas_20260413_1356_002_ch1
+[2026-04-13 13:56:37] ============================================================
+[2026-04-13 13:56:37] Starting measurement for: swv_ch1_0c8448.ms
+[2026-04-13 13:56:37] ============================================================
+[2026-04-13 13:56:37] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\methods_used\swv_ch1_0c8448_meas_20260413_1356_002_ch1.ms
+[2026-04-13 13:56:37] Scanning for devices...
+[2026-04-13 13:56:37]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:56:37]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:56:37]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:56:37] Multiple devices found:
+[2026-04-13 13:56:37]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:56:37]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:56:37] Using first device: COM10
+[2026-04-13 13:56:37] Connecting to COM10...
+[2026-04-13 13:56:39] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:56:39] Sending script to device...
+[2026-04-13 13:56:40] Script sent. Collecting data...
+[2026-04-13 13:56:40] ----------------------------------------
+[2026-04-13 13:56:40] R*
+[2026-04-13 13:56:40] e
+[2026-04-13 13:56:40] M0002
+[2026-04-13 13:56:41] *
+[2026-04-13 13:56:41] 
+Measurement completed
+[2026-04-13 13:56:41] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\swv_ch1_0c8448_meas_20260413_1356_002_ch1.csv
+[2026-04-13 13:56:41] Total data points: 305
+[2026-04-13 13:56:41] Disconnected from device
+[2026-04-13 13:56:43] Queue start -> swv_ch2_b3b580.ms (MUX ch 2)
+[2026-04-13 13:56:43] [Tag] meas_20260413_1356_003_ch2
+[2026-04-13 13:56:43] ============================================================
+[2026-04-13 13:56:43] Starting measurement for: swv_ch2_b3b580.ms
+[2026-04-13 13:56:43] ============================================================
+[2026-04-13 13:56:43] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\methods_used\swv_ch2_b3b580_meas_20260413_1356_003_ch2.ms
+[2026-04-13 13:56:43] Scanning for devices...
+[2026-04-13 13:56:43]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:56:43]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:56:43]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:56:43] Multiple devices found:
+[2026-04-13 13:56:43]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:56:43]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:56:43] Using first device: COM10
+[2026-04-13 13:56:43] Connecting to COM10...
+[2026-04-13 13:56:45] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:56:45] Sending script to device...
+[2026-04-13 13:56:45] Script sent. Collecting data...
+[2026-04-13 13:56:45] ----------------------------------------
+[2026-04-13 13:56:45] R*
+[2026-04-13 13:56:45] e
+[2026-04-13 13:56:45] M0002
+[2026-04-13 13:56:47] *
+[2026-04-13 13:56:47] 
+Measurement completed
+[2026-04-13 13:56:47] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\swv_ch2_b3b580_meas_20260413_1356_003_ch2.csv
+[2026-04-13 13:56:47] Total data points: 305
+[2026-04-13 13:56:47] Disconnected from device
+[2026-04-13 13:56:48] Queue start -> swv_ch3_3fd3b7.ms (MUX ch 3)
+[2026-04-13 13:56:48] [Tag] meas_20260413_1356_004_ch3
+[2026-04-13 13:56:49] ============================================================
+[2026-04-13 13:56:49] Starting measurement for: swv_ch3_3fd3b7.ms
+[2026-04-13 13:56:49] ============================================================
+[2026-04-13 13:56:49] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\methods_used\swv_ch3_3fd3b7_meas_20260413_1356_004_ch3.ms
+[2026-04-13 13:56:49] Scanning for devices...
+[2026-04-13 13:56:49]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:56:49]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:56:49]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:56:49] Multiple devices found:
+[2026-04-13 13:56:49]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:56:49]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:56:49] Using first device: COM10
+[2026-04-13 13:56:49] Connecting to COM10...
+[2026-04-13 13:56:51] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:56:51] Sending script to device...
+[2026-04-13 13:56:51] Script sent. Collecting data...
+[2026-04-13 13:56:51] ----------------------------------------
+[2026-04-13 13:56:51] R*
+[2026-04-13 13:56:51] e
+[2026-04-13 13:56:51] M0002
+[2026-04-13 13:56:53] *
+[2026-04-13 13:56:53] 
+Measurement completed
+[2026-04-13 13:56:53] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\swv_ch3_3fd3b7_meas_20260413_1356_004_ch3.csv
+[2026-04-13 13:56:53] Total data points: 305
+[2026-04-13 13:56:53] Disconnected from device
+[2026-04-13 13:56:54] Queue start -> swv_ch4_c3c64c.ms (MUX ch 4)
+[2026-04-13 13:56:54] [Tag] meas_20260413_1356_005_ch4
+[2026-04-13 13:56:54] ============================================================
+[2026-04-13 13:56:54] Starting measurement for: swv_ch4_c3c64c.ms
+[2026-04-13 13:56:54] ============================================================
+[2026-04-13 13:56:54] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\methods_used\swv_ch4_c3c64c_meas_20260413_1356_005_ch4.ms
+[2026-04-13 13:56:54] Scanning for devices...
+[2026-04-13 13:56:54]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:56:54]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:56:54]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:56:54] Multiple devices found:
+[2026-04-13 13:56:54]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:56:54]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:56:54] Using first device: COM10
+[2026-04-13 13:56:54] Connecting to COM10...
+[2026-04-13 13:56:56] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:56:56] Sending script to device...
+[2026-04-13 13:56:57] Script sent. Collecting data...
+[2026-04-13 13:56:57] ----------------------------------------
+[2026-04-13 13:56:57] R*
+[2026-04-13 13:56:57] e
+[2026-04-13 13:56:57] M0002
+[2026-04-13 13:56:58] *
+[2026-04-13 13:56:58] 
+Measurement completed
+[2026-04-13 13:56:58] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\swv_ch4_c3c64c_meas_20260413_1356_005_ch4.csv
+[2026-04-13 13:56:58] Total data points: 305
+[2026-04-13 13:56:58] Disconnected from device
+[2026-04-13 13:56:59] Queue start -> swv_ch5_bd834e.ms (MUX ch 5)
+[2026-04-13 13:57:00] [Tag] meas_20260413_1357_006_ch5
+[2026-04-13 13:57:00] ============================================================
+[2026-04-13 13:57:00] Starting measurement for: swv_ch5_bd834e.ms
+[2026-04-13 13:57:00] ============================================================
+[2026-04-13 13:57:00] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\methods_used\swv_ch5_bd834e_meas_20260413_1357_006_ch5.ms
+[2026-04-13 13:57:00] Scanning for devices...
+[2026-04-13 13:57:00]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:57:00]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:57:00]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:57:00] Multiple devices found:
+[2026-04-13 13:57:00]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:57:00]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:57:00] Using first device: COM10
+[2026-04-13 13:57:00] Connecting to COM10...
+[2026-04-13 13:57:02] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:57:02] Sending script to device...
+[2026-04-13 13:57:02] Script sent. Collecting data...
+[2026-04-13 13:57:02] ----------------------------------------
+[2026-04-13 13:57:02] R*
+[2026-04-13 13:57:02] e
+[2026-04-13 13:57:03] M0002
+[2026-04-13 13:57:04] *
+[2026-04-13 13:57:04] 
+Measurement completed
+[2026-04-13 13:57:04] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\swv_ch5_bd834e_meas_20260413_1357_006_ch5.csv
+[2026-04-13 13:57:04] Total data points: 305
+[2026-04-13 13:57:04] Disconnected from device
+[2026-04-13 13:57:05] Queue start -> swv_ch6_a72137.ms (MUX ch 6)
+[2026-04-13 13:57:05] [Tag] meas_20260413_1357_007_ch6
+[2026-04-13 13:57:05] ============================================================
+[2026-04-13 13:57:05] Starting measurement for: swv_ch6_a72137.ms
+[2026-04-13 13:57:05] ============================================================
+[2026-04-13 13:57:05] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\methods_used\swv_ch6_a72137_meas_20260413_1357_007_ch6.ms
+[2026-04-13 13:57:05] Scanning for devices...
+[2026-04-13 13:57:06]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:57:06]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:57:06]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:57:06] Multiple devices found:
+[2026-04-13 13:57:06]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:57:06]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:57:06] Using first device: COM10
+[2026-04-13 13:57:06] Connecting to COM10...
+[2026-04-13 13:57:08] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:57:08] Sending script to device...
+[2026-04-13 13:57:08] Script sent. Collecting data...
+[2026-04-13 13:57:08] ----------------------------------------
+[2026-04-13 13:57:08] R*
+[2026-04-13 13:57:08] e
+[2026-04-13 13:57:08] M0002
+[2026-04-13 13:57:10] *
+[2026-04-13 13:57:10] 
+Measurement completed
+[2026-04-13 13:57:10] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\swv_ch6_a72137_meas_20260413_1357_007_ch6.csv
+[2026-04-13 13:57:10] Total data points: 305
+[2026-04-13 13:57:10] Disconnected from device
+[2026-04-13 13:57:11] Queue start -> swv_ch7_c0f8f5.ms (MUX ch 7)
+[2026-04-13 13:57:11] [Tag] meas_20260413_1357_008_ch7
+[2026-04-13 13:57:11] ============================================================
+[2026-04-13 13:57:11] Starting measurement for: swv_ch7_c0f8f5.ms
+[2026-04-13 13:57:11] ============================================================
+[2026-04-13 13:57:11] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\methods_used\swv_ch7_c0f8f5_meas_20260413_1357_008_ch7.ms
+[2026-04-13 13:57:11] Scanning for devices...
+[2026-04-13 13:57:11]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:57:11]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:57:11]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:57:11] Multiple devices found:
+[2026-04-13 13:57:11]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:57:11]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:57:11] Using first device: COM10
+[2026-04-13 13:57:11] Connecting to COM10...
+[2026-04-13 13:57:13] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:57:13] Sending script to device...
+[2026-04-13 13:57:14] Script sent. Collecting data...
+[2026-04-13 13:57:14] ----------------------------------------
+[2026-04-13 13:57:14] R*
+[2026-04-13 13:57:14] e
+[2026-04-13 13:57:14] M0002
+[2026-04-13 13:57:15] *
+[2026-04-13 13:57:15] 
+Measurement completed
+[2026-04-13 13:57:15] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\swv_ch7_c0f8f5_meas_20260413_1357_008_ch7.csv
+[2026-04-13 13:57:15] Total data points: 305
+[2026-04-13 13:57:16] Disconnected from device
+[2026-04-13 13:57:17] Queue start -> swv_ch8_550322.ms (MUX ch 8)
+[2026-04-13 13:57:17] [Tag] meas_20260413_1357_009_ch8
+[2026-04-13 13:57:17] ============================================================
+[2026-04-13 13:57:17] Starting measurement for: swv_ch8_550322.ms
+[2026-04-13 13:57:17] ============================================================
+[2026-04-13 13:57:17] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\methods_used\swv_ch8_550322_meas_20260413_1357_009_ch8.ms
+[2026-04-13 13:57:17] Scanning for devices...
+[2026-04-13 13:57:17]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:57:17]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:57:17]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:57:17] Multiple devices found:
+[2026-04-13 13:57:17]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:57:17]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:57:17] Using first device: COM10
+[2026-04-13 13:57:17] Connecting to COM10...
+[2026-04-13 13:57:19] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:57:19] Sending script to device...
+[2026-04-13 13:57:19] Script sent. Collecting data...
+[2026-04-13 13:57:19] ----------------------------------------
+[2026-04-13 13:57:19] R*
+[2026-04-13 13:57:19] e
+[2026-04-13 13:57:20] M0002
+[2026-04-13 13:57:21] *
+[2026-04-13 13:57:21] 
+Measurement completed
+[2026-04-13 13:57:21] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\swv_ch8_550322_meas_20260413_1357_009_ch8.csv
+[2026-04-13 13:57:21] Total data points: 305
+[2026-04-13 13:57:21] Disconnected from device
+[2026-04-13 13:57:22] Queue start -> swv_ch9_f3b27e.ms (MUX ch 9)
+[2026-04-13 13:57:22] [Tag] meas_20260413_1357_010_ch9
+[2026-04-13 13:57:23] ============================================================
+[2026-04-13 13:57:23] Starting measurement for: swv_ch9_f3b27e.ms
+[2026-04-13 13:57:23] ============================================================
+[2026-04-13 13:57:23] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\methods_used\swv_ch9_f3b27e_meas_20260413_1357_010_ch9.ms
+[2026-04-13 13:57:23] Scanning for devices...
+[2026-04-13 13:57:23]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:57:23]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:57:23]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:57:23] Multiple devices found:
+[2026-04-13 13:57:23]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:57:23]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:57:23] Using first device: COM10
+[2026-04-13 13:57:23] Connecting to COM10...
+[2026-04-13 13:57:25] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:57:25] Sending script to device...
+[2026-04-13 13:57:25] Script sent. Collecting data...
+[2026-04-13 13:57:25] ----------------------------------------
+[2026-04-13 13:57:25] R*
+[2026-04-13 13:57:25] e
+[2026-04-13 13:57:25] M0002
+[2026-04-13 13:57:27] *
+[2026-04-13 13:57:27] 
+Measurement completed
+[2026-04-13 13:57:27] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\swv_ch9_f3b27e_meas_20260413_1357_010_ch9.csv
+[2026-04-13 13:57:27] Total data points: 305
+[2026-04-13 13:57:27] Disconnected from device
+[2026-04-13 13:57:28] Queue start -> swv_ch10_3641e3.ms (MUX ch 10)
+[2026-04-13 13:57:28] [Tag] meas_20260413_1357_011_ch10
+[2026-04-13 13:57:28] ============================================================
+[2026-04-13 13:57:28] Starting measurement for: swv_ch10_3641e3.ms
+[2026-04-13 13:57:28] ============================================================
+[2026-04-13 13:57:28] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\methods_used\swv_ch10_3641e3_meas_20260413_1357_011_ch10.ms
+[2026-04-13 13:57:28] Scanning for devices...
+[2026-04-13 13:57:28]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:57:28]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 13:57:28]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:57:28] Multiple devices found:
+[2026-04-13 13:57:28]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 13:57:28]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 13:57:28] Using first device: COM10
+[2026-04-13 13:57:28] Connecting to COM10...
+[2026-04-13 13:57:30] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 13:57:30] Sending script to device...
+[2026-04-13 13:57:31] Script sent. Collecting data...
+[2026-04-13 13:57:31] ----------------------------------------
+[2026-04-13 13:57:31] R*
+[2026-04-13 13:57:31] e
+[2026-04-13 13:57:31] M0002
+[2026-04-13 13:57:32] *
+[2026-04-13 13:57:32] 
+Measurement completed
+[2026-04-13 13:57:32] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_135635\swv_ch10_3641e3_meas_20260413_1357_011_ch10.csv
+[2026-04-13 13:57:32] Total data points: 305
+[2026-04-13 13:57:33] Disconnected from device
+[2026-04-13 13:57:33] Queue completed.
+[2026-04-13 14:08:22] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-13 14:08:22] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-13 14:08:22] Connected.
+[2026-04-13 14:10:06] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_141006
+[2026-04-13 14:10:06] ngrok tunnel started.
+[2026-04-13 14:10:09] [Tag] meas_20260413_1410_001
+[2026-04-13 14:10:09] ============================================================
+[2026-04-13 14:10:09] Starting measurement for: swv_13bda1.ms
+[2026-04-13 14:10:09] ============================================================
+[2026-04-13 14:10:09] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_141006\methods_used\swv_13bda1_meas_20260413_1410_001.ms
+[2026-04-13 14:10:09] Scanning for devices...
+[2026-04-13 14:10:09]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:10:09]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 14:10:09]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:10:09] Multiple devices found:
+[2026-04-13 14:10:09]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:10:09]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:10:09] Using first device: COM10
+[2026-04-13 14:10:09] Connecting to COM10...
+[2026-04-13 14:10:09] Connection failed: could not open port 'COM10': PermissionError(13, 'Access is denied.', None, 5)
+[2026-04-13 14:10:09] ERROR: Failed to connect to device
+[2026-04-13 14:10:26] [Tag] meas_20260413_1410_002
+[2026-04-13 14:10:26] ============================================================
+[2026-04-13 14:10:26] Starting measurement for: swv_13bda1.ms
+[2026-04-13 14:10:26] ============================================================
+[2026-04-13 14:10:26] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_141006\methods_used\swv_13bda1_meas_20260413_1410_002.ms
+[2026-04-13 14:10:26] Scanning for devices...
+[2026-04-13 14:10:26]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:10:26]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 14:10:26]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:10:26] Multiple devices found:
+[2026-04-13 14:10:26]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:10:26]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:10:26] Using first device: COM10
+[2026-04-13 14:10:26] Connecting to COM10...
+[2026-04-13 14:10:26] Connection failed: could not open port 'COM10': PermissionError(13, 'Access is denied.', None, 5)
+[2026-04-13 14:10:26] ERROR: Failed to connect to device
+[2026-04-13 14:10:38] [Tag] meas_20260413_1410_003
+[2026-04-13 14:10:38] ============================================================
+[2026-04-13 14:10:38] Starting measurement for: swv_13bda1.ms
+[2026-04-13 14:10:38] ============================================================
+[2026-04-13 14:10:38] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_141006\methods_used\swv_13bda1_meas_20260413_1410_003.ms
+[2026-04-13 14:10:38] Scanning for devices...
+[2026-04-13 14:10:38]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:10:38]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 14:10:38]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:10:38] Multiple devices found:
+[2026-04-13 14:10:38]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:10:38]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:10:38] Using first device: COM10
+[2026-04-13 14:10:38] Connecting to COM10...
+[2026-04-13 14:10:41] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 14:10:41] Sending script to device...
+[2026-04-13 14:10:41] Script sent. Collecting data...
+[2026-04-13 14:10:41] ----------------------------------------
+[2026-04-13 14:10:41] R*
+[2026-04-13 14:10:41] e
+[2026-04-13 14:10:41] !0007: Line 17
+[2026-04-13 14:10:41] Device error: !0007: Line 17
+[2026-04-13 14:10:46] Warning: data stream idle timed out
+[2026-04-13 14:10:46] Total data points: 0
+[2026-04-13 14:10:46] Disconnected from device
+[2026-04-13 14:13:05] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-13 14:13:05] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-13 14:13:05] Connected.
+[2026-04-13 14:13:31] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\retest_20260413_141331
+[2026-04-13 14:13:31] ngrok tunnel started.
+[2026-04-13 14:13:32] [Tag] meas_20260413_1413_001_ch1
+[2026-04-13 14:13:32] ============================================================
+[2026-04-13 14:13:32] Starting measurement for: swv_ch1_eceed7.ms
+[2026-04-13 14:13:32] ============================================================
+[2026-04-13 14:13:32] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\retest_20260413_141331\methods_used\swv_ch1_eceed7_meas_20260413_1413_001_ch1.ms
+[2026-04-13 14:13:32] Scanning for devices...
+[2026-04-13 14:13:32]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:13:32]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 14:13:32]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:13:32] Multiple devices found:
+[2026-04-13 14:13:32]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:13:32]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:13:32] Using first device: COM10
+[2026-04-13 14:13:32] Connecting to COM10...
+[2026-04-13 14:13:34] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 14:13:34] Sending script to device...
+[2026-04-13 14:13:34] Script sent. Collecting data...
+[2026-04-13 14:13:34] ----------------------------------------
+[2026-04-13 14:13:34] R*
+[2026-04-13 14:13:34] e
+[2026-04-13 14:13:34] M0007
+[2026-04-13 14:13:36] *
+[2026-04-13 14:13:36] 
+Measurement completed
+[2026-04-13 14:13:36] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\retest_20260413_141331\swv_ch1_eceed7_meas_20260413_1413_001_ch1.csv
+[2026-04-13 14:13:36] Total data points: 5
+[2026-04-13 14:13:36] Disconnected from device
+[2026-04-13 14:13:57] [Tag] meas_20260413_1413_002_ch1
+[2026-04-13 14:13:57] ============================================================
+[2026-04-13 14:13:57] Starting measurement for: swv_ch1_e197d4.ms
+[2026-04-13 14:13:57] ============================================================
+[2026-04-13 14:13:57] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\retest_20260413_141331\methods_used\swv_ch1_e197d4_meas_20260413_1413_002_ch1.ms
+[2026-04-13 14:13:57] Scanning for devices...
+[2026-04-13 14:13:57]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:13:57]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 14:13:57]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:13:57] Multiple devices found:
+[2026-04-13 14:13:57]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:13:57]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:13:57] Using first device: COM10
+[2026-04-13 14:13:57] Connecting to COM10...
+[2026-04-13 14:13:59] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 14:13:59] Sending script to device...
+[2026-04-13 14:14:00] Script sent. Collecting data...
+[2026-04-13 14:14:00] ----------------------------------------
+[2026-04-13 14:14:00] R*
+[2026-04-13 14:14:00] e
+[2026-04-13 14:14:00] M0002
+[2026-04-13 14:14:01] *
+[2026-04-13 14:14:01] 
+Measurement completed
+[2026-04-13 14:14:01] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\retest_20260413_141331\swv_ch1_e197d4_meas_20260413_1413_002_ch1.csv
+[2026-04-13 14:14:01] Total data points: 305
+[2026-04-13 14:14:01] Disconnected from device
+[2026-04-13 14:15:49] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-13 14:15:49] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-13 14:15:49] Connected.
+[2026-04-13 14:16:14] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\fixed test_20260413_141614
+[2026-04-13 14:16:14] ngrok tunnel started.
+[2026-04-13 14:16:15] [Tag] meas_20260413_1416_001_ch1
+[2026-04-13 14:16:15] ============================================================
+[2026-04-13 14:16:15] Starting measurement for: swv_ch1_eceed7.ms
+[2026-04-13 14:16:15] ============================================================
+[2026-04-13 14:16:15] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\fixed test_20260413_141614\methods_used\swv_ch1_eceed7_meas_20260413_1416_001_ch1.ms
+[2026-04-13 14:16:15] Scanning for devices...
+[2026-04-13 14:16:15]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:16:15]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 14:16:15]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:16:15] Multiple devices found:
+[2026-04-13 14:16:15]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:16:15]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:16:15] Using first device: COM10
+[2026-04-13 14:16:15] Connecting to COM10...
+[2026-04-13 14:16:17] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 14:16:17] Sending script to device...
+[2026-04-13 14:16:18] Script sent. Collecting data...
+[2026-04-13 14:16:18] ----------------------------------------
+[2026-04-13 14:16:18] R*
+[2026-04-13 14:16:18] e
+[2026-04-13 14:16:18] M0007
+[2026-04-13 14:16:19] *
+[2026-04-13 14:16:19] M0002
+[2026-04-13 14:16:21] *
+[2026-04-13 14:16:26] Warning: data stream idle timed out
+[2026-04-13 14:16:26] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\fixed test_20260413_141614\swv_ch1_eceed7_meas_20260413_1416_001_ch1.csv
+[2026-04-13 14:16:26] Total data points: 310
+[2026-04-13 14:16:26] Disconnected from device
+[2026-04-13 14:18:21] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-13 14:18:21] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-13 14:18:21] Connected.
+[2026-04-13 14:18:24] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_141824
+[2026-04-13 14:18:24] ngrok tunnel started.
+[2026-04-13 14:20:05] [Tag] meas_20260413_1420_001_ch1
+[2026-04-13 14:20:05] ============================================================
+[2026-04-13 14:20:05] Starting measurement for: swv_ch1_eceed7.ms
+[2026-04-13 14:20:05] ============================================================
+[2026-04-13 14:20:05] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_141824\methods_used\swv_ch1_eceed7_meas_20260413_1420_001_ch1.ms
+[2026-04-13 14:20:05] Scanning for devices...
+[2026-04-13 14:20:05]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:20:05]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 14:20:05]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:20:05] Multiple devices found:
+[2026-04-13 14:20:05]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:20:05]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:20:05] Using first device: COM10
+[2026-04-13 14:20:05] Connecting to COM10...
+[2026-04-13 14:20:07] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 14:20:07] Sending script to device...
+[2026-04-13 14:20:08] Script sent. Collecting data...
+[2026-04-13 14:20:08] ----------------------------------------
+[2026-04-13 14:20:08] R*
+[2026-04-13 14:20:08] e
+[2026-04-13 14:20:08] M0007
+[2026-04-13 14:20:09] *
+[2026-04-13 14:20:09] M0002
+[2026-04-13 14:20:10] *
+[2026-04-13 14:20:15] Warning: data stream idle timed out
+[2026-04-13 14:20:15] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_141824\swv_ch1_eceed7_meas_20260413_1420_001_ch1.csv
+[2026-04-13 14:20:15] Total data points: 310
+[2026-04-13 14:20:15] Disconnected from device
+[2026-04-13 14:20:26] [Tag] meas_20260413_1420_002_ch1
+[2026-04-13 14:20:26] ============================================================
+[2026-04-13 14:20:26] Starting measurement for: swv_ch1_2be755.ms
+[2026-04-13 14:20:26] ============================================================
+[2026-04-13 14:20:26] Method snapshot: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_141824\methods_used\swv_ch1_2be755_meas_20260413_1420_002_ch1.ms
+[2026-04-13 14:20:26] Scanning for devices...
+[2026-04-13 14:20:26]   Found port: COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:20:26]   Found port: COM1: Communications Port (COM1) | (Standard port types) | ACPI\PNP0501\0
+[2026-04-13 14:20:26]   Found port: COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:20:26] Multiple devices found:
+[2026-04-13 14:20:26]   COM10: USB Serial Port (COM10) | FTDI | S/N EPAWRSK9A | USB VID:PID=0403:6015 SER=EPAWRSK9A
+[2026-04-13 14:20:26]   COM8: USB Serial Port (COM8) | FTDI | S/N DM79M5P8A | USB VID:PID=0403:6015 SER=DM79M5P8A
+[2026-04-13 14:20:26] Using first device: COM10
+[2026-04-13 14:20:26] Connecting to COM10...
+[2026-04-13 14:20:28] Device responded: tespico1304#Oct 22 2021 14:38:26
+[2026-04-13 14:20:28] Sending script to device...
+[2026-04-13 14:20:28] Script sent. Collecting data...
+[2026-04-13 14:20:28] ----------------------------------------
+[2026-04-13 14:20:28] R*
+[2026-04-13 14:20:28] e
+[2026-04-13 14:20:29] M0007
+[2026-04-13 14:20:29] *
+[2026-04-13 14:20:29] M0002
+[2026-04-13 14:20:31] *
+[2026-04-13 14:20:36] Warning: data stream idle timed out
+[2026-04-13 14:20:36] 
+Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260413_141824\swv_ch1_2be755_meas_20260413_1420_002_ch1.csv
+[2026-04-13 14:20:36] Total data points: 310
+[2026-04-13 14:20:36] Disconnected from device

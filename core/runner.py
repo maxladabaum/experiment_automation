@@ -286,7 +286,7 @@ class SerialMeasurementRunner:
                                 continue
                             self._parse_data_line(text_line)
 
-                        if text_line in ("*", "Measurement completed", "Script completed"):
+                        if text_line in ("Measurement completed", "Script completed"):
                             self.log("\nMeasurement completed")
                             measurement_completed = True
                             self.partial_packet = ""

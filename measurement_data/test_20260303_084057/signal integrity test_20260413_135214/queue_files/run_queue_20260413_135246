@@ -1,0 +1,26 @@
+{
+  "metadata": {
+    "saved_at": "2026-04-13T13:52:46",
+    "version": 1
+  },
+  "items": [
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_a67356.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_a67356.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_a67356.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_a67356.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_a67356.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_a67356.ms"
+    }
+  ]
+}

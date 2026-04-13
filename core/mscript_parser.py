@@ -173,6 +173,7 @@ def to_si_string(value_str: str, unit: str = "V") -> str:
         to_si_string("0.5",  "V")   → "500m"
         to_si_string("15",   "Hz")  → "15"
         to_si_string("0.02", "V")   → "20m"
+        to_si_string("0.2",  "s")   → "200m"
     """
     try:
         val = float(value_str)
@@ -190,5 +191,16 @@ def to_si_string(value_str: str, unit: str = "V") -> str:
 
     if unit == "Hz":
         return f"{int(val)}" if float(val).is_integer() else f"{val:g}"
+
+    if unit == "s":
+        if val == 0:
+            return "0"
+        if abs(val) >= 1:
+            return f"{int(val)}" if float(val).is_integer() else f"{val:g}"
+        milli = val * 1_000.0
+        formatted = f"{milli:.12f}".rstrip("0").rstrip(".")
+        if formatted in ("", "-0", "+0"):
+            formatted = "0"
+        return f"{formatted}m"
 
     return value_str  # fallback

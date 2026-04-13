@@ -24,31 +24,21 @@ from core.session import SessionState
 from gui.tab_custom_script import CustomScriptPanel
 
 EMSTAT_PICO_LOW_SPEED_BA_RANGES = (
-    ("100 nA", "48.9n"),
-    ("1.95 uA", "956n"),
-    ("3.91 uA", "1.91u"),
-    ("7.81 uA", "3.82u"),
-    ("15.63 uA", "7.65u"),
-    ("31.25 uA", "15.3u"),
-    ("62.5 uA", "30.6u"),
-    ("125 uA", "61.2u"),
-    ("250 uA", "122u"),
-    ("500 uA", "245u"),
-    ("1 mA", "489u"),
-    ("5 mA", "2.45m"),
+    ("100 nA", "59n"),
+    ("1 uA", "489n"),
+    ("10 uA", "10u"),
+    ("100 uA", "100u"),
+    ("1 mA", "1m"),
+    ("5 mA", "5m"),
 )
 
 EMSTAT_PICO_HIGH_SPEED_BA_RANGES = (
-    ("100 nA", "48.9n"),
+    ("100 nA", "59n"),
     ("1 uA", "489n"),
-    ("6.25 uA", "3.06u"),
-    ("12.5 uA", "6.12u"),
-    ("25 uA", "12.2u"),
-    ("50 uA", "24.5u"),
-    ("100 uA", "48.9u"),
-    ("200 uA", "97.9u"),
-    ("1 mA", "489u"),
-    ("5 mA", "2.45m"),
+    ("10 uA", "10u"),
+    ("100 uA", "100u"),
+    ("1 mA", "1m"),
+    ("5 mA", "5m"),
 )
 
 class MethodTab:
@@ -96,13 +86,13 @@ class MethodTab:
         self.pause_params: dict = {}
         self._library_note = tk.StringVar(value="")
         self._cv_range_mode = tk.StringVar(value="auto")
-        self._cv_fixed_range = tk.StringVar(value="250 uA")
+        self._cv_fixed_range = tk.StringVar(value="100 uA")
         self._cv_auto_min = tk.StringVar(value="100 nA")
-        self._cv_auto_max = tk.StringVar(value="250 uA")
+        self._cv_auto_max = tk.StringVar(value="100 uA")
         self._lsv_range_mode = tk.StringVar(value="fixed")
-        self._lsv_fixed_range = tk.StringVar(value="15.63 uA")
+        self._lsv_fixed_range = tk.StringVar(value="10 uA")
         self._lsv_auto_min = tk.StringVar(value="100 nA")
-        self._lsv_auto_max = tk.StringVar(value="15.63 uA")
+        self._lsv_auto_max = tk.StringVar(value="10 uA")
         self._swv_range_mode = tk.StringVar(value="fixed")
         self._swv_fixed_range = tk.StringVar(value="100 nA")
         self._swv_auto_min = tk.StringVar(value="100 nA")
@@ -453,6 +443,36 @@ class MethodTab:
         return [label for label, _selector in profile]
 
     @staticmethod
+    def _range_label_value(label: str) -> float:
+        text = (label or "").strip()
+        value_str, unit = text.split()
+        scale = {
+            "pA": 1e-12,
+            "nA": 1e-9,
+            "uA": 1e-6,
+            "mA": 1e-3,
+            "A": 1.0,
+        }[unit]
+        return float(value_str) * scale
+
+    @classmethod
+    def _normalize_range_label(cls, profile, label: str, direction: str) -> str:
+        labels = cls._range_labels(profile)
+        if label in labels:
+            return label
+
+        target = cls._range_label_value(label)
+        choices = [(option_label, cls._range_label_value(option_label)) for option_label in labels]
+        if direction == "down":
+            eligible = [option_label for option_label, value in choices if value <= target]
+            return eligible[-1] if eligible else labels[0]
+        if direction == "up":
+            eligible = [option_label for option_label, value in choices if value >= target]
+            return eligible[0] if eligible else labels[-1]
+
+        return min(choices, key=lambda item: abs(item[1] - target))[0]
+
+    @staticmethod
     def _range_selector(profile, label: str) -> str:
         for option_label, selector in profile:
             if option_label == label:
@@ -503,17 +523,20 @@ class MethodTab:
         frame.columnconfigure(1, weight=1)
 
         def _sync():
-            fixed_box.configure(state="readonly" if mode_var.get() == "fixed" else "disabled")
+            fixed_state = "readonly" if mode_var.get() == "fixed" else "disabled"
             auto_state = "readonly" if mode_var.get() == "auto" else "disabled"
+            fixed_box.configure(state=fixed_state)
             min_box.configure(state=auto_state)
             max_box.configure(state=auto_state)
 
-        ttk.Radiobutton(
+        fixed_radio = ttk.Radiobutton(
             frame, text="Fixed", variable=mode_var, value="fixed", command=_sync
-        ).grid(row=0, column=0, sticky="w")
-        ttk.Radiobutton(
+        )
+        fixed_radio.grid(row=0, column=0, sticky="w")
+        auto_radio = ttk.Radiobutton(
             frame, text="Autorange", variable=mode_var, value="auto", command=_sync
-        ).grid(row=0, column=1, sticky="w")
+        )
+        auto_radio.grid(row=0, column=1, sticky="w")
 
         ttk.Label(frame, text="Fixed range:").grid(row=1, column=0, sticky="w", pady=(6, 2))
         fixed_box = ttk.Combobox(
@@ -543,9 +566,9 @@ class MethodTab:
     def _get_ba_range_config(self, technique: str) -> dict:
         profile, mode_var, fixed_var, auto_min_var, auto_max_var = self._get_ba_range_state(technique)
         mode = (mode_var.get() or "fixed").strip().lower()
-        fixed_label = fixed_var.get().strip()
-        auto_min_label = auto_min_var.get().strip()
-        auto_max_label = auto_max_var.get().strip()
+        fixed_label = self._normalize_range_label(profile, fixed_var.get().strip(), "up")
+        auto_min_label = self._normalize_range_label(profile, auto_min_var.get().strip(), "down")
+        auto_max_label = self._normalize_range_label(profile, auto_max_var.get().strip(), "up")
 
         labels = self._range_labels(profile)
         if fixed_label not in labels:
@@ -671,6 +694,8 @@ class MethodTab:
         begin_v  = float(p["begin_potential"].get())
         end_v    = float(p["end_potential"].get())
         amp_v    = float(p["amplitude"].get())
+        cond_time_s = float(p["cond_time"].get())
+        freq_hz = float(p["frequency"].get())
 
         begin     = to_si_string(p["begin_potential"].get(), "V")
         end       = to_si_string(p["end_potential"].get(),   "V")
@@ -684,6 +709,12 @@ class MethodTab:
         min_mv = int((min(begin_v, end_v) - amp_v) * 1000)
         max_mv = int((max(begin_v, end_v) + amp_v) * 1000)
 
+        use_equilibrium_check = cond_time_s > 0
+        eq_interval_s = min(0.2, cond_time_s) if use_equilibrium_check else 0.0
+        swv_time_step = to_si_string(str(1.0 / freq_hz), "s") if freq_hz > 0 else "0"
+        eq_duration = to_si_string(cond_time, "s") if use_equilibrium_check else "0"
+        eq_interval = to_si_string(str(eq_interval_s), "s") if use_equilibrium_check else "0"
+
         parts = [
             "e", "var c", "var p", "var f", "var r",
             "set_pgstat_chan 1",
@@ -693,23 +724,50 @@ class MethodTab:
             "set_max_bandwidth 4k",
             f"set_range_minmax da {min_mv}m {max_mv}m",
         ]
+        if use_equilibrium_check:
+            parts.insert(5, "var t")
         parts += self._ba_range_lines(
             ba_cfg["set_range_value"],
             ba_cfg["mode"] == "auto",
             ba_cfg["auto_min_value"],
             ba_cfg["auto_max_value"],
         )
-        parts += ["cell_on"]
-        if float(cond_time) > 0:
-            parts += [f"# Equilibrate at {cond_pot} for {cond_time}s",
-                      f"set_e {cond_pot}", f"wait {cond_time}"]
-        parts += [f"set_e {begin}"]
-        parts += [
-            f"meas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}",
-            "\tpck_start", "\t\tpck_add p", "\t\tpck_add c",
-            "\t\tpck_add f", "\t\tpck_add r", "\tpck_end", "endloop",
-            "on_finished:", "cell_off",
-        ]
+        parts += [f"set_e {cond_pot if use_equilibrium_check else begin}", "cell_on"]
+        if use_equilibrium_check:
+            parts += [
+                f"# Equilibrium check at {cond_pot} for {cond_time}s",
+                "store_var t 0 eb",
+                f"meas_loop_ca p c {cond_pot} {eq_interval} {eq_duration}",
+                "\tpck_start",
+                "\t\tpck_add t",
+                "\t\tpck_add p",
+                "\t\tpck_add c",
+                "\tpck_end",
+                f"\tadd_var t {eq_interval}",
+                "endloop",
+                "store_var t 0 eb",
+                f"set_e {begin}",
+            ]
+        else:
+            parts += [f"set_e {begin}"]
+        parts += [f"meas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}"]
+        if use_equilibrium_check:
+            parts += [
+                "\tpck_start",
+                "\t\tpck_add p",
+                "\t\tpck_add c",
+                "\t\tpck_add f",
+                "\t\tpck_add r",
+                "\t\tpck_add t",
+                "\tpck_end",
+                f"\tadd_var t {swv_time_step}",
+            ]
+        else:
+            parts += [
+                "\tpck_start", "\t\tpck_add p", "\t\tpck_add c",
+                "\t\tpck_add f", "\t\tpck_add r", "\tpck_end",
+            ]
+        parts += ["endloop", "on_finished:", "cell_off"]
         return "\n".join(parts)
 
     # ── MUX helpers ───────────────────────────────────────────────────────────
@@ -982,14 +1040,16 @@ class MethodTab:
         mux = self._get_mux_channels(self.cv_params)
         if mux is None:
             return
+        raw_params = {k: v.get() for k, v in self.cv_params.items()}
+        raw_params.update(self._serialize_ba_range_config("CV"))
         if mux:
             if len(mux) == 1:
-                self._run_now("CV", self._wrap_mux(base, mux[0]), mux[0])
+                self._run_now("CV", self._wrap_mux(base, mux[0]), {"mux_channel": mux[0], "params": raw_params})
             else:
                 # Multi-channel: delegate to app for sequence run
-                self._run_now("CV_MUX_SEQ", base, mux)
+                self._run_now("CV_MUX_SEQ", base, {"channels": mux, "params": raw_params})
         else:
-            self._run_now("CV", base, None)
+            self._run_now("CV", base, {"mux_channel": None, "params": raw_params})
 
     def _run_lsv_now(self):
         try:
@@ -999,13 +1059,15 @@ class MethodTab:
         mux = self._get_mux_channels(self.lsv_params)
         if mux is None:
             return
+        raw_params = {k: v.get() for k, v in self.lsv_params.items()}
+        raw_params.update(self._serialize_ba_range_config("LSV"))
         if mux:
             if len(mux) == 1:
-                self._run_now("LSV", self._wrap_mux(base, mux[0]), mux[0])
+                self._run_now("LSV", self._wrap_mux(base, mux[0]), {"mux_channel": mux[0], "params": raw_params})
             else:
-                self._run_now("LSV_MUX_SEQ", base, mux)
+                self._run_now("LSV_MUX_SEQ", base, {"channels": mux, "params": raw_params})
         else:
-            self._run_now("LSV", base, None)
+            self._run_now("LSV", base, {"mux_channel": None, "params": raw_params})
 
     def _run_swv_now(self):
         try:
@@ -1018,16 +1080,22 @@ class MethodTab:
         n_scans, delay = self._get_swv_cycles_and_delay()
         if n_scans is None:
             return
+        raw_params = {k: v.get() for k, v in self.swv_params.items()}
+        raw_params.update(self._serialize_ba_range_config("SWV"))
         if mux:
             if len(mux) == 1 and n_scans == 1:
-                self._run_now("SWV", self._wrap_mux(base, mux[0]), mux[0])
+                self._run_now("SWV", self._wrap_mux(base, mux[0]), {"mux_channel": mux[0], "params": raw_params})
             else:
-                self._run_now("SWV_MUX_CYCLES", base, (mux, n_scans, delay))
+                self._run_now(
+                    "SWV_MUX_CYCLES",
+                    base,
+                    {"channels": mux, "n_scans": n_scans, "delay": delay, "params": raw_params},
+                )
         else:
             if n_scans == 1:
-                self._run_now("SWV", base, None)
+                self._run_now("SWV", base, {"mux_channel": None, "params": raw_params})
             else:
-                self._run_now("SWV_CYCLES", base, (n_scans, delay))
+                self._run_now("SWV_CYCLES", base, {"n_scans": n_scans, "delay": delay, "params": raw_params})
 
     def _run_pause_now(self):
         try:
