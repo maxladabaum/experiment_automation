@@ -23,10 +23,10 @@ class SessionBar:
 
         self._session_name_var = tk.StringVar()
         self._session_user_var = tk.StringVar()
-        self._session_chip_id_var = tk.StringVar()
         self._session_notes_var = tk.StringVar()
 
         self._experiment_name_var = tk.StringVar()
+        self._experiment_chip_id_var = tk.StringVar()
         self._experiment_notes_var = tk.StringVar()
 
         self._build()
@@ -68,10 +68,6 @@ class SessionBar:
         ttk.Entry(sess, textvariable=self._session_user_var, width=14).grid(
             row=1, column=1, sticky="we", padx=5, pady=2
         )
-        ttk.Label(sess, text="Chip ID:").grid(row=1, column=2, sticky="w", padx=5, pady=2)
-        ttk.Entry(sess, textvariable=self._session_chip_id_var, width=14).grid(
-            row=1, column=3, sticky="we", padx=5, pady=2
-        )
 
         ttk.Label(sess, text="Notes:").grid(row=2, column=0, sticky="w", padx=5, pady=2)
         ttk.Entry(sess, textvariable=self._session_notes_var, width=34).grid(
@@ -85,36 +81,47 @@ class SessionBar:
         exp = ttk.LabelFrame(row, text="Experiment")
         exp.pack(side="right", fill="x", expand=True, padx=(4, 0))
         exp.columnconfigure(1, weight=1)
+        exp.columnconfigure(3, weight=1)
 
         ttk.Label(exp, text="Experiment Name:").grid(row=0, column=0, sticky="w", padx=5, pady=2)
         ttk.Entry(exp, textvariable=self._experiment_name_var, width=22).grid(
             row=0, column=1, sticky="we", padx=5, pady=2
         )
+        ttk.Button(exp, text="Choose Experiment", command=self._on_choose_experiment).grid(
+            row=0, column=2, columnspan=2, sticky="e", padx=5, pady=2
+        )
 
-        ttk.Label(exp, text="Notes:").grid(row=1, column=0, sticky="w", padx=5, pady=2)
-        ttk.Entry(exp, textvariable=self._experiment_notes_var, width=26).grid(
+        ttk.Label(exp, text="Chip ID:").grid(row=1, column=0, sticky="w", padx=5, pady=2)
+        ttk.Entry(exp, textvariable=self._experiment_chip_id_var, width=16).grid(
             row=1, column=1, sticky="we", padx=5, pady=2
         )
 
+        ttk.Label(exp, text="Notes:").grid(row=2, column=0, sticky="w", padx=5, pady=2)
+        ttk.Entry(exp, textvariable=self._experiment_notes_var, width=26).grid(
+            row=2, column=1, columnspan=3, sticky="we", padx=5, pady=2
+        )
+
         btn_row = ttk.Frame(exp)
-        btn_row.grid(row=2, column=0, columnspan=2, sticky="w", padx=5, pady=2)
+        btn_row.grid(row=3, column=0, columnspan=4, sticky="w", padx=5, pady=2)
         ttk.Button(btn_row, text="Start Experiment", command=self._on_start_experiment).pack(
             side="left", padx=(0, 4)
         )
-        ttk.Button(btn_row, text="End Experiment", command=self._on_end_experiment).pack(side="left")
+        ttk.Button(btn_row, text="End Experiment", command=self._on_end_experiment).pack(side="left", padx=(0, 4))
+        ttk.Button(btn_row, text="Update Experiment Metadata", command=self._on_update_experiment).pack(side="left")
 
     def _on_start_session(self):
         started = self._mgr.start_session(
             name=self._session_name_var.get(),
             user=self._session_user_var.get(),
-            chip_id=self._session_chip_id_var.get(),
             notes=self._session_notes_var.get(),
         )
         if started and self._on_start_session_cb:
+            self._apply_experiment_metadata({})
             self._on_start_session_cb()
 
     def _on_end_session(self):
         self._mgr.end_session()
+        self._apply_experiment_metadata({})
 
     def _on_choose_session(self):
         path = filedialog.askdirectory(
@@ -126,31 +133,64 @@ class SessionBar:
         opened = self._mgr.open_session(path)
         if opened:
             self._apply_session_metadata(self._mgr.session_metadata())
+            self._apply_experiment_metadata({})
             if self._on_start_session_cb:
                 self._on_start_session_cb()
         else:
             messagebox.showerror("Session Not Opened", "Could not open the selected session.")
 
     def _apply_session_metadata(self, data: dict):
-        if not data:
-            return
+        data = data or {}
         self._session_name_var.set(data.get("session_name", ""))
         self._session_user_var.set(data.get("user", ""))
-        self._session_chip_id_var.set(data.get("chip_id", ""))
         self._session_notes_var.set(data.get("notes", ""))
+        if not self._mgr.has_experiment and not self._experiment_chip_id_var.get().strip():
+            self._experiment_chip_id_var.set(data.get("chip_id", ""))
 
     def _on_update_session(self):
         self._mgr.update_session_metadata(
             user=self._session_user_var.get(),
-            chip_id=self._session_chip_id_var.get(),
             notes=self._session_notes_var.get(),
         )
 
     def _on_start_experiment(self):
-        self._mgr.start_experiment(
+        started = self._mgr.start_experiment(
             name=self._experiment_name_var.get(),
+            chip_id=self._experiment_chip_id_var.get(),
+            notes=self._experiment_notes_var.get(),
+        )
+        if started:
+            self._apply_experiment_metadata(self._mgr.experiment_metadata())
+
+    def _on_choose_experiment(self):
+        if not self._mgr.has_session:
+            messagebox.showerror("No Session", "Choose or start a session first.")
+            return
+        path = filedialog.askdirectory(
+            initialdir=str(self._mgr.current_session_path),
+            title="Choose Existing Experiment Folder",
+        )
+        if not path:
+            return
+        opened = self._mgr.open_experiment(path)
+        if opened:
+            self._apply_experiment_metadata(self._mgr.experiment_metadata())
+        else:
+            messagebox.showerror("Experiment Not Opened", "Could not open the selected experiment.")
+
+    def _apply_experiment_metadata(self, data: dict):
+        data = data or {}
+        self._experiment_name_var.set(data.get("experiment_name", ""))
+        self._experiment_chip_id_var.set(data.get("chip_id", ""))
+        self._experiment_notes_var.set(data.get("notes", ""))
+
+    def _on_update_experiment(self):
+        self._mgr.update_experiment_metadata(
+            name=self._experiment_name_var.get(),
+            chip_id=self._experiment_chip_id_var.get(),
             notes=self._experiment_notes_var.get(),
         )
 
     def _on_end_experiment(self):
         self._mgr.end_experiment()
+        self._apply_experiment_metadata({})
