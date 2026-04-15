@@ -1842,3 +1842,5 @@ Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data
 [2026-04-13 14:20:36] Disconnected from device
 [2026-04-14 11:22:22] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
 [2026-04-14 11:22:22] [SIM] Connected (COM8)
+[2026-04-15 13:47:10] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-15 13:47:10] [SIM] Connected (COM8)

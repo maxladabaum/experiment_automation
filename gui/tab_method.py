@@ -11,6 +11,7 @@ Responsible for:
 
 import threading
 import time
+import math
 from pathlib import Path
 from tkinter import messagebox
 import tkinter as tk
@@ -83,6 +84,7 @@ class MethodTab:
         self.cv_params:  dict  = {}
         self.lsv_params: dict  = {}
         self.swv_params: dict  = {}
+        self.alignment_params: dict = {}
         self.pause_params: dict = {}
         self._library_note = tk.StringVar(value="")
         self._cv_range_mode = tk.StringVar(value="auto")
@@ -123,6 +125,8 @@ class MethodTab:
         ttk.Separator(tech_frame, orient="horizontal").pack(fill="x", pady=6)
         ttk.Button(tech_frame, text="PStrace SWV Preset",
                 command=self._run_pstrace_preset, width=28).pack(pady=5)
+        ttk.Button(tech_frame, text="Alignment Test (Dry)",
+                command=self._show_alignment_params, width=28).pack(pady=5)
         ttk.Separator(tech_frame, orient="horizontal").pack(fill="x", pady=6)
         ttk.Button(tech_frame, text="Pause / Alert",
                    command=self._show_pause_params, width=28).pack(pady=5)
@@ -401,6 +405,45 @@ class MethodTab:
                    command=self._run_swv_now).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Add to Queue",
                    command=self._add_swv_to_queue).pack(side="left", padx=5)
+
+    def _show_alignment_params(self):
+        self._clear_params()
+        self.current_technique = "ALIGNMENT"
+        self.alignment_params = {}
+        params = [
+            ("DC Potential (V):",                 "dc_potential",    "0"),
+            ("AC Amplitude (V rms):",             "ac_amplitude",    "0.01"),
+            ("Start Frequency (Hz):",             "start_frequency", "10"),
+            ("End Frequency (Hz):",               "end_frequency",   "10000"),
+            ("Points per Decade:",                "points_per_decade", "4"),
+            ("MUX16 Channels (1-16, 0=off):",     "mux_channel",     "0"),
+        ]
+        for i, (label, key, default) in enumerate(params):
+            ttk.Label(self._params_frame, text=label).grid(
+                row=i, column=0, sticky="w", pady=2)
+            entry = ttk.Entry(self._params_frame, width=15)
+            entry.insert(0, default)
+            entry.grid(row=i, column=1, pady=2)
+            self.alignment_params[key] = entry
+
+        ttk.Label(
+            self._params_frame,
+            text="Dry alignment preset: EIS sweep for impedance/capacitance checks.",
+        ).grid(row=len(params), column=0, columnspan=2, sticky="w", pady=(8, 2))
+
+        ttk.Label(self._params_frame, text="Library note (optional):").grid(
+            row=len(params) + 1, column=0, sticky="w", pady=(8, 2))
+        ttk.Entry(self._params_frame, width=40, textvariable=self._library_note).grid(
+            row=len(params) + 1, column=1, sticky="w", pady=2)
+
+        btn_frame = ttk.Frame(self._params_frame)
+        btn_frame.grid(row=len(params) + 2, column=0, columnspan=2, pady=20)
+        ttk.Button(btn_frame, text="Generate Script",
+                   command=self._generate_alignment_script).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Run Now",
+                   command=self._run_alignment_now).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Add to Queue",
+                   command=self._add_alignment_to_queue).pack(side="left", padx=5)
 
     def _show_pause_params(self):
         self._clear_params()
@@ -770,6 +813,53 @@ class MethodTab:
         parts += ["endloop", "on_finished:", "cell_off"]
         return "\n".join(parts)
 
+    def _build_alignment_script(self) -> str:
+        p = self.alignment_params
+        dc_potential_v = float(p["dc_potential"].get())
+        ac_amplitude_v = float(p["ac_amplitude"].get())
+        start_frequency_hz = float(p["start_frequency"].get())
+        end_frequency_hz = float(p["end_frequency"].get())
+        points_per_decade = float(p["points_per_decade"].get())
+
+        if start_frequency_hz <= 0 or end_frequency_hz <= 0:
+            raise ValueError("Alignment frequencies must be positive.")
+        if ac_amplitude_v <= 0:
+            raise ValueError("AC amplitude must be positive.")
+        if points_per_decade <= 0:
+            raise ValueError("Points per decade must be positive.")
+
+        start_frequency = to_si_string(p["start_frequency"].get(), "Hz")
+        end_frequency = to_si_string(p["end_frequency"].get(), "Hz")
+        ac_amplitude = to_si_string(p["ac_amplitude"].get(), "V")
+        dc_potential = to_si_string(p["dc_potential"].get(), "V")
+
+        decades = abs(math.log10(end_frequency_hz) - math.log10(start_frequency_hz))
+        n_points = max(1, int(round(decades * points_per_decade)) + 1)
+
+        parts = [
+            "e",
+            "var freq",
+            "var zr",
+            "var zi",
+            "set_pgstat_chan 1",
+            "set_pgstat_mode 0",
+            "set_pgstat_chan 0",
+            "set_pgstat_mode 3",
+            "cell_on",
+            f"set_e {dc_potential}",
+            "# Dry alignment EIS sweep",
+            f"meas_loop_eis freq zr zi {ac_amplitude} {start_frequency} {end_frequency} {n_points}i {dc_potential}",
+            "\tpck_start",
+            "\t\tpck_add freq",
+            "\t\tpck_add zr",
+            "\t\tpck_add zi",
+            "\tpck_end",
+            "endloop",
+            "on_finished:",
+            "cell_off",
+        ]
+        return "\n".join(parts)
+
     # ── MUX helpers ───────────────────────────────────────────────────────────
 
     def _get_mux_channels(self, params: dict):
@@ -900,6 +990,23 @@ class MethodTab:
         except Exception as exc:
             messagebox.showerror("Error", f"Failed to generate script: {exc}")
 
+    def _generate_alignment_script(self):
+        try:
+            base = self._build_alignment_script()
+            mux = self._get_mux_channels(self.alignment_params)
+            if mux is None:
+                return
+            script = base
+            if mux:
+                script = self._wrap_mux(base, mux[0])
+                if len(mux) > 1:
+                    script = (f"# NOTE: Multiple channels selected "
+                               f"({', '.join(map(str, mux))}). "
+                               f"Preview shows ch {mux[0]}.\n") + script
+            self._script_preview(script)
+        except Exception as exc:
+            messagebox.showerror("Error", f"Failed to generate script: {exc}")
+
     # ── Add to queue ──────────────────────────────────────────────────────────
 
     def _add_one(self, technique: str, script: str, params: dict, mux_channel=None, note: str = ""):
@@ -1003,6 +1110,25 @@ class MethodTab:
         messagebox.showinfo("Success",
             f"SWV added for {n_scans} scan(s)\nSaved: {', '.join(added)}")
 
+    def _add_alignment_to_queue(self):
+        try:
+            base = self._build_alignment_script()
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc)); return
+        mux = self._get_mux_channels(self.alignment_params)
+        if mux is None:
+            return
+        raw_params = {k: v.get() for k, v in self.alignment_params.items()}
+        note = (self._library_note.get() or "").strip()
+        if mux:
+            for ch in mux:
+                self._add_one("ALIGNMENT", self._wrap_mux(base, ch), raw_params, mux_channel=ch, note=note)
+            messagebox.showinfo("Success", f"Alignment test added for MUX channels: {', '.join(map(str, mux))}")
+        else:
+            self._add_one("ALIGNMENT", base, raw_params, note=note)
+            messagebox.showinfo("Success", "Alignment test added to queue")
+        self._refresh_queue()
+
     def _add_pause_to_queue(self):
         try:
             secs = float(self.pause_params["pause_time"].get())
@@ -1096,6 +1222,23 @@ class MethodTab:
                 self._run_now("SWV", base, {"mux_channel": None, "params": raw_params})
             else:
                 self._run_now("SWV_CYCLES", base, {"n_scans": n_scans, "delay": delay, "params": raw_params})
+
+    def _run_alignment_now(self):
+        try:
+            base = self._build_alignment_script()
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc)); return
+        mux = self._get_mux_channels(self.alignment_params)
+        if mux is None:
+            return
+        raw_params = {k: v.get() for k, v in self.alignment_params.items()}
+        if mux:
+            if len(mux) == 1:
+                self._run_now("ALIGNMENT", self._wrap_mux(base, mux[0]), {"mux_channel": mux[0], "params": raw_params})
+            else:
+                self._run_now("ALIGNMENT_MUX_SEQ", base, {"channels": mux, "params": raw_params})
+        else:
+            self._run_now("ALIGNMENT", base, {"mux_channel": None, "params": raw_params})
 
     def _run_pause_now(self):
         try:

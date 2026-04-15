@@ -56,6 +56,8 @@ class PlotterTab:
         self._live_job          = None
         self._plot_line         = None
         self._plotted_files     = []
+        self._live_x_label      = "Potential (V)"
+        self._live_y_label      = "Current (uA)"
 
         # Colour cycle (independent from session — plotter owns it)
         _colors = (
@@ -95,6 +97,10 @@ class PlotterTab:
                 "Current Forward (uA)",
                 "Current Reverse (uA)",
                 "Current Diff (uA)",
+                "Impedance (Ohm)",
+                "Z_real (Ohm)",
+                "Z_imag (Ohm)",
+                "Capacitance (nF)",
             ),
         )
         self._plot_series_combo.pack(side="left")
@@ -121,8 +127,8 @@ class PlotterTab:
 
     def _reset_axes(self, title: str = "Voltammogram"):
         self._ax.set_title(title)
-        self._ax.set_xlabel("Potential (V)")
-        self._ax.set_ylabel("Current (uA)")
+        self._ax.set_xlabel(self._live_x_label)
+        self._ax.set_ylabel(self._live_y_label)
         self._ax.grid(visible=True, which="major", linestyle="-")
         self._ax.grid(visible=True, which="minor", linestyle="--", alpha=0.2)
         self._ax.minorticks_on()
@@ -147,12 +153,9 @@ class PlotterTab:
             messagebox.showerror("Plot Error", f"Failed to read data:\n{exc}")
             return
 
-        pot_col = self._find_column(
-            df,
-            ("Potential (V)", "Potential(V)", "E (V)", "E(V)", "Potential"),
-        )
-        if not pot_col:
-            msg = "CSV must contain a potential column (e.g. 'Potential (V)')."
+        x_col, x_label = self._resolve_x_axis(df)
+        if not x_col:
+            msg = "CSV must contain a supported X-axis column (Potential, Frequency, Channel, or Time)."
             self._session.log(f"Plot error: {msg}")
             messagebox.showerror("Plot Error", msg)
             return
@@ -172,6 +175,8 @@ class PlotterTab:
             if not allow_overlay or not self._overlay_var.get():
                 self._ax.clear()
                 self._reset_axes()
+            self._live_x_label = x_label
+            self._live_y_label = y_label
             if color is None:
                 color = next(self._color_cycle)
             base_label = label or Path(csv_path).name
@@ -183,8 +188,9 @@ class PlotterTab:
                 for line in list(self._ax.lines):
                     if line.get_label() == label:
                         line.remove()
-            self._ax.plot(df[pot_col], y_values, color=color, label=label)
+            self._ax.plot(df[x_col], y_values, color=color, label=label)
             self._reset_axes()
+            self._ax.set_xlabel(x_label)
             self._ax.set_ylabel(y_label)
             self._legend = self._ax.legend(loc="best")
             if self._legend is not None:
@@ -198,6 +204,8 @@ class PlotterTab:
             messagebox.showerror("Plot Error", f"Failed to render plot:\n{exc}")
     def clear_plot(self):
         self._ax.clear()
+        self._live_x_label = "Potential (V)"
+        self._live_y_label = "Current (uA)"
         self._reset_axes()
         self._color_cycle  = itertools.cycle(self._colors)
         self._plot_line    = None
@@ -219,6 +227,8 @@ class PlotterTab:
         self._live_active = True
         self._plot_line   = None
         self._ax.clear()
+        self._live_x_label = "Potential (V)"
+        self._live_y_label = "Current (uA)"
 
         if color is None:
             color = next(self._color_cycle)
@@ -249,17 +259,19 @@ class PlotterTab:
             self._live_job = None
 
     def push_live_point(self, data_point: dict):
-        """Thread-safe: push a ``{potential, current}`` dict for live rendering."""
+        """Thread-safe: push a parsed data point for live rendering."""
         if not self._live_active:
             return
         series_choice = getattr(self, "_plot_series_var", None)
         series_choice = series_choice.get() if series_choice else "Auto"
         value = self._resolve_live_value(data_point, series_choice)
-        if value is None:
+        x_value, x_label = self._resolve_live_x_value(data_point)
+        y_label = self._resolve_live_y_label(data_point, series_choice)
+        if value is None or x_value is None:
             return
         try:
-            self._live_queue.put_nowait((data_point["potential"], value))
-        except (queue.Full, KeyError):
+            self._live_queue.put_nowait((x_value, value, x_label, y_label))
+        except queue.Full:
             pass
 
     def _poll(self):
@@ -270,11 +282,13 @@ class PlotterTab:
         updated = False
         while True:
             try:
-                pot, cur = self._live_queue.get_nowait()
+                x_val, y_val, x_label, y_label = self._live_queue.get_nowait()
             except queue.Empty:
                 break
-            self._live_x.append(pot)
-            self._live_y.append(cur)
+            self._live_x.append(x_val)
+            self._live_y.append(y_val)
+            self._live_x_label = x_label
+            self._live_y_label = y_label
             updated = True
 
         if updated:
@@ -284,6 +298,8 @@ class PlotterTab:
                 )
             else:
                 self._plot_line.set_data(self._live_x, self._live_y)
+            self._ax.set_xlabel(self._live_x_label)
+            self._ax.set_ylabel(self._live_y_label)
             # Autoscale less often to avoid UI slowdowns on dense streams.
             n = len(self._live_x)
             if n <= 50 or (n % 200 == 0):
@@ -329,6 +345,31 @@ class PlotterTab:
                 return norm_map[nc]
         return None
 
+    def _resolve_x_axis(self, df):
+        potential_col = self._find_column(
+            df,
+            ("Potential (V)", "Potential(V)", "E (V)", "E(V)", "Potential"),
+        )
+        if potential_col:
+            return potential_col, "Potential (V)"
+
+        frequency_col = self._find_column(
+            df,
+            ("Frequency (Hz)", "Frequency", "Applied frequency", "EIS sampling frequency"),
+        )
+        if frequency_col:
+            return frequency_col, "Frequency (Hz)"
+
+        channel_col = self._find_column(df, ("Channel",))
+        if channel_col:
+            return channel_col, "Channel"
+
+        time_col = self._find_column(df, ("Time (s)", "Time"))
+        if time_col:
+            return time_col, "Time (s)"
+
+        return None, None
+
     def _resolve_plot_series(self, df, series_choice):
         current_col = self._find_column(
             df,
@@ -362,6 +403,10 @@ class PlotterTab:
                 "I_diff (uA)",
             ),
         )
+        impedance_col = self._find_column(df, ("Impedance (Ohm)", "Impedance"))
+        z_real_col = self._find_column(df, ("Z_real (Ohm)", "Z_real"))
+        z_imag_col = self._find_column(df, ("Z_imag (Ohm)", "Z_imag"))
+        capacitance_col = self._find_column(df, ("Capacitance (nF)", "Capacitance"))
 
         if series_choice == "Current (uA)":
             if not current_col:
@@ -391,7 +436,27 @@ class PlotterTab:
                 "CSV must contain 'Current Diff (uA)' or both 'Current Forward (uA)' and 'Current Reverse (uA)'."
             )
 
-        # Auto selection: prefer total current, then diff, then derived diff, then forward/reverse.
+        if series_choice == "Impedance (Ohm)":
+            if not impedance_col:
+                raise ValueError("CSV must contain 'Impedance (Ohm)' to plot that series.")
+            return df[impedance_col], "Impedance (Ohm)", "Impedance (Ohm)"
+
+        if series_choice == "Z_real (Ohm)":
+            if not z_real_col:
+                raise ValueError("CSV must contain 'Z_real (Ohm)' to plot that series.")
+            return df[z_real_col], "Z_real (Ohm)", "Z_real (Ohm)"
+
+        if series_choice == "Z_imag (Ohm)":
+            if not z_imag_col:
+                raise ValueError("CSV must contain 'Z_imag (Ohm)' to plot that series.")
+            return df[z_imag_col], "Z_imag (Ohm)", "Z_imag (Ohm)"
+
+        if series_choice == "Capacitance (nF)":
+            if not capacitance_col:
+                raise ValueError("CSV must contain 'Capacitance (nF)' to plot that series.")
+            return df[capacitance_col], "Capacitance (nF)", "Capacitance (nF)"
+
+        # Auto selection: preserve current-first behavior, then fall back to alignment data.
         if current_col:
             return df[current_col], "Current (uA)", "Current (uA)"
         if diff_col:
@@ -406,17 +471,25 @@ class PlotterTab:
             return df[forward_col], "Current Forward (uA)", "Current Forward (uA)"
         if reverse_col:
             return df[reverse_col], "Current Reverse (uA)", "Current Reverse (uA)"
+        if impedance_col:
+            return df[impedance_col], "Impedance (Ohm)", "Impedance (Ohm)"
+        if z_real_col:
+            return df[z_real_col], "Z_real (Ohm)", "Z_real (Ohm)"
+        if z_imag_col:
+            return df[z_imag_col], "Z_imag (Ohm)", "Z_imag (Ohm)"
+        if capacitance_col:
+            return df[capacitance_col], "Capacitance (nF)", "Capacitance (nF)"
 
         raise ValueError(
-            "CSV must contain 'Current (uA)' or SWV columns "
-            "('Current Forward (uA)', 'Current Reverse (uA)', or 'Current Diff (uA)')."
+            "CSV must contain current, SWV, or alignment columns "
+            "such as Impedance, Z_real, Z_imag, or Capacitance."
         )
 
     def _on_series_change(self, _event=None):
         y_label = self._plot_series_var.get()
-        if y_label in ("Auto", ""):
-            y_label = "Current (uA)"
-        self._ax.set_ylabel(y_label)
+        if y_label not in ("Auto", ""):
+            self._live_y_label = y_label
+        self._ax.set_ylabel(self._live_y_label)
         if self._live_active:
             self._canvas.draw_idle()
             return
@@ -461,9 +534,48 @@ class PlotterTab:
             if "current_forward" in data_point and "current_reverse" in data_point:
                 return data_point["current_forward"] - data_point["current_reverse"]
             return data_point.get("current")
+        if series_choice == "Impedance (Ohm)":
+            return data_point.get("impedance_ohm")
+        if series_choice == "Z_real (Ohm)":
+            return data_point.get("z_real_ohm")
+        if series_choice == "Z_imag (Ohm)":
+            return data_point.get("z_imag_ohm")
+        if series_choice == "Capacitance (nF)":
+            return data_point.get("capacitance_nf")
 
         # Auto or "Current (uA)"
-        return data_point.get("current")
+        for key in ("current", "current_diff", "impedance_ohm", "z_real_ohm", "z_imag_ohm", "capacitance_nf"):
+            if key in data_point:
+                return data_point.get(key)
+        return None
+
+    @staticmethod
+    def _resolve_live_x_value(data_point: dict):
+        for key, label in (
+            ("potential", "Potential (V)"),
+            ("frequency_hz", "Frequency (Hz)"),
+            ("channel", "Channel"),
+            ("time_s", "Time (s)"),
+        ):
+            if key in data_point:
+                return data_point.get(key), label
+        return None, None
+
+    @staticmethod
+    def _resolve_live_y_label(data_point: dict, series_choice: str) -> str:
+        if series_choice and series_choice != "Auto":
+            return series_choice
+        if "current" in data_point or "current_diff" in data_point:
+            return "Current (uA)"
+        if "impedance_ohm" in data_point:
+            return "Impedance (Ohm)"
+        if "z_real_ohm" in data_point:
+            return "Z_real (Ohm)"
+        if "z_imag_ohm" in data_point:
+            return "Z_imag (Ohm)"
+        if "capacitance_nf" in data_point:
+            return "Capacitance (nF)"
+        return "Value"
     def _get_data_bounds(self):
         """Return (x_min, x_max, y_min, y_max) across all plotted lines, or None."""
         x_min = x_max = y_min = y_max = None

@@ -14,6 +14,7 @@ and data_callback callables so the GUI can wire them to whatever it likes.
 
 import csv
 import math
+import re
 import time
 import traceback
 from datetime import datetime
@@ -25,6 +26,41 @@ import serial.tools.list_ports
 
 from .mscript_parser import parse_mscript_data_package
 from config import DATA_DIR, DEVICE_KEYWORDS, DEVICE_BAUDRATE
+
+
+CSV_FIELD_ORDER = [
+    "potential",
+    "current",
+    "current_forward",
+    "current_reverse",
+    "current_diff",
+    "frequency_hz",
+    "impedance_ohm",
+    "z_real_ohm",
+    "z_imag_ohm",
+    "capacitance_nf",
+    "channel",
+    "time_s",
+    "ac_amplitude_vrms",
+    "dc_potential_v",
+]
+
+CSV_LABEL_MAP = {
+    "potential": "Potential (V)",
+    "current": "Current (uA)",
+    "current_forward": "Current Forward (uA)",
+    "current_reverse": "Current Reverse (uA)",
+    "current_diff": "Current Diff (uA)",
+    "frequency_hz": "Frequency (Hz)",
+    "impedance_ohm": "Impedance (Ohm)",
+    "z_real_ohm": "Z_real (Ohm)",
+    "z_imag_ohm": "Z_imag (Ohm)",
+    "capacitance_nf": "Capacitance (nF)",
+    "channel": "Channel",
+    "time_s": "Time (s)",
+    "ac_amplitude_vrms": "AC Amplitude (Vrms)",
+    "dc_potential_v": "DC Potential (V)",
+}
 
 
 def format_port_info(port) -> str:
@@ -331,6 +367,22 @@ class SerialMeasurementRunner:
                     if self.invert_current:
                         current_amp = -current_amp
                     currents.append(current_amp * 1e6)   # A -> uA
+                elif var.id in ("cg", "dc"):
+                    point["frequency_hz"] = var.value
+                elif var.id == "cb":
+                    point["impedance_ohm"] = var.value
+                elif var.id == "cc":
+                    point["z_real_ohm"] = var.value
+                elif var.id == "cd":
+                    point["z_imag_ohm"] = var.value
+                elif var.id == "ea":
+                    point["channel"] = int(round(var.value))
+                elif var.id == "eb":
+                    point["time_s"] = var.value
+                elif var.id == "ch":
+                    point["ac_amplitude_vrms"] = var.value
+                elif var.id == "ci":
+                    point["dc_potential_v"] = var.value
 
             if currents:
                 if len(currents) >= 3:
@@ -347,7 +399,16 @@ class SerialMeasurementRunner:
                 else:
                     point["current"] = currents[0]
 
-            if "potential" in point and "current" in point:
+            z_real = point.get("z_real_ohm")
+            z_imag = point.get("z_imag_ohm")
+            if "impedance_ohm" not in point and z_real is not None and z_imag is not None:
+                point["impedance_ohm"] = math.hypot(z_real, z_imag)
+
+            freq_hz = point.get("frequency_hz")
+            if freq_hz and z_imag not in (None, 0):
+                point["capacitance_nf"] = 1e9 / (2 * math.pi * freq_hz * abs(z_imag))
+
+            if point:
                 self.data_points.append(point)
                 if self.data_callback:
                     try:
@@ -388,23 +449,18 @@ class SerialMeasurementRunner:
         csv_path = self.data_folder / f"{base}_{tag}.csv"
 
         with open(csv_path, "w", newline="") as fh:
-            fieldnames = ["potential", "current"]
-            label_map = {
-                "potential": "Potential (V)",
-                "current": "Current (uA)",
+            present_fields = {
+                key
+                for point in self.data_points
+                for key, value in point.items()
+                if value is not None
             }
-            if any("current_forward" in dp for dp in self.data_points):
-                fieldnames.append("current_forward")
-                label_map["current_forward"] = "Current Forward (uA)"
-            if any("current_reverse" in dp for dp in self.data_points):
-                fieldnames.append("current_reverse")
-                label_map["current_reverse"] = "Current Reverse (uA)"
-            if any("current_diff" in dp for dp in self.data_points):
-                fieldnames.append("current_diff")
-                label_map["current_diff"] = "Current Diff (uA)"
+            fieldnames = [name for name in CSV_FIELD_ORDER if name in present_fields]
+            if not fieldnames:
+                fieldnames = ["potential", "current"]
 
             writer = csv.DictWriter(fh, fieldnames=fieldnames)
-            writer.writerow({key: label_map.get(key, key) for key in fieldnames})
+            writer.writerow({key: CSV_LABEL_MAP.get(key, key) for key in fieldnames})
             writer.writerows(self.data_points)
 
         self.log(f"\nData saved to: {csv_path}")
@@ -519,6 +575,8 @@ class SerialMeasurementRunner:
 
     def _generate_simulated_points(self, script: str) -> list:
         script_lower = script.lower()
+        if "meas_loop_eis" in script_lower:
+            return self._sim_eis_points(script)
         if "meas_loop_swv" in script_lower:
             return self._sim_swv_points()
         return self._sim_cv_points()
@@ -563,3 +621,71 @@ class SerialMeasurementRunner:
                 }
             )
         return points
+
+    @staticmethod
+    def _sim_eis_points(script: str) -> list:
+        match = re.search(
+            r"meas_loop_eis\s+\w+\s+\w+\s+\w+\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)",
+            script,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            start_hz = SerialMeasurementRunner._parse_si_numeric(match.group(2))
+            end_hz = SerialMeasurementRunner._parse_si_numeric(match.group(3))
+            n_points = max(1, int(round(SerialMeasurementRunner._parse_si_numeric(match.group(4)))))
+        else:
+            start_hz, end_hz, n_points = 10.0, 10000.0, 8
+
+        if start_hz <= 0:
+            start_hz = 10.0
+        if end_hz <= 0:
+            end_hz = start_hz
+
+        if n_points <= 1 or start_hz == end_hz:
+            frequencies = [start_hz]
+        else:
+            log_start = math.log10(min(start_hz, end_hz))
+            log_end = math.log10(max(start_hz, end_hz))
+            frequencies = [
+                10 ** (log_start + (log_end - log_start) * i / (n_points - 1))
+                for i in range(n_points)
+            ]
+
+        points = []
+        r_ct = 15000.0
+        c_dl = 2.2e-9
+        for freq in frequencies:
+            omega = 2 * math.pi * freq
+            z_imag = -1.0 / (omega * c_dl)
+            impedance = math.hypot(r_ct, z_imag)
+            points.append(
+                {
+                    "frequency_hz": freq,
+                    "z_real_ohm": r_ct,
+                    "z_imag_ohm": z_imag,
+                    "impedance_ohm": impedance,
+                    "capacitance_nf": 1e9 / (omega * abs(z_imag)),
+                }
+            )
+        return points
+
+    @staticmethod
+    def _parse_si_numeric(text: str) -> float:
+        match = re.fullmatch(r"\s*([-+]?\d*\.?\d+)([a-zA-Z]*)\s*", text or "")
+        if not match:
+            return 0.0
+        value = float(match.group(1))
+        suffix = match.group(2)
+        scale = {
+            "": 1.0,
+            "a": 1e-18,
+            "f": 1e-15,
+            "p": 1e-12,
+            "n": 1e-9,
+            "u": 1e-6,
+            "m": 1e-3,
+            "k": 1e3,
+            "M": 1e6,
+            "G": 1e9,
+        }
+        return value * scale.get(suffix, 1.0)
