@@ -3067,5 +3067,615 @@
     "note": "",
     "added_at": "2026-04-13T14:20:26",
     "filepath": "methods\\library\\mux_methods\\swv_ch1_2be755.ms"
+  },
+  "cv_ch1_7501a6": {
+    "technique": "CV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:05:25",
+    "filepath": "methods\\library\\mux_methods\\cv_ch1_7501a6.ms"
+  },
+  "cv_ch2_02d477": {
+    "technique": "CV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:05:25",
+    "filepath": "methods\\library\\mux_methods\\cv_ch2_02d477.ms"
+  },
+  "cv_ch3_0a806d": {
+    "technique": "CV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:05:25",
+    "filepath": "methods\\library\\mux_methods\\cv_ch3_0a806d.ms"
+  },
+  "cv_ch4_d3b379": {
+    "technique": "CV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:05:25",
+    "filepath": "methods\\library\\mux_methods\\cv_ch4_d3b379.ms"
+  },
+  "cv_ch5_ed6a71": {
+    "technique": "CV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:05:25",
+    "filepath": "methods\\library\\mux_methods\\cv_ch5_ed6a71.ms"
+  },
+  "cv_ch6_6512bd": {
+    "technique": "CV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:05:25",
+    "filepath": "methods\\library\\mux_methods\\cv_ch6_6512bd.ms"
+  },
+  "cv_ch7_04bfbf": {
+    "technique": "CV",
+    "mux_channel": 7,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:05:25",
+    "filepath": "methods\\library\\mux_methods\\cv_ch7_04bfbf.ms"
+  },
+  "cv_ch8_2bd207": {
+    "technique": "CV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:05:25",
+    "filepath": "methods\\library\\mux_methods\\cv_ch8_2bd207.ms"
+  },
+  "cv_ch9_a8c1dc": {
+    "technique": "CV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:05:25",
+    "filepath": "methods\\library\\mux_methods\\cv_ch9_a8c1dc.ms"
+  },
+  "cv_ch10_141463": {
+    "technique": "CV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "50",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:05:25",
+    "filepath": "methods\\library\\mux_methods\\cv_ch10_141463.ms"
+  },
+  "cv_ch1_844303": {
+    "technique": "CV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:06:03",
+    "filepath": "methods\\library\\mux_methods\\cv_ch1_844303.ms"
+  },
+  "cv_ch2_411f67": {
+    "technique": "CV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:06:03",
+    "filepath": "methods\\library\\mux_methods\\cv_ch2_411f67.ms"
+  },
+  "cv_ch3_079e77": {
+    "technique": "CV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:06:03",
+    "filepath": "methods\\library\\mux_methods\\cv_ch3_079e77.ms"
+  },
+  "cv_ch4_d67557": {
+    "technique": "CV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:06:03",
+    "filepath": "methods\\library\\mux_methods\\cv_ch4_d67557.ms"
+  },
+  "cv_ch5_fe9f2e": {
+    "technique": "CV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:06:03",
+    "filepath": "methods\\library\\mux_methods\\cv_ch5_fe9f2e.ms"
+  },
+  "cv_ch6_1504f9": {
+    "technique": "CV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:06:03",
+    "filepath": "methods\\library\\mux_methods\\cv_ch6_1504f9.ms"
+  },
+  "cv_ch7_5f93f6": {
+    "technique": "CV",
+    "mux_channel": 7,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:06:03",
+    "filepath": "methods\\library\\mux_methods\\cv_ch7_5f93f6.ms"
+  },
+  "cv_ch8_b60b95": {
+    "technique": "CV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:06:03",
+    "filepath": "methods\\library\\mux_methods\\cv_ch8_b60b95.ms"
+  },
+  "cv_ch9_3e8785": {
+    "technique": "CV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:06:03",
+    "filepath": "methods\\library\\mux_methods\\cv_ch9_3e8785.ms"
+  },
+  "cv_ch10_106530": {
+    "technique": "CV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.2",
+      "step_potential": "0.001",
+      "scan_rate": "0.1",
+      "n_scans": "3",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "1-10",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "100 uA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "",
+    "added_at": "2026-04-14T13:06:03",
+    "filepath": "methods\\library\\mux_methods\\cv_ch10_106530.ms"
+  },
+  "alignment_ch1_dc0c2f": {
+    "technique": "ALIGNMENT",
+    "mux_channel": 1,
+    "params": {
+      "dc_potential": "0",
+      "ac_amplitude": "0.01",
+      "start_frequency": "10",
+      "end_frequency": "10000",
+      "points_per_decade": "4",
+      "mux_channel": "1-10"
+    },
+    "note": "",
+    "added_at": "2026-04-15T14:21:15",
+    "filepath": "methods\\library\\mux_methods\\alignment_ch1_dc0c2f.ms"
+  },
+  "alignment_ch2_86d230": {
+    "technique": "ALIGNMENT",
+    "mux_channel": 2,
+    "params": {
+      "dc_potential": "0",
+      "ac_amplitude": "0.01",
+      "start_frequency": "10",
+      "end_frequency": "10000",
+      "points_per_decade": "4",
+      "mux_channel": "1-10"
+    },
+    "note": "",
+    "added_at": "2026-04-15T14:21:15",
+    "filepath": "methods\\library\\mux_methods\\alignment_ch2_86d230.ms"
+  },
+  "alignment_ch3_7e6550": {
+    "technique": "ALIGNMENT",
+    "mux_channel": 3,
+    "params": {
+      "dc_potential": "0",
+      "ac_amplitude": "0.01",
+      "start_frequency": "10",
+      "end_frequency": "10000",
+      "points_per_decade": "4",
+      "mux_channel": "1-10"
+    },
+    "note": "",
+    "added_at": "2026-04-15T14:21:15",
+    "filepath": "methods\\library\\mux_methods\\alignment_ch3_7e6550.ms"
+  },
+  "alignment_ch4_a589eb": {
+    "technique": "ALIGNMENT",
+    "mux_channel": 4,
+    "params": {
+      "dc_potential": "0",
+      "ac_amplitude": "0.01",
+      "start_frequency": "10",
+      "end_frequency": "10000",
+      "points_per_decade": "4",
+      "mux_channel": "1-10"
+    },
+    "note": "",
+    "added_at": "2026-04-15T14:21:15",
+    "filepath": "methods\\library\\mux_methods\\alignment_ch4_a589eb.ms"
+  },
+  "alignment_ch5_760568": {
+    "technique": "ALIGNMENT",
+    "mux_channel": 5,
+    "params": {
+      "dc_potential": "0",
+      "ac_amplitude": "0.01",
+      "start_frequency": "10",
+      "end_frequency": "10000",
+      "points_per_decade": "4",
+      "mux_channel": "1-10"
+    },
+    "note": "",
+    "added_at": "2026-04-15T14:21:15",
+    "filepath": "methods\\library\\mux_methods\\alignment_ch5_760568.ms"
+  },
+  "alignment_ch6_604e43": {
+    "technique": "ALIGNMENT",
+    "mux_channel": 6,
+    "params": {
+      "dc_potential": "0",
+      "ac_amplitude": "0.01",
+      "start_frequency": "10",
+      "end_frequency": "10000",
+      "points_per_decade": "4",
+      "mux_channel": "1-10"
+    },
+    "note": "",
+    "added_at": "2026-04-15T14:21:15",
+    "filepath": "methods\\library\\mux_methods\\alignment_ch6_604e43.ms"
+  },
+  "alignment_ch7_0275dd": {
+    "technique": "ALIGNMENT",
+    "mux_channel": 7,
+    "params": {
+      "dc_potential": "0",
+      "ac_amplitude": "0.01",
+      "start_frequency": "10",
+      "end_frequency": "10000",
+      "points_per_decade": "4",
+      "mux_channel": "1-10"
+    },
+    "note": "",
+    "added_at": "2026-04-15T14:21:15",
+    "filepath": "methods\\library\\mux_methods\\alignment_ch7_0275dd.ms"
+  },
+  "alignment_ch8_907841": {
+    "technique": "ALIGNMENT",
+    "mux_channel": 8,
+    "params": {
+      "dc_potential": "0",
+      "ac_amplitude": "0.01",
+      "start_frequency": "10",
+      "end_frequency": "10000",
+      "points_per_decade": "4",
+      "mux_channel": "1-10"
+    },
+    "note": "",
+    "added_at": "2026-04-15T14:21:15",
+    "filepath": "methods\\library\\mux_methods\\alignment_ch8_907841.ms"
+  },
+  "alignment_ch9_fd9016": {
+    "technique": "ALIGNMENT",
+    "mux_channel": 9,
+    "params": {
+      "dc_potential": "0",
+      "ac_amplitude": "0.01",
+      "start_frequency": "10",
+      "end_frequency": "10000",
+      "points_per_decade": "4",
+      "mux_channel": "1-10"
+    },
+    "note": "",
+    "added_at": "2026-04-15T14:21:15",
+    "filepath": "methods\\library\\mux_methods\\alignment_ch9_fd9016.ms"
+  },
+  "alignment_ch10_b318fc": {
+    "technique": "ALIGNMENT",
+    "mux_channel": 10,
+    "params": {
+      "dc_potential": "0",
+      "ac_amplitude": "0.01",
+      "start_frequency": "10",
+      "end_frequency": "10000",
+      "points_per_decade": "4",
+      "mux_channel": "1-10"
+    },
+    "note": "",
+    "added_at": "2026-04-15T14:21:15",
+    "filepath": "methods\\library\\mux_methods\\alignment_ch10_b318fc.ms"
   }
 }

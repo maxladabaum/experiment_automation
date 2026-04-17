@@ -1,0 +1,838 @@
+{
+  "metadata": {
+    "saved_at": "2026-04-14T13:06:59",
+    "version": 1
+  },
+  "items": [
+    {
+      "type": "PUMP_INIT",
+      "status": "completed",
+      "details": "Pump: Initialize (ZR)",
+      "pump_action": {
+        "name": "INIT",
+        "params": {}
+      }
+    },
+    {
+      "type": "PUMP_SET_SPEED",
+      "status": "completed",
+      "details": "Pump: Set speed S20R",
+      "pump_action": {
+        "name": "SET_SPEED",
+        "params": {
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 3",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 3
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 4",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 4
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch1_7501a6.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch1_7501a6.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch2_02d477.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch2_02d477.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch3_0a806d.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch3_0a806d.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch4_d3b379.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch4_d3b379.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch5_ed6a71.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch5_ed6a71.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch6_6512bd.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch6_6512bd.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch7_04bfbf.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch7_04bfbf.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch8_2bd207.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch8_2bd207.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch9_a8c1dc.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch9_a8c1dc.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch10_141463.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch10_141463.ms"
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 3",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 3
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 5",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 5
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch1_844303.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch1_844303.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch2_411f67.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch2_411f67.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch3_079e77.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch3_079e77.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch4_d67557.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch4_d67557.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch5_fe9f2e.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch5_fe9f2e.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch6_1504f9.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch6_1504f9.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch7_5f93f6.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch7_5f93f6.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch8_b60b95.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch8_b60b95.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch9_3e8785.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch9_3e8785.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch10_106530.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\cv_ch10_106530.ms"
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 3",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 3
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 3",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 3
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 3",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 3
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 3",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 3
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "completed",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "completed",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "completed",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 20
+        }
+      }
+    }
+  ]
+}

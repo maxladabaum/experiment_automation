@@ -256,8 +256,9 @@ class SerialMeasurementRunner:
 
             buffer = b""
             packet_start_time = None
+            script_lower = script.lower()
             packet_timeout_sec = 1.0
-            idle_timeout_sec = 5.0
+            idle_timeout_sec = 20.0 if "meas_loop_eis" in script_lower else 5.0
             last_data_time = time.time()
             measurement_completed = False
 
