@@ -390,7 +390,10 @@ class SessionManager:
         if "chip_id" not in data:
             data["chip_id"] = str(self._session_raw.get("chip_id", "")).strip()
 
-        self._clear_current_experiment()
+        if self.current_experiment_path and self.current_experiment_path != experiment_path:
+            self.end_experiment()
+        else:
+            self._clear_current_experiment()
         self.current_experiment_path   = experiment_path
         self._experiment_metadata_path = metadata_path
         self._experiment_started_at    = data.get("started_at")
@@ -398,6 +401,11 @@ class SessionManager:
 
         self._update_status_var()
         self.log(f"Experiment opened: {experiment_path}")
+        if callable(self._on_experiment_started):
+            try:
+                self._on_experiment_started(experiment_path)
+            except Exception as exc:
+                self.log(f"Experiment open hook failed: {exc}")
         return True
 
     def update_experiment_metadata(self, name: str, chip_id: str, notes: str):

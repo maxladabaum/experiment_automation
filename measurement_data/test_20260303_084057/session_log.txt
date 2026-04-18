@@ -1844,3 +1844,45 @@ Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data
 [2026-04-14 11:22:22] [SIM] Connected (COM8)
 [2026-04-15 13:47:10] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
 [2026-04-15 13:47:10] [SIM] Connected (COM8)
+[2026-04-17 12:57:29] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-17 12:57:29] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-17 12:57:29] Connected.
+[2026-04-17 13:29:13] Session ended: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-17 17:32:54] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-17 17:32:54] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-17 17:32:55] Connected.
+[2026-04-17 17:35:41] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260417_173541
+[2026-04-17 17:35:42] ngrok tunnel started.
+[2026-04-17 17:36:09] Queue add: Pump: Aspirate 50.00 µL @ S20R
+[2026-04-17 17:36:13] Queue start requested.
+[2026-04-17 17:36:13] Measurement simulation: OFF
+[2026-04-17 17:36:13] Queue file copied to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260417_173541\queue_files\run_queue_20260417_173613
+[2026-04-17 17:36:13] Queue start -> Pump: Aspirate 50.00 µL @ S20R
+[2026-04-17 17:36:13] Queue pump → Pump: Aspirate 50.00 µL @ S20R
+[2026-04-17 17:36:25] Queue completed.
+[2026-04-17 17:51:19] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-17 17:51:19] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-17 17:51:19] Connected.
+[2026-04-17 17:51:26] Experiment opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260417_173541
+[2026-04-17 17:51:38] Queue add: Pump: Aspirate 50.00 µL @ S20R
+[2026-04-17 17:51:41] Queue start requested.
+[2026-04-17 17:51:41] Measurement simulation: OFF
+[2026-04-17 17:51:42] Queue file copied to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260417_173541\queue_files\run_queue_20260417_175142
+[2026-04-17 17:51:42] Queue start -> Pump: Aspirate 50.00 µL @ S20R
+[2026-04-17 17:51:42] Queue pump → Pump: Aspirate 50.00 µL @ S20R
+[2026-04-17 17:51:43] Queue completed.
+[2026-04-17 17:52:10] Experiment ended: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260417_173541
+[2026-04-17 17:52:10] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260417_175210
+[2026-04-17 17:52:11] ngrok tunnel started.
+[2026-04-17 17:52:11] Slack bot listening on http://0.0.0.0:8765/slack/events
+[2026-04-17 17:52:15] Queue start requested.
+[2026-04-17 17:52:15] Measurement simulation: OFF
+[2026-04-17 17:52:16] Queue file copied to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260417_175210\queue_files\run_queue_20260417_175216
+[2026-04-17 17:52:16] Queue start -> Pump: Aspirate 50.00 µL @ S20R
+[2026-04-17 17:52:16] Queue pump → Pump: Aspirate 50.00 µL @ S20R
+[2026-04-17 17:52:27] Queue completed.
+[2026-04-17 17:54:08] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-17 17:54:08] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-17 17:54:08] Connected.
+[2026-04-17 17:54:16] Experiment opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260417_175210
+[2026-04-17 17:54:16] ngrok tunnel started.
