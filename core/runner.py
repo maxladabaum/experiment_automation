@@ -508,10 +508,12 @@ class SerialMeasurementRunner:
         success  = False
         try:
             if self.run_script(script):
+                self.log(f"Total data points: {len(self.data_points)}")
                 if self.data_points:
                     csv_path = self.save_data_to_csv(meas_tag=tag)
-                self.log(f"Total data points: {len(self.data_points)}")
-                success = True
+                    success = True
+                else:
+                    self.log("FAILED: run returned no data points")
         finally:
             self.disconnect()
             if self._raw_fh is not None:

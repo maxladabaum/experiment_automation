@@ -164,7 +164,6 @@ class QueueTab:
                 prepared = resolved
         self._session.measurement_queue.append(prepared)
         self.refresh()
-        self.log(f"Queue add: {prepared.get('details', prepared.get('type'))}")
 
     def refresh(self):
         """Rebuild the Treeview from session.measurement_queue."""
@@ -799,6 +798,8 @@ class QueueTab:
                 elif t.startswith("PUMP_"):
                     ok = self._exec_pump(item)
                     self._session.measurement_queue[i]["status"] = "completed" if ok else "failed"
+                    if not ok:
+                        self.log(f"Queue item FAILED: {t} | {item.get('details', '')}")
                     success = ok
 
                 else:
@@ -829,9 +830,11 @@ class QueueTab:
                         )
                         self._session.current_runner = runner
                         success, csv_path = runner.execute(meas_tag=meas_tag)
-                        self._session.measurement_queue[i]["status"] = (
-                            "completed" if success else "failed"
-                        )
+                        if success:
+                            self._session.measurement_queue[i]["status"] = "completed"
+                        else:
+                            self._session.measurement_queue[i]["status"] = "failed"
+                            self.log(f"Queue item FAILED: {item['type']} | {item.get('details', meas_tag)}")
                     finally:
                         self._session.current_runner = None
                         self._root.after(0, self._plotter.stop_live)
