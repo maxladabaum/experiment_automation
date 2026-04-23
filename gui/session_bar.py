@@ -27,6 +27,7 @@ class SessionBar:
 
         self._experiment_name_var = tk.StringVar()
         self._experiment_chip_id_var = tk.StringVar()
+        self._experiment_aptamer_type_var = tk.StringVar()
         self._experiment_notes_var = tk.StringVar()
 
         self._build()
@@ -96,6 +97,11 @@ class SessionBar:
             row=1, column=1, sticky="we", padx=5, pady=2
         )
 
+        ttk.Label(exp, text="Aptamer Type:").grid(row=1, column=2, sticky="w", padx=5, pady=2)
+        ttk.Entry(exp, textvariable=self._experiment_aptamer_type_var, width=16).grid(
+            row=1, column=3, sticky="we", padx=5, pady=2
+        )
+
         ttk.Label(exp, text="Notes:").grid(row=2, column=0, sticky="w", padx=5, pady=2)
         ttk.Entry(exp, textvariable=self._experiment_notes_var, width=26).grid(
             row=2, column=1, columnspan=3, sticky="we", padx=5, pady=2
@@ -157,6 +163,7 @@ class SessionBar:
         started = self._mgr.start_experiment(
             name=self._experiment_name_var.get(),
             chip_id=self._experiment_chip_id_var.get(),
+            aptamer_type=self._experiment_aptamer_type_var.get(),
             notes=self._experiment_notes_var.get(),
         )
         if started:
@@ -182,12 +189,14 @@ class SessionBar:
         data = data or {}
         self._experiment_name_var.set(data.get("experiment_name", ""))
         self._experiment_chip_id_var.set(data.get("chip_id", ""))
+        self._experiment_aptamer_type_var.set(data.get("aptamer_type", data.get("polymer_type", "")))
         self._experiment_notes_var.set(data.get("notes", ""))
 
     def _on_update_experiment(self):
         self._mgr.update_experiment_metadata(
             name=self._experiment_name_var.get(),
             chip_id=self._experiment_chip_id_var.get(),
+            aptamer_type=self._experiment_aptamer_type_var.get(),
             notes=self._experiment_notes_var.get(),
         )
 

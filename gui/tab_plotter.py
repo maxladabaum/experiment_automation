@@ -144,20 +144,30 @@ class PlotterTab:
             if path:
                 self.plot_data(path)
 
-    def plot_data(self, csv_path, color=None, label=None, track: bool = True, allow_overlay: bool = True):
+    def plot_data(
+        self,
+        csv_path,
+        color=None,
+        label=None,
+        track: bool = True,
+        allow_overlay: bool = True,
+        show_error: bool = True,
+    ):
         """Load a CSV and add it to the plot."""
         try:
             df = self._read_csv(csv_path)
         except Exception as exc:
             self._session.log(f"Plot error: failed to read {csv_path}: {exc}")
-            messagebox.showerror("Plot Error", f"Failed to read data:\n{exc}")
+            if show_error:
+                messagebox.showerror("Plot Error", f"Failed to read data:\n{exc}")
             return
 
         x_col, x_label = self._resolve_x_axis(df)
         if not x_col:
             msg = "CSV must contain a supported X-axis column (Potential, Frequency, Channel, or Time)."
             self._session.log(f"Plot error: {msg}")
-            messagebox.showerror("Plot Error", msg)
+            if show_error:
+                messagebox.showerror("Plot Error", msg)
             return
 
         series_choice = getattr(self, "_plot_series_var", None)
@@ -168,13 +178,16 @@ class PlotterTab:
         except ValueError as exc:
             msg = f"{exc}"
             self._session.log(f"Plot error: {msg}")
-            messagebox.showerror("Plot Error", msg)
+            if show_error:
+                messagebox.showerror("Plot Error", msg)
             return
 
         try:
             if not allow_overlay or not self._overlay_var.get():
                 self._ax.clear()
                 self._reset_axes()
+                if track:
+                    self._plotted_files.clear()
             self._live_x_label = x_label
             self._live_y_label = y_label
             if color is None:
@@ -201,7 +214,8 @@ class PlotterTab:
                 self._remember_plotted_file(csv_path, color, base_label)
         except Exception as exc:
             self._session.log(f"Plot render error: {exc}")
-            messagebox.showerror("Plot Error", f"Failed to render plot:\n{exc}")
+            if show_error:
+                messagebox.showerror("Plot Error", f"Failed to render plot:\n{exc}")
     def clear_plot(self):
         self._ax.clear()
         self._live_x_label = "Potential (V)"
@@ -516,8 +530,19 @@ class PlotterTab:
         files = list(self._plotted_files)
         self._ax.clear()
         self._reset_axes()
+        kept = []
         for entry in files:
-            self.plot_data(entry["path"], color=entry["color"], label=entry["label"], track=False)
+            before = len(self._ax.lines)
+            self.plot_data(
+                entry["path"],
+                color=entry["color"],
+                label=entry["label"],
+                track=False,
+                show_error=False,
+            )
+            if len(self._ax.lines) > before:
+                kept.append(entry)
+        self._plotted_files = kept
         if self._legend is not None:
             self._legend.set_draggable(True)
 
