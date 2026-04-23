@@ -1886,3 +1886,15 @@ Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data
 [2026-04-17 17:54:08] Connected.
 [2026-04-17 17:54:16] Experiment opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\test_20260417_175210
 [2026-04-17 17:54:16] ngrok tunnel started.
+[2026-04-23 13:31:57] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-23 13:31:57] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-23 13:31:58] Connected.
+[2026-04-23 13:43:16] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-23 13:43:16] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-23 13:43:16] Connected.
+[2026-04-23 13:49:45] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-23 13:49:45] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-23 13:49:45] Connected.
+[2026-04-23 13:53:50] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-23 13:53:50] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-23 13:53:50] Connected.

@@ -26,20 +26,30 @@ from gui.tab_custom_script import CustomScriptPanel
 
 EMSTAT_PICO_LOW_SPEED_BA_RANGES = (
     ("100 nA", "59n"),
-    ("1 uA", "489n"),
-    ("10 uA", "10u"),
-    ("100 uA", "100u"),
-    ("1 mA", "1m"),
-    ("5 mA", "5m"),
+    ("2 uA", "1180n"),
+    ("4 uA", "2360n"),
+    ("8 uA", "4720n"),
+    ("16 uA", "9440n"),
+    ("32 uA", "18880n"),
+    ("63 uA", "37170n"),
+    ("125 uA", "73750n"),
+    ("250 uA", "147500n"),
+    ("500 uA", "295u"),
+    ("1 mA", "590u"),
+    ("5 mA", "2950u"),
 )
 
 EMSTAT_PICO_HIGH_SPEED_BA_RANGES = (
     ("100 nA", "59n"),
-    ("1 uA", "489n"),
-    ("10 uA", "10u"),
-    ("100 uA", "100u"),
-    ("1 mA", "1m"),
-    ("5 mA", "5m"),
+    ("1 uA", "590n"),
+    ("6 uA", "3687500p"),
+    ("13 uA", "7375n"),
+    ("25 uA", "14750n"),
+    ("50 uA", "29500n"),
+    ("100 uA", "59u"),
+    ("200 uA", "118u"),
+    ("1 mA", "590u"),
+    ("5 mA", "2950u"),
 )
 
 class MethodTab:
@@ -88,17 +98,18 @@ class MethodTab:
         self.pause_params: dict = {}
         self._library_note = tk.StringVar(value="")
         self._cv_range_mode = tk.StringVar(value="auto")
-        self._cv_fixed_range = tk.StringVar(value="100 uA")
+        self._cv_fixed_range = tk.StringVar(value="125 uA")
         self._cv_auto_min = tk.StringVar(value="100 nA")
-        self._cv_auto_max = tk.StringVar(value="100 uA")
+        self._cv_auto_max = tk.StringVar(value="125 uA")
         self._lsv_range_mode = tk.StringVar(value="fixed")
-        self._lsv_fixed_range = tk.StringVar(value="10 uA")
+        self._lsv_fixed_range = tk.StringVar(value="16 uA")
         self._lsv_auto_min = tk.StringVar(value="100 nA")
-        self._lsv_auto_max = tk.StringVar(value="10 uA")
+        self._lsv_auto_max = tk.StringVar(value="16 uA")
         self._swv_range_mode = tk.StringVar(value="fixed")
         self._swv_fixed_range = tk.StringVar(value="100 nA")
         self._swv_auto_min = tk.StringVar(value="100 nA")
         self._swv_auto_max = tk.StringVar(value="100 nA")
+        self._swv_bandwidth = tk.StringVar(value="4k")
         self._device_port_var = tk.StringVar(value="Auto (detect)")
         self._device_port_choices = []
         self._device_port_info_by_device = {}
@@ -304,7 +315,7 @@ class MethodTab:
         self._build_ba_range_controls(
             row=len(params),
             technique="CV",
-            title="Current Range (EmStat Pico low-speed mode)",
+            title="Current Range (EmStat Pico low-speed mode / PSTrace labels)",
         )
 
         ttk.Label(self._params_frame, text="Library note (optional):").grid(
@@ -345,7 +356,7 @@ class MethodTab:
         self._build_ba_range_controls(
             row=len(params),
             technique="LSV",
-            title="Current Range (EmStat Pico low-speed mode)",
+            title="Current Range (EmStat Pico / PSTrace labels)",
         )
 
         ttk.Label(self._params_frame, text="Library note (optional):").grid(
@@ -386,19 +397,32 @@ class MethodTab:
             entry.grid(row=i, column=1, pady=2)
             self.swv_params[key] = entry
 
+        bandwidth_row = len(params)
+        ttk.Label(self._params_frame, text="Bandwidth (EmStat Pico):").grid(
+            row=bandwidth_row, column=0, sticky="w", pady=2
+        )
+        bw_box = ttk.Combobox(
+            self._params_frame,
+            textvariable=self._swv_bandwidth,
+            state="readonly",
+            width=12,
+            values=("4k", "8k"),
+        )
+        bw_box.grid(row=bandwidth_row, column=1, sticky="w", pady=2)
+
         self._build_ba_range_controls(
-            row=len(params),
+            row=bandwidth_row + 1,
             technique="SWV",
-            title="Current Range (EmStat Pico high-speed mode)",
+            title="Current Range (EmStat Pico / PSTrace labels)",
         )
 
         ttk.Label(self._params_frame, text="Library note (optional):").grid(
-            row=len(params) + 1, column=0, sticky="w", pady=(8, 2))
+            row=bandwidth_row + 2, column=0, sticky="w", pady=(8, 2))
         ttk.Entry(self._params_frame, width=40, textvariable=self._library_note).grid(
-            row=len(params) + 1, column=1, sticky="w", pady=2)
+            row=bandwidth_row + 2, column=1, sticky="w", pady=2)
 
         btn_frame = ttk.Frame(self._params_frame)
-        btn_frame.grid(row=len(params) + 2, column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=bandwidth_row + 3, column=0, columnspan=2, pady=20)
         ttk.Button(btn_frame, text="Generate Script",
                    command=self._generate_swv_script).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Run Now",
@@ -541,7 +565,7 @@ class MethodTab:
             )
         if tech == "LSV":
             return (
-                EMSTAT_PICO_LOW_SPEED_BA_RANGES,
+                EMSTAT_PICO_HIGH_SPEED_BA_RANGES,
                 self._lsv_range_mode,
                 self._lsv_fixed_range,
                 self._lsv_auto_min,
@@ -601,7 +625,7 @@ class MethodTab:
 
         ttk.Label(
             frame,
-            text="Ranges are limited to EmStat Pico values for this measurement mode.",
+            text="PSTrace-style labels mapped to EmStat Pico BA selectors.",
         ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 0))
 
         _sync()
@@ -655,6 +679,9 @@ class MethodTab:
 
     def _build_cv_script(self) -> str:
         p = self.cv_params
+        begin_v    = float(p["begin_potential"].get())
+        vertex1_v  = float(p["vertex1"].get())
+        vertex2_v  = float(p["vertex2"].get())
         begin      = to_si_string(p["begin_potential"].get(), "V")
         v1         = to_si_string(p["vertex1"].get(),         "V")
         v2         = to_si_string(p["vertex2"].get(),         "V")
@@ -664,10 +691,17 @@ class MethodTab:
         cond_pot   = to_si_string(p["cond_potential"].get(),  "V")
         cond_time  = p["cond_time"].get()
         ba_cfg     = self._get_ba_range_config("CV")
+        da_min     = to_si_string(str(min(begin_v, vertex1_v, vertex2_v)), "V")
+        da_max     = to_si_string(str(max(begin_v, vertex1_v, vertex2_v)), "V")
 
         parts = [
             "e", "var c", "var p",
-            "set_pgstat_mode 2", "set_max_bandwidth 40",
+            "set_pgstat_chan 1",
+            "set_pgstat_mode 0",
+            "set_pgstat_chan 0",
+            "set_pgstat_mode 2",
+            "set_max_bandwidth 66667m",
+            f"set_range_minmax da {da_min} {da_max}",
         ]
         parts += self._ba_range_lines(
             ba_cfg["set_range_value"],
@@ -748,6 +782,9 @@ class MethodTab:
         cond_pot  = to_si_string(p["cond_potential"].get(),  "V")
         cond_time = p["cond_time"].get()
         ba_cfg    = self._get_ba_range_config("SWV")
+        bandwidth = (self._swv_bandwidth.get() or "4k").strip().lower()
+        if bandwidth not in ("4k", "8k"):
+            raise ValueError(f"Unsupported SWV bandwidth: {bandwidth}")
 
         min_mv = int((min(begin_v, end_v) - amp_v) * 1000)
         max_mv = int((max(begin_v, end_v) + amp_v) * 1000)
@@ -764,7 +801,7 @@ class MethodTab:
             "set_pgstat_mode 0",
             "set_pgstat_chan 0",
             "set_pgstat_mode 3",
-            "set_max_bandwidth 4k",
+            f"set_max_bandwidth {bandwidth}",
             f"set_range_minmax da {min_mv}m {max_mv}m",
         ]
         if use_equilibrium_check:
@@ -1078,6 +1115,7 @@ class MethodTab:
         if n_scans is None:
             return
         raw_params = {k: v.get() for k, v in self.swv_params.items()}
+        raw_params["bandwidth"] = self._swv_bandwidth.get()
         raw_params.update(self._serialize_ba_range_config("SWV"))
         note = (self._library_note.get() or "").strip()
 
@@ -1210,6 +1248,7 @@ class MethodTab:
         if n_scans is None:
             return
         raw_params = {k: v.get() for k, v in self.swv_params.items()}
+        raw_params["bandwidth"] = self._swv_bandwidth.get()
         raw_params.update(self._serialize_ba_range_config("SWV"))
         if mux:
             if len(mux) == 1 and n_scans == 1:
