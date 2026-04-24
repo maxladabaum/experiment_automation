@@ -26,8 +26,8 @@ PREFERRED_SYRINGE_UL        = 250.0
 
 # ── File / folder paths ───────────────────────────────────────────────────────
 METHODS_DIR     = Path("methods")           # where .ms scripts are saved
-DATA_DIR        = Path(r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)")  # where measurement CSVs land
-#DATA_DIR        = Path("measurement_data") #for local testing purposes
+#DATA_DIR        = Path(r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)")  # where measurement CSVs land
+DATA_DIR        = Path("measurement_data") #for local testing purposes
 BLOCKS_DIR      = Path("recipe_maker") / "default_blocks"  # where block definitions are saved
 SAVE_DATED_METHOD_COPIES = False            # if True, also write methods/YYYY-MM-DD/*.ms working copies
 #keep in mind that methods are already double saved under library and the experiments where they are used

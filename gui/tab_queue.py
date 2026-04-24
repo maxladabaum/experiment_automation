@@ -22,6 +22,7 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, simpledialog
 from typing import Optional
 
+from core.queue_eta import estimate_queue_eta, eta_finish_time, format_duration
 from core.runner import SerialMeasurementRunner
 from methods import library_map
 from core.session import SessionState
@@ -146,6 +147,8 @@ class QueueTab:
         self._lbl_registry.pack(side="left", padx=8)
         ttk.Button(info_bar, text="Reset Counter",
                    command=self._reset_counter).pack(side="right", padx=4)
+        ttk.Button(info_bar, text="Queue ETA",
+                   command=self.show_queue_eta).pack(side="right", padx=4)
         ttk.Button(info_bar, text="Clear Registry",
                    command=self._clear_registry).pack(side="right", padx=4)
 
@@ -217,6 +220,38 @@ class QueueTab:
         self.refresh_labels()
 
     # ── Copy / paste / duplicate ──────────────────────────────────────────────
+
+    def show_queue_eta(self):
+        """Show an on-demand ETA estimate for the queue or current selection."""
+        queue = self._session.measurement_queue
+        if not queue:
+            messagebox.showinfo("Queue ETA", "Queue is empty.")
+            return
+
+        idxs = self._selected_indices()
+        start_index = idxs[0] if idxs else 0
+        scope = f"selected item #{start_index + 1} onward" if idxs else "entire queue"
+
+        eta = estimate_queue_eta(
+            queue,
+            start_index=start_index,
+            step_delay_seconds=getattr(self._session, "step_delay", 0.0) or 0.0,
+        )
+        finish_at = eta_finish_time(eta.total_seconds)
+
+        lines = [
+            f"Estimate scope: {scope}",
+            f"Predicted duration: {format_duration(eta.total_seconds)}",
+            f"Estimated finish: {finish_at.strftime('%Y-%m-%d %I:%M:%S %p')}",
+        ]
+        if eta.unknown_item_count:
+            lines.append(f"Unknown items not counted: {eta.unknown_item_count}")
+        if eta.excluded_alert_count:
+            lines.append(f"Alert pauses treated as 0 sec: {eta.excluded_alert_count}")
+        if not eta.unknown_item_count and not eta.excluded_alert_count:
+            lines.append("All queued items were estimated.")
+
+        messagebox.showinfo("Queue ETA", "\n".join(lines))
 
     def _selected_indices(self) -> list:
         return sorted(

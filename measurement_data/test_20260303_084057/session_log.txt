@@ -1898,3 +1898,11 @@ Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data
 [2026-04-23 13:53:50] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
 [2026-04-23 13:53:50] Connecting (real) -> COM8 @ 9600, dev=1
 [2026-04-23 13:53:50] Connected.
+[2026-04-24 14:49:22] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-24 14:49:22] [SIM] Connected (COM8)
+[2026-04-24 14:50:28] Queue loaded: C:/Users/Asus/OneDrive/Documents/GitHub/experiment_automation/recipe_maker/custom_blocks/auto_clean_n_immobilize.json (154 items)
+[2026-04-24 15:07:44] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-24 15:07:44] [SIM] Connected (COM8)
+[2026-04-24 15:07:59] Queue loaded: C:/Users/Asus/OneDrive/Documents/GitHub/experiment_automation/recipe_maker/saved_recipes/autoclean_flowBSA_autoimmobilize_test.json (191 items)
+[2026-04-24 15:09:28] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-24 15:09:28] [SIM] Connected (COM8)
