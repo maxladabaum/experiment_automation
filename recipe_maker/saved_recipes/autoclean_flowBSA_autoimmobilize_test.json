@@ -225,21 +225,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_451827.ms | MUX ch 1",
-      "block_name": "auto_clean",
+      "details": "cv_36c123.ms | MUX ch 1",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_451827",
+        "hash_key": "cv_36c123",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.01",
           "scan_rate": "1",
           "n_scans": "50",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 1
       }
@@ -247,21 +252,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_451827.ms | MUX ch 2",
-      "block_name": "auto_clean",
+      "details": "cv_36c123.ms | MUX ch 2",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_451827",
+        "hash_key": "cv_36c123",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.01",
           "scan_rate": "1",
           "n_scans": "50",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 2
       }
@@ -269,21 +279,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_451827.ms | MUX ch 3",
-      "block_name": "auto_clean",
+      "details": "cv_36c123.ms | MUX ch 3",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_451827",
+        "hash_key": "cv_36c123",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.01",
           "scan_rate": "1",
           "n_scans": "50",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 3
       }
@@ -291,21 +306,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_451827.ms | MUX ch 4",
-      "block_name": "auto_clean",
+      "details": "cv_36c123.ms | MUX ch 4",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_451827",
+        "hash_key": "cv_36c123",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.01",
           "scan_rate": "1",
           "n_scans": "50",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 4
       }
@@ -313,21 +333,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_451827.ms | MUX ch 5",
-      "block_name": "auto_clean",
+      "details": "cv_36c123.ms | MUX ch 5",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_451827",
+        "hash_key": "cv_36c123",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.01",
           "scan_rate": "1",
           "n_scans": "50",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 5
       }
@@ -335,21 +360,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_451827.ms | MUX ch 6",
-      "block_name": "auto_clean",
+      "details": "cv_36c123.ms | MUX ch 6",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_451827",
+        "hash_key": "cv_36c123",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.01",
           "scan_rate": "1",
           "n_scans": "50",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 6
       }
@@ -357,21 +387,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_451827.ms | MUX ch 7",
-      "block_name": "auto_clean",
+      "details": "cv_36c123.ms | MUX ch 7",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_451827",
+        "hash_key": "cv_36c123",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.01",
           "scan_rate": "1",
           "n_scans": "50",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 7
       }
@@ -379,21 +414,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_451827.ms | MUX ch 8",
-      "block_name": "auto_clean",
+      "details": "cv_36c123.ms | MUX ch 8",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_451827",
+        "hash_key": "cv_36c123",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.01",
           "scan_rate": "1",
           "n_scans": "50",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 8
       }
@@ -401,21 +441,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_451827.ms | MUX ch 9",
-      "block_name": "auto_clean",
+      "details": "cv_36c123.ms | MUX ch 9",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_451827",
+        "hash_key": "cv_36c123",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.01",
           "scan_rate": "1",
           "n_scans": "50",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 9
       }
@@ -423,21 +468,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_451827.ms | MUX ch 10",
-      "block_name": "auto_clean",
+      "details": "cv_36c123.ms | MUX ch 10",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_451827",
+        "hash_key": "cv_36c123",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.01",
           "scan_rate": "1",
           "n_scans": "50",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 10
       }
@@ -645,21 +695,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ac2f8b.ms | MUX ch 1",
-      "block_name": "auto_clean",
+      "details": "cv_b0d31e.ms | MUX ch 1",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_ac2f8b",
+        "hash_key": "cv_b0d31e",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 1
       }
@@ -667,21 +722,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ac2f8b.ms | MUX ch 2",
-      "block_name": "auto_clean",
+      "details": "cv_b0d31e.ms | MUX ch 2",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_ac2f8b",
+        "hash_key": "cv_b0d31e",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 2
       }
@@ -689,21 +749,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ac2f8b.ms | MUX ch 3",
-      "block_name": "auto_clean",
+      "details": "cv_b0d31e.ms | MUX ch 3",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_ac2f8b",
+        "hash_key": "cv_b0d31e",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 3
       }
@@ -711,21 +776,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ac2f8b.ms | MUX ch 4",
-      "block_name": "auto_clean",
+      "details": "cv_b0d31e.ms | MUX ch 4",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_ac2f8b",
+        "hash_key": "cv_b0d31e",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 4
       }
@@ -733,21 +803,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ac2f8b.ms | MUX ch 5",
-      "block_name": "auto_clean",
+      "details": "cv_b0d31e.ms | MUX ch 5",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_ac2f8b",
+        "hash_key": "cv_b0d31e",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 5
       }
@@ -755,21 +830,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ac2f8b.ms | MUX ch 6",
-      "block_name": "auto_clean",
+      "details": "cv_b0d31e.ms | MUX ch 6",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_ac2f8b",
+        "hash_key": "cv_b0d31e",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 6
       }
@@ -777,21 +857,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ac2f8b.ms | MUX ch 7",
-      "block_name": "auto_clean",
+      "details": "cv_b0d31e.ms | MUX ch 7",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_ac2f8b",
+        "hash_key": "cv_b0d31e",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 7
       }
@@ -799,21 +884,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ac2f8b.ms | MUX ch 8",
-      "block_name": "auto_clean",
+      "details": "cv_b0d31e.ms | MUX ch 8",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_ac2f8b",
+        "hash_key": "cv_b0d31e",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 8
       }
@@ -821,21 +911,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ac2f8b.ms | MUX ch 9",
-      "block_name": "auto_clean",
+      "details": "cv_b0d31e.ms | MUX ch 9",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_ac2f8b",
+        "hash_key": "cv_b0d31e",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 9
       }
@@ -843,21 +938,26 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ac2f8b.ms | MUX ch 10",
-      "block_name": "auto_clean",
+      "details": "cv_b0d31e.ms | MUX ch 10",
+      "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_ac2f8b",
+        "hash_key": "cv_b0d31e",
         "technique": "CV",
         "params": {
           "begin_potential": "-0.2",
           "vertex1": "-0.2",
-          "vertex2": "0.9",
+          "vertex2": "1.1",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
           "cond_potential": "0",
           "cond_time": "0",
-          "mux_channel": "0"
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA"
         },
         "mux_channel": 10
       }

@@ -24,19 +24,36 @@ from config import DEVICE_KEYWORDS
 from core.session import SessionState
 from gui.tab_custom_script import CustomScriptPanel
 
-EMSTAT_PICO_LOW_SPEED_BA_RANGES = (
-    ("100 nA", "59n"),
-    ("2 uA", "1180n"),
-    ("4 uA", "2360n"),
-    ("8 uA", "4720n"),
-    ("16 uA", "9440n"),
-    ("32 uA", "18880n"),
-    ("63 uA", "37170n"),
-    ("125 uA", "73750n"),
-    ("250 uA", "147500n"),
-    ("500 uA", "295u"),
-    ("1 mA", "590u"),
-    ("5 mA", "2950u"),
+EMSTAT_PICO_LOW_SPEED_FIXED_BA_RANGES = (
+    ("100 nA", "100n"),
+    ("2 uA", "2u"),
+    ("4 uA", "4u"),
+    ("8 uA", "8u"),
+    ("16 uA", "16u"),
+    ("32 uA", "32u"),
+    ("63 uA", "63u"),
+    ("125 uA", "125u"),
+    ("250 uA", "250u"),
+    ("500 uA", "500u"),
+    ("1 mA", "1m"),
+    ("5 mA", "5m"),
+)
+
+EMSTAT_PICO_LOW_SPEED_AUTORANGE_BA_RANGES = (
+    ("1 nA", "1n"),
+    ("100 nA", "100n"),
+    ("2 uA", "2u"),
+    ("4 uA", "4u"),
+    ("8 uA", "8u"),
+    ("16 uA", "16u"),
+    ("32 uA", "32u"),
+    ("63 uA", "63u"),
+    ("100 uA", "100u"),
+    ("125 uA", "125u"),
+    ("250 uA", "250u"),
+    ("500 uA", "500u"),
+    ("1 mA", "1m"),
+    ("5 mA", "5m"),
 )
 
 EMSTAT_PICO_HIGH_SPEED_BA_RANGES = (
@@ -99,8 +116,8 @@ class MethodTab:
         self._library_note = tk.StringVar(value="")
         self._cv_range_mode = tk.StringVar(value="auto")
         self._cv_fixed_range = tk.StringVar(value="125 uA")
-        self._cv_auto_min = tk.StringVar(value="100 nA")
-        self._cv_auto_max = tk.StringVar(value="125 uA")
+        self._cv_auto_min = tk.StringVar(value="1 nA")
+        self._cv_auto_max = tk.StringVar(value="100 uA")
         self._lsv_range_mode = tk.StringVar(value="fixed")
         self._lsv_fixed_range = tk.StringVar(value="16 uA")
         self._lsv_auto_min = tk.StringVar(value="100 nA")
@@ -557,7 +574,8 @@ class MethodTab:
         tech = technique.upper()
         if tech == "CV":
             return (
-                EMSTAT_PICO_LOW_SPEED_BA_RANGES,
+                EMSTAT_PICO_LOW_SPEED_FIXED_BA_RANGES,
+                EMSTAT_PICO_LOW_SPEED_AUTORANGE_BA_RANGES,
                 self._cv_range_mode,
                 self._cv_fixed_range,
                 self._cv_auto_min,
@@ -565,6 +583,7 @@ class MethodTab:
             )
         if tech == "LSV":
             return (
+                EMSTAT_PICO_HIGH_SPEED_BA_RANGES,
                 EMSTAT_PICO_HIGH_SPEED_BA_RANGES,
                 self._lsv_range_mode,
                 self._lsv_fixed_range,
@@ -574,6 +593,7 @@ class MethodTab:
         if tech == "SWV":
             return (
                 EMSTAT_PICO_HIGH_SPEED_BA_RANGES,
+                EMSTAT_PICO_HIGH_SPEED_BA_RANGES,
                 self._swv_range_mode,
                 self._swv_fixed_range,
                 self._swv_auto_min,
@@ -582,8 +602,9 @@ class MethodTab:
         raise ValueError(f"Unsupported technique for BA range controls: {technique}")
 
     def _build_ba_range_controls(self, row: int, technique: str, title: str):
-        profile, mode_var, fixed_var, auto_min_var, auto_max_var = self._get_ba_range_state(technique)
-        labels = self._range_labels(profile)
+        fixed_profile, auto_profile, mode_var, fixed_var, auto_min_var, auto_max_var = self._get_ba_range_state(technique)
+        fixed_labels = self._range_labels(fixed_profile)
+        auto_labels = self._range_labels(auto_profile)
 
         frame = ttk.LabelFrame(self._params_frame, text=title, padding=8)
         frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(8, 2))
@@ -607,19 +628,19 @@ class MethodTab:
 
         ttk.Label(frame, text="Fixed range:").grid(row=1, column=0, sticky="w", pady=(6, 2))
         fixed_box = ttk.Combobox(
-            frame, textvariable=fixed_var, values=labels, state="readonly", width=14
+            frame, textvariable=fixed_var, values=fixed_labels, state="readonly", width=14
         )
         fixed_box.grid(row=1, column=1, sticky="w", pady=(6, 2))
 
         ttk.Label(frame, text="Autorange min:").grid(row=2, column=0, sticky="w", pady=2)
         min_box = ttk.Combobox(
-            frame, textvariable=auto_min_var, values=labels, state="readonly", width=14
+            frame, textvariable=auto_min_var, values=auto_labels, state="readonly", width=14
         )
         min_box.grid(row=2, column=1, sticky="w", pady=2)
 
         ttk.Label(frame, text="Autorange max:").grid(row=3, column=0, sticky="w", pady=2)
         max_box = ttk.Combobox(
-            frame, textvariable=auto_max_var, values=labels, state="readonly", width=14
+            frame, textvariable=auto_max_var, values=auto_labels, state="readonly", width=14
         )
         max_box.grid(row=3, column=1, sticky="w", pady=2)
 
@@ -631,29 +652,30 @@ class MethodTab:
         _sync()
 
     def _get_ba_range_config(self, technique: str) -> dict:
-        profile, mode_var, fixed_var, auto_min_var, auto_max_var = self._get_ba_range_state(technique)
+        fixed_profile, auto_profile, mode_var, fixed_var, auto_min_var, auto_max_var = self._get_ba_range_state(technique)
         mode = (mode_var.get() or "fixed").strip().lower()
-        fixed_label = self._normalize_range_label(profile, fixed_var.get().strip(), "up")
-        auto_min_label = self._normalize_range_label(profile, auto_min_var.get().strip(), "down")
-        auto_max_label = self._normalize_range_label(profile, auto_max_var.get().strip(), "up")
+        fixed_label = self._normalize_range_label(fixed_profile, fixed_var.get().strip(), "up")
+        auto_min_label = self._normalize_range_label(auto_profile, auto_min_var.get().strip(), "down")
+        auto_max_label = self._normalize_range_label(auto_profile, auto_max_var.get().strip(), "up")
 
-        labels = self._range_labels(profile)
-        if fixed_label not in labels:
+        fixed_labels = self._range_labels(fixed_profile)
+        auto_labels = self._range_labels(auto_profile)
+        if fixed_label not in fixed_labels:
             raise ValueError(f"Invalid fixed current range: {fixed_label or '(empty)'}")
-        if auto_min_label not in labels:
+        if auto_min_label not in auto_labels:
             raise ValueError(f"Invalid autorange minimum: {auto_min_label or '(empty)'}")
-        if auto_max_label not in labels:
+        if auto_max_label not in auto_labels:
             raise ValueError(f"Invalid autorange maximum: {auto_max_label or '(empty)'}")
-        if self._range_index(profile, auto_min_label) > self._range_index(profile, auto_max_label):
+        if self._range_index(auto_profile, auto_min_label) > self._range_index(auto_profile, auto_max_label):
             raise ValueError("Autorange minimum must be less than or equal to autorange maximum.")
 
         if mode == "auto":
-            set_range_value = self._range_selector(profile, auto_max_label)
-            auto_min_value = self._range_selector(profile, auto_min_label)
-            auto_max_value = self._range_selector(profile, auto_max_label)
+            set_range_value = self._range_selector(auto_profile, auto_max_label)
+            auto_min_value = self._range_selector(auto_profile, auto_min_label)
+            auto_max_value = self._range_selector(auto_profile, auto_max_label)
         else:
             mode = "fixed"
-            set_range_value = self._range_selector(profile, fixed_label)
+            set_range_value = self._range_selector(fixed_profile, fixed_label)
             auto_min_value = set_range_value
             auto_max_value = set_range_value
 
@@ -679,9 +701,6 @@ class MethodTab:
 
     def _build_cv_script(self) -> str:
         p = self.cv_params
-        begin_v    = float(p["begin_potential"].get())
-        vertex1_v  = float(p["vertex1"].get())
-        vertex2_v  = float(p["vertex2"].get())
         begin      = to_si_string(p["begin_potential"].get(), "V")
         v1         = to_si_string(p["vertex1"].get(),         "V")
         v2         = to_si_string(p["vertex2"].get(),         "V")
@@ -691,17 +710,10 @@ class MethodTab:
         cond_pot   = to_si_string(p["cond_potential"].get(),  "V")
         cond_time  = p["cond_time"].get()
         ba_cfg     = self._get_ba_range_config("CV")
-        da_min     = to_si_string(str(min(begin_v, vertex1_v, vertex2_v)), "V")
-        da_max     = to_si_string(str(max(begin_v, vertex1_v, vertex2_v)), "V")
 
         parts = [
             "e", "var c", "var p",
-            "set_pgstat_chan 1",
-            "set_pgstat_mode 0",
-            "set_pgstat_chan 0",
-            "set_pgstat_mode 2",
-            "set_max_bandwidth 66667m",
-            f"set_range_minmax da {da_min} {da_max}",
+            "set_pgstat_mode 2", "set_max_bandwidth 40",
         ]
         parts += self._ba_range_lines(
             ba_cfg["set_range_value"],
