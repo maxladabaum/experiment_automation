@@ -7062,5 +7062,28 @@
     "note": "ec 3 -0.2 to 1.1 | MUX ch 10",
     "added_at": "2026-04-24T17:40:01",
     "filepath": "methods\\library\\mux_methods\\cv_ch10_ac81e9.ms"
+  },
+  "cv_7aee54": {
+    "technique": "CV",
+    "mux_channel": 0,
+    "params": {
+      "begin_potential": "-0.2",
+      "vertex1": "-0.2",
+      "vertex2": "1.1",
+      "step_potential": "0.01",
+      "scan_rate": "1",
+      "n_scans": "25",
+      "cond_potential": "0",
+      "cond_time": "0",
+      "mux_channel": "0",
+      "ba_autorange": "1",
+      "ba_range_mode": "auto",
+      "ba_fixed_range": "125 uA",
+      "ba_auto_min": "1 nA",
+      "ba_auto_max": "100 uA"
+    },
+    "note": "ec4 -0.2 to 1.1, 25 reps",
+    "added_at": "2026-04-27T10:37:52",
+    "filepath": "methods\\library\\cv_7aee54.ms"
   }
 }
