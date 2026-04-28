@@ -63,7 +63,7 @@ def test_runner_simulates_eis_points():
     assert all("capacitance_nf" in point for point in points)
 
 
-def test_runner_treats_bare_star_as_completion_marker():
+def test_runner_does_not_treat_bare_star_as_script_completion():
     logs = []
     runner = SerialMeasurementRunner(
         Path("methods/library/cv_f2add5.ms"),
@@ -75,6 +75,7 @@ def test_runner_treats_bare_star_as_completion_marker():
         b"e\n",
         b"M0002\n",
         b"*\n",
+        b"Measurement completed\n",
     ])
 
     success = runner.run_script("e\n")
@@ -82,3 +83,29 @@ def test_runner_treats_bare_star_as_completion_marker():
     assert success is True
     assert any("Measurement completed" in entry for entry in logs)
     assert not any("idle timed out" in entry for entry in logs)
+
+
+def test_runner_continues_past_first_loop_terminator():
+    logs = []
+    runner = SerialMeasurementRunner(
+        Path("methods/library/swv_a0df5f.ms"),
+        log_callback=logs.append,
+        simulate_measurements=True,
+    )
+    runner.connection = _FakeConnection([
+        b"R*\n",
+        b"e\n",
+        b"M0007\n",
+        b"Peb0000000i;ab8000000i;ba8000001i\n",
+        b"*\n",
+        b"M0008\n",
+        b"Pda8000001i;ba8000002i;ba8000003i;ba8000004i\n",
+        b"*\n",
+        b"Measurement completed\n",
+    ])
+
+    success = runner.run_script("e\n")
+
+    assert success is True
+    assert len(runner.data_points) >= 2
+    assert any("current" in point or "current_diff" in point for point in runner.data_points)

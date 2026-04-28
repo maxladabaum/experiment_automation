@@ -138,6 +138,31 @@ def all_entries() -> dict:
     return dict(_map)
 
 
+def _canonical_family_signature(entry: dict):
+    technique = str(entry.get("technique", "")).upper()
+    params = dict(entry.get("params") or {})
+    params.pop("mux_channel", None)
+    canonical = json.dumps(
+        {k: str(v).strip() for k, v in sorted(params.items())},
+        separators=(",", ":"),
+    )
+    return technique, canonical
+
+
+def family_keys(hash_key: str) -> list:
+    """Return keys for a method family, including mux variants."""
+    load_map()
+    entry = _map.get(hash_key)
+    if not entry:
+        return []
+    signature = _canonical_family_signature(entry)
+    keys = [
+        key for key, candidate in _map.items()
+        if _canonical_family_signature(candidate) == signature
+    ]
+    return sorted(keys)
+
+
 def update_note(hash_key: str, note: Optional[str]) -> bool:
     """Update note for an existing entry. Returns True if changed."""
     load_map()
@@ -150,6 +175,53 @@ def update_note(hash_key: str, note: Optional[str]) -> bool:
     entry["note"] = new_note
     _persist()
     return True
+
+
+def update_family_note(hash_key: str, note: Optional[str]) -> int:
+    """Update note for an entry and all mux siblings. Returns count changed."""
+    load_map()
+    keys = family_keys(hash_key)
+    if not keys:
+        return 0
+    new_note = (note or "").strip()
+    changed = 0
+    for key in keys:
+        entry = _map.get(key)
+        if not entry:
+            continue
+        if entry.get("note", "") == new_note:
+            continue
+        entry["note"] = new_note
+        changed += 1
+    if changed:
+        _persist()
+    return changed
+
+
+def delete_family(hash_key: str) -> int:
+    """Delete a method entry and all mux siblings. Returns count deleted."""
+    load_map()
+    keys = family_keys(hash_key)
+    if not keys:
+        return 0
+    deleted = 0
+    for key in keys:
+        entry = _map.get(key)
+        if not entry:
+            continue
+        path_text = entry.get("filepath")
+        if path_text:
+            try:
+                Path(path_text).unlink(missing_ok=True)
+            except TypeError:
+                path = Path(path_text)
+                if path.exists():
+                    path.unlink()
+        _map.pop(key, None)
+        deleted += 1
+    if deleted:
+        _persist()
+    return deleted
 
 
 def find_by_technique(technique: str) -> dict:
