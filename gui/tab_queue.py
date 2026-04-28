@@ -59,6 +59,7 @@ class QueueTab:
         self._clipboard:list   = []
         self._last_selected    = None
         self._last_queue_path  = None
+        self._active_alert = None
 
         self._build()
 
@@ -1071,10 +1072,93 @@ class QueueTab:
         if not self._session.is_running:
             return False
         done = threading.Event()
-        self._root.after(0, lambda: (messagebox.showinfo("Paused", message), done.set()))
-        while self._session.is_running and not done.is_set():
-            done.wait(timeout=0.2)
-        return done.is_set()
+        self._active_alert = {"event": done, "window": None, "message": message}
+        self._session.update_queue_status(state="waiting_alert", current_label=message)
+        self._root.after(0, lambda: self._show_alert_window(message, done))
+        try:
+            while self._session.is_running and not done.is_set():
+                done.wait(timeout=0.2)
+            return done.is_set()
+        finally:
+            self._root.after(0, self._close_active_alert_window)
+            self._active_alert = None
+
+    def _show_alert_window(self, message: str, done: threading.Event):
+        if done.is_set():
+            return
+        win = tk.Toplevel(self._root)
+        win.title("Queue Alert")
+        win.transient(self._root)
+        win.resizable(False, False)
+        win.grab_set()
+        container = ttk.Frame(win, padding=(18, 16, 18, 14))
+        container.pack(fill="both", expand=True)
+        ttk.Label(container, text=message, justify="left", wraplength=460).pack(
+            padx=18, pady=(16, 10), fill="x"
+        )
+        ttk.Button(container, text="OK", command=self._acknowledge_active_alert).pack(pady=(0, 4))
+        win.protocol("WM_DELETE_WINDOW", self._acknowledge_active_alert)
+        win.update_idletasks()
+        win.minsize(max(360, win.winfo_reqwidth()), max(140, win.winfo_reqheight()))
+        self._center_alert_window(win)
+        win.lift()
+        win.focus_force()
+        if isinstance(self._active_alert, dict):
+            self._active_alert["window"] = win
+
+    def _center_alert_window(self, win):
+        try:
+            self._root.update_idletasks()
+            root_x = self._root.winfo_rootx()
+            root_y = self._root.winfo_rooty()
+            root_w = self._root.winfo_width()
+            root_h = self._root.winfo_height()
+            win_w = win.winfo_width()
+            win_h = win.winfo_height()
+            x = root_x + max(0, (root_w - win_w) // 2)
+            y = root_y + max(0, (root_h - win_h) // 2)
+            win.geometry(f"+{x}+{y}")
+        except Exception:
+            pass
+
+    def _acknowledge_active_alert(self):
+        alert = self._active_alert if isinstance(self._active_alert, dict) else None
+        if not alert:
+            return
+        event = alert.get("event")
+        if event is not None and not event.is_set():
+            event.set()
+        self._close_active_alert_window()
+
+    def _close_active_alert_window(self):
+        alert = self._active_alert if isinstance(self._active_alert, dict) else None
+        win = alert.get("window") if alert else None
+        if win is not None:
+            try:
+                win.grab_release()
+            except Exception:
+                pass
+            try:
+                win.destroy()
+            except Exception:
+                pass
+            alert["window"] = None
+
+    def resume_active_alert(self, command: str = "") -> str:
+        alert = self._active_alert if isinstance(self._active_alert, dict) else None
+        if not alert:
+            return "No alert step is waiting for confirmation."
+        normalized = (command or "").strip().lower()
+        if normalized not in ("continue", "resume", "continue queue", "resume queue", "proceed", "ok"):
+            return (
+                "Alert step is waiting. Mention me with `continue` or `resume` to continue the queue."
+            )
+        event = alert.get("event")
+        if event is None or event.is_set():
+            return "No alert step is waiting for confirmation."
+        self.log(f"Queue alert resumed remotely: {alert.get('message', '')}")
+        self._root.after(0, self._acknowledge_active_alert)
+        return "Queue continued past the alert step."
 
     # ── Pump execution ────────────────────────────────────────────────────────
 

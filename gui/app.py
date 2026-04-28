@@ -191,12 +191,19 @@ class ElectrochemGUI:
                 )
                 return status
 
+            def _slack_command_handler(command: str):
+                normalized = (command or "").strip().lower()
+                if normalized in ("continue", "resume", "continue queue", "resume queue", "proceed", "ok"):
+                    return self._queue_tab.resume_active_alert(normalized)
+                return None
+
             self._slack_bot = SlackBotServer(
                 host="0.0.0.0",
                 port=SLACK_PORT,
                 signing_secret=SLACK_SIGNING_SECRET,
                 notifier=self._session_mgr._slack,
                 status_provider=_status_provider,
+                command_handler=_slack_command_handler,
                 log_callback=self._session_mgr.log,
             )
             if not SLACK_ONLY_WHEN_EXPERIMENT:

@@ -1948,3 +1948,34 @@ Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data
 [2026-04-27 11:28:18] Queue pump → Pump: Dispense 225.00 µL @ S20R
 [2026-04-27 11:29:00] Queue completed.
 [2026-04-27 11:48:32] Queue cleared.
+[2026-04-28 10:48:54] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-28 10:48:54] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-28 10:48:54] Connected.
+[2026-04-28 10:49:07] Experiment started: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\alert slack resume testing_20260428_104907
+[2026-04-28 10:49:07] ngrok tunnel started.
+[2026-04-28 10:49:47] Queue start requested.
+[2026-04-28 10:49:47] Measurement simulation: OFF
+[2026-04-28 10:49:47] Queue file copied to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\alert slack resume testing_20260428_104907\queue_files\run_queue_20260428_104947
+[2026-04-28 10:49:47] Queue start -> Alert: alert 1
+[2026-04-28 10:49:58] Queue alert resumed remotely: alert 1
+[2026-04-28 10:49:59] Queue start -> Alert: alert 2
+[2026-04-28 10:50:15] Queue alert resumed remotely: alert 2
+[2026-04-28 10:50:16] Queue start -> Alert: alert 3
+[2026-04-28 10:50:27] Queue alert resumed remotely: alert 3
+[2026-04-28 10:50:28] Queue start -> Alert: alert 4
+[2026-04-28 10:51:02] Queue alert resumed remotely: alert 4
+[2026-04-28 10:51:03] Queue start -> Alert: alert 5
+[2026-04-28 10:51:10] Queue start -> Alert: alert 6
+[2026-04-28 10:51:14] Queue start -> Alert: alert 7
+[2026-04-28 10:51:57] Queue completed.
+[2026-04-28 10:52:02] Queue cleared.
+[2026-04-28 10:53:50] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-04-28 10:53:50] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-04-28 10:53:50] Connected.
+[2026-04-28 10:53:58] Experiment opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\alert slack resume testing_20260428_104907
+[2026-04-28 10:53:58] ngrok tunnel started.
+[2026-04-28 10:54:09] Queue start requested.
+[2026-04-28 10:54:09] Measurement simulation: OFF
+[2026-04-28 10:54:09] Queue file copied to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057\alert slack resume testing_20260428_104907\queue_files\run_queue_20260428_105409
+[2026-04-28 10:54:09] Queue start -> Alert: Check setup
+[2026-04-28 10:54:11] Queue completed.

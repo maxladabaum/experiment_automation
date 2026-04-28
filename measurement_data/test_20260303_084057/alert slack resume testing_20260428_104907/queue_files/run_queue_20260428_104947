@@ -1,0 +1,50 @@
+{
+  "metadata": {
+    "saved_at": "2026-04-28T10:49:47",
+    "version": 1
+  },
+  "items": [
+    {
+      "type": "ALERT",
+      "status": "pending",
+      "details": "Alert: alert 1",
+      "alert_message": "alert 1"
+    },
+    {
+      "type": "ALERT",
+      "status": "pending",
+      "details": "Alert: alert 2",
+      "alert_message": "alert 2"
+    },
+    {
+      "type": "ALERT",
+      "status": "pending",
+      "details": "Alert: alert 3",
+      "alert_message": "alert 3"
+    },
+    {
+      "type": "ALERT",
+      "status": "pending",
+      "details": "Alert: alert 4",
+      "alert_message": "alert 4"
+    },
+    {
+      "type": "ALERT",
+      "status": "pending",
+      "details": "Alert: alert 5",
+      "alert_message": "alert 5"
+    },
+    {
+      "type": "ALERT",
+      "status": "pending",
+      "details": "Alert: alert 6",
+      "alert_message": "alert 6"
+    },
+    {
+      "type": "ALERT",
+      "status": "pending",
+      "details": "Alert: alert 7",
+      "alert_message": "alert 7"
+    }
+  ]
+}

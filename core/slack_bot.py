@@ -23,6 +23,7 @@ class SlackBotServer:
         signing_secret: str,
         notifier: SlackNotifier,
         status_provider: Callable[[], Dict[str, Optional[str]]],
+        command_handler: Optional[Callable[[str], Optional[str]]] = None,
         log_callback: Callable[[str], None] = print,
     ):
         self._host = host
@@ -30,6 +31,7 @@ class SlackBotServer:
         self._signing_secret = (signing_secret or "").strip()
         self._notifier = notifier
         self._status_provider = status_provider
+        self._command_handler = command_handler
         self._log = log_callback
         self._server: Optional[HTTPServer] = None
         self._thread: Optional[threading.Thread] = None
@@ -88,7 +90,7 @@ class SlackBotServer:
                     if event.get("type") == "app_mention":
                         channel = event.get("channel")
                         if channel:
-                            text = parent._format_status_text()
+                            text = parent._handle_mention(event)
                             parent._notifier.send_message(text, target=channel)
 
                 self.send_response(200)
@@ -133,3 +135,23 @@ class SlackBotServer:
             f"Session: {session_name} | Experiment: {experiment_name}\n"
             f"Updated: {updated_at}"
         )
+
+    def _handle_mention(self, event: Dict[str, str]) -> str:
+        text = (event.get("text") or "").strip()
+        command = self._strip_mention_prefix(text)
+        if not command:
+            return self._format_status_text()
+        if self._command_handler is not None:
+            try:
+                response = self._command_handler(command)
+            except Exception as exc:
+                self._log(f"Slack command failed: {type(exc).__name__}: {exc}")
+                response = "Slack command failed."
+            if response:
+                return response
+        return self._format_status_text()
+
+    @staticmethod
+    def _strip_mention_prefix(text: str) -> str:
+        stripped = text.strip()
+        return stripped.split(">", 1)[1].strip() if stripped.startswith("<@") and ">" in stripped else stripped
