@@ -44,6 +44,21 @@ class QueueETA:
         return self.unknown_item_count > 0
 
 
+@dataclass(frozen=True)
+class RunningQueueETA:
+    current_step_remaining_seconds: Optional[float]
+    remaining_after_current_seconds: float
+    total_remaining_seconds: Optional[float]
+    known_remaining_seconds: float
+    unknown_item_count: int
+    excluded_alert_count: int
+    current_step_predictable: bool
+
+    @property
+    def has_unknowns(self) -> bool:
+        return self.unknown_item_count > 0
+
+
 _SCRIPT_ETA_CACHE: Dict[str, Tuple[float, float]] = {}
 
 
@@ -288,6 +303,72 @@ def estimate_queue_eta(
         unknown_item_count=unknown_item_count,
         excluded_alert_count=excluded_alert_count,
         per_item_seconds=per_item_seconds,
+    )
+
+
+def estimate_running_queue_eta(
+    queue_items: Iterable[Mapping[str, object]],
+    next_index: int,
+    current_step_elapsed_seconds: float = 0.0,
+    current_step_estimated_seconds: Optional[float] = None,
+    step_delay_seconds: float = 0.0,
+    default_item_seconds: Optional[Mapping[str, float]] = None,
+    include_alert_waits: bool = False,
+    include_next_step_delay: bool = True,
+) -> RunningQueueETA:
+    """
+    Estimate remaining time for an active queue step plus everything after it.
+
+    next_index is the absolute queue index of the next queued item that would
+    start after the current active step completes.
+    """
+    if default_item_seconds is None:
+        default_item_seconds = DEFAULT_ITEM_SECONDS
+
+    items = list(queue_items)
+    if next_index < 0:
+        next_index = 0
+
+    after_eta = estimate_queue_eta(
+        items,
+        start_index=next_index,
+        step_delay_seconds=step_delay_seconds,
+        default_item_seconds=default_item_seconds,
+        include_alert_waits=include_alert_waits,
+    )
+
+    extra_delay = 0.0
+    if include_next_step_delay and next_index < len(items):
+        extra_delay = max(0.0, float(step_delay_seconds))
+
+    remaining_after_current_seconds = after_eta.total_seconds + extra_delay
+    known_remaining_seconds = after_eta.known_seconds + extra_delay
+
+    current_step_predictable = current_step_estimated_seconds is not None
+    current_step_remaining_seconds: Optional[float]
+    total_remaining_seconds: Optional[float]
+    unknown_item_count = after_eta.unknown_item_count
+
+    if current_step_predictable:
+        current_step_remaining_seconds = max(
+            0.0,
+            float(current_step_estimated_seconds) - max(0.0, float(current_step_elapsed_seconds)),
+        )
+        total_remaining_seconds = current_step_remaining_seconds + remaining_after_current_seconds
+        known_remaining_seconds += current_step_remaining_seconds
+    else:
+        current_step_remaining_seconds = None
+        total_remaining_seconds = None
+        unknown_item_count += 1
+
+    return RunningQueueETA(
+        current_step_remaining_seconds=current_step_remaining_seconds,
+        remaining_after_current_seconds=remaining_after_current_seconds,
+        total_remaining_seconds=total_remaining_seconds,
+        known_remaining_seconds=known_remaining_seconds,
+        unknown_item_count=unknown_item_count,
+        excluded_alert_count=after_eta.excluded_alert_count,
+        current_step_predictable=current_step_predictable,
     )
 
 

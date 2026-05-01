@@ -195,6 +195,13 @@ class ElectrochemGUI:
                 normalized = (command or "").strip().lower()
                 if normalized in ("continue", "resume", "continue queue", "resume queue", "proceed", "ok"):
                     return self._queue_tab.resume_active_alert(normalized)
+                if (
+                    normalized.startswith("eta")
+                    or normalized.startswith("queue eta")
+                    or normalized.startswith("remaining")
+                    or normalized.startswith("time remaining")
+                ):
+                    return self._queue_tab.get_slack_eta_text()
                 return None
 
             self._slack_bot = SlackBotServer(

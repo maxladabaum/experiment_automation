@@ -141,6 +141,8 @@ class CustomScriptPanel:
         # Row 3 — action buttons
         btn_frame = ttk.Frame(self._frame)
         btn_frame.grid(row=4, column=0, columnspan=3, pady=20)
+        ttk.Button(btn_frame, text="Save to Library",
+                   command=self._save_to_library).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Run Now",
                    command=self._run_now).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Add to Queue",
@@ -433,3 +435,64 @@ class CustomScriptPanel:
             "details":     details,
         })
         messagebox.showinfo("Added", f"Custom script added to queue.\nSaved as: {filename}")
+
+    def _save_to_library(self):
+        if not self.script_path or not self.script_text:
+            messagebox.showerror(
+                "No Script Loaded",
+                "Browse and select a MethodSCRIPT file before saving to the library.",
+            )
+            return
+
+        channels = self._parse_mux(self.params)
+        if channels is None:
+            return
+
+        base_script = self.script_text
+        note = (getattr(self, "_note_var", None).get() or "").strip()
+        detected_technique, detected_params = self._extract_params(base_script)
+        script_hash = hashlib.sha1(base_script.encode("utf-8")).hexdigest()[:12]
+        base_params = detected_params or {"custom_hash": script_hash}
+        save_technique = detected_technique or "Custom"
+
+        saved = []
+        if channels:
+            if not self._confirm_mux_override():
+                return
+            base_script = self._strip_mux_header(base_script)
+            for ch in channels:
+                mux_script = self._wrap_mux(base_script, ch)
+                try:
+                    _filepath, filename = self._save_script(
+                        save_technique,
+                        mux_script,
+                        base_params,
+                        ch,
+                        note=note,
+                    )
+                except Exception as exc:
+                    messagebox.showerror(
+                        "File Error",
+                        f"Failed to save Custom script (MUX ch {ch}): {exc}",
+                    )
+                    return
+                saved.append(f"{filename} (MUX ch {ch})")
+        else:
+            try:
+                _filepath, filename = self._save_script(
+                    save_technique,
+                    self.script_text,
+                    base_params,
+                    note=note,
+                )
+            except Exception as exc:
+                messagebox.showerror(
+                    "File Error", f"Failed to save Custom script: {exc}"
+                )
+                return
+            saved.append(filename)
+
+        messagebox.showinfo(
+            "Saved",
+            "Custom script saved to library.\n" + "\n".join(saved),
+        )

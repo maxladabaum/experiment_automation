@@ -13,7 +13,7 @@ import itertools
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 
@@ -48,13 +48,20 @@ class SessionState:
 
         # ── Queue status (for external status polling) ────────────────────────
         self._queue_status_lock = threading.Lock()
-        self._queue_status: Dict[str, Optional[str]] = {
+        self._queue_status: Dict[str, Any] = {
             "state": "idle",
             "current_index": None,
             "total": None,
             "current_label": None,
             "started_at": None,
             "updated_at": None,
+            "queue_start_index": None,
+            "active_queue_index": None,
+            "next_queue_index": None,
+            "active_step_started_at": None,
+            "active_step_estimated_seconds": None,
+            "active_step_type": None,
+            "active_step_details": None,
         }
 
         # ── Measurement tagging ───────────────────────────────────────────────
@@ -142,7 +149,7 @@ class SessionState:
             self._queue_status.update(updates)
             self._queue_status["updated_at"] = datetime.now().isoformat(timespec="seconds")
 
-    def get_queue_status(self) -> Dict[str, Optional[str]]:
+    def get_queue_status(self) -> Dict[str, Any]:
         """Return a copy of the current queue status."""
         with self._queue_status_lock:
             return dict(self._queue_status)

@@ -344,6 +344,8 @@ class MethodTab:
         btn_frame.grid(row=len(params) + 2, column=0, columnspan=2, pady=20)
         ttk.Button(btn_frame, text="Generate Script",
                    command=self._generate_cv_script).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Save to Library",
+                   command=self._save_cv_to_library).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Run Now",
                    command=self._run_cv_now).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Add to Queue",
@@ -385,6 +387,8 @@ class MethodTab:
         btn_frame.grid(row=len(params) + 2, column=0, columnspan=2, pady=20)
         ttk.Button(btn_frame, text="Generate Script",
                    command=self._generate_lsv_script).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Save to Library",
+                   command=self._save_lsv_to_library).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Run Now",
                    command=self._run_lsv_now).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Add to Queue",
@@ -442,6 +446,8 @@ class MethodTab:
         btn_frame.grid(row=bandwidth_row + 3, column=0, columnspan=2, pady=20)
         ttk.Button(btn_frame, text="Generate Script",
                    command=self._generate_swv_script).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Save to Library",
+                   command=self._save_swv_to_library).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Run Now",
                    command=self._run_swv_now).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Add to Queue",
@@ -481,6 +487,8 @@ class MethodTab:
         btn_frame.grid(row=len(params) + 2, column=0, columnspan=2, pady=20)
         ttk.Button(btn_frame, text="Generate Script",
                    command=self._generate_alignment_script).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Save to Library",
+                   command=self._save_alignment_to_library).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Run Now",
                    command=self._run_alignment_now).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Add to Queue",
@@ -1073,6 +1081,101 @@ class MethodTab:
             "status":      "pending",
             "details":     details,
         })
+
+    def _save_to_library(self, technique: str, base_script: str, params: dict, mux_channels, note: str = ""):
+        saved = []
+        if mux_channels:
+            for ch in mux_channels:
+                _fp, fn = self._session.registry.save_script(
+                    technique,
+                    self._wrap_mux(base_script, ch),
+                    params,
+                    ch,
+                    note=note,
+                )
+                saved.append(f"{fn} (MUX ch {ch})")
+        else:
+            _fp, fn = self._session.registry.save_script(
+                technique,
+                base_script,
+                params,
+                note=note,
+            )
+            saved.append(fn)
+        return saved
+
+    @staticmethod
+    def _show_library_save_result(technique: str, saved: list):
+        if not saved:
+            return
+        if len(saved) == 1:
+            messagebox.showinfo("Saved", f"{technique} saved to library.\n{saved[0]}")
+            return
+        messagebox.showinfo(
+            "Saved",
+            f"{technique} saved to library for {len(saved)} item(s):\n" + "\n".join(saved),
+        )
+
+    def _save_cv_to_library(self):
+        try:
+            base = self._build_cv_script()
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc)); return
+        mux = self._get_mux_channels(self.cv_params)
+        if mux is None:
+            return
+        raw_params = {k: v.get() for k, v in self.cv_params.items()}
+        raw_params.update(self._serialize_ba_range_config("CV"))
+        note = (self._library_note.get() or "").strip()
+        saved = self._save_to_library("CV", base, raw_params, mux, note=note)
+        self._show_library_save_result("CV", saved)
+
+    def _save_lsv_to_library(self):
+        try:
+            base = self._build_lsv_script()
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc)); return
+        mux = self._get_mux_channels(self.lsv_params)
+        if mux is None:
+            return
+        raw_params = {k: v.get() for k, v in self.lsv_params.items()}
+        raw_params.update(self._serialize_ba_range_config("LSV"))
+        note = (self._library_note.get() or "").strip()
+        saved = self._save_to_library("LSV", base, raw_params, mux, note=note)
+        self._show_library_save_result("LSV", saved)
+
+    def _save_swv_to_library(self):
+        try:
+            base = self._build_swv_script()
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc)); return
+        mux = self._get_mux_channels(self.swv_params)
+        if mux is None:
+            return
+        n_scans, delay = self._get_swv_cycles_and_delay()
+        if n_scans is None:
+            return
+        raw_params = {k: v.get() for k, v in self.swv_params.items()}
+        raw_params["bandwidth"] = self._swv_bandwidth.get()
+        raw_params["n_scans"] = str(n_scans)
+        raw_params["cycle_delay"] = str(delay)
+        raw_params.update(self._serialize_ba_range_config("SWV"))
+        note = (self._library_note.get() or "").strip()
+        saved = self._save_to_library("SWV", base, raw_params, mux, note=note)
+        self._show_library_save_result("SWV", saved)
+
+    def _save_alignment_to_library(self):
+        try:
+            base = self._build_alignment_script()
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc)); return
+        mux = self._get_mux_channels(self.alignment_params)
+        if mux is None:
+            return
+        raw_params = {k: v.get() for k, v in self.alignment_params.items()}
+        note = (self._library_note.get() or "").strip()
+        saved = self._save_to_library("ALIGNMENT", base, raw_params, mux, note=note)
+        self._show_library_save_result("ALIGNMENT", saved)
 
     def _add_cv_to_queue(self):
         try:

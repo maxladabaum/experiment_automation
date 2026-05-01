@@ -22,7 +22,13 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, simpledialog
 from typing import Optional
 
-from core.queue_eta import estimate_queue_eta, eta_finish_time, format_duration
+from core.queue_eta import (
+    estimate_item_seconds,
+    estimate_queue_eta,
+    estimate_running_queue_eta,
+    eta_finish_time,
+    format_duration,
+)
 from core.runner import SerialMeasurementRunner
 from methods import library_map
 from core.session import SessionState
@@ -230,29 +236,130 @@ class QueueTab:
             return
 
         idxs = self._selected_indices()
-        start_index = idxs[0] if idxs else 0
-        scope = f"selected item #{start_index + 1} onward" if idxs else "entire queue"
+        lines = []
+        if self._session.is_running:
+            lines.extend(self._build_live_eta_lines())
+            if idxs:
+                start_index = idxs[0]
+                scope = f"selected item #{start_index + 1} onward"
+                lines.append("")
+                lines.extend(self._build_static_eta_lines(start_index, scope))
+        else:
+            start_index = idxs[0] if idxs else 0
+            scope = f"selected item #{start_index + 1} onward" if idxs else "entire queue"
+            lines.extend(self._build_static_eta_lines(start_index, scope))
 
+        messagebox.showinfo("Queue ETA", "\n".join(lines))
+
+    def get_slack_eta_text(self) -> str:
+        queue = self._session.measurement_queue
+        if not queue:
+            return "Queue is empty."
+        if self._session.is_running:
+            return "\n".join(self._build_live_eta_lines())
+        return "\n".join(self._build_static_eta_lines(0, "entire queue"))
+
+    def _build_static_eta_lines(self, start_index: int, scope: str) -> list:
         eta = estimate_queue_eta(
-            queue,
+            self._session.measurement_queue,
             start_index=start_index,
             step_delay_seconds=getattr(self._session, "step_delay", 0.0) or 0.0,
         )
         finish_at = eta_finish_time(eta.total_seconds)
-
         lines = [
             f"Estimate scope: {scope}",
             f"Predicted duration: {format_duration(eta.total_seconds)}",
             f"Estimated finish: {finish_at.strftime('%Y-%m-%d %I:%M:%S %p')}",
         ]
-        if eta.unknown_item_count:
-            lines.append(f"Unknown items not counted: {eta.unknown_item_count}")
-        if eta.excluded_alert_count:
-            lines.append(f"Alert pauses treated as 0 sec: {eta.excluded_alert_count}")
-        if not eta.unknown_item_count and not eta.excluded_alert_count:
-            lines.append("All queued items were estimated.")
+        return lines + self._eta_caveat_lines(eta.unknown_item_count, eta.excluded_alert_count)
 
-        messagebox.showinfo("Queue ETA", "\n".join(lines))
+    def _build_live_eta_lines(self) -> list:
+        queue = self._session.measurement_queue
+        status = self._session.get_queue_status()
+        active_index = self._coerce_int(status.get("active_queue_index"))
+        next_index = self._coerce_int(status.get("next_queue_index"))
+        total = self._coerce_int(status.get("total"))
+        current_index = self._coerce_int(status.get("current_index"))
+        if active_index is None or active_index < 0 or active_index >= len(queue):
+            return self._build_static_eta_lines(0, "entire queue")
+        if next_index is None:
+            next_index = min(active_index + 1, len(queue))
+
+        state = str(status.get("state") or "running").lower()
+        details = status.get("active_step_details") or status.get("current_label") or "(unknown)"
+        elapsed_seconds = self._elapsed_since(status.get("active_step_started_at"))
+        estimated_seconds = self._coerce_float(status.get("active_step_estimated_seconds"))
+        include_next_step_delay = str(status.get("active_step_type") or "").upper() != "STEP_DELAY"
+
+        eta = estimate_running_queue_eta(
+            queue,
+            next_index=next_index,
+            current_step_elapsed_seconds=elapsed_seconds,
+            current_step_estimated_seconds=estimated_seconds,
+            step_delay_seconds=getattr(self._session, "step_delay", 0.0) or 0.0,
+            include_next_step_delay=include_next_step_delay,
+        )
+
+        step_label = f"{current_index}/{total}" if current_index is not None and total is not None else "?"
+        lines = [
+            "Estimate scope: active run",
+            f"Current step: {step_label} | {details}",
+        ]
+        if eta.current_step_predictable and eta.current_step_remaining_seconds is not None:
+            lines.append(
+                f"Current step remaining: {format_duration(eta.current_step_remaining_seconds)}"
+            )
+        elif state == "waiting_alert":
+            lines.append("Current step remaining: waiting for alert acknowledgment")
+        else:
+            lines.append("Current step remaining: unknown")
+
+        lines.append(
+            f"Remaining after this step: {format_duration(eta.remaining_after_current_seconds)}"
+        )
+        if eta.total_remaining_seconds is not None:
+            finish_at = eta_finish_time(eta.total_remaining_seconds)
+            lines.append(f"Total remaining: {format_duration(eta.total_remaining_seconds)}")
+            lines.append(f"Estimated finish: {finish_at.strftime('%Y-%m-%d %I:%M:%S %p')}")
+        else:
+            lines.append("Total remaining: unknown until the current step finishes")
+
+        return lines + self._eta_caveat_lines(eta.unknown_item_count, eta.excluded_alert_count)
+
+    @staticmethod
+    def _eta_caveat_lines(unknown_item_count: int, excluded_alert_count: int) -> list:
+        lines = []
+        if unknown_item_count:
+            lines.append(f"Unknown items not counted: {unknown_item_count}")
+        if excluded_alert_count:
+            lines.append(f"Alert pauses treated as 0 sec: {excluded_alert_count}")
+        if not unknown_item_count and not excluded_alert_count:
+            lines.append("All queued items were estimated.")
+        return lines
+
+    @staticmethod
+    def _coerce_int(value) -> Optional[int]:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _coerce_float(value) -> Optional[float]:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _elapsed_since(timestamp_text) -> float:
+        if not timestamp_text:
+            return 0.0
+        try:
+            started_at = datetime.fromisoformat(str(timestamp_text))
+        except (TypeError, ValueError):
+            return 0.0
+        return max(0.0, (datetime.now() - started_at).total_seconds())
 
     def _selected_indices(self) -> list:
         return sorted(
@@ -742,6 +849,13 @@ class QueueTab:
             total=len(self._session.measurement_queue),
             current_label="(starting)",
             started_at=datetime.now().isoformat(timespec="seconds"),
+            queue_start_index=0,
+            active_queue_index=None,
+            next_queue_index=0,
+            active_step_started_at=None,
+            active_step_estimated_seconds=None,
+            active_step_type=None,
+            active_step_details=None,
         )
         self.clear_log()
         self.log("Queue start requested.")
@@ -775,6 +889,13 @@ class QueueTab:
             total=len(self._session.measurement_queue) - idx,
             current_label="(starting)",
             started_at=datetime.now().isoformat(timespec="seconds"),
+            queue_start_index=idx,
+            active_queue_index=None,
+            next_queue_index=idx,
+            active_step_started_at=None,
+            active_step_estimated_seconds=None,
+            active_step_type=None,
+            active_step_details=None,
         )
         self.clear_log()
         self.log("Queue start from selected requested.")
@@ -805,11 +926,21 @@ class QueueTab:
             self._root.after(0, self.refresh)
             self._root.after(0, self.set_status,
                              f"Running: {item['type']} — {item.get('details', '')}")
+            item_eta = estimate_item_seconds(item)
+            if str(item.get("type", "")).strip().upper() == "ALERT":
+                item_eta = None
             self._session.update_queue_status(
                 state="running",
                 current_index=(i - start_index + 1),
                 total=len(queue) - start_index,
                 current_label=(item.get("details") or item.get("type") or ""),
+                queue_start_index=start_index,
+                active_queue_index=i,
+                next_queue_index=min(i + 1, len(queue)),
+                active_step_started_at=datetime.now().isoformat(timespec="seconds"),
+                active_step_estimated_seconds=item_eta,
+                active_step_type=item.get("type"),
+                active_step_details=(item.get("details") or item.get("type") or ""),
             )
             self.log(f"Queue start -> {item.get('details', item.get('type'))}")
 
@@ -885,6 +1016,21 @@ class QueueTab:
             self._root.after(0, self.refresh)
             step_delay = getattr(self._session, "step_delay", 0.0) or 0.0
             if step_delay > 0 and i < len(queue) - 1:
+                next_step_number = i - start_index + 2
+                delay_label = f"Inter-step delay before step {next_step_number}"
+                self._session.update_queue_status(
+                    state="step_delay",
+                    current_index=(i - start_index + 1),
+                    total=len(queue) - start_index,
+                    current_label=delay_label,
+                    queue_start_index=start_index,
+                    active_queue_index=i,
+                    next_queue_index=i + 1,
+                    active_step_started_at=datetime.now().isoformat(timespec="seconds"),
+                    active_step_estimated_seconds=step_delay,
+                    active_step_type="STEP_DELAY",
+                    active_step_details=delay_label,
+                )
                 if not self._exec_pause(step_delay):
                     break
 
@@ -940,6 +1086,13 @@ class QueueTab:
             current_index=total,
             total=total,
             current_label="(finished)",
+            queue_start_index=None,
+            active_queue_index=None,
+            next_queue_index=None,
+            active_step_started_at=None,
+            active_step_estimated_seconds=None,
+            active_step_type=None,
+            active_step_details=None,
         )
 
         session_name = (
@@ -1073,7 +1226,11 @@ class QueueTab:
             return False
         done = threading.Event()
         self._active_alert = {"event": done, "window": None, "message": message}
-        self._session.update_queue_status(state="waiting_alert", current_label=message)
+        self._session.update_queue_status(
+            state="waiting_alert",
+            current_label=message,
+            active_step_details=message,
+        )
         self._root.after(0, lambda: self._show_alert_window(message, done))
         try:
             while self._session.is_running and not done.is_set():
