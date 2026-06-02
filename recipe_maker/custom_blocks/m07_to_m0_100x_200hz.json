@@ -1,0 +1,2904 @@
+{
+  "items": [
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 1",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 1
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 2",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 2
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 3",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 3
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 4",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 4
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 5",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 5
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 6",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 6
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 7",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 7
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 8",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 8
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 9",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 9
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 10",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 10
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 1",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 1
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 2",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 2
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 3",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 3
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 4",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 4
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 5",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 5
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 6",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 6
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 7",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 7
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 8",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 8
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 9",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 9
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 10",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 10
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 1",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 1
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 2",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 2
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 3",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 3
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 4",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 4
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 5",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 5
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 6",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 6
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 7",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 7
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 8",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 8
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 9",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 9
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 10",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 10
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 1",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 1
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 2",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 2
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 3",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 3
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 4",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 4
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 5",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 5
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 6",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 6
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 7",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 7
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 8",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 8
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 9",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 9
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 10",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 10
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 1",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 1
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 2",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 2
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 3",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 3
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 4",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 4
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 5",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 5
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 6",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 6
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 7",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 7
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 8",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 8
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 9",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 9
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 10",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 10
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 1",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 1
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 2",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 2
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 3",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 3
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 4",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 4
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 5",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 5
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 6",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 6
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 7",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 7
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 8",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 8
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 9",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 9
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 10",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 10
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 1",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 1
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 2",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 2
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 3",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 3
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 4",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 4
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 5",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 5
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 6",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 6
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 7",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 7
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 8",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 8
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 9",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 9
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 10",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 10
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 1",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 1
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 2",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 2
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 3",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 3
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 4",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 4
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 5",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 5
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 6",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 6
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 7",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 7
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 8",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 8
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 9",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 9
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 10",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 10
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 1",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 1
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 2",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 2
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 3",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 3
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 4",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 4
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 5",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 5
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 6",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 6
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 7",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 7
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 8",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 8
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 9",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 9
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 10",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 10
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 1",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 1
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 2",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 2
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 3",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 3
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 4",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 4
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 5",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 5
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 6",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 6
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 7",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 7
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 8",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 8
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 9",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 9
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_f86c6a.ms | MUX ch 10",
+      "block_name": "m07_to_m0_200hz",
+      "method_ref": {
+        "hash_key": "swv_f86c6a",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.7",
+          "end_potential": "0",
+          "step_potential": "0.002",
+          "amplitude": "0.036",
+          "frequency": "200",
+          "n_scans": "1",
+          "cycle_delay": "0.0",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "bandwidth": "4k",
+          "ba_autorange": "0",
+          "ba_range_mode": "fixed",
+          "ba_fixed_range": "100 nA",
+          "ba_auto_min": "100 nA",
+          "ba_auto_max": "100 nA"
+        },
+        "mux_channel": 10
+      }
+    }
+  ]
+}

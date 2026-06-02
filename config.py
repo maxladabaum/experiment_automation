@@ -27,8 +27,8 @@ PREFERRED_SYRINGE_UL        = 250.0
 
 # ── File / folder paths ───────────────────────────────────────────────────────
 METHODS_DIR     = Path("methods")           # where .ms scripts are saved
-#DATA_DIR        = Path(r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)")  # where measurement CSVs land
-DATA_DIR        = Path("measurement_data") #for local testing purposes
+DATA_DIR        = Path(r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)")  # where measurement CSVs land
+#DATA_DIR        = Path("measurement_data") #for local testing purposes
 BLOCKS_DIR      = Path("recipe_maker") / "default_blocks"  # where block definitions are saved
 SAVE_DATED_METHOD_COPIES = False            # if True, also write methods/YYYY-MM-DD/*.ms working copies
 # Bayesian optimization integration (optional)
@@ -49,6 +49,13 @@ def _load_bo_local_paths() -> dict:
 
 
 _BO_LOCAL_PATHS = _load_bo_local_paths()
+_DEFAULT_SWV_APP_PATH = (Path(__file__).resolve().parent.parent / "swv_app")
+if not _DEFAULT_SWV_APP_PATH.exists():
+    _DEFAULT_SWV_APP_PATH = Path(__file__).resolve().parent.parent / "Desktop" / "swv_app"
+if not _DEFAULT_SWV_APP_PATH.exists():
+    _DEFAULT_SWV_APP_PATH = Path(__file__).resolve().parent / ".." / "swv_app"
+_DEFAULT_SWV_APP_PATH = _DEFAULT_SWV_APP_PATH.resolve()
+_BO_LOCAL_ANALYSIS_APP = str(_BO_LOCAL_PATHS.get("analysis_app_path", "")).strip()
 BO_ANALYSIS_OUTPUT_DIR = Path(
     os.getenv(
         "EA_BO_ANALYSIS_OUTPUT_DIR",
@@ -57,7 +64,7 @@ BO_ANALYSIS_OUTPUT_DIR = Path(
 )
 BO_ANALYSIS_APP_PATH_RAW = os.getenv(
     "EA_BO_ANALYSIS_APP_PATH",
-    str(_BO_LOCAL_PATHS.get("analysis_app_path", "")),
+    _BO_LOCAL_ANALYSIS_APP or str(_DEFAULT_SWV_APP_PATH if _DEFAULT_SWV_APP_PATH.exists() else ""),
 ).strip()
 BO_ANALYSIS_APP_PATH = Path(BO_ANALYSIS_APP_PATH_RAW) if BO_ANALYSIS_APP_PATH_RAW else None
 BO_ANALYSIS_FILE_GLOB = os.getenv(

@@ -267,6 +267,52 @@ Then one mux batch becomes one BO objective:
 The optimizer maximizes Q_run. Every Q_channel is still retained so we can show
 that optimization improves the mux array, not just one good channel.
 
+BO NEXT STEPS
+
+The current BO objective is still a measurement-quality objective. It rewards
+large, clean, stable, internally consistent SWV signals, but it does not yet
+optimize directly for target responsiveness.
+
+Important future direction:
+
+  optimize for response to target, not just absolute signal
+
+In practice this likely means one BO iteration should eventually support a
+paired workflow such as:
+
+  1. measure baseline / no-target condition
+  2. run one or more pump / incubation / target-addition steps
+  3. measure post-target condition
+  4. score the candidate from the paired response
+
+Candidate future BO response metrics include:
+
+  delta_peak = peak_with_target - peak_without_target
+  fractional_change = delta_peak / baseline_peak
+  response_SNR
+  response_consistency across channels or replicates
+
+This matters especially for KDM-style sensing, where one frequency may maximize
+absolute signal but not maximize target-dependent response.
+
+Recipe-level future work:
+
+  add a BO batch block that can live inside a larger recipe
+
+That would allow BO to be embedded in a higher-level automation recipe with
+fluidics and conditioning steps around it, for example:
+
+  pre-measurement preparation
+  BO baseline measurement batch
+  pump target or reagent
+  wait / equilibration
+  BO post-target measurement batch
+  wash / reset / repeat
+
+If this is implemented, the BO / paired-response block should be visually
+distinct in the Recipe Maker and queue views so it is easy to distinguish from
+ordinary method, pump, pause, and alert items.
+
 BO RUNTIME FLOW
 
 Bayesian Optimization tab

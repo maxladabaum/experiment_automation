@@ -5,7 +5,18 @@
   "max_iterations": 20,
   "n_initial_points": 8,
   "random_seed": 42,
-  "channels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  "channels": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
   "method_options": {
     "bandwidth": "4k",
     "ba_range": {
@@ -29,45 +40,96 @@
       "label": "Begin potential",
       "unit": "V",
       "mode": "active",
-      "values": [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5]
+      "values": [
+        -1.0,
+        -0.9,
+        -0.8,
+        -0.7,
+        -0.6,
+        -0.5
+      ],
+      "value": -0.7
     },
     "end_potential": {
       "label": "End potential",
       "unit": "V",
       "mode": "active",
-      "values": [-0.5, -0.4, -0.3, -0.2, -0.1, 0.0]
+      "values": [
+        -0.5,
+        -0.4,
+        -0.3,
+        -0.2,
+        -0.1,
+        0.0
+      ],
+      "value": -0.1
     },
     "step_potential": {
       "label": "Step potential",
       "unit": "V",
       "mode": "active",
-      "values": [0.001, 0.002, 0.004, 0.005]
+      "values": [
+        0.001,
+        0.002,
+        0.004,
+        0.005
+      ],
+      "value": 0.002
     },
     "amplitude": {
       "label": "Amplitude",
       "unit": "V",
       "mode": "active",
-      "values": [0.02, 0.028, 0.036, 0.044]
+      "values": [
+        0.02,
+        0.028,
+        0.036,
+        0.044
+      ],
+      "value": 0.036
     },
     "frequency": {
       "label": "Frequency",
       "unit": "Hz",
       "mode": "active",
-      "values": [50.0, 100.0, 200.0, 400.0, 800.0],
-      "encoding": "log10"
+      "values": [
+        50.0,
+        100.0,
+        200.0,
+        400.0,
+        800.0
+      ],
+      "encoding": "log10",
+      "value": 200.0
     },
     "conditioning_potential": {
       "label": "Conditioning potential",
       "unit": "V",
       "mode": "tied",
       "tie_to": "begin_potential",
-      "values": [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5]
+      "values": [
+        -1.0,
+        -0.9,
+        -0.8,
+        -0.7,
+        -0.6,
+        -0.5
+      ],
+      "value": -0.7
     },
     "conditioning_time": {
       "label": "Conditioning time",
       "unit": "s",
       "mode": "active",
-      "values": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+      "values": [
+        0.0,
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0
+      ],
+      "value": 0.0
     }
   },
   "constraints": {
@@ -94,7 +156,21 @@
   },
   "analysis": {
     "file_glob": "*.json",
-    "copy_outputs_into_record": true
+    "copy_outputs_into_record": true,
+    "crop_min_v": -0.6,
+    "crop_max_v": -0.1,
+    "smooth_window": 15,
+    "smooth_polyorder": 2,
+    "minima_search_window_v": 0.3,
+    "use_prominent_minima": false,
+    "use_double_correction": true,
+    "min_peak_height_ua": null,
+    "min_start_voltage_v": -0.6,
+    "scan_windows": "",
+    "compute_skew": false,
+    "compute_wavelet_energy": false,
+    "compute_wavelet_denoised_trace": false,
+    "use_wavelet_for_correction": false
   },
   "records": {
     "folder_prefix": "bo_session"

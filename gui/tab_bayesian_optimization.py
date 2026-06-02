@@ -9,11 +9,14 @@ shows records. BO math lives in core.bo_session.
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import time
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog
 import tkinter as tk
 from tkinter import ttk, scrolledtext
+from typing import Tuple
 
 from config import (
     BO_ANALYSIS_APP_PATH,
@@ -62,14 +65,34 @@ class BayesianOptimizationTab:
 
         self._config_path_var = tk.StringVar(value=str(BO_DEFAULT_CONFIG_PATH))
         self._analysis_dir_var = tk.StringVar(value=str(BO_ANALYSIS_OUTPUT_DIR))
-        self._analysis_app_var = tk.StringVar(value=str(BO_ANALYSIS_APP_PATH or ""))
+        default_analysis_app = str(BO_ANALYSIS_APP_PATH or "")
+        if not default_analysis_app.strip():
+            sibling = (Path(__file__).resolve().parents[2] / "swv_app")
+            if sibling.exists():
+                default_analysis_app = str(sibling)
+        self._analysis_app_var = tk.StringVar(value=default_analysis_app)
         self._analysis_glob_var = tk.StringVar(value=str(BO_ANALYSIS_FILE_GLOB))
+        self._analysis_crop_min_var = tk.StringVar(value="-0.6")
+        self._analysis_crop_max_var = tk.StringVar(value="-0.1")
+        self._analysis_smooth_window_var = tk.StringVar(value="15")
+        self._analysis_smooth_polyorder_var = tk.StringVar(value="2")
+        self._analysis_minima_window_var = tk.StringVar(value="0.30")
+        self._analysis_min_peak_height_var = tk.StringVar(value="")
+        self._analysis_min_start_voltage_var = tk.StringVar(value="-0.6")
+        self._analysis_scan_windows_var = tk.StringVar(value="")
+        self._analysis_use_prominent_var = tk.BooleanVar(value=False)
+        self._analysis_double_correction_var = tk.BooleanVar(value=True)
+        self._analysis_compute_skew_var = tk.BooleanVar(value=False)
+        self._analysis_compute_wavelet_energy_var = tk.BooleanVar(value=False)
+        self._analysis_wavelet_trace_var = tk.BooleanVar(value=False)
+        self._analysis_wavelet_correction_var = tk.BooleanVar(value=False)
         self._channels_var = tk.StringVar(value="")
         self._status_var = tk.StringVar(value="Load a BO config to begin.")
         self._record_dir_var = tk.StringVar(value="Record folder: (not started)")
         self._auto_target_var = tk.StringVar(value="5")
         self._auto_poll_var = tk.StringVar(value=str(BO_ANALYSIS_POLL_SECONDS))
         self._auto_status_var = tk.StringVar(value="Auto loop idle.")
+        self._style = ttk.Style(self._frame)
 
         self._config = None
         self._bo_session = None
@@ -82,6 +105,7 @@ class BayesianOptimizationTab:
         self._load_config(initial=True)
 
     def _build(self):
+        self._configure_styles()
         root = ttk.Frame(self._frame)
         root.pack(fill="both", expand=True)
 
@@ -119,6 +143,18 @@ class BayesianOptimizationTab:
 
         status = ttk.Label(root, textvariable=self._status_var, relief="sunken")
         status.pack(side="bottom", fill="x", padx=8, pady=(0, 8))
+
+    def _configure_styles(self):
+        self._style.configure(
+            "BO.Treeview",
+            background="white",
+            fieldbackground="white",
+        )
+        self._style.map(
+            "BO.Treeview",
+            background=[("selected", self.ACCENT_DARK)],
+            foreground=[("selected", "white")],
+        )
 
     def _build_setup_tab(self, parent):
         pane = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
@@ -169,6 +205,36 @@ class BayesianOptimizationTab:
             justify="left",
         ).pack(fill="x")
 
+        analysis_box = ttk.LabelFrame(left, text="Headless Analysis Settings", padding=8)
+        analysis_box.pack(fill="x", pady=(0, 8))
+        for idx in range(4):
+            analysis_box.columnconfigure(idx, weight=1 if idx in (1, 3) else 0)
+        ttk.Label(analysis_box, text="Crop min/max (V):").grid(row=0, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=self._analysis_crop_min_var, width=8).grid(row=0, column=1, sticky="w", padx=(4, 2))
+        ttk.Entry(analysis_box, textvariable=self._analysis_crop_max_var, width=8).grid(row=0, column=1, sticky="e", padx=(2, 4))
+        ttk.Label(analysis_box, text="Smooth win/poly:").grid(row=0, column=2, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=self._analysis_smooth_window_var, width=8).grid(row=0, column=3, sticky="w", padx=(4, 2))
+        ttk.Entry(analysis_box, textvariable=self._analysis_smooth_polyorder_var, width=8).grid(row=0, column=3, sticky="e", padx=(2, 4))
+        ttk.Label(analysis_box, text="Minima window (V):").grid(row=1, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=self._analysis_minima_window_var, width=10).grid(row=1, column=1, sticky="w", padx=4)
+        ttk.Label(analysis_box, text="Min peak height (uA):").grid(row=1, column=2, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=self._analysis_min_peak_height_var, width=10).grid(row=1, column=3, sticky="w", padx=4)
+        ttk.Label(analysis_box, text="Min start V:").grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=self._analysis_min_start_voltage_var, width=10).grid(row=2, column=1, sticky="w", padx=4)
+        ttk.Label(analysis_box, text="Scan windows:").grid(row=2, column=2, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=self._analysis_scan_windows_var).grid(row=2, column=3, sticky="ew", padx=4)
+        ttk.Checkbutton(analysis_box, text="Prominent minima", variable=self._analysis_use_prominent_var).grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Double correction", variable=self._analysis_double_correction_var).grid(row=3, column=1, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Compute skew", variable=self._analysis_compute_skew_var).grid(row=3, column=2, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet energy", variable=self._analysis_compute_wavelet_energy_var).grid(row=3, column=3, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet trace", variable=self._analysis_wavelet_trace_var).grid(row=4, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet correction", variable=self._analysis_wavelet_correction_var).grid(row=4, column=1, sticky="w", pady=2)
+        ttk.Label(
+            analysis_box,
+            text="These are only used for the optional headless swv_app BO analysis path.",
+            foreground=self.ACCENT,
+        ).grid(row=5, column=0, columnspan=4, sticky="w", pady=(4, 0))
+
         init_box = ttk.LabelFrame(left, text="Initial Parameters", padding=8)
         init_box.pack(fill="both", expand=True)
         init_toolbar = ttk.Frame(init_box)
@@ -181,7 +247,9 @@ class BayesianOptimizationTab:
         ).pack(side="left", padx=8)
 
         init_cols = ("Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t")
-        self._initial_tree = ttk.Treeview(init_box, columns=init_cols, show="tree headings", height=8)
+        self._initial_tree = ttk.Treeview(
+            init_box, columns=init_cols, show="tree headings", height=8, style="BO.Treeview"
+        )
         self._initial_tree.heading("#0", text="#")
         self._initial_tree.column("#0", width=38, anchor="center")
         for col in init_cols:
@@ -206,7 +274,9 @@ class BayesianOptimizationTab:
         tk.Label(legend, text="Tied = follows another", bg="#fff1d6", fg="#6b3b00", padx=6).pack(side="left", padx=2)
 
         cols = ("Mode", "Values", "Tie")
-        self._param_tree = ttk.Treeview(params, columns=cols, show="tree headings", height=16)
+        self._param_tree = ttk.Treeview(
+            params, columns=cols, show="tree headings", height=16, style="BO.Treeview"
+        )
         self._param_tree.heading("#0", text="Parameter")
         self._param_tree.heading("Mode", text="Mode")
         self._param_tree.heading("Values", text="Values / Lock")
@@ -230,6 +300,7 @@ class BayesianOptimizationTab:
         ttk.Separator(controls, orient="vertical").pack(side="left", fill="y", padx=8)
         ttk.Button(controls, text="Import Analysis JSON", command=self._import_analysis_dialog).pack(side="left", padx=3)
         ttk.Button(controls, text="Use Latest Analysis", command=self._import_latest_analysis).pack(side="left", padx=3)
+        ttk.Button(controls, text="Run Headless Analysis", command=self._run_headless_analysis_for_pending).pack(side="left", padx=3)
 
         auto = ttk.LabelFrame(parent, text="Auto Loop", padding=8)
         auto.pack(fill="x", padx=4, pady=(0, 8))
@@ -348,7 +419,7 @@ class BayesianOptimizationTab:
             self._analysis_dir_var.set(path)
 
     def _browse_analysis_app(self):
-        path = filedialog.askopenfilename(title="Choose external analysis app")
+        path = filedialog.askdirectory(title="Choose swv_app project folder")
         if path:
             self._analysis_app_var.set(path)
 
@@ -373,6 +444,7 @@ class BayesianOptimizationTab:
             analysis_cfg = self._config.get("analysis", {})
             if analysis_cfg.get("file_glob"):
                 self._analysis_glob_var.set(str(analysis_cfg.get("file_glob")))
+            self._set_analysis_vars_from_config(analysis_cfg)
             self._channels_var.set(", ".join(str(ch) for ch in self._config.get("channels", [])))
             self._refresh_parameter_table()
             self._refresh_initial_parameters_table()
@@ -389,12 +461,47 @@ class BayesianOptimizationTab:
         if self._config is None:
             return
         self._sync_channels_from_entry(show_error=False)
-        self._config.setdefault("analysis", {})["file_glob"] = self._analysis_glob_var.get().strip() or "*.json"
+        analysis_cfg = self._config.setdefault("analysis", {})
+        analysis_cfg["file_glob"] = self._analysis_glob_var.get().strip() or "*.json"
+        self._update_analysis_config_from_vars(analysis_cfg)
         try:
             path = save_bo_config(self._config, self._config_path_var.get())
             self._status_var.set(f"Saved BO config: {path}")
         except Exception as exc:
             messagebox.showerror("Save BO Config", str(exc))
+
+    def _set_analysis_vars_from_config(self, analysis_cfg: dict):
+        self._analysis_crop_min_var.set(str(analysis_cfg.get("crop_min_v", -0.6)))
+        self._analysis_crop_max_var.set(str(analysis_cfg.get("crop_max_v", -0.1)))
+        self._analysis_smooth_window_var.set(str(analysis_cfg.get("smooth_window", 15)))
+        self._analysis_smooth_polyorder_var.set(str(analysis_cfg.get("smooth_polyorder", 2)))
+        self._analysis_minima_window_var.set(str(analysis_cfg.get("minima_search_window_v", 0.30)))
+        self._analysis_min_peak_height_var.set("" if analysis_cfg.get("min_peak_height_ua") in (None, "") else str(analysis_cfg.get("min_peak_height_ua")))
+        self._analysis_min_start_voltage_var.set(str(analysis_cfg.get("min_start_voltage_v", -0.6)))
+        self._analysis_scan_windows_var.set(str(analysis_cfg.get("scan_windows", "")))
+        self._analysis_use_prominent_var.set(bool(analysis_cfg.get("use_prominent_minima", False)))
+        self._analysis_double_correction_var.set(bool(analysis_cfg.get("use_double_correction", True)))
+        self._analysis_compute_skew_var.set(bool(analysis_cfg.get("compute_skew", False)))
+        self._analysis_compute_wavelet_energy_var.set(bool(analysis_cfg.get("compute_wavelet_energy", False)))
+        self._analysis_wavelet_trace_var.set(bool(analysis_cfg.get("compute_wavelet_denoised_trace", False)))
+        self._analysis_wavelet_correction_var.set(bool(analysis_cfg.get("use_wavelet_for_correction", False)))
+
+    def _update_analysis_config_from_vars(self, analysis_cfg: dict):
+        analysis_cfg["crop_min_v"] = float(self._analysis_crop_min_var.get())
+        analysis_cfg["crop_max_v"] = float(self._analysis_crop_max_var.get())
+        analysis_cfg["smooth_window"] = int(self._analysis_smooth_window_var.get())
+        analysis_cfg["smooth_polyorder"] = int(self._analysis_smooth_polyorder_var.get())
+        analysis_cfg["minima_search_window_v"] = float(self._analysis_minima_window_var.get())
+        peak_height_text = (self._analysis_min_peak_height_var.get() or "").strip()
+        analysis_cfg["min_peak_height_ua"] = None if not peak_height_text else float(peak_height_text)
+        analysis_cfg["min_start_voltage_v"] = float(self._analysis_min_start_voltage_var.get())
+        analysis_cfg["scan_windows"] = (self._analysis_scan_windows_var.get() or "").strip()
+        analysis_cfg["use_prominent_minima"] = bool(self._analysis_use_prominent_var.get())
+        analysis_cfg["use_double_correction"] = bool(self._analysis_double_correction_var.get())
+        analysis_cfg["compute_skew"] = bool(self._analysis_compute_skew_var.get())
+        analysis_cfg["compute_wavelet_energy"] = bool(self._analysis_compute_wavelet_energy_var.get())
+        analysis_cfg["compute_wavelet_denoised_trace"] = bool(self._analysis_wavelet_trace_var.get())
+        analysis_cfg["use_wavelet_for_correction"] = bool(self._analysis_wavelet_correction_var.get())
 
     def _sync_channels_from_entry(self, show_error=True):
         if self._config is None:
@@ -518,6 +625,82 @@ class BayesianOptimizationTab:
             return
         self._import_analysis(path)
 
+    def _run_headless_analysis_for_pending(self, prompt=True):
+        if self._bo_session is None:
+            messagebox.showwarning("BO Analysis", "Start a BO session first.")
+            return None
+        if self._bo_session.pending is None:
+            messagebox.showwarning("BO Analysis", "No pending BO suggestion is waiting for analysis.")
+            return None
+        try:
+            path = self._run_external_analysis()
+        except Exception as exc:
+            if prompt:
+                messagebox.showerror("Headless BO Analysis", str(exc))
+            else:
+                self._auto_running = False
+                self._auto_status_var.set(f"Auto loop stopped: headless analysis failed ({exc})")
+            return None
+        return self._import_analysis(path, notes="Imported from headless swv_app analysis", prompt=prompt)
+
+    def _run_external_analysis(self) -> Path:
+        if self._bo_session is None or self._bo_session.pending is None:
+            raise RuntimeError("No pending BO suggestion is waiting for analysis")
+        project_root = self._resolve_analysis_project_root()
+        python_exe, headless_script = self._resolve_analysis_runner(project_root)
+        session_mgr = getattr(self._session, "session_manager", None)
+        exp_path = session_mgr.require_experiment() if session_mgr is not None else None
+        if exp_path is None:
+            raise RuntimeError("An active experiment folder is required for BO analysis")
+        self._save_config()
+        self._save_local_paths()
+        output_dir = Path(self._analysis_dir_var.get() or (Path(exp_path) / "bo_analysis"))
+        output_dir.mkdir(parents=True, exist_ok=True)
+        request_path = Path(self._bo_session.analysis_dir) / f"iter_{int(self._bo_session.pending['iteration']):03d}_headless_request.json"
+        request = {
+            "folders": [str(exp_path)],
+            "output_dir": str(output_dir),
+            "output_stem": f"bo_iter_{int(self._bo_session.pending['iteration']):03d}",
+            "analysis": dict(self._config.get("analysis") or {}),
+        }
+        with open(request_path, "w", encoding="utf-8") as fh:
+            json.dump(request, fh, indent=2)
+        cmd = [str(python_exe), str(headless_script), "--request", str(request_path)]
+        completed = subprocess.run(cmd, capture_output=True, text=True, cwd=str(project_root))
+        if completed.returncode != 0:
+            stderr = (completed.stderr or completed.stdout or "").strip()
+            raise RuntimeError(stderr or f"Headless swv_app analysis failed with exit code {completed.returncode}")
+        summary_path = (completed.stdout or "").strip().splitlines()[-1].strip()
+        if not summary_path:
+            raise RuntimeError("Headless swv_app analysis did not return a summary JSON path")
+        path = Path(summary_path)
+        if not path.exists():
+            raise FileNotFoundError(path)
+        self._status_var.set(f"Headless analysis completed: {path.name}")
+        return path
+
+    def _resolve_analysis_project_root(self) -> Path:
+        raw_text = (self._analysis_app_var.get() or "").strip()
+        if not raw_text:
+            raise RuntimeError("Set the swv_app project path first.")
+        raw = Path(raw_text).expanduser()
+        if raw.is_file():
+            raw = raw.parent
+        if not raw.exists():
+            raise FileNotFoundError(raw)
+        if not (raw / "core").exists():
+            raise RuntimeError(f"{raw} does not look like the swv_app project root.")
+        return raw
+
+    @staticmethod
+    def _resolve_analysis_runner(project_root: Path) -> Tuple[Path, Path]:
+        headless_script = project_root / "bo_headless.py"
+        if not headless_script.exists():
+            raise FileNotFoundError(headless_script)
+        preferred = project_root / ".venv64" / "Scripts" / "python.exe"
+        python_exe = preferred if preferred.exists() else Path(sys.executable)
+        return python_exe, headless_script
+
     def _import_analysis(self, path, notes=None, prompt=True):
         if prompt:
             notes = simpledialog.askstring("BO Analysis Notes", "Notes for this BO result:", parent=self._frame)
@@ -629,6 +812,14 @@ class BayesianOptimizationTab:
         if summary.get("failed", 0) or summary.get("stopped", 0):
             self._auto_running = False
             self._auto_status_var.set("Auto loop stopped: queue did not complete cleanly.")
+            return
+        if self._analysis_app_var.get().strip():
+            self._auto_status_var.set("Queue complete. Running headless swv_app analysis.")
+            obs = self._run_headless_analysis_for_pending(prompt=False)
+            if obs is None or not self._auto_running:
+                return
+            if self._clear_auto_queue_if_safe():
+                self._auto_submit_next()
             return
         self._auto_status_var.set("Queue complete. Waiting for external analysis JSON.")
         self._schedule_auto_analysis_poll()

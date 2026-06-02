@@ -1993,3 +1993,18 @@ Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data
 [2026-06-01 23:22:15] [SIM] Connected (COM8)
 [2026-06-01 23:27:46] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
 [2026-06-01 23:27:46] [SIM] Connected (COM8)
+[2026-06-02 10:51:25] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-06-02 10:51:25] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-06-02 10:51:25] Connected.
+[2026-06-02 10:57:36] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-06-02 10:57:36] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-06-02 10:57:36] Connected.
+[2026-06-02 10:59:21] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-06-02 10:59:21] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-06-02 10:59:21] Connected.
+[2026-06-02 11:16:42] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-06-02 11:16:42] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-06-02 11:16:42] Connected.
+[2026-06-02 11:27:46] Session opened: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data\test_20260303_084057
+[2026-06-02 11:27:46] Connecting (real) -> COM8 @ 9600, dev=1
+[2026-06-02 11:27:46] Connected.

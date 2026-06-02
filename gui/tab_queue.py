@@ -13,6 +13,8 @@ Responsible for:
 import copy
 import json
 import re
+import subprocess
+import sys
 import threading
 import time
 from datetime import datetime
@@ -30,8 +32,10 @@ from core.queue_eta import (
     format_duration,
 )
 from core.runner import SerialMeasurementRunner
+from core.bo_session import BOIntegrationSession, load_bo_config, normalize_bo_config, parse_channels, validate_bo_config
 from methods import library_map
 from core.session import SessionState
+from config import BO_ANALYSIS_APP_PATH, BO_ANALYSIS_OUTPUT_DIR
 
 
 class QueueTab:
@@ -117,6 +121,10 @@ class QueueTab:
         tree_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self._tree.yview)
         tree_scroll.pack(side="right", fill="y")
         self._tree.configure(yscrollcommand=tree_scroll.set)
+        self._tree.tag_configure("bo", background="#e8ddff")
+        self._tree.tag_configure("alert", background="#f8d7da")
+        self._tree.tag_configure("pump", background="#eef3f8")
+        self._tree.tag_configure("default", background="white")
 
         # Drag reorder
         self._tree.bind("<ButtonPress-1>",   self._drag_start)
@@ -181,10 +189,23 @@ class QueueTab:
         for row in self._tree.get_children():
             self._tree.delete(row)
         for i, item in enumerate(self._session.measurement_queue):
+            tag = self._row_tag_for_item(item)
             self._tree.insert(
                 "", "end", iid=str(i), text=str(i + 1),
                 values=(item["type"], item["status"].upper(), item.get("details", "")),
+                tags=(tag,),
             )
+
+    @staticmethod
+    def _row_tag_for_item(item: dict) -> str:
+        item_type = str(item.get("type") or "").upper()
+        if item_type == "BO_AUTO_LOOP":
+            return "bo"
+        if item_type in ("PAUSE", "ALERT"):
+            return "alert"
+        if item_type.startswith("PUMP_"):
+            return "pump"
+        return "default"
 
     def set_status(self, msg: str):
         self._status.config(text=f"Status: {msg}")
@@ -618,6 +639,8 @@ class QueueTab:
             data["pause_seconds"] = item.get("pause_seconds", 0.0)
         elif t == "ALERT":
             data["alert_message"] = item.get("alert_message", "")
+        elif t == "BO_AUTO_LOOP":
+            data["bo_block"] = dict(item.get("bo_block") or {})
         elif t and t.startswith("PUMP_"):
             action = item.get("pump_action") or {}
             data["pump_action"] = {"name": action.get("name"),
@@ -654,6 +677,12 @@ class QueueTab:
                 return None
             item["alert_message"] = msg.strip()
             item["details"]       = details or "Alert pause"
+        elif t == "BO_AUTO_LOOP":
+            block = raw.get("bo_block")
+            if not isinstance(block, dict):
+                return None
+            item["bo_block"] = dict(block)
+            item["details"] = details or self._format_bo_block_details(block)
         elif t.startswith("PUMP_"):
             action = raw.get("pump_action") or {}
             if not action.get("name"):
@@ -1388,3 +1417,298 @@ class QueueTab:
             self.log(f"Unsupported pump action: {name}"); return False
         except Exception as exc:
             self.log(f"Pump action failed: {exc}"); return False
+
+    @staticmethod
+    def _format_bo_block_details(block: dict) -> str:
+        target = int(block.get("target_iterations", 1) or 1)
+        channels = (block.get("channels_override") or "").strip() or "config channels"
+        config_name = Path(str(block.get("bo_config_path") or "BO config")).name
+        return f"{config_name} | {target} iter | {channels}"
+
+    def _execute_measurement_item(self, item: dict):
+        self._ensure_mux_script_for_item(item)
+        self._root.after(0, self._plotter.start_live, f"{item['type']} (live)", None, item["type"])
+        csv_path = None
+        success = False
+        try:
+            mux_channel = self._extract_mux_channel(item)
+            meas_tag = self._session.next_meas_tag_with_mux(mux_channel)
+            item["meas_tag"] = meas_tag
+            self.log(f"[Tag] {meas_tag}")
+            self._root.after(0, self.refresh_labels)
+            data_folder = None
+            if self._session.session_manager is not None:
+                data_folder = self._session.session_manager.require_experiment()
+                if data_folder is None:
+                    return False, None
+            runner = SerialMeasurementRunner(
+                Path(item["script_path"]),
+                log_callback=self.log,
+                data_callback=self._plotter.push_live_point,
+                data_folder=data_folder,
+                save_raw_packets=self._session.save_raw_packets,
+                simulate_measurements=self._session.simulate_measurements,
+                invert_current=(item.get("type") == "SWV"),
+                device_port=self._session.device_port,
+            )
+            self._session.current_runner = runner
+            success, csv_path = runner.execute(meas_tag=meas_tag)
+            return success, csv_path
+        finally:
+            self._session.current_runner = None
+            self._root.after(0, self._plotter.stop_live)
+
+    def _resolve_bo_analysis_project_root(self, app_path_text: str) -> Path:
+        raw_text = (app_path_text or "").strip()
+        if not raw_text:
+            if BO_ANALYSIS_APP_PATH is None:
+                raise RuntimeError("BO block needs an swv_app project path.")
+            return Path(BO_ANALYSIS_APP_PATH)
+        raw = Path(raw_text).expanduser()
+        if raw.is_file():
+            raw = raw.parent
+        if not raw.exists():
+            raise FileNotFoundError(raw)
+        if not (raw / "core").exists():
+            raise RuntimeError(f"{raw} does not look like the swv_app project root.")
+        return raw
+
+    @staticmethod
+    def _resolve_bo_analysis_runner(project_root: Path):
+        headless_script = project_root / "bo_headless.py"
+        if not headless_script.exists():
+            raise FileNotFoundError(headless_script)
+        preferred = project_root / ".venv64" / "Scripts" / "python.exe"
+        python_exe = preferred if preferred.exists() else Path(sys.executable)
+        return python_exe, headless_script
+
+    def _run_bo_headless_analysis(self, bo_session: BOIntegrationSession, block: dict) -> Path:
+        project_root = self._resolve_bo_analysis_project_root(str(block.get("analysis_app_path") or ""))
+        python_exe, headless_script = self._resolve_bo_analysis_runner(project_root)
+        session_mgr = getattr(self._session, "session_manager", None)
+        exp_path = session_mgr.require_experiment() if session_mgr is not None else None
+        if exp_path is None:
+            raise RuntimeError("An active experiment folder is required for BO analysis")
+        output_dir = Path(str(block.get("analysis_output_dir") or BO_ANALYSIS_OUTPUT_DIR))
+        output_dir.mkdir(parents=True, exist_ok=True)
+        pending = bo_session.pending or {}
+        iteration = int(pending.get("iteration", len(bo_session.observations) + 1))
+        request_path = Path(bo_session.analysis_dir) / f"iter_{iteration:03d}_headless_request.json"
+        request = {
+            "folders": [str(exp_path)],
+            "output_dir": str(output_dir),
+            "output_stem": f"bo_iter_{iteration:03d}",
+            "analysis": dict(block.get("analysis") or {}),
+        }
+        with open(request_path, "w", encoding="utf-8") as fh:
+            json.dump(request, fh, indent=2)
+        cmd = [str(python_exe), str(headless_script), "--request", str(request_path)]
+        completed = subprocess.run(cmd, capture_output=True, text=True, cwd=str(project_root))
+        if completed.returncode != 0:
+            stderr = (completed.stderr or completed.stdout or "").strip()
+            raise RuntimeError(stderr or f"Headless swv_app analysis failed with exit code {completed.returncode}")
+        summary_path = (completed.stdout or "").strip().splitlines()[-1].strip()
+        if not summary_path:
+            raise RuntimeError("Headless swv_app analysis did not return a summary JSON path")
+        path = Path(summary_path)
+        if not path.exists():
+            raise FileNotFoundError(path)
+        return path
+
+    def _exec_bo_auto_loop(self, item: dict) -> bool:
+        block = dict(item.get("bo_block") or {})
+        config_path = str(block.get("bo_config_path") or "").strip()
+        if not config_path:
+            raise RuntimeError("BO block is missing its BO config path.")
+        config = load_bo_config(config_path)
+        if str(block.get("channels_override") or "").strip():
+            config["channels"] = parse_channels(block.get("channels_override"))
+        analysis_cfg = dict((config.get("analysis") or {}))
+        analysis_cfg.update(dict(block.get("analysis") or {}))
+        if block.get("analysis_file_glob"):
+            analysis_cfg["file_glob"] = str(block.get("analysis_file_glob"))
+        config["analysis"] = analysis_cfg
+        config = normalize_bo_config(config)
+        errors = validate_bo_config(config)
+        if errors:
+            raise RuntimeError("; ".join(errors))
+
+        session_mgr = getattr(self._session, "session_manager", None)
+        exp_path = session_mgr.require_experiment() if session_mgr is not None else None
+        if exp_path is None:
+            return False
+
+        target_iterations = int(block.get("target_iterations", 1) or 1)
+        if target_iterations < 1:
+            raise RuntimeError("BO block target iterations must be at least 1.")
+
+        analysis_output_dir = str(block.get("analysis_output_dir") or BO_ANALYSIS_OUTPUT_DIR)
+        bo_session = BOIntegrationSession(config, exp_path, config_path=config_path, analysis_output_dir=analysis_output_dir)
+        item["bo_session_id"] = bo_session.session_id
+        item["bo_record_dir"] = str(bo_session.record_dir)
+        self.log(f"BO block started: {item.get('details', '')}")
+
+        while self._session.is_running and len(bo_session.observations) < target_iterations and not bo_session.should_stop():
+            suggestion = bo_session.ask_next()
+            self.log(f"BO iteration {suggestion.iteration}: generating queue items")
+            queue_items = bo_session.build_queue_items(self._session.registry, suggestion)
+            bo_session.record_queued(suggestion, queue_items)
+
+            completed = 0
+            failed = 0
+            stopped = 0
+            recorded_items = []
+            for sub_item in queue_items:
+                if not self._session.is_running:
+                    stopped += 1
+                    sub_item["status"] = "stopped"
+                    recorded_items.append(dict(sub_item))
+                    break
+                self._session.update_queue_status(
+                    state="running",
+                    current_label=f"BO iter {suggestion.iteration}: {sub_item.get('details', sub_item.get('type'))}",
+                    active_step_type=sub_item.get("type"),
+                    active_step_details=sub_item.get("details"),
+                    active_step_started_at=datetime.now().isoformat(timespec="seconds"),
+                    active_step_estimated_seconds=estimate_item_seconds(sub_item),
+                )
+                ok, csv_path = self._execute_measurement_item(sub_item)
+                if ok:
+                    completed += 1
+                    sub_item["status"] = "completed"
+                    sub_item["completed_at"] = datetime.now().isoformat(timespec="seconds")
+                    if csv_path:
+                        sub_item["csv_path"] = str(csv_path)
+                        self._root.after(0, self._plotter.plot_data, csv_path, self._session.last_live_plot_color, None, True, False)
+                else:
+                    if not self._session.is_running:
+                        stopped += 1
+                        sub_item["status"] = "stopped"
+                    else:
+                        failed += 1
+                        sub_item["status"] = "failed"
+                        sub_item["failed_at"] = datetime.now().isoformat(timespec="seconds")
+                    recorded_items.append(dict(sub_item))
+                    break
+                recorded_items.append(dict(sub_item))
+
+            queue_summary = {
+                "start_index": None,
+                "total": len(recorded_items),
+                "completed": completed,
+                "failed": failed,
+                "stopped": stopped,
+                "items": recorded_items,
+            }
+            bo_session.record_queue_completion(queue_summary)
+            if failed or stopped or not self._session.is_running:
+                return False
+
+            summary_path = self._run_bo_headless_analysis(bo_session, block)
+            obs = bo_session.import_analysis(summary_path, notes="Imported from recipe BO block")
+            self.log(f"BO iteration {obs['iteration']} complete: Q_run={obs['Q_run']:.3f}")
+
+        completed_iterations = len(bo_session.observations)
+        item["details"] = f"{self._format_bo_block_details(block)} | done {completed_iterations}/{target_iterations}"
+        best = bo_session.best_observation()
+        if best is not None:
+            item["bo_best_q"] = float(best.get("Q_run", 0.0))
+            self.log(f"BO block best Q_run={item['bo_best_q']:.3f}")
+        return self._session.is_running and completed_iterations >= min(target_iterations, int(config.get("max_iterations", target_iterations)))
+
+    def _execute_queue(self, start_index: int = 0):
+        queue = list(self._session.measurement_queue)
+        for i, item in enumerate(queue[start_index:], start=start_index):
+            if not self._session.is_running:
+                self.log("Queue execution stopped by user.")
+                break
+
+            self._session.measurement_queue[i]["status"] = "running"
+            self._root.after(0, self.refresh)
+            self._root.after(0, self.set_status, f"Running: {item['type']} - {item.get('details', '')}")
+            item_eta = estimate_item_seconds(item)
+            if str(item.get("type", "")).strip().upper() == "ALERT":
+                item_eta = None
+            self._session.update_queue_status(
+                state="running",
+                current_index=(i - start_index + 1),
+                total=len(queue) - start_index,
+                current_label=(item.get("details") or item.get("type") or ""),
+                queue_start_index=start_index,
+                active_queue_index=i,
+                next_queue_index=min(i + 1, len(queue)),
+                active_step_started_at=datetime.now().isoformat(timespec="seconds"),
+                active_step_estimated_seconds=item_eta,
+                active_step_type=item.get("type"),
+                active_step_details=(item.get("details") or item.get("type") or ""),
+            )
+            self.log(f"Queue start -> {item.get('details', item.get('type'))}")
+
+            csv_path = None
+            try:
+                t = str(item.get("type") or "")
+                if t == "PAUSE":
+                    ok = self._exec_pause(float(item.get("pause_seconds", 0)))
+                    self._session.measurement_queue[i]["status"] = "completed" if ok else "stopped"
+                elif t == "ALERT":
+                    alert_msg = item.get("alert_message", "Paused - click OK.")
+                    session_mgr = getattr(self._session, "session_manager", None)
+                    if session_mgr is not None:
+                        session_mgr.notify_slack(f"Queue alert: {alert_msg}")
+                    ok = self._exec_alert(alert_msg)
+                    self._session.measurement_queue[i]["status"] = "completed" if ok else "stopped"
+                elif t == "BO_AUTO_LOOP":
+                    ok = self._exec_bo_auto_loop(item)
+                    self._session.measurement_queue[i]["status"] = "completed" if ok else ("stopped" if not self._session.is_running else "failed")
+                    stamp_key = "completed_at" if ok else "failed_at"
+                    self._session.measurement_queue[i][stamp_key] = datetime.now().isoformat(timespec="seconds")
+                elif t.startswith("PUMP_"):
+                    ok = self._exec_pump(item)
+                    self._session.measurement_queue[i]["status"] = "completed" if ok else "failed"
+                    if not ok:
+                        self.log(f"Queue item FAILED: {t} | {item.get('details', '')}")
+                else:
+                    ok, csv_path = self._execute_measurement_item(item)
+                    if item.get("meas_tag"):
+                        self._session.measurement_queue[i]["meas_tag"] = item.get("meas_tag")
+                    if csv_path:
+                        self._session.measurement_queue[i]["csv_path"] = str(csv_path)
+                    if ok:
+                        self._session.measurement_queue[i]["status"] = "completed"
+                        self._session.measurement_queue[i]["completed_at"] = datetime.now().isoformat(timespec="seconds")
+                    else:
+                        self._session.measurement_queue[i]["status"] = "failed"
+                        self._session.measurement_queue[i]["failed_at"] = datetime.now().isoformat(timespec="seconds")
+                        self.log(f"Queue item FAILED: {item['type']} | {item.get('details', item.get('meas_tag', ''))}")
+            except Exception as exc:
+                self._session.measurement_queue[i]["status"] = "failed"
+                self.log(f"CRITICAL ERROR in queue: {exc}")
+
+            if csv_path:
+                self._root.after(0, self._plotter.plot_data, csv_path, self._session.last_live_plot_color, None, True, False)
+            self._root.after(0, self.refresh)
+            step_delay = getattr(self._session, "step_delay", 0.0) or 0.0
+            if step_delay > 0 and i < len(queue) - 1:
+                next_step_number = i - start_index + 2
+                delay_label = f"Inter-step delay before step {next_step_number}"
+                self._session.update_queue_status(
+                    state="step_delay",
+                    current_index=(i - start_index + 1),
+                    total=len(queue) - start_index,
+                    current_label=delay_label,
+                    queue_start_index=start_index,
+                    active_queue_index=i,
+                    next_queue_index=i + 1,
+                    active_step_started_at=datetime.now().isoformat(timespec="seconds"),
+                    active_step_estimated_seconds=step_delay,
+                    active_step_type="STEP_DELAY",
+                    active_step_details=delay_label,
+                )
+                if not self._exec_pause(step_delay):
+                    break
+
+        self._session.is_running = False
+        self.log("Queue completed.")
+        self._root.after(0, self.set_status, "Queue Complete")
+        self._announce_queue_end(start_index=start_index)
+        self._notify_completion_callbacks(start_index=start_index)

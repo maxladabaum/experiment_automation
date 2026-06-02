@@ -17,7 +17,15 @@ import tkinter as tk
 from tkinter import ttk, simpledialog
 
 from methods import library_map
-from config import BLOCKS_DIR
+from config import (
+    BLOCKS_DIR,
+    BO_ANALYSIS_APP_PATH,
+    BO_ANALYSIS_FILE_GLOB,
+    BO_ANALYSIS_OUTPUT_DIR,
+    BO_ANALYSIS_POLL_SECONDS,
+    BO_DEFAULT_CONFIG_PATH,
+)
+from core.bo_session import load_bo_config, normalize_bo_config
 
 
 class RecipeMakerTab:
@@ -60,6 +68,8 @@ class RecipeMakerTab:
                    command=self._add_pump_step).pack(side="left", padx=4)
         ttk.Button(ctrl, text="Add Method Step",
                    command=self._add_method_step).pack(side="left", padx=4)
+        ttk.Button(ctrl, text="Add BO Loop",
+                   command=self._add_bo_loop_step).pack(side="left", padx=4)
         ttk.Separator(ctrl, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(ctrl, text="Move Up",
                    command=lambda: self._move_selected(-1)).pack(side="left", padx=4)
@@ -115,6 +125,7 @@ class RecipeMakerTab:
         self._tree.tag_configure("volt", background="#dff5d8")
         self._tree.tag_configure("block", background="#fff3cd")
         self._tree.tag_configure("alert", background="#f8d7da")
+        self._tree.tag_configure("bo", background="#e8ddff")
         self._tree.tag_configure("default", background="#f2f2f2")
 
         legend = ttk.Frame(top)
@@ -123,6 +134,7 @@ class RecipeMakerTab:
         self._legend_chip(legend, "#dff5d8", "Voltammetry (CV/SWV)")
         self._legend_chip(legend, "#fff3cd", "Block step")
         self._legend_chip(legend, "#f8d7da", "Alert/Pause")
+        self._legend_chip(legend, "#e8ddff", "BO loop")
         self._legend_chip(legend, "#f2f2f2", "Other")
 
         self._ctx = tk.Menu(self._tree, tearoff=0)
@@ -219,6 +231,49 @@ class RecipeMakerTab:
         except Exception as exc:
             messagebox.showerror("Invalid pump step", str(exc))
             return
+        self._recipe.append(item)
+        self._refresh()
+
+    def _default_bo_analysis_config(self) -> dict:
+        try:
+            config = normalize_bo_config(load_bo_config(BO_DEFAULT_CONFIG_PATH))
+            return dict(config.get("analysis") or {})
+        except Exception:
+            return {}
+
+    def _default_bo_block(self) -> dict:
+        analysis_cfg = self._default_bo_analysis_config()
+        default_app = BO_ANALYSIS_APP_PATH
+        if default_app is None or not str(default_app).strip():
+            sibling = (self._repo_root.parent / "swv_app").resolve()
+            if sibling.exists():
+                default_app = sibling
+        block = {
+            "bo_config_path": str(BO_DEFAULT_CONFIG_PATH),
+            "analysis_output_dir": str(BO_ANALYSIS_OUTPUT_DIR),
+            "analysis_app_path": str(default_app or ""),
+            "analysis_file_glob": str(BO_ANALYSIS_FILE_GLOB),
+            "analysis_poll_seconds": float(BO_ANALYSIS_POLL_SECONDS),
+            "target_iterations": 3,
+            "channels_override": "",
+            "analysis": analysis_cfg,
+        }
+        return block
+
+    def _bo_details(self, block: dict) -> str:
+        target = int(block.get("target_iterations", 1) or 1)
+        channels = (block.get("channels_override") or "").strip() or "config channels"
+        config_name = Path(str(block.get("bo_config_path") or "BO config")).name
+        return f"{config_name} | {target} iter | {channels}"
+
+    def _add_bo_loop_step(self):
+        block = self._default_bo_block()
+        item = {
+            "type": "BO_AUTO_LOOP",
+            "status": "pending",
+            "details": self._bo_details(block),
+            "bo_block": block,
+        }
         self._recipe.append(item)
         self._refresh()
 
@@ -556,6 +611,8 @@ class RecipeMakerTab:
         item_type = (item.get("type") or "").upper()
         if item_type in ("CV", "SWV"):
             return "volt"
+        if item_type == "BO_AUTO_LOOP":
+            return "bo"
         if item_type in ("PAUSE", "ALERT"):
             return "alert"
         if item.get("block_name") or item.get("block_ref"):
@@ -810,6 +867,9 @@ class RecipeMakerTab:
         if idx < 0 or idx >= len(self._recipe):
             return
         item = self._recipe[idx]
+        if (item.get("type") or "").upper() == "BO_AUTO_LOOP":
+            self._edit_bo_step(idx)
+            return
         if not self._is_pump_editable(item):
             return
         self._edit_pump_step(idx)
@@ -1078,3 +1138,174 @@ class RecipeMakerTab:
             cloned["block_name"] = name
             self._recipe.append(cloned)
         self._refresh()
+
+    def _edit_bo_step(self, index: int):
+        item = self._recipe[index]
+        block = copy.deepcopy(item.get("bo_block") or self._default_bo_block())
+        default_analysis_app = str(BO_ANALYSIS_APP_PATH or "")
+        if not default_analysis_app.strip():
+            sibling = (self._repo_root.parent / "swv_app").resolve()
+            if sibling.exists():
+                default_analysis_app = str(sibling)
+        default_analysis_output = str(BO_ANALYSIS_OUTPUT_DIR)
+        if not str(block.get("analysis_app_path") or "").strip():
+            block["analysis_app_path"] = default_analysis_app
+        if not str(block.get("analysis_output_dir") or "").strip():
+            block["analysis_output_dir"] = default_analysis_output
+
+        win = tk.Toplevel(self._frame)
+        win.title("Edit BO Loop")
+        win.transient(self._frame.winfo_toplevel())
+        win.grab_set()
+
+        pad = {"padx": 6, "pady": 4}
+        ttk.Label(win, text="BO config:").grid(row=0, column=0, **pad, sticky="e")
+        cfg_var = tk.StringVar(value=str(block.get("bo_config_path") or ""))
+        ttk.Entry(win, width=56, textvariable=cfg_var).grid(row=0, column=1, columnspan=3, **pad, sticky="we")
+        ttk.Button(
+            win,
+            text="Browse",
+            command=lambda: self._set_string_from_dialog(
+                cfg_var,
+                filedialog.askopenfilename(
+                    title="Choose BO config",
+                    filetypes=[("JSON", "*.json"), ("All files", "*.*")],
+                    initialdir=str(Path(cfg_var.get()).parent if cfg_var.get() else self._repo_root),
+                ),
+            ),
+        ).grid(row=0, column=4, **pad, sticky="w")
+
+        ttk.Label(win, text="Analysis app:").grid(row=1, column=0, **pad, sticky="e")
+        app_var = tk.StringVar(value=str(block.get("analysis_app_path") or ""))
+        ttk.Entry(win, width=56, textvariable=app_var).grid(row=1, column=1, columnspan=3, **pad, sticky="we")
+        ttk.Button(
+            win,
+            text="Browse",
+            command=lambda: self._set_string_from_dialog(
+                app_var,
+                filedialog.askdirectory(title="Choose swv_app project folder"),
+            ),
+        ).grid(row=1, column=4, **pad, sticky="w")
+
+        ttk.Label(win, text="Analysis output:").grid(row=2, column=0, **pad, sticky="e")
+        out_var = tk.StringVar(value=str(block.get("analysis_output_dir") or ""))
+        ttk.Entry(win, width=56, textvariable=out_var).grid(row=2, column=1, columnspan=3, **pad, sticky="we")
+        ttk.Button(
+            win,
+            text="Browse",
+            command=lambda: self._set_string_from_dialog(
+                out_var,
+                filedialog.askdirectory(title="Choose BO analysis output folder"),
+            ),
+        ).grid(row=2, column=4, **pad, sticky="w")
+
+        ttk.Label(win, text="Target iterations:").grid(row=3, column=0, **pad, sticky="e")
+        target_var = tk.IntVar(value=int(block.get("target_iterations", 3) or 3))
+        ttk.Entry(win, width=8, textvariable=target_var).grid(row=3, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Poll (s):").grid(row=3, column=2, **pad, sticky="e")
+        poll_var = tk.DoubleVar(value=float(block.get("analysis_poll_seconds", BO_ANALYSIS_POLL_SECONDS) or BO_ANALYSIS_POLL_SECONDS))
+        ttk.Entry(win, width=8, textvariable=poll_var).grid(row=3, column=3, **pad, sticky="w")
+
+        ttk.Label(win, text="Channels override:").grid(row=4, column=0, **pad, sticky="e")
+        channels_var = tk.StringVar(value=str(block.get("channels_override") or ""))
+        ttk.Entry(win, width=24, textvariable=channels_var).grid(row=4, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Glob:").grid(row=4, column=2, **pad, sticky="e")
+        glob_var = tk.StringVar(value=str(block.get("analysis_file_glob") or BO_ANALYSIS_FILE_GLOB))
+        ttk.Entry(win, width=18, textvariable=glob_var).grid(row=4, column=3, **pad, sticky="w")
+
+        analysis = block.get("analysis") or {}
+        ttk.Label(win, text="Crop min/max (V):").grid(row=5, column=0, **pad, sticky="e")
+        crop_min_var = tk.StringVar(value=str(analysis.get("crop_min_v", -0.6)))
+        crop_max_var = tk.StringVar(value=str(analysis.get("crop_max_v", -0.1)))
+        ttk.Entry(win, width=8, textvariable=crop_min_var).grid(row=5, column=1, **pad, sticky="w")
+        ttk.Entry(win, width=8, textvariable=crop_max_var).grid(row=5, column=1, padx=(76, 6), pady=4, sticky="w")
+        ttk.Label(win, text="Smooth win/poly:").grid(row=5, column=2, **pad, sticky="e")
+        smooth_win_var = tk.StringVar(value=str(analysis.get("smooth_window", 15)))
+        smooth_poly_var = tk.StringVar(value=str(analysis.get("smooth_polyorder", 2)))
+        ttk.Entry(win, width=8, textvariable=smooth_win_var).grid(row=5, column=3, **pad, sticky="w")
+        ttk.Entry(win, width=8, textvariable=smooth_poly_var).grid(row=5, column=3, padx=(76, 6), pady=4, sticky="w")
+
+        ttk.Label(win, text="Minima window (V):").grid(row=6, column=0, **pad, sticky="e")
+        minima_var = tk.StringVar(value=str(analysis.get("minima_search_window_v", 0.30)))
+        ttk.Entry(win, width=10, textvariable=minima_var).grid(row=6, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Min peak height (uA):").grid(row=6, column=2, **pad, sticky="e")
+        min_peak_var = tk.StringVar(value="" if analysis.get("min_peak_height_ua") in (None, "") else str(analysis.get("min_peak_height_ua")))
+        ttk.Entry(win, width=10, textvariable=min_peak_var).grid(row=6, column=3, **pad, sticky="w")
+
+        ttk.Label(win, text="Min start V:").grid(row=7, column=0, **pad, sticky="e")
+        min_start_var = tk.StringVar(value=str(analysis.get("min_start_voltage_v", -0.6)))
+        ttk.Entry(win, width=10, textvariable=min_start_var).grid(row=7, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Scan windows:").grid(row=7, column=2, **pad, sticky="e")
+        scan_windows_var = tk.StringVar(value=str(analysis.get("scan_windows", "")))
+        ttk.Entry(win, width=24, textvariable=scan_windows_var).grid(row=7, column=3, **pad, sticky="w")
+
+        prominent_var = tk.BooleanVar(value=bool(analysis.get("use_prominent_minima", False)))
+        double_corr_var = tk.BooleanVar(value=bool(analysis.get("use_double_correction", True)))
+        skew_var = tk.BooleanVar(value=bool(analysis.get("compute_skew", False)))
+        wavelet_energy_var = tk.BooleanVar(value=bool(analysis.get("compute_wavelet_energy", False)))
+        wavelet_trace_var = tk.BooleanVar(value=bool(analysis.get("compute_wavelet_denoised_trace", False)))
+        wavelet_corr_var = tk.BooleanVar(value=bool(analysis.get("use_wavelet_for_correction", False)))
+        ttk.Checkbutton(win, text="Prominent minima", variable=prominent_var).grid(row=8, column=0, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Double correction", variable=double_corr_var).grid(row=8, column=2, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Compute skew", variable=skew_var).grid(row=9, column=0, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Wavelet energy", variable=wavelet_energy_var).grid(row=9, column=2, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Wavelet trace", variable=wavelet_trace_var).grid(row=10, column=0, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Wavelet correction", variable=wavelet_corr_var).grid(row=10, column=2, columnspan=2, **pad, sticky="w")
+
+        btns = ttk.Frame(win)
+        btns.grid(row=11, column=0, columnspan=5, pady=(8, 10))
+
+        def _apply():
+            try:
+                new_analysis = {
+                    "crop_min_v": float(crop_min_var.get()),
+                    "crop_max_v": float(crop_max_var.get()),
+                    "smooth_window": int(smooth_win_var.get()),
+                    "smooth_polyorder": int(smooth_poly_var.get()),
+                    "minima_search_window_v": float(minima_var.get()),
+                    "min_peak_height_ua": None if not str(min_peak_var.get()).strip() else float(min_peak_var.get()),
+                    "min_start_voltage_v": float(min_start_var.get()),
+                    "scan_windows": scan_windows_var.get().strip(),
+                    "use_prominent_minima": bool(prominent_var.get()),
+                    "use_double_correction": bool(double_corr_var.get()),
+                    "compute_skew": bool(skew_var.get()),
+                    "compute_wavelet_energy": bool(wavelet_energy_var.get()),
+                    "compute_wavelet_denoised_trace": bool(wavelet_trace_var.get()),
+                    "use_wavelet_for_correction": bool(wavelet_corr_var.get()),
+                }
+                new_block = {
+                    "bo_config_path": cfg_var.get().strip(),
+                    "analysis_app_path": app_var.get().strip(),
+                    "analysis_output_dir": out_var.get().strip(),
+                    "analysis_file_glob": glob_var.get().strip() or "*.json",
+                    "analysis_poll_seconds": float(poll_var.get()),
+                    "target_iterations": int(target_var.get()),
+                    "channels_override": channels_var.get().strip(),
+                    "analysis": new_analysis,
+                }
+                if not new_block["bo_config_path"]:
+                    raise ValueError("BO config path is required.")
+                if new_block["target_iterations"] < 1:
+                    raise ValueError("Target iterations must be at least 1.")
+                if new_block["analysis_poll_seconds"] < 1:
+                    raise ValueError("Poll seconds must be at least 1.")
+            except Exception as exc:
+                messagebox.showerror("Invalid BO step", str(exc))
+                return
+
+            item["bo_block"] = new_block
+            item["details"] = self._bo_details(new_block)
+            item["status"] = item.get("status", "pending")
+            self._recipe[index] = item
+            self._refresh()
+            win.destroy()
+
+        ttk.Button(btns, text="Update", command=_apply).pack(side="left", padx=6)
+        ttk.Button(btns, text="Cancel", command=win.destroy).pack(side="left", padx=6)
+        win.bind("<Return>", lambda _e: _apply())
+        win.bind("<Escape>", lambda _e: win.destroy())
+
+    @staticmethod
+    def _set_string_from_dialog(var: tk.StringVar, value):
+        if value:
+            var.set(value)
