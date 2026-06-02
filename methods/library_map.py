@@ -163,6 +163,20 @@ def family_keys(hash_key: str) -> list:
     return sorted(keys)
 
 
+def _is_mux_entry(entry: dict) -> bool:
+    mux_channel = entry.get("mux_channel")
+    return mux_channel not in (None, "", 0, "0")
+
+
+def mux_method_keys() -> list:
+    """Return all library keys that point to MUX-specific method files."""
+    load_map()
+    return sorted(
+        key for key, entry in _map.items()
+        if _is_mux_entry(entry)
+    )
+
+
 def update_note(hash_key: str, note: Optional[str]) -> bool:
     """Update note for an existing entry. Returns True if changed."""
     load_map()
@@ -204,6 +218,30 @@ def delete_family(hash_key: str) -> int:
     keys = family_keys(hash_key)
     if not keys:
         return 0
+    deleted = 0
+    for key in keys:
+        entry = _map.get(key)
+        if not entry:
+            continue
+        path_text = entry.get("filepath")
+        if path_text:
+            try:
+                Path(path_text).unlink(missing_ok=True)
+            except TypeError:
+                path = Path(path_text)
+                if path.exists():
+                    path.unlink()
+        _map.pop(key, None)
+        deleted += 1
+    if deleted:
+        _persist()
+    return deleted
+
+
+def delete_mux_methods() -> int:
+    """Delete all MUX-specific method entries. Base methods are preserved."""
+    load_map()
+    keys = mux_method_keys()
     deleted = 0
     for key in keys:
         entry = _map.get(key)

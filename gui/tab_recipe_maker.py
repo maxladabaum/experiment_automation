@@ -261,6 +261,8 @@ class RecipeMakerTab:
                    command=self._load_method_map).pack(side="left", padx=6)
         ttk.Button(top, text="Delete Method",
                    command=self._delete_method_family).pack(side="left", padx=6)
+        ttk.Button(top, text="Clear MUX Methods",
+                   command=self._clear_mux_methods).pack(side="left", padx=6)
 
         sweep = ttk.Frame(parent)
         sweep.pack(fill="x", padx=6, pady=(0, 4))
@@ -422,6 +424,26 @@ class RecipeMakerTab:
         self._load_method_map()
         if deleted:
             messagebox.showinfo("Deleted", f"Deleted {deleted} method entr{'y' if deleted == 1 else 'ies'} from the library.")
+
+    def _clear_mux_methods(self):
+        keys = library_map.mux_method_keys()
+        if not keys:
+            messagebox.showinfo("Clear MUX Methods", "There are no MUX methods to clear.")
+            return
+        prompt = (
+            f"Delete all {len(keys)} MUX-specific method entr"
+            f"{'y' if len(keys) == 1 else 'ies'} from the library?\n\n"
+            "Base methods will be kept. Saved recipes that point directly to a deleted "
+            "MUX method may need to regenerate it from the base method."
+        )
+        if not messagebox.askyesno("Clear MUX Methods", prompt):
+            return
+        deleted = library_map.delete_mux_methods()
+        self._load_method_map()
+        messagebox.showinfo(
+            "Clear MUX Methods",
+            f"Deleted {deleted} MUX method entr{'y' if deleted == 1 else 'ies'}.",
+        )
 
     def _add_method_step(self):
         selected = self._selected_method_entry()
