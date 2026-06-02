@@ -35,6 +35,7 @@ from gui.tab_method  import MethodTab
 from gui.tab_queue   import QueueTab
 from gui.tab_pump    import PumpTab
 from gui.tab_recipe_maker import RecipeMakerTab
+from gui.tab_bayesian_optimization import BayesianOptimizationTab
 
 try:
     from pump_gui import PumpCtrl, HAS_COM as PUMP_HAS_COM
@@ -107,6 +108,7 @@ class ElectrochemGUI:
         script_frame  = ttk.Frame(self._nb)
         queue_frame   = ttk.Frame(self._nb)
         recipe_frame  = ttk.Frame(self._nb)
+        bo_frame      = ttk.Frame(self._nb)
         plotter_frame = ttk.Frame(self._nb)
 
         if PUMP_AVAILABLE:
@@ -115,8 +117,9 @@ class ElectrochemGUI:
         self._nb.add(script_frame,  text="Script Preview")
         self._nb.add(queue_frame,   text="Queue & Execution")
         self._nb.add(recipe_frame,  text="Recipe Maker")
+        self._nb.add(bo_frame,      text="Bayesian Optimization")
         self._nb.add(plotter_frame, text="Plotter")
-        self._session_gated_tabs = [method_frame, script_frame, queue_frame, recipe_frame, plotter_frame]
+        self._session_gated_tabs = [method_frame, script_frame, queue_frame, recipe_frame, bo_frame, plotter_frame]
         if PUMP_AVAILABLE:
             self._session_gated_tabs.insert(0, pump_frame)
 
@@ -153,6 +156,16 @@ class ElectrochemGUI:
             on_script_preview = self._script_tab.update,
             on_run_now        = self._run_now,
         )
+
+        self._bo_tab = BayesianOptimizationTab(
+            parent_frame      = bo_frame,
+            session           = self._session,
+            on_add_to_queue   = self._queue_tab.add_item,
+            on_refresh_queue  = self._queue_tab.refresh,
+            on_script_preview = self._script_tab.update,
+            on_run_queue      = self._queue_tab.run_queue,
+        )
+        self._queue_tab.add_completion_callback(self._bo_tab.on_queue_complete)
 
         if PUMP_AVAILABLE:
             self._pump_tab = PumpTab(

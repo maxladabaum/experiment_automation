@@ -66,6 +66,7 @@ class QueueTab:
         self._last_selected    = None
         self._last_queue_path  = None
         self._active_alert = None
+        self._completion_callbacks = []
 
         self._build()
 
@@ -214,6 +215,11 @@ class QueueTab:
             text=f"Measurements this session: {self._session.measurement_counter}")
         self._lbl_registry.config(
             text=f"Script registry: {self._session.registry.size} unique")
+
+    def add_completion_callback(self, callback):
+        """Register a callback called after a queue run reaches its final state."""
+        if callable(callback) and callback not in self._completion_callbacks:
+            self._completion_callbacks.append(callback)
 
 
     # ── Session info bar buttons ──────────────────────────────────────────────
@@ -621,6 +627,11 @@ class QueueTab:
                 data["script_path"] = item["script_path"]
             if "method_ref" in item:
                 data["method_ref"] = dict(item.get("method_ref") or {})
+            if "bo_ref" in item:
+                data["bo_ref"] = dict(item.get("bo_ref") or {})
+            for key in ("meas_tag", "csv_path", "completed_at", "failed_at"):
+                if key in item:
+                    data[key] = item.get(key)
         return data
 
     def _deserialize(self, raw: dict):
@@ -749,6 +760,11 @@ class QueueTab:
             item["script_path"] = sp
             if "method_ref" in raw and isinstance(raw.get("method_ref"), dict):
                 item["method_ref"] = dict(raw.get("method_ref") or {})
+            if "bo_ref" in raw and isinstance(raw.get("bo_ref"), dict):
+                item["bo_ref"] = dict(raw.get("bo_ref") or {})
+            for key in ("meas_tag", "csv_path", "completed_at", "failed_at"):
+                if key in raw:
+                    item[key] = raw.get(key)
             item["details"]     = item.get("details") or details or Path(sp).name
         return item
 
@@ -976,6 +992,7 @@ class QueueTab:
                     try:
                         mux_channel = self._extract_mux_channel(item)
                         meas_tag = self._session.next_meas_tag_with_mux(mux_channel)
+                        self._session.measurement_queue[i]["meas_tag"] = meas_tag
                         self.log(f"[Tag] {meas_tag}")
                         self._root.after(0, self.refresh_labels)
                         data_folder = None
@@ -997,10 +1014,14 @@ class QueueTab:
                         )
                         self._session.current_runner = runner
                         success, csv_path = runner.execute(meas_tag=meas_tag)
+                        if csv_path:
+                            self._session.measurement_queue[i]["csv_path"] = str(csv_path)
                         if success:
                             self._session.measurement_queue[i]["status"] = "completed"
+                            self._session.measurement_queue[i]["completed_at"] = datetime.now().isoformat(timespec="seconds")
                         else:
                             self._session.measurement_queue[i]["status"] = "failed"
+                            self._session.measurement_queue[i]["failed_at"] = datetime.now().isoformat(timespec="seconds")
                             self.log(f"Queue item FAILED: {item['type']} | {item.get('details', meas_tag)}")
                     finally:
                         self._session.current_runner = None
@@ -1038,6 +1059,23 @@ class QueueTab:
         self.log("Queue completed.")
         self._root.after(0, self.set_status, "Queue Complete")
         self._announce_queue_end(start_index=start_index)
+        self._notify_completion_callbacks(start_index=start_index)
+
+    def _notify_completion_callbacks(self, start_index: int):
+        ran = self._session.measurement_queue[start_index:]
+        summary = {
+            "start_index": start_index,
+            "total": len(ran),
+            "completed": sum(1 for item in ran if item.get("status") == "completed"),
+            "failed": sum(1 for item in ran if item.get("status") == "failed"),
+            "stopped": sum(1 for item in ran if item.get("status") == "stopped"),
+            "items": [dict(item) for item in ran],
+        }
+        for callback in list(self._completion_callbacks):
+            try:
+                self._root.after(0, lambda cb=callback, data=dict(summary): cb(data))
+            except Exception as exc:
+                self.log(f"Queue completion callback failed: {exc}")
 
     def _announce_queue_start(self, start_index: int):
         session_mgr = getattr(self._session, "session_manager", None)

@@ -97,5 +97,257 @@ python -c "import sys,os; print(sys.executable); print(os.getcwd())"
 
 If these differ between shells (or VS Code vs. external Git Bash), your run will differ too.
 
+OPTIONAL BAYESIAN OPTIMIZATION TAB
 
+The app includes an optional Bayesian Optimization tab for closed-loop SWV method
+optimization across a mux batch. Normal measurement, queue, recipe, and plotting
+workflows do not require this feature.
 
+The working BO integration lives in:
+
+core/bo_session.py
+  BO session state, constrained SWV candidate generation, scoring, records, and
+  external analysis import.
+
+gui/tab_bayesian_optimization.py
+  Optional GUI tab for configuration, suggestions, queueing, auto-loop control,
+  and analysis import.
+
+bo_configs/default_swv_bo.json
+  User-editable default SWV mux BO search space.
+
+config.py
+  BO path defaults. Environment variables are optional.
+
+bo_configs/local_paths.json
+  Machine-local BO paths such as the external analysis output folder. This is
+  the easy alternative to editing .bashrc, PowerShell profiles, or environment
+  files.
+
+BO TAB LAYOUT
+
+The Bayesian Optimization tab has three internal subtabs:
+
+Setup
+  Edit the BO config path, machine-local analysis paths, mux channels,
+  active/locked/tied parameter space, and initial parameters.
+
+Run
+  Suggest the next method, send the mux batch to the existing queue, preview the
+  generated script, import analysis manually, or run the automated loop.
+
+Results & Records
+  Review per-channel scores, BO history, best method so far, surrogate and
+  acquisition artifacts, queue manifests, analysis records, plots, and export
+  files.
+
+BO PARAMETER MODES
+
+active
+  BO is allowed to optimize this parameter using the configured values.
+
+locked
+  BO keeps this parameter fixed at its configured value.
+
+tied
+  BO derives this parameter from another parameter. By default,
+  conditioning_potential is tied to begin_potential.
+
+BO CONFIG AND INITIAL DESIGN
+
+The editable BO config is bo_configs/default_swv_bo.json. It controls:
+
+channels
+  The mux channels used for one BO iteration. By default this is channels 1-10.
+
+initial_parameters
+  The one starting method BO runs first. It should be valid and conservative.
+  After this first method, any remaining early exploration is generated
+  automatically from the valid search space until n_initial_points is reached.
+
+  The Setup subtab has an Initial Parameters editor, so these can be changed
+  without hand-editing JSON. Save the BO config after editing to persist the
+  changes.
+
+parameters
+  The active/locked/tied mode, units, and allowed values for each SWV parameter.
+
+constraints
+  Hard rules that must be true before a method can be suggested or sent to the
+  queue. The defaults are:
+
+  end_potential > begin_potential
+  end_potential - begin_potential >= 0.4 V
+  step_potential * frequency <= 1.0 V/s
+  conditioning_potential = begin_potential unless it is unlocked
+
+scoring
+  Weights for Q_channel and Q_run.
+
+analysis
+  The file pattern and retention behavior for external analysis JSON outputs.
+
+BO PATH SETTINGS WITHOUT ENVIRONMENT FILES
+
+Environment variables still work, but they are not required. The app reads
+bo_configs/local_paths.json for machine-specific path settings:
+
+{
+  "analysis_output_dir": "analysis_outputs",
+  "analysis_app_path": "",
+  "analysis_file_glob": "*.json",
+  "analysis_poll_seconds": 5.0
+}
+
+The Setup subtab can update this file with the Save Paths button. This is the
+recommended way to point the BO tab at the outside analysis app's output folder
+on a local machine.
+
+BAYESIAN OPTIMIZATION INTUITION
+
+Bayesian optimization is useful here because each mux batch is expensive. The
+goal is to learn from a small number of real experiments instead of sweeping
+every combination.
+
+The optimizer keeps a surrogate model:
+
+  method parameters -> predicted Q_run
+
+When scikit-learn is available, the surrogate is a Gaussian process (GP). The GP
+predicts both a mean score and an uncertainty for each valid candidate:
+
+  mu(x)    = predicted score for method x
+  sigma(x) = uncertainty in that prediction
+
+The acquisition function chooses what to try next. It balances exploitation and
+exploration:
+
+  exploitation: try methods with high predicted Q_run
+  exploration: try methods where uncertainty is high
+
+The current model-guided acquisition is Expected Improvement (EI):
+
+  EI(x) = expected amount by which candidate x improves over the best observed
+          Q_run so far, accounting for both mu(x) and sigma(x)
+
+In plain language: BO does not just choose what looks best right now. It chooses
+what has the best chance of teaching us something useful or improving the best
+method.
+
+Frequency is encoded on a log10 scale because frequency values grow
+multiplicatively rather than additively. A change from 50 Hz to 100 Hz is more
+like the change from 400 Hz to 800 Hz than it is like a 50 Hz linear step near
+800 Hz.
+
+If scikit-learn is not installed or too few observations exist, the system falls
+back to deterministic space-covering suggestions so the GUI still works. For a
+publication BO run, install scikit-learn and record surrogate/acquisition
+outputs.
+
+QUALITY SCORE
+
+The external analysis app supplies per-channel metrics. The BO module then
+computes:
+
+  Q_channel =
+      w_snr        * normalized_SNR
+    + w_shape      * peak_shape_score
+    + w_baseline   * baseline_stability_score
+    + w_replicates * replicate_consistency_score
+    + w_success    * success_score
+
+Then one mux batch becomes one BO objective:
+
+  Q_run =
+      mean(Q_channel)
+    - lambda_variability * std(Q_channel)
+    - lambda_failed      * failed_channel_fraction
+    - lambda_low         * fraction(Q_channel < threshold)
+
+The optimizer maximizes Q_run. Every Q_channel is still retained so we can show
+that optimization improves the mux array, not just one good channel.
+
+BO RUNTIME FLOW
+
+Bayesian Optimization tab
+  -> load editable BO config
+  -> optionally edit initial_parameters in Setup
+  -> start BO session inside the active experiment folder
+  -> ask core BO session for the next valid SWV method
+  -> save the method through MethodRegistry
+  -> add ordinary SWV queue items with BO metadata
+  -> instrument queue runs the mux batch
+  -> outside analysis app writes per-channel metrics JSON
+  -> BO tab imports latest or selected analysis JSON
+  -> core computes Q_channel and Q_run
+  -> records are retained under experiment/bo_sessions/
+  -> next method is suggested
+
+The tab supports both assisted-manual operation and an Auto Loop mode. Auto Loop
+starts only from an empty queue, submits one BO mux batch at a time, starts the
+existing queue, waits for queue completion, polls for a new analysis JSON, imports
+the result, records the scores, and repeats until the requested number of
+completed BO iterations is reached.
+
+EXTERNAL ANALYSIS CONTRACT
+
+The outside analysis app should write JSON in the folder configured by
+EA_BO_ANALYSIS_OUTPUT_DIR or BO_ANALYSIS_OUTPUT_DIR in config.py.
+
+Accepted JSON shape:
+
+{
+  "channel_metrics": {
+    "1": {
+      "snr": 12.4,
+      "peak_shape_score": 0.82,
+      "baseline_stability_score": 0.76,
+      "replicate_consistency_score": 0.69,
+      "success_score": 1.0
+    }
+  }
+}
+
+The channel-keyed object may also be supplied directly:
+
+{
+  "1": {"snr": 12.4, "success_score": 1.0},
+  "2": {"snr": 9.1, "success_score": 1.0}
+}
+
+The BO module computes one Q_channel per channel and one Q_run per iteration.
+The optimizer only sees Q_run, while records retain every channel metric and
+score for reproducibility and publication.
+
+BO RECORDS
+
+Each BO session writes records inside the active experiment folder:
+
+bo_sessions/<bo_session_id>/
+  bo_config_snapshot.json
+  search_space.json
+  constraints.json
+  initial_parameters_preview.json
+  bo_state.json
+  history.csv
+  methods/
+  queue/
+  analysis/
+  surrogate/
+  acquisition/
+  plots/
+
+Current records include suggested methods, queued BO items, imported external
+analysis outputs, per-channel metrics, Q_channel, Q_run, the best method so far,
+queue completion manifests with measurement tags and CSV paths when available,
+channel-score plots, BO history plots, candidate prediction tables, acquisition
+value tables, top-candidate tables, and surrogate/acquisition projection plots.
+
+When scikit-learn is available and at least two completed BO observations exist,
+the BO session also saves the fitted Gaussian-process model:
+
+surrogate/iter_XXX_gp_model.pkl
+
+If scikit-learn is unavailable, the app still writes deterministic fallback
+prediction and acquisition tables so the record remains complete, but those
+tables should be labeled as fallback rather than GP-based in a publication.

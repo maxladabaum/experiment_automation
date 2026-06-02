@@ -6,6 +6,7 @@ All other modules import from here — never hardcode constants elsewhere.
 """
 
 from pathlib import Path
+import json
 import os
 
 # ── Version ──────────────────────────────────────────────────────────────────
@@ -30,6 +31,42 @@ METHODS_DIR     = Path("methods")           # where .ms scripts are saved
 DATA_DIR        = Path("measurement_data") #for local testing purposes
 BLOCKS_DIR      = Path("recipe_maker") / "default_blocks"  # where block definitions are saved
 SAVE_DATED_METHOD_COPIES = False            # if True, also write methods/YYYY-MM-DD/*.ms working copies
+# Bayesian optimization integration (optional)
+BO_CONFIG_DIR = Path(os.getenv("EA_BO_CONFIG_DIR", "bo_configs"))
+BO_DEFAULT_CONFIG_PATH = Path(
+    os.getenv("EA_BO_DEFAULT_CONFIG_PATH", str(BO_CONFIG_DIR / "default_swv_bo.json"))
+)
+BO_LOCAL_PATHS_CONFIG = Path(os.getenv("EA_BO_LOCAL_PATHS_CONFIG", str(BO_CONFIG_DIR / "local_paths.json")))
+
+
+def _load_bo_local_paths() -> dict:
+    try:
+        with open(BO_LOCAL_PATHS_CONFIG, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+_BO_LOCAL_PATHS = _load_bo_local_paths()
+BO_ANALYSIS_OUTPUT_DIR = Path(
+    os.getenv(
+        "EA_BO_ANALYSIS_OUTPUT_DIR",
+        str(_BO_LOCAL_PATHS.get("analysis_output_dir", "analysis_outputs")),
+    )
+)
+BO_ANALYSIS_APP_PATH_RAW = os.getenv(
+    "EA_BO_ANALYSIS_APP_PATH",
+    str(_BO_LOCAL_PATHS.get("analysis_app_path", "")),
+).strip()
+BO_ANALYSIS_APP_PATH = Path(BO_ANALYSIS_APP_PATH_RAW) if BO_ANALYSIS_APP_PATH_RAW else None
+BO_ANALYSIS_FILE_GLOB = os.getenv(
+    "EA_BO_ANALYSIS_FILE_GLOB",
+    str(_BO_LOCAL_PATHS.get("analysis_file_glob", "*.json")),
+)
+BO_ANALYSIS_POLL_SECONDS = float(
+    os.getenv("EA_BO_ANALYSIS_POLL_SECONDS", str(_BO_LOCAL_PATHS.get("analysis_poll_seconds", "5.0")))
+)
 #keep in mind that methods are already double saved under library and the experiments where they are used
 
 # ── Serial device detection keywords ─────────────────────────────────────────

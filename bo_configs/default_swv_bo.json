@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "name": "Default SWV mux Bayesian optimization",
+  "description": "Editable default search space for closed-loop SWV method optimization across a mux batch.",
+  "max_iterations": 20,
+  "n_initial_points": 8,
+  "random_seed": 42,
+  "channels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  "method_options": {
+    "bandwidth": "4k",
+    "ba_range": {
+      "mode": "fixed",
+      "fixed": "100n",
+      "auto_min": "100n",
+      "auto_max": "100n"
+    }
+  },
+  "initial_parameters": {
+    "begin_potential": -0.7,
+    "end_potential": -0.1,
+    "step_potential": 0.002,
+    "amplitude": 0.036,
+    "frequency": 200.0,
+    "conditioning_potential": -0.7,
+    "conditioning_time": 0.0
+  },
+  "parameters": {
+    "begin_potential": {
+      "label": "Begin potential",
+      "unit": "V",
+      "mode": "active",
+      "values": [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5]
+    },
+    "end_potential": {
+      "label": "End potential",
+      "unit": "V",
+      "mode": "active",
+      "values": [-0.5, -0.4, -0.3, -0.2, -0.1, 0.0]
+    },
+    "step_potential": {
+      "label": "Step potential",
+      "unit": "V",
+      "mode": "active",
+      "values": [0.001, 0.002, 0.004, 0.005]
+    },
+    "amplitude": {
+      "label": "Amplitude",
+      "unit": "V",
+      "mode": "active",
+      "values": [0.02, 0.028, 0.036, 0.044]
+    },
+    "frequency": {
+      "label": "Frequency",
+      "unit": "Hz",
+      "mode": "active",
+      "values": [50.0, 100.0, 200.0, 400.0, 800.0],
+      "encoding": "log10"
+    },
+    "conditioning_potential": {
+      "label": "Conditioning potential",
+      "unit": "V",
+      "mode": "tied",
+      "tie_to": "begin_potential",
+      "values": [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5]
+    },
+    "conditioning_time": {
+      "label": "Conditioning time",
+      "unit": "s",
+      "mode": "active",
+      "values": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+    }
+  },
+  "constraints": {
+    "min_scan_window": 0.4,
+    "max_effective_scan_rate": 1.0,
+    "require_end_after_begin": true,
+    "conditioning_potential_tied_by_default": true
+  },
+  "scoring": {
+    "channel_weights": {
+      "snr": 0.35,
+      "peak_shape": 0.2,
+      "baseline": 0.2,
+      "replicate_consistency": 0.15,
+      "success": 0.1,
+      "snr_saturation": 20.0
+    },
+    "run_weights": {
+      "lambda_variability": 0.2,
+      "lambda_failed": 0.4,
+      "lambda_low": 0.2,
+      "low_channel_threshold": 0.5
+    }
+  },
+  "analysis": {
+    "file_glob": "*.json",
+    "copy_outputs_into_record": true
+  },
+  "records": {
+    "folder_prefix": "bo_session"
+  }
+}
