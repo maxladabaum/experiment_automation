@@ -12,7 +12,6 @@
     4,
     5,
     6,
-    7,
     8,
     9,
     10
@@ -27,19 +26,19 @@
     }
   },
   "initial_parameters": {
-    "begin_potential": -0.7,
-    "end_potential": -0.1,
+    "begin_potential": -0.5,
+    "end_potential": 0.0,
     "step_potential": 0.002,
     "amplitude": 0.036,
     "frequency": 200.0,
-    "conditioning_potential": -0.7,
-    "conditioning_time": 0.0
+    "conditioning_potential": -0.5,
+    "conditioning_time": 1.0
   },
   "parameters": {
     "begin_potential": {
       "label": "Begin potential",
       "unit": "V",
-      "mode": "active",
+      "mode": "locked",
       "values": [
         -1.0,
         -0.9,
@@ -48,12 +47,13 @@
         -0.6,
         -0.5
       ],
-      "value": -0.7
+      "value": -0.5,
+      "tie_to": "begin_potential"
     },
     "end_potential": {
       "label": "End potential",
       "unit": "V",
-      "mode": "active",
+      "mode": "locked",
       "values": [
         -0.5,
         -0.4,
@@ -62,7 +62,8 @@
         -0.1,
         0.0
       ],
-      "value": -0.1
+      "value": 0.0,
+      "tie_to": "begin_potential"
     },
     "step_potential": {
       "label": "Step potential",
@@ -115,12 +116,12 @@
         -0.6,
         -0.5
       ],
-      "value": -0.7
+      "value": -0.5
     },
     "conditioning_time": {
       "label": "Conditioning time",
       "unit": "s",
-      "mode": "active",
+      "mode": "locked",
       "values": [
         0.0,
         1.0,
@@ -129,7 +130,8 @@
         4.0,
         5.0
       ],
-      "value": 0.0
+      "value": 1.0,
+      "tie_to": "begin_potential"
     }
   },
   "constraints": {
@@ -157,8 +159,8 @@
   "analysis": {
     "file_glob": "*.json",
     "copy_outputs_into_record": true,
-    "crop_min_v": -0.6,
-    "crop_max_v": -0.1,
+    "crop_min_v": -0.4,
+    "crop_max_v": 0.0,
     "smooth_window": 15,
     "smooth_polyorder": 2,
     "minima_search_window_v": 0.3,

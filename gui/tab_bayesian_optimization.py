@@ -1017,9 +1017,21 @@ class BayesianOptimizationTab:
         )
 
     def _save_initial_parameters(self, updated):
-        self._config["initial_parameters"] = updated
+        params = self._config.setdefault("parameters", {})
+        resolved = {name: float(updated[name]) for name in PARAMETER_ORDER}
+        for name in PARAMETER_ORDER:
+            param_cfg = params.setdefault(name, {})
+            mode = str(param_cfg.get("mode", "locked")).lower()
+            if mode == "locked":
+                param_cfg["value"] = resolved[name]
+            elif mode == "tied":
+                tie_to = param_cfg.get("tie_to") or "begin_potential"
+                if tie_to in resolved:
+                    resolved[name] = float(resolved[tie_to])
+        self._config["initial_parameters"] = resolved
         self._config.pop("initial_method", None)
         self._config.pop("initial_design", None)
+        self._refresh_parameter_table()
         self._refresh_initial_parameters_table()
         self._validate_config(show_dialog=False)
 
@@ -1044,7 +1056,12 @@ class BayesianOptimizationTab:
             ttk.Label(box, text=labels.get(name, name)).grid(row=row, column=0, sticky="w", pady=3)
             var = tk.StringVar(value=str(values.get(name, "")))
             vars_by_name[name] = var
-            ttk.Entry(box, textvariable=var, width=18).grid(row=row, column=1, sticky="w", pady=3)
+            entry_state = "normal"
+            if title == "Edit Initial Parameters":
+                param_cfg = (self._config or {}).get("parameters", {}).get(name, {})
+                if str(param_cfg.get("mode", "")).lower() == "tied":
+                    entry_state = "disabled"
+            ttk.Entry(box, textvariable=var, width=18, state=entry_state).grid(row=row, column=1, sticky="w", pady=3)
         buttons = ttk.Frame(box)
         buttons.grid(row=len(PARAMETER_ORDER), column=0, columnspan=2, pady=(10, 0))
 

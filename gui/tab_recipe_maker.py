@@ -68,8 +68,6 @@ class RecipeMakerTab:
                    command=self._add_pump_step).pack(side="left", padx=4)
         ttk.Button(ctrl, text="Add Method Step",
                    command=self._add_method_step).pack(side="left", padx=4)
-        ttk.Button(ctrl, text="Add BO Loop",
-                   command=self._add_bo_loop_step).pack(side="left", padx=4)
         ttk.Separator(ctrl, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(ctrl, text="Move Up",
                    command=lambda: self._move_selected(-1)).pack(side="left", padx=4)
