@@ -107,7 +107,10 @@ The working BO integration lives in:
 
 core/bo_session.py
   BO session state, constrained SWV candidate generation, scoring, records, and
-  external analysis import.
+  in-repo analysis import.
+
+core/analysis.py and core/bo_analysis.py
+  SWV peak analysis and BO summary generation.
 
 gui/tab_bayesian_optimization.py
   Optional GUI tab for configuration, suggestions, queueing, auto-loop control,
@@ -120,7 +123,7 @@ config.py
   BO path defaults. Environment variables are optional.
 
 bo_configs/local_paths.json
-  Machine-local BO paths such as the external analysis output folder. This is
+  Machine-local BO paths such as the analysis output folder. This is
   the easy alternative to editing .bashrc, PowerShell profiles, or environment
   files.
 
@@ -152,6 +155,21 @@ locked
 tied
   BO derives this parameter from another parameter. By default,
   conditioning_potential is tied to begin_potential.
+
+Parameter spaces can be discrete or continuous. Discrete parameters use the
+configured values list. Continuous parameters use min/max/scale and an optional
+step. Leave step blank/null for smoother sampling; set it when the generated
+method should snap to instrument-friendly increments. Each continuous parameter
+also has proposal_sigma, which controls the width of local Gaussian proposals
+around the best observed method.
+
+The acquisition exploration setting is a 0..1 explore/exploit blend. Lower
+values favor high predicted Q_run; higher values favor uncertainty and sparse
+regions of the parameter space.
+
+Simulation mode can run fake BO iterations without hardware, or replay old
+analysis JSON files from a folder. Fake simulation is useful for quick algorithm
+tests; replay is useful for checking record/import behavior against old data.
 
 BO CONFIG AND INITIAL DESIGN
 
@@ -185,7 +203,7 @@ scoring
   Weights for Q_channel and Q_run.
 
 analysis
-  The file pattern and retention behavior for external analysis JSON outputs.
+  The in-repo SWV analysis settings and retention behavior for analysis JSON outputs.
 
 BO PATH SETTINGS WITHOUT ENVIRONMENT FILES
 
@@ -194,14 +212,12 @@ bo_configs/local_paths.json for machine-specific path settings:
 
 {
   "analysis_output_dir": "analysis_outputs",
-  "analysis_app_path": "",
-  "analysis_file_glob": "*.json",
-  "analysis_poll_seconds": 5.0
+  "analysis_file_glob": "*.json"
 }
 
 The Setup subtab can update this file with the Save Paths button. This is the
-recommended way to point the BO tab at the outside analysis app's output folder
-on a local machine.
+recommended way to choose where BO analysis summaries are written on a local
+machine.
 
 BAYESIAN OPTIMIZATION INTUITION
 
@@ -246,7 +262,7 @@ outputs.
 
 QUALITY SCORE
 
-The external analysis app supplies per-channel metrics. The BO module then
+The in-repo analysis runner supplies per-channel metrics. The BO module then
 computes:
 
   Q_channel =
@@ -323,22 +339,29 @@ Bayesian Optimization tab
   -> save the method through MethodRegistry
   -> add ordinary SWV queue items with BO metadata
   -> instrument queue runs the mux batch
-  -> outside analysis app writes per-channel metrics JSON
-  -> BO tab imports latest or selected analysis JSON
+  -> in-repo analysis scores the just-completed BO CSV files
+  -> BO tab imports the generated analysis JSON
   -> core computes Q_channel and Q_run
   -> records are retained under experiment/bo_sessions/
   -> next method is suggested
 
 The tab supports both assisted-manual operation and an Auto Loop mode. Auto Loop
 starts only from an empty queue, submits one BO mux batch at a time, starts the
-existing queue, waits for queue completion, polls for a new analysis JSON, imports
-the result, records the scores, and repeats until the requested number of
-completed BO iterations is reached.
+existing queue, waits for queue completion, runs in-repo analysis immediately,
+records the scores, and repeats until the requested number of completed BO
+iterations is reached.
 
-EXTERNAL ANALYSIS CONTRACT
+ANALYSIS JSON CONTRACT
 
-The outside analysis app should write JSON in the folder configured by
-EA_BO_ANALYSIS_OUTPUT_DIR or BO_ANALYSIS_OUTPUT_DIR in config.py.
+The normal path writes summaries under the active experiment folder:
+
+  <active_experiment>/bo_analysis/
+
+The BO session also retains analysis records under:
+
+  <active_experiment>/bo_sessions/<session>/analysis/
+
+Manual imports and simulation replay still accept this JSON shape:
 
 Accepted JSON shape:
 

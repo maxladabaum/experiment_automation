@@ -19,10 +19,8 @@ from tkinter import ttk, simpledialog
 from methods import library_map
 from config import (
     BLOCKS_DIR,
-    BO_ANALYSIS_APP_PATH,
     BO_ANALYSIS_FILE_GLOB,
     BO_ANALYSIS_OUTPUT_DIR,
-    BO_ANALYSIS_POLL_SECONDS,
     BO_DEFAULT_CONFIG_PATH,
 )
 from core.bo_session import load_bo_config, normalize_bo_config
@@ -241,17 +239,10 @@ class RecipeMakerTab:
 
     def _default_bo_block(self) -> dict:
         analysis_cfg = self._default_bo_analysis_config()
-        default_app = BO_ANALYSIS_APP_PATH
-        if default_app is None or not str(default_app).strip():
-            sibling = (self._repo_root.parent / "swv_app").resolve()
-            if sibling.exists():
-                default_app = sibling
         block = {
             "bo_config_path": str(BO_DEFAULT_CONFIG_PATH),
             "analysis_output_dir": str(BO_ANALYSIS_OUTPUT_DIR),
-            "analysis_app_path": str(default_app or ""),
             "analysis_file_glob": str(BO_ANALYSIS_FILE_GLOB),
-            "analysis_poll_seconds": float(BO_ANALYSIS_POLL_SECONDS),
             "target_iterations": 3,
             "channels_override": "",
             "analysis": analysis_cfg,
@@ -1140,14 +1131,7 @@ class RecipeMakerTab:
     def _edit_bo_step(self, index: int):
         item = self._recipe[index]
         block = copy.deepcopy(item.get("bo_block") or self._default_bo_block())
-        default_analysis_app = str(BO_ANALYSIS_APP_PATH or "")
-        if not default_analysis_app.strip():
-            sibling = (self._repo_root.parent / "swv_app").resolve()
-            if sibling.exists():
-                default_analysis_app = str(sibling)
         default_analysis_output = str(BO_ANALYSIS_OUTPUT_DIR)
-        if not str(block.get("analysis_app_path") or "").strip():
-            block["analysis_app_path"] = default_analysis_app
         if not str(block.get("analysis_output_dir") or "").strip():
             block["analysis_output_dir"] = default_analysis_output
 
@@ -1173,21 +1157,9 @@ class RecipeMakerTab:
             ),
         ).grid(row=0, column=4, **pad, sticky="w")
 
-        ttk.Label(win, text="Analysis app:").grid(row=1, column=0, **pad, sticky="e")
-        app_var = tk.StringVar(value=str(block.get("analysis_app_path") or ""))
-        ttk.Entry(win, width=56, textvariable=app_var).grid(row=1, column=1, columnspan=3, **pad, sticky="we")
-        ttk.Button(
-            win,
-            text="Browse",
-            command=lambda: self._set_string_from_dialog(
-                app_var,
-                filedialog.askdirectory(title="Choose swv_app project folder"),
-            ),
-        ).grid(row=1, column=4, **pad, sticky="w")
-
-        ttk.Label(win, text="Analysis output:").grid(row=2, column=0, **pad, sticky="e")
+        ttk.Label(win, text="Analysis output:").grid(row=1, column=0, **pad, sticky="e")
         out_var = tk.StringVar(value=str(block.get("analysis_output_dir") or ""))
-        ttk.Entry(win, width=56, textvariable=out_var).grid(row=2, column=1, columnspan=3, **pad, sticky="we")
+        ttk.Entry(win, width=56, textvariable=out_var).grid(row=1, column=1, columnspan=3, **pad, sticky="we")
         ttk.Button(
             win,
             text="Browse",
@@ -1195,47 +1167,43 @@ class RecipeMakerTab:
                 out_var,
                 filedialog.askdirectory(title="Choose BO analysis output folder"),
             ),
-        ).grid(row=2, column=4, **pad, sticky="w")
+        ).grid(row=1, column=4, **pad, sticky="w")
 
-        ttk.Label(win, text="Target iterations:").grid(row=3, column=0, **pad, sticky="e")
+        ttk.Label(win, text="Target iterations:").grid(row=2, column=0, **pad, sticky="e")
         target_var = tk.IntVar(value=int(block.get("target_iterations", 3) or 3))
-        ttk.Entry(win, width=8, textvariable=target_var).grid(row=3, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Poll (s):").grid(row=3, column=2, **pad, sticky="e")
-        poll_var = tk.DoubleVar(value=float(block.get("analysis_poll_seconds", BO_ANALYSIS_POLL_SECONDS) or BO_ANALYSIS_POLL_SECONDS))
-        ttk.Entry(win, width=8, textvariable=poll_var).grid(row=3, column=3, **pad, sticky="w")
-
-        ttk.Label(win, text="Channels override:").grid(row=4, column=0, **pad, sticky="e")
+        ttk.Entry(win, width=8, textvariable=target_var).grid(row=2, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Channels override:").grid(row=3, column=0, **pad, sticky="e")
         channels_var = tk.StringVar(value=str(block.get("channels_override") or ""))
-        ttk.Entry(win, width=24, textvariable=channels_var).grid(row=4, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Glob:").grid(row=4, column=2, **pad, sticky="e")
+        ttk.Entry(win, width=24, textvariable=channels_var).grid(row=3, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Glob:").grid(row=3, column=2, **pad, sticky="e")
         glob_var = tk.StringVar(value=str(block.get("analysis_file_glob") or BO_ANALYSIS_FILE_GLOB))
-        ttk.Entry(win, width=18, textvariable=glob_var).grid(row=4, column=3, **pad, sticky="w")
+        ttk.Entry(win, width=18, textvariable=glob_var).grid(row=3, column=3, **pad, sticky="w")
 
         analysis = block.get("analysis") or {}
-        ttk.Label(win, text="Crop min/max (V):").grid(row=5, column=0, **pad, sticky="e")
+        ttk.Label(win, text="Crop min/max (V):").grid(row=4, column=0, **pad, sticky="e")
         crop_min_var = tk.StringVar(value=str(analysis.get("crop_min_v", -0.6)))
         crop_max_var = tk.StringVar(value=str(analysis.get("crop_max_v", -0.1)))
-        ttk.Entry(win, width=8, textvariable=crop_min_var).grid(row=5, column=1, **pad, sticky="w")
-        ttk.Entry(win, width=8, textvariable=crop_max_var).grid(row=5, column=1, padx=(76, 6), pady=4, sticky="w")
-        ttk.Label(win, text="Smooth win/poly:").grid(row=5, column=2, **pad, sticky="e")
+        ttk.Entry(win, width=8, textvariable=crop_min_var).grid(row=4, column=1, **pad, sticky="w")
+        ttk.Entry(win, width=8, textvariable=crop_max_var).grid(row=4, column=1, padx=(76, 6), pady=4, sticky="w")
+        ttk.Label(win, text="Smooth win/poly:").grid(row=4, column=2, **pad, sticky="e")
         smooth_win_var = tk.StringVar(value=str(analysis.get("smooth_window", 15)))
         smooth_poly_var = tk.StringVar(value=str(analysis.get("smooth_polyorder", 2)))
-        ttk.Entry(win, width=8, textvariable=smooth_win_var).grid(row=5, column=3, **pad, sticky="w")
-        ttk.Entry(win, width=8, textvariable=smooth_poly_var).grid(row=5, column=3, padx=(76, 6), pady=4, sticky="w")
+        ttk.Entry(win, width=8, textvariable=smooth_win_var).grid(row=4, column=3, **pad, sticky="w")
+        ttk.Entry(win, width=8, textvariable=smooth_poly_var).grid(row=4, column=3, padx=(76, 6), pady=4, sticky="w")
 
-        ttk.Label(win, text="Minima window (V):").grid(row=6, column=0, **pad, sticky="e")
+        ttk.Label(win, text="Minima window (V):").grid(row=5, column=0, **pad, sticky="e")
         minima_var = tk.StringVar(value=str(analysis.get("minima_search_window_v", 0.30)))
-        ttk.Entry(win, width=10, textvariable=minima_var).grid(row=6, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Min peak height (uA):").grid(row=6, column=2, **pad, sticky="e")
+        ttk.Entry(win, width=10, textvariable=minima_var).grid(row=5, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Min peak height (uA):").grid(row=5, column=2, **pad, sticky="e")
         min_peak_var = tk.StringVar(value="" if analysis.get("min_peak_height_ua") in (None, "") else str(analysis.get("min_peak_height_ua")))
-        ttk.Entry(win, width=10, textvariable=min_peak_var).grid(row=6, column=3, **pad, sticky="w")
+        ttk.Entry(win, width=10, textvariable=min_peak_var).grid(row=5, column=3, **pad, sticky="w")
 
-        ttk.Label(win, text="Min start V:").grid(row=7, column=0, **pad, sticky="e")
+        ttk.Label(win, text="Min start V:").grid(row=6, column=0, **pad, sticky="e")
         min_start_var = tk.StringVar(value=str(analysis.get("min_start_voltage_v", -0.6)))
-        ttk.Entry(win, width=10, textvariable=min_start_var).grid(row=7, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Scan windows:").grid(row=7, column=2, **pad, sticky="e")
+        ttk.Entry(win, width=10, textvariable=min_start_var).grid(row=6, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Scan windows:").grid(row=6, column=2, **pad, sticky="e")
         scan_windows_var = tk.StringVar(value=str(analysis.get("scan_windows", "")))
-        ttk.Entry(win, width=24, textvariable=scan_windows_var).grid(row=7, column=3, **pad, sticky="w")
+        ttk.Entry(win, width=24, textvariable=scan_windows_var).grid(row=6, column=3, **pad, sticky="w")
 
         prominent_var = tk.BooleanVar(value=bool(analysis.get("use_prominent_minima", False)))
         double_corr_var = tk.BooleanVar(value=bool(analysis.get("use_double_correction", True)))
@@ -1243,15 +1211,15 @@ class RecipeMakerTab:
         wavelet_energy_var = tk.BooleanVar(value=bool(analysis.get("compute_wavelet_energy", False)))
         wavelet_trace_var = tk.BooleanVar(value=bool(analysis.get("compute_wavelet_denoised_trace", False)))
         wavelet_corr_var = tk.BooleanVar(value=bool(analysis.get("use_wavelet_for_correction", False)))
-        ttk.Checkbutton(win, text="Prominent minima", variable=prominent_var).grid(row=8, column=0, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Double correction", variable=double_corr_var).grid(row=8, column=2, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Compute skew", variable=skew_var).grid(row=9, column=0, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Wavelet energy", variable=wavelet_energy_var).grid(row=9, column=2, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Wavelet trace", variable=wavelet_trace_var).grid(row=10, column=0, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Wavelet correction", variable=wavelet_corr_var).grid(row=10, column=2, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Prominent minima", variable=prominent_var).grid(row=7, column=0, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Double correction", variable=double_corr_var).grid(row=7, column=2, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Compute skew", variable=skew_var).grid(row=8, column=0, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Wavelet energy", variable=wavelet_energy_var).grid(row=8, column=2, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Wavelet trace", variable=wavelet_trace_var).grid(row=9, column=0, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Wavelet correction", variable=wavelet_corr_var).grid(row=9, column=2, columnspan=2, **pad, sticky="w")
 
         btns = ttk.Frame(win)
-        btns.grid(row=11, column=0, columnspan=5, pady=(8, 10))
+        btns.grid(row=10, column=0, columnspan=5, pady=(8, 10))
 
         def _apply():
             try:
@@ -1273,10 +1241,8 @@ class RecipeMakerTab:
                 }
                 new_block = {
                     "bo_config_path": cfg_var.get().strip(),
-                    "analysis_app_path": app_var.get().strip(),
                     "analysis_output_dir": out_var.get().strip(),
                     "analysis_file_glob": glob_var.get().strip() or "*.json",
-                    "analysis_poll_seconds": float(poll_var.get()),
                     "target_iterations": int(target_var.get()),
                     "channels_override": channels_var.get().strip(),
                     "analysis": new_analysis,
@@ -1285,8 +1251,6 @@ class RecipeMakerTab:
                     raise ValueError("BO config path is required.")
                 if new_block["target_iterations"] < 1:
                     raise ValueError("Target iterations must be at least 1.")
-                if new_block["analysis_poll_seconds"] < 1:
-                    raise ValueError("Poll seconds must be at least 1.")
             except Exception as exc:
                 messagebox.showerror("Invalid BO step", str(exc))
                 return

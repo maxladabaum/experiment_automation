@@ -38,7 +38,13 @@
     "begin_potential": {
       "label": "Begin potential",
       "unit": "V",
-      "mode": "locked",
+      "mode": "active",
+      "space": "continuous",
+      "min": -0.9,
+      "max": -0.4,
+      "scale": "linear",
+      "step": null,
+      "proposal_sigma": 0.12,
       "values": [
         -1.0,
         -0.9,
@@ -53,7 +59,13 @@
     "end_potential": {
       "label": "End potential",
       "unit": "V",
-      "mode": "locked",
+      "mode": "active",
+      "space": "continuous",
+      "min": -0.35,
+      "max": 0.05,
+      "scale": "linear",
+      "step": null,
+      "proposal_sigma": 0.1,
       "values": [
         -0.5,
         -0.4,
@@ -69,6 +81,12 @@
       "label": "Step potential",
       "unit": "V",
       "mode": "active",
+      "space": "continuous",
+      "min": 0.001,
+      "max": 0.01,
+      "scale": "linear",
+      "step": null,
+      "proposal_sigma": 0.2,
       "values": [
         0.001,
         0.002,
@@ -81,6 +99,12 @@
       "label": "Amplitude",
       "unit": "V",
       "mode": "active",
+      "space": "continuous",
+      "min": 0.01,
+      "max": 0.08,
+      "scale": "linear",
+      "step": null,
+      "proposal_sigma": 0.18,
       "values": [
         0.02,
         0.028,
@@ -93,6 +117,12 @@
       "label": "Frequency",
       "unit": "Hz",
       "mode": "active",
+      "space": "continuous",
+      "min": 25.0,
+      "max": 1000.0,
+      "scale": "log",
+      "step": null,
+      "proposal_sigma": 0.25,
       "values": [
         50.0,
         100.0,
@@ -107,6 +137,12 @@
       "label": "Conditioning potential",
       "unit": "V",
       "mode": "tied",
+      "space": "continuous",
+      "min": -0.9,
+      "max": 0.05,
+      "scale": "linear",
+      "step": null,
+      "proposal_sigma": 0.12,
       "tie_to": "begin_potential",
       "values": [
         -1.0,
@@ -122,6 +158,12 @@
       "label": "Conditioning time",
       "unit": "s",
       "mode": "locked",
+      "space": "continuous",
+      "min": 0.0,
+      "max": 10.0,
+      "scale": "linear",
+      "step": null,
+      "proposal_sigma": 0.2,
       "values": [
         0.0,
         1.0,
@@ -135,10 +177,17 @@
     }
   },
   "constraints": {
-    "min_scan_window": 0.4,
+    "min_scan_window": 0.25,
     "max_effective_scan_rate": 1.0,
+    "max_amplitude": 0.1,
+    "conditioning_must_be_in_scan_window": false,
     "require_end_after_begin": true,
     "conditioning_potential_tied_by_default": true
+  },
+  "acquisition": {
+    "exploration": 0.35,
+    "candidate_pool_size": 600,
+    "local_candidate_pool_size": 120
   },
   "scoring": {
     "channel_weights": {
@@ -173,6 +222,23 @@
     "compute_wavelet_energy": false,
     "compute_wavelet_denoised_trace": false,
     "use_wavelet_for_correction": false
+  },
+  "simulation": {
+    "mode": "fake",
+    "seed": 42,
+    "noise": 0.04,
+    "channel_noise": 0.03,
+    "replay_dir": "",
+    "replay_glob": "*.json",
+    "optimum": {
+      "begin_potential": -0.62,
+      "end_potential": -0.08,
+      "step_potential": 0.003,
+      "amplitude": 0.04,
+      "frequency": 240.0,
+      "conditioning_potential": -0.62,
+      "conditioning_time": 1.0
+    }
   },
   "records": {
     "folder_prefix": "bo_session"

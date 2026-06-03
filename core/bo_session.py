@@ -6,11 +6,11 @@ The GUI-facing contract is intentionally small:
 * load a user-editable JSON configuration
 * propose one valid SWV method for a mux batch
 * create normal queue items through MethodRegistry
-* import external analysis JSON outputs
+* run/import in-repo analysis JSON outputs
 * retain publication-grade records inside the active experiment folder
 
-The external analysis app is the source of per-channel metrics. This module
-only scores those metrics and updates the optimizer state.
+The in-repo analysis runner supplies per-channel metrics. This module scores
+those metrics and updates the optimizer state.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from config import BO_ANALYSIS_FILE_GLOB, BO_ANALYSIS_OUTPUT_DIR, BO_DEFAULT_CONFIG_PATH
+from config import BO_ANALYSIS_FILE_GLOB, BO_DEFAULT_CONFIG_PATH
 from core.mscript_parser import to_si_string
 
 
@@ -62,6 +62,16 @@ DEFAULT_INITIAL_METHOD = {
     "frequency": 200.0,
     "conditioning_potential": -0.7,
     "conditioning_time": 0.0,
+}
+
+DEFAULT_PARAMETER_RANGES = {
+    "begin_potential": {"min": -0.9, "max": -0.4, "scale": "linear", "step": None, "proposal_sigma": 0.12},
+    "end_potential": {"min": -0.35, "max": 0.05, "scale": "linear", "step": None, "proposal_sigma": 0.10},
+    "step_potential": {"min": 0.001, "max": 0.010, "scale": "linear", "step": None, "proposal_sigma": 0.20},
+    "amplitude": {"min": 0.010, "max": 0.080, "scale": "linear", "step": None, "proposal_sigma": 0.18},
+    "frequency": {"min": 25.0, "max": 1000.0, "scale": "log", "step": None, "proposal_sigma": 0.25},
+    "conditioning_potential": {"min": -0.9, "max": 0.05, "scale": "linear", "step": None, "proposal_sigma": 0.12},
+    "conditioning_time": {"min": 0.0, "max": 10.0, "scale": "linear", "step": None, "proposal_sigma": 0.20},
 }
 
 
@@ -112,16 +122,35 @@ def normalize_bo_config(config: dict) -> dict:
         p = dict(cfg["parameters"].get(name) or {})
         p.setdefault("label", name.replace("_", " ").title())
         p.setdefault("mode", "locked")
+        p.setdefault("space", "discrete")
         p.setdefault("value", cfg["initial_parameters"].get(name, DEFAULT_INITIAL_METHOD[name]))
         p.setdefault("values", [p["value"]])
+        range_defaults = DEFAULT_PARAMETER_RANGES[name]
+        p.setdefault("min", min(_float_values(p.get("values", [p["value"]]), f"{name}.values")))
+        p.setdefault("max", max(_float_values(p.get("values", [p["value"]]), f"{name}.values")))
+        p["min"] = float(p.get("min", range_defaults["min"]))
+        p["max"] = float(p.get("max", range_defaults["max"]))
+        if p["max"] < p["min"]:
+            p["min"], p["max"] = p["max"], p["min"]
+        p.setdefault("scale", p.get("encoding", range_defaults["scale"]))
+        if str(p.get("scale", "")).lower() == "log10":
+            p["scale"] = "log"
+        p.setdefault("step", range_defaults["step"])
+        p.setdefault("proposal_sigma", range_defaults["proposal_sigma"])
         if name == "conditioning_potential":
             p.setdefault("tie_to", "begin_potential")
         cfg["parameters"][name] = p
     cfg.setdefault("constraints", {})
     cfg["constraints"].setdefault("min_scan_window", 0.4)
     cfg["constraints"].setdefault("max_effective_scan_rate", 1.0)
+    cfg["constraints"].setdefault("max_amplitude", 0.10)
+    cfg["constraints"].setdefault("conditioning_must_be_in_scan_window", False)
     cfg["constraints"].setdefault("require_end_after_begin", True)
     cfg["constraints"].setdefault("conditioning_potential_tied_by_default", True)
+    cfg.setdefault("acquisition", {})
+    cfg["acquisition"].setdefault("exploration", 0.35)
+    cfg["acquisition"].setdefault("candidate_pool_size", 600)
+    cfg["acquisition"].setdefault("local_candidate_pool_size", 120)
     cfg.setdefault("scoring", {})
     cfg["scoring"].setdefault(
         "channel_weights",
@@ -160,6 +189,22 @@ def normalize_bo_config(config: dict) -> dict:
     cfg["analysis"].setdefault("compute_wavelet_energy", False)
     cfg["analysis"].setdefault("compute_wavelet_denoised_trace", False)
     cfg["analysis"].setdefault("use_wavelet_for_correction", False)
+    cfg.setdefault("simulation", {})
+    cfg["simulation"].setdefault("mode", "off")
+    cfg["simulation"].setdefault("seed", int(cfg.get("random_seed", 42)))
+    cfg["simulation"].setdefault("noise", 0.04)
+    cfg["simulation"].setdefault("channel_noise", 0.03)
+    cfg["simulation"].setdefault("replay_dir", "")
+    cfg["simulation"].setdefault("replay_glob", "*.json")
+    cfg["simulation"].setdefault("optimum", {
+        "begin_potential": -0.62,
+        "end_potential": -0.08,
+        "step_potential": 0.003,
+        "amplitude": 0.040,
+        "frequency": 240.0,
+        "conditioning_potential": -0.62,
+        "conditioning_time": 1.0,
+    })
     cfg.setdefault("records", {})
     cfg["records"].setdefault("folder_prefix", "bo_session")
     return cfg
@@ -227,6 +272,13 @@ def active_parameters(config: dict) -> List[str]:
 def generate_candidates(config: dict) -> List[Dict[str, float]]:
     cfg = normalize_bo_config(config)
     params_cfg = cfg["parameters"]
+    if any(
+        str(params_cfg[name].get("mode", "")).lower() == "active"
+        and str(params_cfg[name].get("space", "discrete")).lower() == "continuous"
+        for name in PARAMETER_ORDER
+    ):
+        return _generate_mixed_candidates(cfg)
+
     names_for_product: List[str] = []
     values_for_product: List[List[float]] = []
 
@@ -236,7 +288,7 @@ def generate_candidates(config: dict) -> List[Dict[str, float]]:
         if mode == "tied":
             continue
         if mode == "active":
-            values = _float_values(p_cfg.get("values", []), f"{name}.values")
+            values = _parameter_discrete_values(p_cfg, name)
         else:
             values = [_float_value(p_cfg.get("value", cfg["initial_parameters"].get(name)), name)]
         names_for_product.append(name)
@@ -266,6 +318,51 @@ def generate_candidates(config: dict) -> List[Dict[str, float]]:
         key = candidate_key(initial)
         candidates = [c for c in candidates if candidate_key(c) != key]
         candidates.insert(0, initial)
+    return candidates
+
+
+def _generate_mixed_candidates(config: dict) -> List[Dict[str, float]]:
+    cfg = normalize_bo_config(config)
+    rng = random.Random(int(cfg.get("random_seed", 42)))
+    target = max(50, int(cfg.get("acquisition", {}).get("candidate_pool_size", 600)))
+    initial = resolve_initial_parameters(cfg)
+    candidates: List[Dict[str, float]] = []
+    seen = set()
+
+    def add(candidate: dict) -> None:
+        candidate = _resolve_tied_candidate(candidate, cfg)
+        errors = validate_candidate(candidate, cfg)
+        if errors:
+            return
+        key = candidate_key(candidate)
+        if key in seen:
+            return
+        candidates.append(candidate)
+        seen.add(key)
+
+    add(initial)
+    for _ in range(target * 4):
+        if len(candidates) >= target:
+            break
+        candidate = {}
+        for name in PARAMETER_ORDER:
+            p_cfg = cfg["parameters"][name]
+            mode = str(p_cfg.get("mode", "locked")).lower()
+            if mode == "tied":
+                continue
+            if mode == "locked":
+                candidate[name] = _float_value(p_cfg.get("value", initial.get(name)), name)
+            elif str(p_cfg.get("space", "discrete")).lower() == "continuous":
+                candidate[name] = _sample_continuous_value(p_cfg, rng)
+            else:
+                values = _parameter_discrete_values(p_cfg, name)
+                candidate[name] = rng.choice(values)
+        for name in PARAMETER_ORDER:
+            candidate.setdefault(name, float(initial[name]))
+        add(candidate)
+
+    if not candidates:
+        raise ValueError("No valid candidates remain after continuous sampling")
     return candidates
 
 
@@ -307,6 +404,7 @@ def validate_candidate(candidate: Dict[str, float], config: dict) -> List[str]:
     step = float(candidate["step_potential"])
     frequency = float(candidate["frequency"])
     cond = float(candidate["conditioning_potential"])
+    amplitude = float(candidate["amplitude"])
     scan_window = end - begin
     if constraints.get("require_end_after_begin", True) and end <= begin:
         errors.append("end_potential must be greater than begin_potential")
@@ -316,6 +414,13 @@ def validate_candidate(candidate: Dict[str, float], config: dict) -> List[str]:
     max_scan_rate = float(constraints.get("max_effective_scan_rate", 1.0))
     if step * frequency > max_scan_rate + 1e-12:
         errors.append(f"step_potential * frequency must be <= {max_scan_rate:g} V/s")
+    max_amplitude = float(constraints.get("max_amplitude", 0.10))
+    if amplitude > max_amplitude + 1e-12:
+        errors.append(f"amplitude must be <= {max_amplitude:g} V")
+    if constraints.get("conditioning_must_be_in_scan_window", False):
+        lo, hi = min(begin, end), max(begin, end)
+        if cond < lo - 1e-12 or cond > hi + 1e-12:
+            errors.append("conditioning_potential must be within the scan window")
     cond_cfg = cfg["parameters"].get("conditioning_potential", {})
     if str(cond_cfg.get("mode", "")).lower() == "tied" and abs(cond - begin) > 1e-9:
         errors.append("conditioning_potential is tied to begin_potential")
@@ -419,7 +524,7 @@ class BOIntegrationSession:
         self.config = normalize_bo_config(config)
         self.config_path = Path(config_path) if config_path else None
         self.experiment_dir = Path(experiment_dir)
-        self.analysis_output_dir = Path(analysis_output_dir) if analysis_output_dir else Path(BO_ANALYSIS_OUTPUT_DIR)
+        self.analysis_output_dir = Path(analysis_output_dir) if analysis_output_dir else (self.experiment_dir / "bo_analysis")
         self.session_id = self._build_session_id()
         folder_prefix = self.config.get("records", {}).get("folder_prefix", "bo_session")
         self.record_dir = self._unique_dir(self.experiment_dir / "bo_sessions" / f"{folder_prefix}_{self.session_id}")
@@ -462,7 +567,7 @@ class BOIntegrationSession:
         if len(self.observations) >= int(self.config.get("max_iterations", 20)):
             raise RuntimeError("Maximum BO iterations reached")
         tried = {candidate_key(obs["params"]) for obs in self.observations}
-        available = [c for c in self.candidates if candidate_key(c) not in tried]
+        available = self._available_candidates(tried)
         if not available:
             raise RuntimeError("All valid candidates have been evaluated")
         iteration = len(self.observations) + 1
@@ -480,6 +585,18 @@ class BOIntegrationSession:
         self._write_json(self.methods_dir / f"iter_{iteration:03d}_suggested_method.json", suggestion)
         self.save_state()
         return BOSuggestion(**suggestion)
+
+    def _available_candidates(self, tried: set) -> List[Dict[str, float]]:
+        available = [c for c in self.candidates if candidate_key(c) not in tried]
+        dynamic = self._local_continuous_candidates(tried)
+        if dynamic:
+            existing = {candidate_key(c) for c in available}
+            for candidate in dynamic:
+                key = candidate_key(candidate)
+                if key not in existing:
+                    available.append(candidate)
+                    existing.add(key)
+        return available
 
     def build_queue_items(self, registry, suggestion: BOSuggestion) -> List[dict]:
         channels = parse_channels(self.config.get("channels", []))
@@ -697,6 +814,53 @@ class BOIntegrationSession:
             return None
         return max(files, key=lambda p: p.stat().st_mtime)
 
+    def run_pending_analysis(
+        self,
+        folders: Optional[List[str | Path]] = None,
+        output_dir: Optional[str | Path] = None,
+        analysis: Optional[dict] = None,
+    ) -> Path:
+        if self.pending is None:
+            raise RuntimeError("No pending BO suggestion is waiting for analysis")
+        from core.bo_analysis import run_request
+
+        iteration = int(self.pending["iteration"])
+        output = Path(output_dir) if output_dir else (self.experiment_dir / "bo_analysis")
+        csv_paths = self._iteration_csv_paths(iteration, self.pending["method_id"])
+        input_paths = csv_paths if csv_paths else [Path(folder) for folder in (folders or [self.experiment_dir])]
+        request = {
+            "folders": [str(Path(folder)) for folder in input_paths],
+            "output_dir": str(output),
+            "output_stem": f"bo_iter_{iteration:03d}",
+            "analysis": dict(analysis if analysis is not None else self.config.get("analysis") or {}),
+        }
+        self._write_json(self.analysis_dir / f"iter_{iteration:03d}_analysis_request.json", request)
+        summary = run_request(request)
+        path = Path(summary["summary_path"])
+        if not path.exists():
+            raise FileNotFoundError(path)
+        return path
+
+    def simulate_pending_result(self, notes: str = "Simulated BO result") -> dict:
+        if self.pending is None:
+            raise RuntimeError("No pending BO suggestion is waiting for simulation")
+        sim_cfg = self.config.get("simulation", {})
+        mode = str(sim_cfg.get("mode", "fake")).lower()
+        if mode == "replay":
+            replay = self._next_replay_analysis_file()
+            if replay is not None:
+                return self.import_analysis(replay, notes=notes)
+        iteration = int(self.pending["iteration"])
+        payload = {
+            "schema_version": 1,
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "simulation": {"mode": "fake", "iteration": iteration},
+            "channel_metrics": self._fake_channel_metrics(iteration),
+        }
+        path = self.analysis_dir / f"iter_{iteration:03d}_simulated_analysis.json"
+        self._write_json(path, payload)
+        return self.import_analysis(path, notes=notes)
+
     def best_observation(self) -> Optional[dict]:
         if not self.observations:
             return None
@@ -750,6 +914,7 @@ class BOIntegrationSession:
     def _distance_surrogate_candidate(self, available: List[Dict[str, float]]) -> Dict[str, float]:
         observed = [(encode_candidate(obs["params"], self.config), float(obs["Q_run"])) for obs in self.observations]
         best_q = max(q for _, q in observed)
+        exploration = _clip01(self.config.get("acquisition", {}).get("exploration", 0.35))
 
         def score(candidate: dict) -> float:
             encoded = encode_candidate(candidate, self.config)
@@ -762,15 +927,29 @@ class BOIntegrationSession:
                 weighted_sum += weight * q
                 weight_total += weight
             predicted = weighted_sum / max(weight_total, 1e-12)
-            return predicted + 0.15 * nearest + 0.05 * max(0.0, best_q - predicted)
+            improvement = max(0.0, predicted - best_q)
+            exploit_score = predicted + 0.05 * improvement
+            explore_score = nearest
+            return (1.0 - exploration) * exploit_score + exploration * explore_score
 
         return max(available, key=score)
 
     def _gp_expected_improvement_candidate(self, available: List[Dict[str, float]]) -> Optional[Dict[str, float]]:
+        gp, train = self._fit_gp_surrogate()
+        if gp is None or train is None or len(self.observations) < 2:
+            return None
         try:
             import numpy as np
-            from sklearn.gaussian_process import GaussianProcessRegressor
-            from sklearn.gaussian_process.kernels import ConstantKernel, Matern, WhiteKernel
+
+            x_available = np.asarray([encode_candidate(c, self.config) for c in available], dtype=float)
+            mean, std = gp.predict(x_available, return_std=True)
+            best_q = float(max(obs["Q_run"] for obs in self.observations))
+            exploration = _clip01(self.config.get("acquisition", {}).get("exploration", 0.35))
+            scores = [
+                _acquisition_score(float(m), float(s), best_q, exploration)
+                for m, s in zip(mean, std)
+            ]
+            return available[int(max(range(len(scores)), key=lambda i: scores[i]))]
         except Exception:
             return None
 
@@ -801,29 +980,88 @@ class BOIntegrationSession:
             return gp, {"x_train": x_train, "y_train": y_train}
         except Exception:
             return None, None
-        if len(self.observations) < 2:
+
+    def _local_continuous_candidates(self, tried: set) -> List[Dict[str, float]]:
+        active_continuous = [
+            name for name in PARAMETER_ORDER
+            if str(self.config["parameters"][name].get("mode", "")).lower() == "active"
+            and str(self.config["parameters"][name].get("space", "discrete")).lower() == "continuous"
+        ]
+        if not active_continuous:
+            return []
+        target = max(0, int(self.config.get("acquisition", {}).get("local_candidate_pool_size", 120)))
+        if target <= 0:
+            return []
+        best = self.best_observation()
+        center = dict(best["params"]) if best else resolve_initial_parameters(self.config)
+        rng = random.Random(int(self.config.get("random_seed", 42)) + 1009 * (len(self.observations) + 1))
+        candidates: List[Dict[str, float]] = []
+        seen = set(tried)
+        for _ in range(target * 4):
+            if len(candidates) >= target:
+                break
+            candidate = dict(center)
+            for name in PARAMETER_ORDER:
+                p_cfg = self.config["parameters"][name]
+                mode = str(p_cfg.get("mode", "locked")).lower()
+                if mode == "tied":
+                    continue
+                if mode == "active" and str(p_cfg.get("space", "discrete")).lower() == "continuous":
+                    candidate[name] = _sample_continuous_value(p_cfg, rng, center.get(name))
+                elif mode == "active":
+                    candidate[name] = rng.choice(_parameter_discrete_values(p_cfg, name))
+                elif mode == "locked":
+                    candidate[name] = _float_value(p_cfg.get("value", center.get(name)), name)
+            candidate = _resolve_tied_candidate(candidate, self.config)
+            if validate_candidate(candidate, self.config):
+                continue
+            key = candidate_key(candidate)
+            if key in seen:
+                continue
+            candidates.append(candidate)
+            seen.add(key)
+        return candidates
+
+    def _fake_channel_metrics(self, iteration: int) -> dict:
+        sim_cfg = self.config.get("simulation", {})
+        rng = random.Random(int(sim_cfg.get("seed", self.config.get("random_seed", 42))) + iteration * 997)
+        params = dict(self.pending.get("params") or {})
+        optimum = dict(sim_cfg.get("optimum") or {})
+        encoded = encode_candidate(params, self.config)
+        opt_params = resolve_method_payload(self.config, optimum)
+        opt_encoded = encode_candidate(opt_params, self.config)
+        dist = _distance(encoded, opt_encoded)
+        base_q = _clip01(math.exp(-2.6 * dist * dist) + rng.gauss(0.0, float(sim_cfg.get("noise", 0.04))))
+        channel_noise = float(sim_cfg.get("channel_noise", 0.03))
+        metrics = {}
+        for channel in parse_channels(self.config.get("channels", [])):
+            q = _clip01(base_q + rng.gauss(0.0, channel_noise))
+            snr = 2.0 + 24.0 * q + rng.random() * 2.0
+            metrics[str(channel)] = {
+                "snr": snr,
+                "peak_shape_score": _clip01(0.20 + 0.80 * q + rng.gauss(0.0, channel_noise)),
+                "baseline_stability_score": _clip01(0.25 + 0.75 * q + rng.gauss(0.0, channel_noise)),
+                "replicate_consistency_score": _clip01(0.30 + 0.70 * q + rng.gauss(0.0, channel_noise)),
+                "success_score": _clip01(0.55 + 0.45 * q),
+                "ok_scan_count": 3,
+                "total_scan_count": 3,
+                "median_peak_current_uA": 1.0 + 4.0 * q,
+                "median_background_rms_uA": max(0.05, 0.6 - 0.4 * q),
+            }
+        return metrics
+
+    def _next_replay_analysis_file(self) -> Optional[Path]:
+        sim_cfg = self.config.get("simulation", {})
+        folder = Path(str(sim_cfg.get("replay_dir") or ""))
+        if not folder.exists() or not folder.is_dir():
             return None
-        x_train = np.asarray([encode_candidate(obs["params"], self.config) for obs in self.observations], dtype=float)
-        y_train = np.asarray([float(obs["Q_run"]) for obs in self.observations], dtype=float)
-        x_available = np.asarray([encode_candidate(c, self.config) for c in available], dtype=float)
-        try:
-            kernel = (
-                ConstantKernel(1.0, constant_value_bounds="fixed")
-                * Matern(length_scale=np.ones(x_train.shape[1]), nu=2.5)
-                + WhiteKernel(noise_level=1e-4, noise_level_bounds=(1e-8, 1e-1))
-            )
-            gp = GaussianProcessRegressor(
-                kernel=kernel,
-                normalize_y=True,
-                random_state=int(self.config.get("random_seed", 42)),
-                n_restarts_optimizer=2,
-            )
-            gp.fit(x_train, y_train)
-            mean, std = gp.predict(x_available, return_std=True)
-            ei = [_expected_improvement(float(m), float(s), float(y_train.max())) for m, s in zip(mean, std)]
-            return available[int(max(range(len(ei)), key=lambda i: ei[i]))]
-        except Exception:
-            return None
+        pattern = str(sim_cfg.get("replay_glob") or "*.json")
+        used = {str(obs.get("analysis_source")) for obs in self.observations}
+        files = sorted(p for p in folder.glob(pattern) if p.is_file())
+        for path in files:
+            if str(path) not in used:
+                return path
+        return None
 
     def _params_for_method_ref(self, params: dict) -> dict:
         result = {name: _format_float(params[name]) for name in PARAMETER_ORDER}
@@ -912,6 +1150,7 @@ class BOIntegrationSession:
             "candidate_count": len(self.candidates),
             "active_parameters": active_parameters(self.config),
             "best_Q_run": best_q,
+            "exploration": _clip01(self.config.get("acquisition", {}).get("exploration", 0.35)),
             "created_at": datetime.now().isoformat(timespec="seconds"),
         }
 
@@ -931,10 +1170,12 @@ class BOIntegrationSession:
             encoded = encode_candidate(candidate, self.config)
             mean = float(means[idx])
             std = float(stds[idx])
-            if gp is not None:
-                acquisition = _expected_improvement(mean, std, best_q)
-            else:
-                acquisition = mean + 0.15 * std
+            acquisition = _acquisition_score(
+                mean,
+                std,
+                best_q,
+                _clip01(self.config.get("acquisition", {}).get("exploration", 0.35)),
+            )
             key = candidate_key(candidate)
             row = {
                 "candidate_index": idx,
@@ -1202,15 +1443,98 @@ def encode_candidate(candidate: dict, config: dict) -> List[float]:
     encoded = []
     for name in OPTIMIZER_ORDER:
         p_cfg = cfg["parameters"][name]
-        values = _float_values(p_cfg.get("values", [candidate[name]]), name)
         value = float(candidate[name])
-        if str(p_cfg.get("encoding", "")).lower() == "log10":
-            values = [math.log10(max(v, 1e-12)) for v in values]
-            value = math.log10(max(value, 1e-12))
-        lo = min(values)
-        hi = max(values)
+        if str(p_cfg.get("space", "discrete")).lower() == "continuous":
+            lo = float(p_cfg.get("min", value))
+            hi = float(p_cfg.get("max", value))
+            if _is_log_scale(p_cfg):
+                lo = math.log10(max(lo, 1e-12))
+                hi = math.log10(max(hi, 1e-12))
+                value = math.log10(max(value, 1e-12))
+        else:
+            values = _parameter_discrete_values(p_cfg, name)
+            if _is_log_scale(p_cfg):
+                values = [math.log10(max(v, 1e-12)) for v in values]
+                value = math.log10(max(value, 1e-12))
+            lo = min(values)
+            hi = max(values)
+        if hi < lo:
+            lo, hi = hi, lo
         encoded.append((value - lo) / (hi - lo + 1e-12))
     return encoded
+
+
+def _resolve_tied_candidate(candidate: dict, config: dict) -> Dict[str, float]:
+    cfg = normalize_bo_config(config)
+    out = {
+        name: float(candidate.get(name, cfg["initial_parameters"].get(name, DEFAULT_INITIAL_METHOD[name])))
+        for name in PARAMETER_ORDER
+    }
+    for name in PARAMETER_ORDER:
+        p_cfg = cfg["parameters"][name]
+        if str(p_cfg.get("mode", "locked")).lower() == "locked":
+            out[name] = _float_value(p_cfg.get("value", out[name]), name)
+    for name in PARAMETER_ORDER:
+        p_cfg = cfg["parameters"][name]
+        if str(p_cfg.get("mode", "locked")).lower() == "tied":
+            tie_to = p_cfg.get("tie_to") or "begin_potential"
+            out[name] = float(out[tie_to])
+    return out
+
+
+def _parameter_discrete_values(p_cfg: dict, name: str) -> List[float]:
+    values = _float_values(p_cfg.get("values", [p_cfg.get("value")]), f"{name}.values")
+    step = p_cfg.get("step")
+    if step in (None, "", 0, "0"):
+        return values
+    return [_quantize_value(v, float(step), p_cfg) for v in values]
+
+
+def _sample_continuous_value(p_cfg: dict, rng: random.Random, center: Optional[float] = None) -> float:
+    lo = float(p_cfg.get("min", p_cfg.get("value", 0.0)))
+    hi = float(p_cfg.get("max", p_cfg.get("value", lo)))
+    if hi < lo:
+        lo, hi = hi, lo
+    if _is_log_scale(p_cfg):
+        lo_t = math.log10(max(lo, 1e-12))
+        hi_t = math.log10(max(hi, 1e-12))
+        if center is None:
+            value_t = rng.uniform(lo_t, hi_t)
+        else:
+            center_t = math.log10(max(float(center), 1e-12))
+            sigma = max(1e-6, float(p_cfg.get("proposal_sigma", 0.25))) * max(hi_t - lo_t, 1e-9)
+            value_t = max(lo_t, min(hi_t, rng.gauss(center_t, sigma)))
+        value = 10 ** value_t
+    else:
+        if center is None:
+            value = rng.uniform(lo, hi)
+        else:
+            sigma = max(1e-6, float(p_cfg.get("proposal_sigma", 0.15))) * max(hi - lo, 1e-9)
+            value = max(lo, min(hi, rng.gauss(float(center), sigma)))
+    step = p_cfg.get("step")
+    if step not in (None, "", 0, "0"):
+        value = max(lo, min(hi, _quantize_value(value, float(step), p_cfg)))
+    return float(value)
+
+
+def _quantize_value(value: float, step: float, p_cfg: dict) -> float:
+    if step <= 0:
+        return float(value)
+    lo = float(p_cfg.get("min", 0.0))
+    return float(lo + round((float(value) - lo) / step) * step)
+
+
+def _is_log_scale(p_cfg: dict) -> bool:
+    scale = str(p_cfg.get("scale", p_cfg.get("encoding", ""))).lower()
+    return scale in ("log", "log10")
+
+
+def _acquisition_score(mean: float, std: float, best_score: float, exploration: float) -> float:
+    exploration = _clip01(exploration)
+    ei = _expected_improvement(mean, std, best_score)
+    exploit = mean + 0.25 * ei
+    explore = std
+    return (1.0 - exploration) * exploit + exploration * explore
 
 
 def candidate_key(candidate: dict) -> Tuple[float, ...]:

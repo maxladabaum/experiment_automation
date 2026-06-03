@@ -13,8 +13,6 @@ Responsible for:
 import copy
 import json
 import re
-import subprocess
-import sys
 import threading
 import time
 from datetime import datetime
@@ -35,7 +33,6 @@ from core.runner import SerialMeasurementRunner
 from core.bo_session import BOIntegrationSession, load_bo_config, normalize_bo_config, parse_channels, validate_bo_config
 from methods import library_map
 from core.session import SessionState
-from config import BO_ANALYSIS_APP_PATH, BO_ANALYSIS_OUTPUT_DIR
 
 
 class QueueTab:
@@ -1458,62 +1455,17 @@ class QueueTab:
             self._session.current_runner = None
             self._root.after(0, self._plotter.stop_live)
 
-    def _resolve_bo_analysis_project_root(self, app_path_text: str) -> Path:
-        raw_text = (app_path_text or "").strip()
-        if not raw_text:
-            if BO_ANALYSIS_APP_PATH is None:
-                raise RuntimeError("BO block needs an swv_app project path.")
-            return Path(BO_ANALYSIS_APP_PATH)
-        raw = Path(raw_text).expanduser()
-        if raw.is_file():
-            raw = raw.parent
-        if not raw.exists():
-            raise FileNotFoundError(raw)
-        if not (raw / "core").exists():
-            raise RuntimeError(f"{raw} does not look like the swv_app project root.")
-        return raw
-
-    @staticmethod
-    def _resolve_bo_analysis_runner(project_root: Path):
-        headless_script = project_root / "bo_headless.py"
-        if not headless_script.exists():
-            raise FileNotFoundError(headless_script)
-        preferred = project_root / ".venv64" / "Scripts" / "python.exe"
-        python_exe = preferred if preferred.exists() else Path(sys.executable)
-        return python_exe, headless_script
-
-    def _run_bo_headless_analysis(self, bo_session: BOIntegrationSession, block: dict) -> Path:
-        project_root = self._resolve_bo_analysis_project_root(str(block.get("analysis_app_path") or ""))
-        python_exe, headless_script = self._resolve_bo_analysis_runner(project_root)
+    def _run_bo_analysis(self, bo_session: BOIntegrationSession, block: dict) -> Path:
         session_mgr = getattr(self._session, "session_manager", None)
         exp_path = session_mgr.require_experiment() if session_mgr is not None else None
         if exp_path is None:
             raise RuntimeError("An active experiment folder is required for BO analysis")
-        output_dir = Path(str(block.get("analysis_output_dir") or BO_ANALYSIS_OUTPUT_DIR))
-        output_dir.mkdir(parents=True, exist_ok=True)
-        pending = bo_session.pending or {}
-        iteration = int(pending.get("iteration", len(bo_session.observations) + 1))
-        request_path = Path(bo_session.analysis_dir) / f"iter_{iteration:03d}_headless_request.json"
-        request = {
-            "folders": [str(exp_path)],
-            "output_dir": str(output_dir),
-            "output_stem": f"bo_iter_{iteration:03d}",
-            "analysis": dict(block.get("analysis") or {}),
-        }
-        with open(request_path, "w", encoding="utf-8") as fh:
-            json.dump(request, fh, indent=2)
-        cmd = [str(python_exe), str(headless_script), "--request", str(request_path)]
-        completed = subprocess.run(cmd, capture_output=True, text=True, cwd=str(project_root))
-        if completed.returncode != 0:
-            stderr = (completed.stderr or completed.stdout or "").strip()
-            raise RuntimeError(stderr or f"Headless swv_app analysis failed with exit code {completed.returncode}")
-        summary_path = (completed.stdout or "").strip().splitlines()[-1].strip()
-        if not summary_path:
-            raise RuntimeError("Headless swv_app analysis did not return a summary JSON path")
-        path = Path(summary_path)
-        if not path.exists():
-            raise FileNotFoundError(path)
-        return path
+        output_dir = Path(str(block.get("analysis_output_dir") or "")) if str(block.get("analysis_output_dir") or "").strip() else Path(exp_path) / "bo_analysis"
+        return bo_session.run_pending_analysis(
+            folders=[exp_path],
+            output_dir=output_dir,
+            analysis=dict(block.get("analysis") or {}),
+        )
 
     def _exec_bo_auto_loop(self, item: dict) -> bool:
         block = dict(item.get("bo_block") or {})
@@ -1542,7 +1494,7 @@ class QueueTab:
         if target_iterations < 1:
             raise RuntimeError("BO block target iterations must be at least 1.")
 
-        analysis_output_dir = str(block.get("analysis_output_dir") or BO_ANALYSIS_OUTPUT_DIR)
+        analysis_output_dir = str(block.get("analysis_output_dir") or (Path(exp_path) / "bo_analysis"))
         bo_session = BOIntegrationSession(config, exp_path, config_path=config_path, analysis_output_dir=analysis_output_dir)
         item["bo_session_id"] = bo_session.session_id
         item["bo_record_dir"] = str(bo_session.record_dir)
@@ -1604,7 +1556,7 @@ class QueueTab:
             if failed or stopped or not self._session.is_running:
                 return False
 
-            summary_path = self._run_bo_headless_analysis(bo_session, block)
+            summary_path = self._run_bo_analysis(bo_session, block)
             obs = bo_session.import_analysis(summary_path, notes="Imported from recipe BO block")
             self.log(f"BO iteration {obs['iteration']} complete: Q_run={obs['Q_run']:.3f}")
 

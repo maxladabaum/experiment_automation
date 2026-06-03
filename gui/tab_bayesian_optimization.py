@@ -2,27 +2,22 @@
 gui/tab_bayesian_optimization.py - Optional SWV Bayesian optimization tab.
 
 This is a UI shell around core.bo_session. It edits configuration, requests BO
-suggestions, queues normal SWV methods, imports external analysis outputs, and
+suggestions, queues normal SWV methods, runs/imports analysis outputs, and
 shows records. BO math lives in core.bo_session.
 """
 
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
 import time
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog
 import tkinter as tk
 from tkinter import ttk, scrolledtext
-from typing import Tuple
 
 from config import (
-    BO_ANALYSIS_APP_PATH,
     BO_ANALYSIS_FILE_GLOB,
     BO_ANALYSIS_OUTPUT_DIR,
-    BO_ANALYSIS_POLL_SECONDS,
     BO_DEFAULT_CONFIG_PATH,
     BO_LOCAL_PATHS_CONFIG,
 )
@@ -65,12 +60,6 @@ class BayesianOptimizationTab:
 
         self._config_path_var = tk.StringVar(value=str(BO_DEFAULT_CONFIG_PATH))
         self._analysis_dir_var = tk.StringVar(value=str(BO_ANALYSIS_OUTPUT_DIR))
-        default_analysis_app = str(BO_ANALYSIS_APP_PATH or "")
-        if not default_analysis_app.strip():
-            sibling = (Path(__file__).resolve().parents[2] / "swv_app")
-            if sibling.exists():
-                default_analysis_app = str(sibling)
-        self._analysis_app_var = tk.StringVar(value=default_analysis_app)
         self._analysis_glob_var = tk.StringVar(value=str(BO_ANALYSIS_FILE_GLOB))
         self._analysis_crop_min_var = tk.StringVar(value="-0.6")
         self._analysis_crop_max_var = tk.StringVar(value="-0.1")
@@ -87,10 +76,17 @@ class BayesianOptimizationTab:
         self._analysis_wavelet_trace_var = tk.BooleanVar(value=False)
         self._analysis_wavelet_correction_var = tk.BooleanVar(value=False)
         self._channels_var = tk.StringVar(value="")
+        self._exploration_var = tk.DoubleVar(value=0.35)
+        self._candidate_pool_var = tk.StringVar(value="600")
+        self._local_pool_var = tk.StringVar(value="120")
         self._status_var = tk.StringVar(value="Load a BO config to begin.")
         self._record_dir_var = tk.StringVar(value="Record folder: (not started)")
         self._auto_target_var = tk.StringVar(value="5")
-        self._auto_poll_var = tk.StringVar(value=str(BO_ANALYSIS_POLL_SECONDS))
+        self._sim_iterations_var = tk.StringVar(value="5")
+        self._sim_mode_var = tk.StringVar(value="fake")
+        self._sim_seed_var = tk.StringVar(value="42")
+        self._sim_noise_var = tk.StringVar(value="0.04")
+        self._sim_replay_dir_var = tk.StringVar(value="")
         self._auto_status_var = tk.StringVar(value="Auto loop idle.")
         self._style = ttk.Style(self._frame)
 
@@ -98,8 +94,6 @@ class BayesianOptimizationTab:
         self._bo_session = None
         self._suggestion = None
         self._auto_running = False
-        self._auto_poll_after_id = None
-        self._auto_analysis_cutoff = 0.0
 
         self._build()
         self._load_config(initial=True)
@@ -164,7 +158,7 @@ class BayesianOptimizationTab:
         pane.add(left, weight=2)
         pane.add(right, weight=3)
 
-        cfg = ttk.LabelFrame(left, text="Configuration Files and Paths", padding=8)
+        cfg = ttk.LabelFrame(left, text="Configuration and Analysis Output", padding=8)
         cfg.pack(fill="x", pady=(0, 8))
         cfg.columnconfigure(1, weight=1)
         ttk.Label(cfg, text="BO config:").grid(row=0, column=0, sticky="w", pady=2)
@@ -178,11 +172,8 @@ class BayesianOptimizationTab:
         ttk.Button(cfg, text="Browse", command=self._browse_analysis_dir).grid(row=1, column=2, padx=2)
         ttk.Button(cfg, text="Save Paths", command=self._save_local_paths).grid(row=1, column=3, columnspan=2, padx=2)
 
-        ttk.Label(cfg, text="Analysis app:").grid(row=2, column=0, sticky="w", pady=2)
-        ttk.Entry(cfg, textvariable=self._analysis_app_var).grid(row=2, column=1, sticky="ew", padx=4)
-        ttk.Button(cfg, text="Browse", command=self._browse_analysis_app).grid(row=2, column=2, padx=2)
-        ttk.Label(cfg, text="Glob:").grid(row=2, column=3, sticky="e", padx=2)
-        ttk.Entry(cfg, textvariable=self._analysis_glob_var, width=10).grid(row=2, column=4, sticky="w")
+        ttk.Label(cfg, text="Analysis glob:").grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Entry(cfg, textvariable=self._analysis_glob_var, width=14).grid(row=2, column=1, sticky="w", padx=4)
 
         ttk.Label(cfg, text="Mux channels:").grid(row=3, column=0, sticky="w", pady=2)
         channels = ttk.Entry(cfg, textvariable=self._channels_var)
@@ -198,12 +189,29 @@ class BayesianOptimizationTab:
             clue,
             text=(
                 "Use the BO config for scientific choices: active parameters, hard constraints, "
-                "initial design, channels, and scoring. Use Save Paths for machine-specific "
-                "folders so you do not need to edit shell startup files."
+                "initial design, channels, and scoring. Use Save Paths for the machine-specific "
+                "analysis output folder."
             ),
             wraplength=460,
             justify="left",
         ).pack(fill="x")
+
+        algo_box = ttk.LabelFrame(left, text="Optimizer Behavior", padding=8)
+        algo_box.pack(fill="x", pady=(0, 8))
+        algo_box.columnconfigure(1, weight=1)
+        ttk.Label(algo_box, text="Exploit").grid(row=0, column=0, sticky="w")
+        ttk.Scale(
+            algo_box,
+            from_=0.0,
+            to=1.0,
+            orient=tk.HORIZONTAL,
+            variable=self._exploration_var,
+            command=lambda _v: self._sync_algorithm_config(show_error=False),
+        ).grid(row=0, column=1, sticky="ew", padx=6)
+        ttk.Label(algo_box, text="Explore").grid(row=0, column=2, sticky="e")
+        ttk.Label(algo_box, text="Candidate pools:").grid(row=1, column=0, sticky="w", pady=2)
+        ttk.Entry(algo_box, textvariable=self._candidate_pool_var, width=8).grid(row=1, column=1, sticky="w", padx=6)
+        ttk.Entry(algo_box, textvariable=self._local_pool_var, width=8).grid(row=1, column=1, sticky="w", padx=(76, 6))
 
         analysis_box = ttk.LabelFrame(left, text="Headless Analysis Settings", padding=8)
         analysis_box.pack(fill="x", pady=(0, 8))
@@ -231,7 +239,7 @@ class BayesianOptimizationTab:
         ttk.Checkbutton(analysis_box, text="Wavelet correction", variable=self._analysis_wavelet_correction_var).grid(row=4, column=1, sticky="w", pady=2)
         ttk.Label(
             analysis_box,
-            text="These are only used for the optional headless swv_app BO analysis path.",
+            text="These settings are used by the in-repo BO analysis runner.",
             foreground=self.ACCENT,
         ).grid(row=5, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
@@ -273,16 +281,18 @@ class BayesianOptimizationTab:
         tk.Label(legend, text="Locked = fixed", bg="#eeeeee", fg="#333333", padx=6).pack(side="left", padx=2)
         tk.Label(legend, text="Tied = follows another", bg="#fff1d6", fg="#6b3b00", padx=6).pack(side="left", padx=2)
 
-        cols = ("Mode", "Values", "Tie")
+        cols = ("Mode", "Space", "Values", "Tie")
         self._param_tree = ttk.Treeview(
             params, columns=cols, show="tree headings", height=16, style="BO.Treeview"
         )
         self._param_tree.heading("#0", text="Parameter")
         self._param_tree.heading("Mode", text="Mode")
-        self._param_tree.heading("Values", text="Values / Lock")
+        self._param_tree.heading("Space", text="Space")
+        self._param_tree.heading("Values", text="Range / Values / Lock")
         self._param_tree.heading("Tie", text="Tie")
         self._param_tree.column("#0", width=165)
         self._param_tree.column("Mode", width=75)
+        self._param_tree.column("Space", width=85)
         self._param_tree.column("Values", width=330)
         self._param_tree.column("Tie", width=110)
         self._param_tree.tag_configure("active", background="#dff7f5", foreground="#0f3d44")
@@ -300,25 +310,37 @@ class BayesianOptimizationTab:
         ttk.Separator(controls, orient="vertical").pack(side="left", fill="y", padx=8)
         ttk.Button(controls, text="Import Analysis JSON", command=self._import_analysis_dialog).pack(side="left", padx=3)
         ttk.Button(controls, text="Use Latest Analysis", command=self._import_latest_analysis).pack(side="left", padx=3)
-        ttk.Button(controls, text="Run Headless Analysis", command=self._run_headless_analysis_for_pending).pack(side="left", padx=3)
+        ttk.Button(controls, text="Run Analysis", command=self._run_analysis_for_pending).pack(side="left", padx=3)
 
         auto = ttk.LabelFrame(parent, text="Auto Loop", padding=8)
         auto.pack(fill="x", padx=4, pady=(0, 8))
         ttk.Label(auto, text="Target completed iterations:").pack(side="left", padx=(0, 4))
         ttk.Entry(auto, textvariable=self._auto_target_var, width=6).pack(side="left", padx=(0, 10))
-        ttk.Label(auto, text="Analysis poll (s):").pack(side="left", padx=(0, 4))
-        ttk.Entry(auto, textvariable=self._auto_poll_var, width=6).pack(side="left", padx=(0, 10))
         ttk.Button(auto, text="Start Auto Loop", command=self._start_auto_loop).pack(side="left", padx=3)
         ttk.Button(auto, text="Stop Auto", command=self._stop_auto_loop).pack(side="left", padx=3)
         ttk.Label(auto, textvariable=self._auto_status_var, foreground=self.ACCENT).pack(side="left", padx=12)
+
+        sim = ttk.LabelFrame(parent, text="Simulation", padding=8)
+        sim.pack(fill="x", padx=4, pady=(0, 8))
+        ttk.Label(sim, text="Mode:").pack(side="left", padx=(0, 4))
+        ttk.Combobox(sim, textvariable=self._sim_mode_var, values=("fake", "replay"), state="readonly", width=8).pack(side="left", padx=(0, 10))
+        ttk.Label(sim, text="Iterations:").pack(side="left", padx=(0, 4))
+        ttk.Entry(sim, textvariable=self._sim_iterations_var, width=6).pack(side="left", padx=(0, 10))
+        ttk.Label(sim, text="Seed:").pack(side="left", padx=(0, 4))
+        ttk.Entry(sim, textvariable=self._sim_seed_var, width=7).pack(side="left", padx=(0, 10))
+        ttk.Label(sim, text="Noise:").pack(side="left", padx=(0, 4))
+        ttk.Entry(sim, textvariable=self._sim_noise_var, width=7).pack(side="left", padx=(0, 10))
+        ttk.Entry(sim, textvariable=self._sim_replay_dir_var, width=24).pack(side="left", padx=(0, 4))
+        ttk.Button(sim, text="Replay Folder", command=self._browse_sim_replay_dir).pack(side="left", padx=3)
+        ttk.Button(sim, text="Run Simulated BO", command=self._run_simulated_bo).pack(side="left", padx=3)
 
         clue = ttk.LabelFrame(parent, text="Workflow Cues", padding=8)
         clue.pack(fill="x", padx=4, pady=(0, 8))
         ttk.Label(
             clue,
             text=(
-                "Manual: suggest -> queue -> run queue -> import analysis. Auto: queue must be empty; "
-                "the tab runs one BO batch at a time and imports the newest unused analysis JSON."
+                "Manual: suggest -> queue -> run queue -> run/import analysis. Auto: queue must be empty; "
+                "the tab runs one BO batch at a time and analyzes the active experiment folder."
             ),
             wraplength=920,
             justify="left",
@@ -414,22 +436,21 @@ class BayesianOptimizationTab:
             self._load_config()
 
     def _browse_analysis_dir(self):
-        path = filedialog.askdirectory(title="Choose external analysis output folder")
+        path = filedialog.askdirectory(title="Choose BO analysis output folder")
         if path:
             self._analysis_dir_var.set(path)
 
-    def _browse_analysis_app(self):
-        path = filedialog.askdirectory(title="Choose swv_app project folder")
+    def _browse_sim_replay_dir(self):
+        path = filedialog.askdirectory(title="Choose replay analysis folder")
         if path:
-            self._analysis_app_var.set(path)
+            self._sim_replay_dir_var.set(path)
+            self._sync_simulation_config(show_error=False)
 
     def _save_local_paths(self):
         try:
             payload = {
                 "analysis_output_dir": self._analysis_dir_var.get().strip(),
-                "analysis_app_path": self._analysis_app_var.get().strip(),
                 "analysis_file_glob": self._analysis_glob_var.get().strip() or "*.json",
-                "analysis_poll_seconds": float(self._auto_poll_var.get() or BO_ANALYSIS_POLL_SECONDS),
             }
             BO_LOCAL_PATHS_CONFIG.parent.mkdir(parents=True, exist_ok=True)
             with open(BO_LOCAL_PATHS_CONFIG, "w", encoding="utf-8") as fh:
@@ -445,6 +466,8 @@ class BayesianOptimizationTab:
             if analysis_cfg.get("file_glob"):
                 self._analysis_glob_var.set(str(analysis_cfg.get("file_glob")))
             self._set_analysis_vars_from_config(analysis_cfg)
+            self._set_algorithm_vars_from_config(self._config)
+            self._set_simulation_vars_from_config(self._config)
             self._channels_var.set(", ".join(str(ch) for ch in self._config.get("channels", [])))
             self._refresh_parameter_table()
             self._refresh_initial_parameters_table()
@@ -464,6 +487,8 @@ class BayesianOptimizationTab:
         analysis_cfg = self._config.setdefault("analysis", {})
         analysis_cfg["file_glob"] = self._analysis_glob_var.get().strip() or "*.json"
         self._update_analysis_config_from_vars(analysis_cfg)
+        self._sync_algorithm_config(show_error=False)
+        self._sync_simulation_config(show_error=False)
         try:
             path = save_bo_config(self._config, self._config_path_var.get())
             self._status_var.set(f"Saved BO config: {path}")
@@ -503,6 +528,47 @@ class BayesianOptimizationTab:
         analysis_cfg["compute_wavelet_denoised_trace"] = bool(self._analysis_wavelet_trace_var.get())
         analysis_cfg["use_wavelet_for_correction"] = bool(self._analysis_wavelet_correction_var.get())
 
+    def _set_algorithm_vars_from_config(self, cfg: dict):
+        acquisition = dict((cfg or {}).get("acquisition") or {})
+        self._exploration_var.set(float(acquisition.get("exploration", 0.35)))
+        self._candidate_pool_var.set(str(acquisition.get("candidate_pool_size", 600)))
+        self._local_pool_var.set(str(acquisition.get("local_candidate_pool_size", 120)))
+
+    def _sync_algorithm_config(self, show_error=True):
+        if self._config is None:
+            return
+        try:
+            acquisition = self._config.setdefault("acquisition", {})
+            acquisition["exploration"] = max(0.0, min(1.0, float(self._exploration_var.get())))
+            acquisition["candidate_pool_size"] = max(50, int(self._candidate_pool_var.get() or 600))
+            acquisition["local_candidate_pool_size"] = max(0, int(self._local_pool_var.get() or 120))
+        except Exception as exc:
+            if show_error:
+                messagebox.showerror("Optimizer Behavior", str(exc))
+
+    def _set_simulation_vars_from_config(self, cfg: dict):
+        sim = dict((cfg or {}).get("simulation") or {})
+        mode = str(sim.get("mode", "fake")).lower()
+        self._sim_mode_var.set(mode if mode in ("fake", "replay") else "fake")
+        self._sim_seed_var.set(str(sim.get("seed", (cfg or {}).get("random_seed", 42))))
+        self._sim_noise_var.set(str(sim.get("noise", 0.04)))
+        self._sim_replay_dir_var.set(str(sim.get("replay_dir", "")))
+
+    def _sync_simulation_config(self, show_error=True):
+        if self._config is None:
+            return
+        try:
+            sim = self._config.setdefault("simulation", {})
+            sim["mode"] = self._sim_mode_var.get().strip() or "fake"
+            sim["seed"] = int(self._sim_seed_var.get() or self._config.get("random_seed", 42))
+            sim["noise"] = float(self._sim_noise_var.get() or 0.04)
+            sim["replay_dir"] = self._sim_replay_dir_var.get().strip()
+            sim.setdefault("channel_noise", 0.03)
+            sim.setdefault("replay_glob", "*.json")
+        except Exception as exc:
+            if show_error:
+                messagebox.showerror("Simulation", str(exc))
+
     def _sync_channels_from_entry(self, show_error=True):
         if self._config is None:
             return
@@ -541,12 +607,13 @@ class BayesianOptimizationTab:
         if exp_path is None:
             return
         self._save_config()
-        self._save_local_paths()
+        analysis_dir = Path(exp_path) / "bo_analysis"
+        self._analysis_dir_var.set(str(analysis_dir))
         try:
             self._bo_session = BOIntegrationSession.start(
                 self._config_path_var.get(),
                 exp_path,
-                analysis_output_dir=self._analysis_dir_var.get(),
+                analysis_output_dir=analysis_dir,
             )
             self._suggestion = None
             self._record_dir_var.set(f"Record folder: {self._bo_session.record_dir}")
@@ -608,7 +675,7 @@ class BayesianOptimizationTab:
             messagebox.showwarning("BO Analysis", "Start a BO session first.")
             return
         path = filedialog.askopenfilename(
-            title="Import external analysis JSON",
+            title="Import analysis JSON",
             initialdir=self._analysis_dir_var.get(),
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
         )
@@ -625,7 +692,7 @@ class BayesianOptimizationTab:
             return
         self._import_analysis(path)
 
-    def _run_headless_analysis_for_pending(self, prompt=True):
+    def _run_analysis_for_pending(self, prompt=True):
         if self._bo_session is None:
             messagebox.showwarning("BO Analysis", "Start a BO session first.")
             return None
@@ -633,73 +700,66 @@ class BayesianOptimizationTab:
             messagebox.showwarning("BO Analysis", "No pending BO suggestion is waiting for analysis.")
             return None
         try:
-            path = self._run_external_analysis()
+            path = self._run_in_repo_analysis()
         except Exception as exc:
             if prompt:
-                messagebox.showerror("Headless BO Analysis", str(exc))
+                messagebox.showerror("BO Analysis", str(exc))
             else:
                 self._auto_running = False
-                self._auto_status_var.set(f"Auto loop stopped: headless analysis failed ({exc})")
+                self._auto_status_var.set(f"Auto loop stopped: analysis failed ({exc})")
             return None
-        return self._import_analysis(path, notes="Imported from headless swv_app analysis", prompt=prompt)
+        return self._import_analysis(path, notes="Imported from in-repo BO analysis", prompt=prompt)
 
-    def _run_external_analysis(self) -> Path:
+    def _run_simulated_bo(self):
+        if self._config is None:
+            messagebox.showwarning("BO Simulation", "Load a BO config first.")
+            return
+        try:
+            target = max(1, int(self._sim_iterations_var.get() or 1))
+            self._sync_algorithm_config()
+            self._sync_simulation_config()
+        except Exception as exc:
+            messagebox.showerror("BO Simulation", str(exc))
+            return
+        if self._bo_session is None:
+            self._start_bo_session()
+            if self._bo_session is None:
+                return
+        completed = 0
+        try:
+            while completed < target and not self._bo_session.should_stop():
+                self._suggestion = self._bo_session.ask_next()
+                obs = self._bo_session.simulate_pending_result(notes=f"Simulated {self._sim_mode_var.get()} BO result")
+                completed += 1
+                self._render_scores(obs)
+                self._refresh_history()
+                self._render_best()
+                self._refresh_model_artifacts()
+                self._refresh_record_files()
+            self._suggestion = None
+            self._clear_text(self._suggestion_text)
+            self._status_var.set(f"Simulated {completed} BO iteration(s).")
+            self._tabs.select(2)
+        except Exception as exc:
+            messagebox.showerror("BO Simulation", str(exc))
+
+    def _run_in_repo_analysis(self) -> Path:
         if self._bo_session is None or self._bo_session.pending is None:
             raise RuntimeError("No pending BO suggestion is waiting for analysis")
-        project_root = self._resolve_analysis_project_root()
-        python_exe, headless_script = self._resolve_analysis_runner(project_root)
         session_mgr = getattr(self._session, "session_manager", None)
         exp_path = session_mgr.require_experiment() if session_mgr is not None else None
         if exp_path is None:
             raise RuntimeError("An active experiment folder is required for BO analysis")
         self._save_config()
-        self._save_local_paths()
-        output_dir = Path(self._analysis_dir_var.get() or (Path(exp_path) / "bo_analysis"))
-        output_dir.mkdir(parents=True, exist_ok=True)
-        request_path = Path(self._bo_session.analysis_dir) / f"iter_{int(self._bo_session.pending['iteration']):03d}_headless_request.json"
-        request = {
-            "folders": [str(exp_path)],
-            "output_dir": str(output_dir),
-            "output_stem": f"bo_iter_{int(self._bo_session.pending['iteration']):03d}",
-            "analysis": dict(self._config.get("analysis") or {}),
-        }
-        with open(request_path, "w", encoding="utf-8") as fh:
-            json.dump(request, fh, indent=2)
-        cmd = [str(python_exe), str(headless_script), "--request", str(request_path)]
-        completed = subprocess.run(cmd, capture_output=True, text=True, cwd=str(project_root))
-        if completed.returncode != 0:
-            stderr = (completed.stderr or completed.stdout or "").strip()
-            raise RuntimeError(stderr or f"Headless swv_app analysis failed with exit code {completed.returncode}")
-        summary_path = (completed.stdout or "").strip().splitlines()[-1].strip()
-        if not summary_path:
-            raise RuntimeError("Headless swv_app analysis did not return a summary JSON path")
-        path = Path(summary_path)
-        if not path.exists():
-            raise FileNotFoundError(path)
-        self._status_var.set(f"Headless analysis completed: {path.name}")
+        output_dir = Path(exp_path) / "bo_analysis"
+        self._analysis_dir_var.set(str(output_dir))
+        path = self._bo_session.run_pending_analysis(
+            folders=[exp_path],
+            output_dir=output_dir,
+            analysis=dict(self._config.get("analysis") or {}),
+        )
+        self._status_var.set(f"Analysis completed: {path.name}")
         return path
-
-    def _resolve_analysis_project_root(self) -> Path:
-        raw_text = (self._analysis_app_var.get() or "").strip()
-        if not raw_text:
-            raise RuntimeError("Set the swv_app project path first.")
-        raw = Path(raw_text).expanduser()
-        if raw.is_file():
-            raw = raw.parent
-        if not raw.exists():
-            raise FileNotFoundError(raw)
-        if not (raw / "core").exists():
-            raise RuntimeError(f"{raw} does not look like the swv_app project root.")
-        return raw
-
-    @staticmethod
-    def _resolve_analysis_runner(project_root: Path) -> Tuple[Path, Path]:
-        headless_script = project_root / "bo_headless.py"
-        if not headless_script.exists():
-            raise FileNotFoundError(headless_script)
-        preferred = project_root / ".venv64" / "Scripts" / "python.exe"
-        python_exe = preferred if preferred.exists() else Path(sys.executable)
-        return python_exe, headless_script
 
     def _import_analysis(self, path, notes=None, prompt=True):
         if prompt:
@@ -740,15 +800,11 @@ class BayesianOptimizationTab:
             return
         try:
             target = int(self._auto_target_var.get())
-            poll = float(self._auto_poll_var.get())
         except ValueError:
-            messagebox.showerror("Auto Loop", "Target iterations and poll interval must be numeric.")
+            messagebox.showerror("Auto Loop", "Target iterations must be numeric.")
             return
         if target < 1:
             messagebox.showerror("Auto Loop", "Target iterations must be at least 1.")
-            return
-        if poll < 1:
-            messagebox.showerror("Auto Loop", "Analysis poll interval must be at least 1 second.")
             return
         if self._bo_session is None:
             self._start_bo_session()
@@ -760,12 +816,6 @@ class BayesianOptimizationTab:
 
     def _stop_auto_loop(self):
         self._auto_running = False
-        if self._auto_poll_after_id is not None:
-            try:
-                self._frame.after_cancel(self._auto_poll_after_id)
-            except Exception:
-                pass
-            self._auto_poll_after_id = None
         self._auto_status_var.set("Auto loop stopped.")
 
     def _auto_submit_next(self):
@@ -813,36 +863,8 @@ class BayesianOptimizationTab:
             self._auto_running = False
             self._auto_status_var.set("Auto loop stopped: queue did not complete cleanly.")
             return
-        if self._analysis_app_var.get().strip():
-            self._auto_status_var.set("Queue complete. Running headless swv_app analysis.")
-            obs = self._run_headless_analysis_for_pending(prompt=False)
-            if obs is None or not self._auto_running:
-                return
-            if self._clear_auto_queue_if_safe():
-                self._auto_submit_next()
-            return
-        self._auto_status_var.set("Queue complete. Waiting for external analysis JSON.")
-        self._schedule_auto_analysis_poll()
-
-    def _schedule_auto_analysis_poll(self):
-        if not self._auto_running:
-            return
-        try:
-            poll_ms = max(1000, int(float(self._auto_poll_var.get()) * 1000))
-        except ValueError:
-            poll_ms = 5000
-        self._auto_poll_after_id = self._frame.after(poll_ms, self._poll_auto_analysis)
-
-    def _poll_auto_analysis(self):
-        self._auto_poll_after_id = None
-        if not self._auto_running or self._bo_session is None:
-            return
-        path = self._latest_unused_analysis_file()
-        if path is None:
-            self._auto_status_var.set("Waiting for new analysis JSON...")
-            self._schedule_auto_analysis_poll()
-            return
-        obs = self._import_analysis(path, notes="Imported by BO auto loop", prompt=False)
+        self._auto_status_var.set("Queue complete. Running BO analysis.")
+        obs = self._run_analysis_for_pending(prompt=False)
         if obs is None or not self._auto_running:
             return
         if self._clear_auto_queue_if_safe():
@@ -896,7 +918,7 @@ class BayesianOptimizationTab:
                 "end",
                 iid=name,
                 text=label,
-                values=(mode, value_text, tie),
+                values=(mode, str(p.get("space", "discrete")), value_text, tie),
                 tags=(mode.lower(),),
             )
 
@@ -904,6 +926,13 @@ class BayesianOptimizationTab:
     def _values_text(param_cfg):
         mode = str(param_cfg.get("mode", "locked")).lower()
         if mode == "active":
+            if str(param_cfg.get("space", "discrete")).lower() == "continuous":
+                step = param_cfg.get("step")
+                step_text = "" if step in (None, "") else f", step {step}"
+                return (
+                    f"{param_cfg.get('min')}..{param_cfg.get('max')} "
+                    f"{param_cfg.get('scale', 'linear')} sigma {param_cfg.get('proposal_sigma', '')}{step_text}"
+                )
             return ", ".join(str(v) for v in param_cfg.get("values", []))
         if mode == "tied":
             return ""
@@ -927,29 +956,55 @@ class BayesianOptimizationTab:
         box = ttk.Frame(win, padding=12)
         box.pack(fill="both", expand=True)
         mode_var = tk.StringVar(value=str(current.get("mode", "locked")))
+        space_var = tk.StringVar(value=str(current.get("space", "discrete")))
         values_var = tk.StringVar(value=", ".join(str(v) for v in current.get("values", [])))
         value_var = tk.StringVar(value=str(current.get("value", "")))
         tie_var = tk.StringVar(value=str(current.get("tie_to", "begin_potential")))
+        min_var = tk.StringVar(value=str(current.get("min", "")))
+        max_var = tk.StringVar(value=str(current.get("max", "")))
+        step_var = tk.StringVar(value="" if current.get("step") in (None, "") else str(current.get("step")))
+        scale_var = tk.StringVar(value=str(current.get("scale", current.get("encoding", "linear"))))
+        sigma_var = tk.StringVar(value=str(current.get("proposal_sigma", "")))
 
         ttk.Label(box, text="Mode:").grid(row=0, column=0, sticky="w", pady=4)
         ttk.Combobox(box, textvariable=mode_var, values=("active", "locked", "tied"), state="readonly", width=16).grid(
             row=0, column=1, sticky="w", pady=4
         )
-        ttk.Label(box, text="Active values:").grid(row=1, column=0, sticky="w", pady=4)
-        ttk.Entry(box, textvariable=values_var, width=48).grid(row=1, column=1, sticky="ew", pady=4)
-        ttk.Label(box, text="Locked value:").grid(row=2, column=0, sticky="w", pady=4)
-        ttk.Entry(box, textvariable=value_var, width=18).grid(row=2, column=1, sticky="w", pady=4)
-        ttk.Label(box, text="Tie to:").grid(row=3, column=0, sticky="w", pady=4)
-        ttk.Combobox(box, textvariable=tie_var, values=PARAMETER_ORDER, width=24).grid(row=3, column=1, sticky="w", pady=4)
+        ttk.Label(box, text="Space:").grid(row=1, column=0, sticky="w", pady=4)
+        ttk.Combobox(box, textvariable=space_var, values=("discrete", "continuous"), state="readonly", width=16).grid(
+            row=1, column=1, sticky="w", pady=4
+        )
+        ttk.Label(box, text="Active values:").grid(row=2, column=0, sticky="w", pady=4)
+        ttk.Entry(box, textvariable=values_var, width=48).grid(row=2, column=1, columnspan=3, sticky="ew", pady=4)
+        ttk.Label(box, text="Continuous min/max:").grid(row=3, column=0, sticky="w", pady=4)
+        ttk.Entry(box, textvariable=min_var, width=12).grid(row=3, column=1, sticky="w", pady=4)
+        ttk.Entry(box, textvariable=max_var, width=12).grid(row=3, column=1, padx=(96, 0), sticky="w", pady=4)
+        ttk.Label(box, text="Scale / sigma:").grid(row=4, column=0, sticky="w", pady=4)
+        ttk.Combobox(box, textvariable=scale_var, values=("linear", "log"), width=12).grid(row=4, column=1, sticky="w", pady=4)
+        ttk.Entry(box, textvariable=sigma_var, width=12).grid(row=4, column=1, padx=(96, 0), sticky="w", pady=4)
+        ttk.Label(box, text="Optional step:").grid(row=5, column=0, sticky="w", pady=4)
+        ttk.Entry(box, textvariable=step_var, width=12).grid(row=5, column=1, sticky="w", pady=4)
+        ttk.Label(box, text="Locked value:").grid(row=6, column=0, sticky="w", pady=4)
+        ttk.Entry(box, textvariable=value_var, width=18).grid(row=6, column=1, sticky="w", pady=4)
+        ttk.Label(box, text="Tie to:").grid(row=7, column=0, sticky="w", pady=4)
+        ttk.Combobox(box, textvariable=tie_var, values=PARAMETER_ORDER, width=24).grid(row=7, column=1, sticky="w", pady=4)
 
         buttons = ttk.Frame(box)
-        buttons.grid(row=4, column=0, columnspan=2, pady=(10, 0))
+        buttons.grid(row=8, column=0, columnspan=2, pady=(10, 0))
 
         def save():
             try:
                 updated = dict(current)
                 updated["mode"] = mode_var.get()
+                updated["space"] = space_var.get()
                 updated["values"] = self._parse_float_list(values_var.get())
+                if min_var.get().strip():
+                    updated["min"] = float(min_var.get())
+                if max_var.get().strip():
+                    updated["max"] = float(max_var.get())
+                updated["scale"] = scale_var.get()
+                updated["proposal_sigma"] = float(sigma_var.get() or 0.15)
+                updated["step"] = None if not step_var.get().strip() else float(step_var.get())
                 if value_var.get().strip():
                     updated["value"] = float(value_var.get())
                 updated["tie_to"] = tie_var.get()
