@@ -203,11 +203,8 @@ def to_si_string(value_str: str, unit: str = "V") -> str:
             return f"{int(rounded_milli)}m"
         micro = val * 1_000_000.0
         rounded_micro = round(micro)
-        if math.isclose(micro, rounded_micro, rel_tol=0.0, abs_tol=1e-6):
-            return f"{int(rounded_micro)}u"
-        formatted = f"{micro:.12f}".rstrip("0").rstrip(".")
-        if formatted in ("", "-0", "+0"):
-            formatted = "0"
-        return f"{formatted}u"
+        if rounded_micro == 0:
+            rounded_micro = 1 if val > 0 else -1
+        return f"{int(rounded_micro)}u"
 
     return value_str  # fallback

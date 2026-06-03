@@ -1521,7 +1521,8 @@ def _quantize_value(value: float, step: float, p_cfg: dict) -> float:
     if step <= 0:
         return float(value)
     lo = float(p_cfg.get("min", 0.0))
-    return float(lo + round((float(value) - lo) / step) * step)
+    quantized = lo + round((float(value) - lo) / step) * step
+    return float(_format_float(quantized))
 
 
 def _is_log_scale(p_cfg: dict) -> bool:

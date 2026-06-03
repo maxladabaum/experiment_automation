@@ -1144,7 +1144,7 @@ class BayesianOptimizationTab:
             "",
         ]
         for name in PARAMETER_ORDER:
-            lines.append(f"{name}: {self._suggestion.params.get(name)}")
+            lines.append(f"{name}: {self._fmt_raw(self._suggestion.params.get(name))}")
         self._write_text(self._suggestion_text, "\n".join(lines))
 
     def _render_scores(self, observation):
@@ -1198,7 +1198,7 @@ class BayesianOptimizationTab:
             "",
         ]
         for name in PARAMETER_ORDER:
-            lines.append(f"{name}: {best['params'].get(name)}")
+            lines.append(f"{name}: {self._fmt_raw(best['params'].get(name))}")
         self._write_text(self._best_text, "\n".join(lines))
 
     def _refresh_model_artifacts(self):
