@@ -1,4 +1,7 @@
 e
+# MUX16 channel select
+set_gpio_cfg 0x3FFi 1
+set_gpio 102i
 var c
 var p
 var f
@@ -8,15 +11,13 @@ set_pgstat_mode 0
 set_pgstat_chan 0
 set_pgstat_mode 3
 set_max_bandwidth 4k
-set_range_minmax da -715m -85m
-set_range ba 489n
-set_autoranging ba 489n 489n
+set_range_minmax da -736m -64m
+set_range ba 59n
+set_autoranging ba 59n 59n
+set_e -700m
 cell_on
-# Equilibrate at -700m for 5s
 set_e -700m
-wait 5
-set_e -700m
-meas_loop_swv p c f r -700m -100m 1m 15m 200
+meas_loop_swv p c f r -700m -100m 2m 36m 200
 	pck_start
 		pck_add p
 		pck_add c

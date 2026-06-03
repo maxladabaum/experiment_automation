@@ -1,0 +1,26 @@
+e
+var c
+var p
+var f
+var r
+set_pgstat_chan 1
+set_pgstat_mode 0
+set_pgstat_chan 0
+set_pgstat_mode 3
+set_max_bandwidth 4k
+set_range_minmax da -236m 436m
+set_range ba 59n
+set_autoranging ba 59n 59n
+set_e -200m
+cell_on
+set_e -200m
+meas_loop_swv p c f r -200m 400m 2m 36m 200
+	pck_start
+		pck_add p
+		pck_add c
+		pck_add f
+		pck_add r
+	pck_end
+endloop
+on_finished:
+cell_off

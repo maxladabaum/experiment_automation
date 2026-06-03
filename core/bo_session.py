@@ -20,6 +20,7 @@ import hashlib
 import itertools
 import json
 import math
+import os
 import pickle
 import random
 import shutil
@@ -559,12 +560,17 @@ class BOIntegrationSession:
             "notes": notes,
             "completed_at": datetime.now().isoformat(timespec="seconds"),
         }
+        archived_measurements = self._archive_iteration_measurements(iteration, self.pending["method_id"])
+        if archived_measurements:
+            observation["archived_measurements"] = archived_measurements
         self.observations.append(observation)
         for record in self.suggestions:
             if record.get("method_id") == self.pending["method_id"]:
                 record["status"] = "completed"
                 record["completed_at"] = observation["completed_at"]
                 record["Q_run"] = observation["Q_run"]
+                if archived_measurements:
+                    record["archived_measurements"] = list(archived_measurements)
         self.pending = None
         self._write_json(self.analysis_dir / f"iter_{iteration:03d}_quality.json", observation)
         self._write_history_csv()
@@ -615,6 +621,71 @@ class BOIntegrationSession:
                     record["failed_queue_items"] = payload["queue_summary"].get("failed")
         self.save_state()
         return path
+
+    def _archive_iteration_measurements(self, iteration: int, method_id: str) -> List[str]:
+        csv_paths = self._iteration_csv_paths(iteration, method_id)
+        if not csv_paths:
+            return []
+        archive_dir = self.experiment_dir / "legacy" / f"iter_{iteration:03d}"
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        archived: List[str] = []
+        for csv_path in csv_paths:
+            if not csv_path.exists() or not csv_path.is_file():
+                continue
+            try:
+                if csv_path.resolve().parent != self.experiment_dir.resolve():
+                    continue
+            except OSError:
+                continue
+            target = archive_dir / csv_path.name
+            if target.exists():
+                stem = target.stem
+                suffix = target.suffix
+                idx = 2
+                while True:
+                    candidate = archive_dir / f"{stem}_{idx:02d}{suffix}"
+                    if not candidate.exists():
+                        target = candidate
+                        break
+                    idx += 1
+            shutil.move(str(csv_path), str(target))
+            archived.append(str(target))
+        return archived
+
+    def _iteration_csv_paths(self, iteration: int, method_id: str) -> List[Path]:
+        for record in self.suggestions:
+            if record.get("method_id") != method_id:
+                continue
+            queue_record = record.get("queue_completion_record")
+            if not queue_record:
+                return []
+            try:
+                with open(queue_record, "r", encoding="utf-8") as fh:
+                    payload = json.load(fh)
+            except Exception:
+                return []
+            paths: List[Path] = []
+            for item in payload.get("items", []):
+                ref = item.get("bo_ref") if isinstance(item, dict) else None
+                if not isinstance(ref, dict):
+                    continue
+                if int(ref.get("iteration", 0) or 0) != iteration:
+                    continue
+                if str(ref.get("method_id") or "") != method_id:
+                    continue
+                csv_path = str(item.get("csv_path") or "").strip()
+                if csv_path:
+                    paths.append(Path(csv_path))
+            seen = set()
+            unique_paths: List[Path] = []
+            for path in paths:
+                norm = os.path.normcase(str(path))
+                if norm in seen:
+                    continue
+                seen.add(norm)
+                unique_paths.append(path)
+            return unique_paths
+        return []
 
     def latest_analysis_file(self) -> Optional[Path]:
         folder = self.analysis_output_dir
