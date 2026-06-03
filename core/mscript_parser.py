@@ -195,12 +195,19 @@ def to_si_string(value_str: str, unit: str = "V") -> str:
     if unit == "s":
         if val == 0:
             return "0"
-        if abs(val) >= 1:
-            return f"{int(val)}" if float(val).is_integer() else f"{val:g}"
+        if abs(val) >= 1 and float(val).is_integer():
+            return f"{int(val)}"
         milli = val * 1_000.0
-        formatted = f"{milli:.12f}".rstrip("0").rstrip(".")
+        rounded_milli = round(milli)
+        if math.isclose(milli, rounded_milli, rel_tol=0.0, abs_tol=1e-9):
+            return f"{int(rounded_milli)}m"
+        micro = val * 1_000_000.0
+        rounded_micro = round(micro)
+        if math.isclose(micro, rounded_micro, rel_tol=0.0, abs_tol=1e-6):
+            return f"{int(rounded_micro)}u"
+        formatted = f"{micro:.12f}".rstrip("0").rstrip(".")
         if formatted in ("", "-0", "+0"):
             formatted = "0"
-        return f"{formatted}m"
+        return f"{formatted}u"
 
     return value_str  # fallback

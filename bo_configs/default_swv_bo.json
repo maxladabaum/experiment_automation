@@ -38,7 +38,7 @@
     "begin_potential": {
       "label": "Begin potential",
       "unit": "V",
-      "mode": "active",
+      "mode": "locked",
       "space": "continuous",
       "min": -0.9,
       "max": -0.4,
@@ -59,7 +59,7 @@
     "end_potential": {
       "label": "End potential",
       "unit": "V",
-      "mode": "active",
+      "mode": "locked",
       "space": "continuous",
       "min": -0.35,
       "max": 0.05,
@@ -85,7 +85,7 @@
       "min": 0.001,
       "max": 0.01,
       "scale": "linear",
-      "step": null,
+      "step": 0.001,
       "proposal_sigma": 0.2,
       "values": [
         0.001,
@@ -93,7 +93,8 @@
         0.004,
         0.005
       ],
-      "value": 0.002
+      "value": 0.002,
+      "tie_to": "begin_potential"
     },
     "amplitude": {
       "label": "Amplitude",
@@ -103,7 +104,7 @@
       "min": 0.01,
       "max": 0.08,
       "scale": "linear",
-      "step": null,
+      "step": 0.001,
       "proposal_sigma": 0.18,
       "values": [
         0.02,
@@ -111,7 +112,8 @@
         0.036,
         0.044
       ],
-      "value": 0.036
+      "value": 0.036,
+      "tie_to": "begin_potential"
     },
     "frequency": {
       "label": "Frequency",
@@ -121,7 +123,7 @@
       "min": 25.0,
       "max": 1000.0,
       "scale": "log",
-      "step": null,
+      "step": 1.0,
       "proposal_sigma": 0.25,
       "values": [
         50.0,
@@ -131,7 +133,8 @@
         800.0
       ],
       "encoding": "log10",
-      "value": 200.0
+      "value": 200.0,
+      "tie_to": "begin_potential"
     },
     "conditioning_potential": {
       "label": "Conditioning potential",
