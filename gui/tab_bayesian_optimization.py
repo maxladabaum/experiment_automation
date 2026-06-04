@@ -33,6 +33,7 @@ from core.bo_session import (
     save_bo_config,
     validate_bo_config,
 )
+from core.bo_simulation import LANDSCAPE_TYPES, default_dimensions, run_optimizer_simulation
 
 
 class BayesianOptimizationTab:
@@ -79,14 +80,31 @@ class BayesianOptimizationTab:
         self._exploration_var = tk.DoubleVar(value=0.35)
         self._candidate_pool_var = tk.StringVar(value="600")
         self._local_pool_var = tk.StringVar(value="120")
+        self._score_snr_weight_var = tk.StringVar(value="0.35")
+        self._score_shape_weight_var = tk.StringVar(value="0.20")
+        self._score_baseline_weight_var = tk.StringVar(value="0.20")
+        self._score_replicate_weight_var = tk.StringVar(value="0.15")
+        self._score_success_weight_var = tk.StringVar(value="0.10")
+        self._score_snr_saturation_var = tk.StringVar(value="20.0")
+        self._score_variability_penalty_var = tk.StringVar(value="0.20")
+        self._score_failed_penalty_var = tk.StringVar(value="0.40")
+        self._score_low_penalty_var = tk.StringVar(value="0.20")
+        self._score_low_threshold_var = tk.StringVar(value="0.50")
+        self._score_formula_var = tk.StringVar(value="")
         self._status_var = tk.StringVar(value="Load a BO config to begin.")
         self._record_dir_var = tk.StringVar(value="Record folder: (not started)")
         self._auto_target_var = tk.StringVar(value="5")
-        self._sim_iterations_var = tk.StringVar(value="5")
-        self._sim_mode_var = tk.StringVar(value="fake")
-        self._sim_seed_var = tk.StringVar(value="42")
-        self._sim_noise_var = tk.StringVar(value="0.04")
-        self._sim_replay_dir_var = tk.StringVar(value="")
+        self._engine_iterations_var = tk.StringVar(value="20")
+        self._engine_grid_var = tk.StringVar(value="25")
+        self._engine_seed_var = tk.StringVar(value="42")
+        self._engine_measurement_noise_var = tk.StringVar(value="0.03")
+        self._engine_channel_noise_var = tk.StringVar(value="0.025")
+        self._engine_peak_emphasis_var = tk.StringVar(value="0.70")
+        self._engine_base_peak_var = tk.StringVar(value="0.45")
+        self._engine_peak_gain_var = tk.StringVar(value="5.0")
+        self._engine_base_noise_var = tk.StringVar(value="0.08")
+        self._engine_noise_gain_var = tk.StringVar(value="0.45")
+        self._engine_status_var = tk.StringVar(value="Simulation engine idle.")
         self._auto_status_var = tk.StringVar(value="Auto loop idle.")
         self._style = ttk.Style(self._frame)
 
@@ -94,6 +112,12 @@ class BayesianOptimizationTab:
         self._bo_session = None
         self._suggestion = None
         self._auto_running = False
+        self._simulation_result = None
+        self._simulation_dims = []
+        self._engine_plot_canvas = None
+        self._engine_selected_index = 0
+        self._engine_page_index = 0
+        self._engine_pages = []
 
         self._build()
         self._load_config(initial=True)
@@ -126,13 +150,16 @@ class BayesianOptimizationTab:
 
         setup = ttk.Frame(self._tabs)
         run = ttk.Frame(self._tabs)
+        simulation = ttk.Frame(self._tabs)
         results = ttk.Frame(self._tabs)
         self._tabs.add(setup, text="Setup")
         self._tabs.add(run, text="Run")
+        self._tabs.add(simulation, text="Simulation Engine")
         self._tabs.add(results, text="Results & Records")
 
         self._build_setup_tab(setup)
         self._build_run_tab(run)
+        self._build_simulation_tab(simulation)
         self._build_results_tab(results)
 
         status = ttk.Label(root, textvariable=self._status_var, relief="sunken")
@@ -212,6 +239,50 @@ class BayesianOptimizationTab:
         ttk.Label(algo_box, text="Candidate pools:").grid(row=1, column=0, sticky="w", pady=2)
         ttk.Entry(algo_box, textvariable=self._candidate_pool_var, width=8).grid(row=1, column=1, sticky="w", padx=6)
         ttk.Entry(algo_box, textvariable=self._local_pool_var, width=8).grid(row=1, column=1, sticky="w", padx=(76, 6))
+
+        scoring_box = ttk.LabelFrame(left, text="Q Score Decomposition", padding=8)
+        scoring_box.pack(fill="x", pady=(0, 8))
+        for idx in range(6):
+            scoring_box.columnconfigure(idx, weight=1 if idx in (1, 3, 5) else 0)
+        entries = [
+            ("SNR w:", self._score_snr_weight_var),
+            ("Shape w:", self._score_shape_weight_var),
+            ("Baseline w:", self._score_baseline_weight_var),
+            ("Replicate w:", self._score_replicate_weight_var),
+            ("Success w:", self._score_success_weight_var),
+            ("SNR sat:", self._score_snr_saturation_var),
+            ("Var penalty:", self._score_variability_penalty_var),
+            ("Failed penalty:", self._score_failed_penalty_var),
+            ("Low penalty:", self._score_low_penalty_var),
+            ("Low threshold:", self._score_low_threshold_var),
+        ]
+        for idx, (label, var) in enumerate(entries):
+            row = idx // 2
+            base_col = (idx % 2) * 3
+            ttk.Label(scoring_box, text=label).grid(row=row, column=base_col, sticky="w", pady=2)
+            entry = ttk.Entry(scoring_box, textvariable=var, width=9)
+            entry.grid(row=row, column=base_col + 1, sticky="w", padx=(4, 10), pady=2)
+            entry.bind("<FocusOut>", lambda _e: self._sync_scoring_config(show_error=False))
+            entry.bind("<Return>", lambda _e: self._sync_scoring_config(show_error=False))
+        ttk.Label(scoring_box, textvariable=self._score_formula_var, foreground=self.ACCENT, wraplength=460, justify="left").grid(
+            row=5,
+            column=0,
+            columnspan=6,
+            sticky="w",
+            pady=(4, 0),
+        )
+        ttk.Label(
+            scoring_box,
+            text=self._q_reference_text(),
+            wraplength=460,
+            justify="left",
+        ).grid(
+            row=6,
+            column=0,
+            columnspan=6,
+            sticky="w",
+            pady=(6, 0),
+        )
 
         analysis_box = ttk.LabelFrame(left, text="Headless Analysis Settings", padding=8)
         analysis_box.pack(fill="x", pady=(0, 8))
@@ -320,20 +391,6 @@ class BayesianOptimizationTab:
         ttk.Button(auto, text="Stop Auto", command=self._stop_auto_loop).pack(side="left", padx=3)
         ttk.Label(auto, textvariable=self._auto_status_var, foreground=self.ACCENT).pack(side="left", padx=12)
 
-        sim = ttk.LabelFrame(parent, text="Simulation", padding=8)
-        sim.pack(fill="x", padx=4, pady=(0, 8))
-        ttk.Label(sim, text="Mode:").pack(side="left", padx=(0, 4))
-        ttk.Combobox(sim, textvariable=self._sim_mode_var, values=("fake", "replay"), state="readonly", width=8).pack(side="left", padx=(0, 10))
-        ttk.Label(sim, text="Iterations:").pack(side="left", padx=(0, 4))
-        ttk.Entry(sim, textvariable=self._sim_iterations_var, width=6).pack(side="left", padx=(0, 10))
-        ttk.Label(sim, text="Seed:").pack(side="left", padx=(0, 4))
-        ttk.Entry(sim, textvariable=self._sim_seed_var, width=7).pack(side="left", padx=(0, 10))
-        ttk.Label(sim, text="Noise:").pack(side="left", padx=(0, 4))
-        ttk.Entry(sim, textvariable=self._sim_noise_var, width=7).pack(side="left", padx=(0, 10))
-        ttk.Entry(sim, textvariable=self._sim_replay_dir_var, width=24).pack(side="left", padx=(0, 4))
-        ttk.Button(sim, text="Replay Folder", command=self._browse_sim_replay_dir).pack(side="left", padx=3)
-        ttk.Button(sim, text="Run Simulated BO", command=self._run_simulated_bo).pack(side="left", padx=3)
-
         clue = ttk.LabelFrame(parent, text="Workflow Cues", padding=8)
         clue.pack(fill="x", padx=4, pady=(0, 8))
         ttk.Label(
@@ -354,11 +411,132 @@ class BayesianOptimizationTab:
         self._suggestion_text.pack(fill="both", expand=True)
         self._suggestion_text.config(state="disabled")
 
+    def _build_simulation_tab(self, parent):
+        root = ttk.Frame(parent)
+        root.pack(fill="both", expand=True, padx=4, pady=4)
+
+        nav = ttk.Frame(root)
+        nav.pack(fill="x", pady=(0, 6))
+        self._engine_step_label = ttk.Label(nav, text="", font=("Arial", 11, "bold"))
+        self._engine_step_label.pack(side="left", padx=(2, 10))
+        self._engine_back_button = ttk.Button(nav, text="< Back", command=self._engine_prev_page)
+        self._engine_back_button.pack(side="left", padx=2)
+        self._engine_next_button = ttk.Button(nav, text="Next >", command=self._engine_next_page)
+        self._engine_next_button.pack(side="right", padx=2)
+
+        ttk.Label(root, textvariable=self._engine_status_var, foreground=self.ACCENT, wraplength=980, justify="left").pack(fill="x", pady=(0, 6))
+
+        self._engine_page_container = ttk.Frame(root)
+        self._engine_page_container.pack(fill="both", expand=True)
+        landscape_page = ttk.Frame(self._engine_page_container)
+        model_page = ttk.Frame(self._engine_page_container)
+        results_page = ttk.Frame(self._engine_page_container)
+        self._engine_pages = [
+            ("1/3 Landscape", landscape_page),
+            ("2/3 Signal Model", model_page),
+            ("3/3 Results", results_page),
+        ]
+
+        dims_box = ttk.LabelFrame(landscape_page, text="Synthetic Parameter Landscape", padding=8)
+        dims_box.pack(fill="both", expand=True)
+
+        toolbar = ttk.Frame(dims_box)
+        toolbar.pack(fill="x", pady=(0, 6))
+        ttk.Button(toolbar, text="Load Active Parameters", command=self._engine_load_active_dimensions).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="Edit Selected", command=self._engine_edit_dimension).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="Next: Signal Model", command=self._engine_next_page).pack(side="right", padx=2)
+
+        dim_cols = ("Min", "Max", "Optimum", "Spread", "Shape", "Weight")
+        self._engine_dim_tree = ttk.Treeview(dims_box, columns=dim_cols, show="tree headings", height=14, style="BO.Treeview")
+        self._engine_dim_tree.heading("#0", text="Parameter")
+        self._engine_dim_tree.column("#0", width=150)
+        for col in dim_cols:
+            self._engine_dim_tree.heading(col, text=col)
+            self._engine_dim_tree.column(col, width=82, anchor="center")
+        self._engine_dim_tree.pack(fill="both", expand=True)
+        self._engine_dim_tree.bind("<Double-1>", lambda _e: self._engine_edit_dimension())
+
+        model_box = ttk.LabelFrame(model_page, text="Synthetic SWV Model", padding=8)
+        model_box.pack(fill="both", expand=True)
+        model_grid = ttk.Frame(model_box)
+        model_grid.pack(fill="x")
+        model_entries = [
+            ("Iterations", self._engine_iterations_var),
+            ("Grid", self._engine_grid_var),
+            ("Seed", self._engine_seed_var),
+            ("Meas noise", self._engine_measurement_noise_var),
+            ("Channel noise", self._engine_channel_noise_var),
+            ("Peak emphasis", self._engine_peak_emphasis_var),
+            ("Base peak uA", self._engine_base_peak_var),
+            ("Peak gain uA", self._engine_peak_gain_var),
+            ("Base noise uA", self._engine_base_noise_var),
+            ("Noise gain uA", self._engine_noise_gain_var),
+        ]
+        for idx, (label, var) in enumerate(model_entries):
+            row = idx // 2
+            col = (idx % 2) * 2
+            ttk.Label(model_grid, text=f"{label}:").grid(row=row, column=col, sticky="w", pady=2)
+            ttk.Entry(model_grid, textvariable=var, width=10).grid(row=row, column=col + 1, sticky="w", padx=(4, 12), pady=2)
+        run_bar = ttk.Frame(model_box)
+        run_bar.pack(fill="x", pady=(8, 0))
+        ttk.Button(run_bar, text="Draw Landscape", command=self._engine_draw_landscape).pack(side="left", padx=2)
+        ttk.Button(run_bar, text="Run Optimizer Simulation", command=self._engine_run_optimizer).pack(side="left", padx=2)
+        ttk.Button(run_bar, text="Next: Results", command=self._engine_next_page).pack(side="right", padx=2)
+        ttk.Label(
+            model_box,
+            text=(
+                "Peak emphasis controls how strongly the synthetic system rewards signal height relative "
+                "to low noise and shape. Run simulations with different Q weights in Setup to see whether "
+                "the optimizer follows the intended landscape."
+            ),
+            foreground=self.ACCENT,
+            wraplength=760,
+            justify="left",
+        ).pack(fill="x", pady=(10, 0))
+
+        results = ttk.PanedWindow(results_page, orient=tk.HORIZONTAL)
+        results.pack(fill="both", expand=True)
+        plot_box = ttk.LabelFrame(results, text="Optimizer Movement", padding=6)
+        detail_box = ttk.LabelFrame(results, text="Iteration Window", padding=6)
+        results.add(plot_box, weight=3)
+        results.add(detail_box, weight=2)
+
+        result_toolbar = ttk.Frame(plot_box)
+        result_toolbar.pack(fill="x", pady=(0, 4))
+        ttk.Button(result_toolbar, text="Run Optimizer Simulation", command=self._engine_run_optimizer).pack(side="left", padx=2)
+        ttk.Button(result_toolbar, text="Apply Best To Setup", command=self._engine_apply_best_to_setup).pack(side="left", padx=2)
+        ttk.Separator(result_toolbar, orient=tk.VERTICAL).pack(side="left", fill="y", padx=8)
+        ttk.Button(result_toolbar, text="< Iter", command=lambda: self._engine_step_window(-1)).pack(side="left", padx=2)
+        ttk.Button(result_toolbar, text="Iter >", command=lambda: self._engine_step_window(1)).pack(side="left", padx=2)
+        ttk.Button(result_toolbar, text="Show All", command=self._engine_show_all).pack(side="left", padx=2)
+        self._engine_plot_frame = ttk.Frame(plot_box)
+        self._engine_plot_frame.pack(fill="both", expand=True)
+
+        result_cols = ("Q_run", "True Q", "Distance", "Peak uA", "Raw SNR", "Begin", "End", "Step", "Amp", "Freq")
+        self._engine_result_tree = ttk.Treeview(detail_box, columns=result_cols, show="tree headings", height=9, style="BO.Treeview")
+        self._engine_result_tree.heading("#0", text="Iter")
+        self._engine_result_tree.column("#0", width=46, anchor="center")
+        for col in result_cols:
+            self._engine_result_tree.heading(col, text=col)
+            self._engine_result_tree.column(col, width=78, anchor="center")
+        self._engine_result_tree.pack(fill="both", expand=True)
+        self._engine_result_tree.bind("<<TreeviewSelect>>", lambda _e: self._engine_select_iteration_from_table())
+        result_x = ttk.Scrollbar(detail_box, orient=tk.HORIZONTAL, command=self._engine_result_tree.xview)
+        self._engine_result_tree.configure(xscrollcommand=result_x.set)
+        result_x.pack(fill="x")
+
+        trace_box = ttk.LabelFrame(detail_box, text="Synthetic SWV Trace Preview", padding=4)
+        trace_box.pack(fill="both", expand=True, pady=(6, 0))
+        self._engine_trace_text = scrolledtext.ScrolledText(trace_box, height=6, wrap=tk.WORD)
+        self._engine_trace_text.pack(fill="both", expand=True)
+        self._engine_trace_text.config(state="disabled")
+        self._engine_go_page(0)
+
     def _build_results_tab(self, parent):
         pane = ttk.PanedWindow(parent, orient=tk.VERTICAL)
         pane.pack(fill="both", expand=True, padx=4, pady=4)
         top = ttk.PanedWindow(pane, orient=tk.HORIZONTAL)
-        middle = ttk.PanedWindow(pane, orient=tk.HORIZONTAL)
+        middle = ttk.Frame(pane)
         bottom = ttk.PanedWindow(pane, orient=tk.HORIZONTAL)
         pane.add(top, weight=1)
         pane.add(middle, weight=1)
@@ -369,33 +547,39 @@ class BayesianOptimizationTab:
         top.add(score_box, weight=1)
         top.add(best_box, weight=1)
 
-        score_cols = ("Q", "SNR", "Shape", "Baseline", "Replicate", "Success")
+        score_cols = ("Q", "Peak uA", "Raw SNR", "SNR Score", "Shape", "Baseline", "Replicate", "Success")
         self._score_tree = ttk.Treeview(score_box, columns=score_cols, show="tree headings", height=10)
         self._score_tree.heading("#0", text="Ch")
         self._score_tree.column("#0", width=50, anchor="center")
         for col in score_cols:
             self._score_tree.heading(col, text=col)
-            self._score_tree.column(col, width=82, anchor="center")
+            self._score_tree.column(col, width=78, anchor="center")
         self._score_tree.pack(fill="both", expand=True)
+        score_x = ttk.Scrollbar(score_box, orient=tk.HORIZONTAL, command=self._score_tree.xview)
+        self._score_tree.configure(xscrollcommand=score_x.set)
+        score_x.pack(fill="x")
 
         self._best_text = scrolledtext.ScrolledText(best_box, height=10, wrap=tk.WORD)
         self._best_text.pack(fill="both", expand=True)
         self._best_text.config(state="disabled")
 
         hist_box = ttk.LabelFrame(middle, text="BO History", padding=6)
-        model_box = ttk.LabelFrame(middle, text="Surrogate and Acquisition Artifacts", padding=6)
-        middle.add(hist_box, weight=1)
-        middle.add(model_box, weight=1)
-        hist_cols = ("Q_run", "Mean", "Std", "Failed", "Low")
+        hist_box.pack(fill="both", expand=True)
+        model_box = ttk.LabelFrame(bottom, text="Surrogate and Acquisition Artifacts", padding=6)
+        hist_cols = ("Q_run", "Mean", "Std", "Failed", "Low", "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t")
         self._history_tree = ttk.Treeview(hist_box, columns=hist_cols, show="tree headings", height=10)
         self._history_tree.heading("#0", text="Iter")
         self._history_tree.column("#0", width=55, anchor="center")
         for col in hist_cols:
             self._history_tree.heading(col, text=col)
-            self._history_tree.column(col, width=90, anchor="center")
+            self._history_tree.column(col, width=76, anchor="center")
         self._history_tree.pack(fill="both", expand=True)
+        history_x = ttk.Scrollbar(hist_box, orient=tk.HORIZONTAL, command=self._history_tree.xview)
+        self._history_tree.configure(xscrollcommand=history_x.set)
+        history_x.pack(fill="x")
 
         cols = ("Type", "File")
+        bottom.add(model_box, weight=1)
         model_toolbar = ttk.Frame(model_box)
         model_toolbar.pack(fill="x", pady=(0, 4))
         ttk.Button(model_toolbar, text="Refresh", command=self._refresh_model_artifacts).pack(side="left", padx=2)
@@ -440,12 +624,6 @@ class BayesianOptimizationTab:
         if path:
             self._analysis_dir_var.set(path)
 
-    def _browse_sim_replay_dir(self):
-        path = filedialog.askdirectory(title="Choose replay analysis folder")
-        if path:
-            self._sim_replay_dir_var.set(path)
-            self._sync_simulation_config(show_error=False)
-
     def _save_local_paths(self):
         try:
             payload = {
@@ -467,10 +645,12 @@ class BayesianOptimizationTab:
                 self._analysis_glob_var.set(str(analysis_cfg.get("file_glob")))
             self._set_analysis_vars_from_config(analysis_cfg)
             self._set_algorithm_vars_from_config(self._config)
-            self._set_simulation_vars_from_config(self._config)
+            self._set_scoring_vars_from_config(self._config)
+            self._engine_seed_var.set(str(self._config.get("random_seed", 42)))
             self._channels_var.set(", ".join(str(ch) for ch in self._config.get("channels", [])))
             self._refresh_parameter_table()
             self._refresh_initial_parameters_table()
+            self._engine_load_active_dimensions()
             self._validate_config(show_dialog=False)
             if not initial:
                 self._status_var.set(f"Loaded BO config: {self._config_path_var.get()}")
@@ -488,7 +668,7 @@ class BayesianOptimizationTab:
         analysis_cfg["file_glob"] = self._analysis_glob_var.get().strip() or "*.json"
         self._update_analysis_config_from_vars(analysis_cfg)
         self._sync_algorithm_config(show_error=False)
-        self._sync_simulation_config(show_error=False)
+        self._sync_scoring_config(show_error=False)
         try:
             path = save_bo_config(self._config, self._config_path_var.get())
             self._status_var.set(f"Saved BO config: {path}")
@@ -546,28 +726,70 @@ class BayesianOptimizationTab:
             if show_error:
                 messagebox.showerror("Optimizer Behavior", str(exc))
 
-    def _set_simulation_vars_from_config(self, cfg: dict):
-        sim = dict((cfg or {}).get("simulation") or {})
-        mode = str(sim.get("mode", "fake")).lower()
-        self._sim_mode_var.set(mode if mode in ("fake", "replay") else "fake")
-        self._sim_seed_var.set(str(sim.get("seed", (cfg or {}).get("random_seed", 42))))
-        self._sim_noise_var.set(str(sim.get("noise", 0.04)))
-        self._sim_replay_dir_var.set(str(sim.get("replay_dir", "")))
+    @staticmethod
+    def _q_reference_text():
+        return (
+            "Q terms: Peak uA is the measured signal height. Raw SNR is peak height / background RMS. "
+            "SNR Score is Raw SNR / SNR sat, clipped 0-1. Shape rewards a centered, stable peak. "
+            "Baseline rewards low/stable background. Replicate rewards consistent peak heights across scans. "
+            "Success is OK scans / total scans. Q_channel is the weighted mean of those component scores. "
+            "Q_run is mean channel Q minus variability, failed-channel, and low-channel penalties."
+        )
 
-    def _sync_simulation_config(self, show_error=True):
+    def _set_scoring_vars_from_config(self, cfg: dict):
+        scoring = dict((cfg or {}).get("scoring") or {})
+        channel = dict(scoring.get("channel_weights") or {})
+        run = dict(scoring.get("run_weights") or {})
+        self._score_snr_weight_var.set(str(channel.get("snr", 0.35)))
+        self._score_shape_weight_var.set(str(channel.get("peak_shape", 0.20)))
+        self._score_baseline_weight_var.set(str(channel.get("baseline", 0.20)))
+        self._score_replicate_weight_var.set(str(channel.get("replicate_consistency", 0.15)))
+        self._score_success_weight_var.set(str(channel.get("success", 0.10)))
+        self._score_snr_saturation_var.set(str(channel.get("snr_saturation", 20.0)))
+        self._score_variability_penalty_var.set(str(run.get("lambda_variability", 0.20)))
+        self._score_failed_penalty_var.set(str(run.get("lambda_failed", 0.40)))
+        self._score_low_penalty_var.set(str(run.get("lambda_low", 0.20)))
+        self._score_low_threshold_var.set(str(run.get("low_channel_threshold", 0.50)))
+        self._refresh_score_formula()
+
+    def _sync_scoring_config(self, show_error=True):
         if self._config is None:
             return
         try:
-            sim = self._config.setdefault("simulation", {})
-            sim["mode"] = self._sim_mode_var.get().strip() or "fake"
-            sim["seed"] = int(self._sim_seed_var.get() or self._config.get("random_seed", 42))
-            sim["noise"] = float(self._sim_noise_var.get() or 0.04)
-            sim["replay_dir"] = self._sim_replay_dir_var.get().strip()
-            sim.setdefault("channel_noise", 0.03)
-            sim.setdefault("replay_glob", "*.json")
+            scoring = self._config.setdefault("scoring", {})
+            channel = scoring.setdefault("channel_weights", {})
+            channel["snr"] = max(0.0, float(self._score_snr_weight_var.get() or 0.0))
+            channel["peak_shape"] = max(0.0, float(self._score_shape_weight_var.get() or 0.0))
+            channel["baseline"] = max(0.0, float(self._score_baseline_weight_var.get() or 0.0))
+            channel["replicate_consistency"] = max(0.0, float(self._score_replicate_weight_var.get() or 0.0))
+            channel["success"] = max(0.0, float(self._score_success_weight_var.get() or 0.0))
+            channel["snr_saturation"] = max(1e-12, float(self._score_snr_saturation_var.get() or 20.0))
+            run = scoring.setdefault("run_weights", {})
+            run["lambda_variability"] = max(0.0, float(self._score_variability_penalty_var.get() or 0.0))
+            run["lambda_failed"] = max(0.0, float(self._score_failed_penalty_var.get() or 0.0))
+            run["lambda_low"] = max(0.0, float(self._score_low_penalty_var.get() or 0.0))
+            run["low_channel_threshold"] = max(0.0, min(1.0, float(self._score_low_threshold_var.get() or 0.5)))
+            self._refresh_score_formula()
         except Exception as exc:
             if show_error:
-                messagebox.showerror("Simulation", str(exc))
+                messagebox.showerror("Q Score Decomposition", str(exc))
+
+    def _refresh_score_formula(self):
+        try:
+            total = (
+                float(self._score_snr_weight_var.get() or 0.0)
+                + float(self._score_shape_weight_var.get() or 0.0)
+                + float(self._score_baseline_weight_var.get() or 0.0)
+                + float(self._score_replicate_weight_var.get() or 0.0)
+                + float(self._score_success_weight_var.get() or 0.0)
+            )
+        except Exception:
+            self._score_formula_var.set("Q_channel = weighted component score. Enter numeric weights.")
+            return
+        self._score_formula_var.set(
+            "Q_channel = (SNR + shape + baseline + replicate + success weighted scores) / "
+            f"{total:.3g}; Q_run = mean channels - variability/failed/low penalties."
+        )
 
     def _sync_channels_from_entry(self, show_error=True):
         if self._config is None:
@@ -584,6 +806,7 @@ class BayesianOptimizationTab:
         if self._config is None:
             return
         self._sync_channels_from_entry(show_error=False)
+        self._sync_scoring_config(show_error=False)
         errors = validate_bo_config(self._config)
         active = ", ".join(active_parameters(self._config)) or "(none)"
         if errors:
@@ -605,6 +828,12 @@ class BayesianOptimizationTab:
         session_mgr = getattr(self._session, "session_manager", None)
         exp_path = session_mgr.require_experiment() if session_mgr is not None else None
         if exp_path is None:
+            return
+        if not messagebox.askyesno(
+            "Start BO Session",
+            "Start a new BO session for this experiment?\n\n"
+            "This snapshots the current BO config and subsequent suggestions will be recorded in a new BO session folder.",
+        ):
             return
         self._save_config()
         analysis_dir = Path(exp_path) / "bo_analysis"
@@ -710,38 +939,424 @@ class BayesianOptimizationTab:
             return None
         return self._import_analysis(path, notes="Imported from in-repo BO analysis", prompt=prompt)
 
-    def _run_simulated_bo(self):
+    # Simulation engine
+    def _engine_go_page(self, index):
+        if not self._engine_pages:
+            return
+        self._engine_page_index = max(0, min(len(self._engine_pages) - 1, int(index)))
+        for _title, frame in self._engine_pages:
+            frame.pack_forget()
+        title, frame = self._engine_pages[self._engine_page_index]
+        frame.pack(fill="both", expand=True)
+        if hasattr(self, "_engine_step_label"):
+            self._engine_step_label.config(text=title)
+        if hasattr(self, "_engine_back_button"):
+            self._engine_back_button.config(state="disabled" if self._engine_page_index == 0 else "normal")
+        if hasattr(self, "_engine_next_button"):
+            self._engine_next_button.config(
+                text="Finish" if self._engine_page_index == len(self._engine_pages) - 1 else "Next >",
+                state="disabled" if self._engine_page_index == len(self._engine_pages) - 1 else "normal",
+            )
+
+    def _engine_next_page(self):
+        if self._engine_page_index == 0 and not self._simulation_dims:
+            self._engine_load_active_dimensions()
+        self._engine_go_page(self._engine_page_index + 1)
+
+    def _engine_prev_page(self):
+        self._engine_go_page(self._engine_page_index - 1)
+
+    def _engine_load_active_dimensions(self):
+        if self._config is None or not hasattr(self, "_engine_dim_tree"):
+            return
+        try:
+            self._simulation_dims = default_dimensions(self._config, limit=3)
+            self._engine_refresh_dimension_tree()
+            self._engine_status_var.set(f"Loaded {len(self._simulation_dims)} active simulation dimension(s).")
+        except Exception as exc:
+            messagebox.showerror("Simulation Engine", str(exc))
+
+    def _engine_refresh_dimension_tree(self):
+        if not hasattr(self, "_engine_dim_tree"):
+            return
+        for row in self._engine_dim_tree.get_children():
+            self._engine_dim_tree.delete(row)
+        for idx, dim in enumerate(self._simulation_dims):
+            self._engine_dim_tree.insert(
+                "",
+                "end",
+                iid=str(idx),
+                text=str(dim.get("name", "")),
+                values=(
+                    self._fmt_raw(dim.get("minimum")),
+                    self._fmt_raw(dim.get("maximum")),
+                    self._fmt_raw(dim.get("optimum")),
+                    self._fmt_raw(dim.get("spread")),
+                    dim.get("landscape", "gaussian"),
+                    self._fmt_raw(dim.get("weight", 1.0)),
+                ),
+            )
+
+    def _engine_edit_dimension(self):
+        if not self._simulation_dims:
+            self._engine_load_active_dimensions()
+        selection = self._engine_dim_tree.selection() if hasattr(self, "_engine_dim_tree") else ()
+        if not selection:
+            messagebox.showwarning("Simulation Engine", "Select a simulation dimension first.")
+            return
+        idx = int(selection[0])
+        dim = dict(self._simulation_dims[idx])
+        win = tk.Toplevel(self._frame)
+        win.title("Edit Simulation Dimension")
+        win.transient(self._frame)
+        win.resizable(False, False)
+        box = ttk.Frame(win, padding=12)
+        box.pack(fill="both", expand=True)
+        vars_by_key = {
+            "minimum": tk.StringVar(value=self._fmt_raw(dim.get("minimum"))),
+            "maximum": tk.StringVar(value=self._fmt_raw(dim.get("maximum"))),
+            "optimum": tk.StringVar(value=self._fmt_raw(dim.get("optimum"))),
+            "spread": tk.StringVar(value=self._fmt_raw(dim.get("spread"))),
+            "landscape": tk.StringVar(value=str(dim.get("landscape", "gaussian"))),
+            "weight": tk.StringVar(value=self._fmt_raw(dim.get("weight", 1.0))),
+        }
+        ttk.Label(box, text=str(dim.get("name", "")), font=("Arial", 10, "bold")).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+        labels = [
+            ("minimum", "Minimum"),
+            ("maximum", "Maximum"),
+            ("optimum", "Optimum"),
+            ("spread", "Spread"),
+            ("weight", "Weight"),
+        ]
+        for row, (key, label) in enumerate(labels, start=1):
+            ttk.Label(box, text=f"{label}:").grid(row=row, column=0, sticky="w", pady=3)
+            ttk.Entry(box, textvariable=vars_by_key[key], width=16).grid(row=row, column=1, sticky="w", pady=3)
+        ttk.Label(box, text="Shape:").grid(row=len(labels) + 1, column=0, sticky="w", pady=3)
+        ttk.Combobox(
+            box,
+            textvariable=vars_by_key["landscape"],
+            values=LANDSCAPE_TYPES,
+            state="readonly",
+            width=14,
+        ).grid(row=len(labels) + 1, column=1, sticky="w", pady=3)
+        buttons = ttk.Frame(box)
+        buttons.grid(row=len(labels) + 2, column=0, columnspan=2, pady=(10, 0))
+
+        def save():
+            try:
+                updated = dict(dim)
+                updated["minimum"] = float(vars_by_key["minimum"].get())
+                updated["maximum"] = float(vars_by_key["maximum"].get())
+                updated["optimum"] = float(vars_by_key["optimum"].get())
+                updated["spread"] = float(vars_by_key["spread"].get())
+                updated["landscape"] = vars_by_key["landscape"].get()
+                updated["weight"] = float(vars_by_key["weight"].get())
+                if updated["maximum"] <= updated["minimum"]:
+                    raise ValueError("Maximum must be greater than minimum.")
+                if updated["spread"] <= 0:
+                    raise ValueError("Spread must be positive.")
+                updated["optimum"] = min(max(updated["optimum"], updated["minimum"]), updated["maximum"])
+                self._simulation_dims[idx] = updated
+                self._engine_refresh_dimension_tree()
+                win.destroy()
+            except Exception as exc:
+                messagebox.showerror("Simulation Dimension", str(exc), parent=win)
+
+        ttk.Button(buttons, text="Save", command=save).pack(side="left", padx=4)
+        ttk.Button(buttons, text="Cancel", command=win.destroy).pack(side="left", padx=4)
+        win.grab_set()
+        win.focus_force()
+
+    def _engine_sim_config(self):
+        if not self._simulation_dims:
+            self._engine_load_active_dimensions()
+        return {
+            "dimensions": [dict(dim) for dim in self._simulation_dims],
+            "iterations": max(1, int(self._engine_iterations_var.get() or 1)),
+            "grid_size": max(5, min(45, int(self._engine_grid_var.get() or 25))),
+            "seed": int(self._engine_seed_var.get() or self._config.get("random_seed", 42)),
+            "measurement_noise": max(0.0, float(self._engine_measurement_noise_var.get() or 0.03)),
+            "channel_noise": max(0.0, float(self._engine_channel_noise_var.get() or 0.025)),
+            "peak_emphasis": max(0.0, float(self._engine_peak_emphasis_var.get() or 0.70)),
+            "base_peak_uA": max(0.0, float(self._engine_base_peak_var.get() or 0.45)),
+            "peak_gain_uA": max(0.0, float(self._engine_peak_gain_var.get() or 5.0)),
+            "base_noise_uA": max(1e-6, float(self._engine_base_noise_var.get() or 0.08)),
+            "noise_gain_uA": max(0.0, float(self._engine_noise_gain_var.get() or 0.45)),
+        }
+
+    def _engine_draw_landscape(self):
         if self._config is None:
-            messagebox.showwarning("BO Simulation", "Load a BO config first.")
+            messagebox.showwarning("Simulation Engine", "Load a BO config first.")
             return
         try:
-            target = max(1, int(self._sim_iterations_var.get() or 1))
-            self._sync_algorithm_config()
-            self._sync_simulation_config()
+            sim_cfg = self._engine_sim_config()
+            from core.bo_simulation import SyntheticSWVSimulationEngine
+
+            engine = SyntheticSWVSimulationEngine(self._config, sim_cfg)
+            self._simulation_result = {
+                "session": None,
+                "engine": engine,
+                "rows": [],
+                "landscape": engine.sample_landscape(sim_cfg["grid_size"]),
+            }
+            self._engine_selected_index = 0
+            self._engine_refresh_results()
+            self._engine_render_plot(show_all=True)
+            self._engine_go_page(2)
+            self._engine_status_var.set("Drew synthetic Q landscape. Run the optimizer to add a path.")
         except Exception as exc:
-            messagebox.showerror("BO Simulation", str(exc))
+            messagebox.showerror("Simulation Engine", str(exc))
+
+    def _engine_run_optimizer(self):
+        if self._config is None:
+            messagebox.showwarning("Simulation Engine", "Load a BO config first.")
             return
-        if self._bo_session is None:
-            self._start_bo_session()
-            if self._bo_session is None:
-                return
-        completed = 0
         try:
-            while completed < target and not self._bo_session.should_stop():
-                self._suggestion = self._bo_session.ask_next()
-                obs = self._bo_session.simulate_pending_result(notes=f"Simulated {self._sim_mode_var.get()} BO result")
-                completed += 1
-                self._render_scores(obs)
-                self._refresh_history()
-                self._render_best()
-                self._refresh_model_artifacts()
-                self._refresh_record_files()
-            self._suggestion = None
-            self._clear_text(self._suggestion_text)
-            self._status_var.set(f"Simulated {completed} BO iteration(s).")
-            self._tabs.select(2)
+            self._sync_channels_from_entry(show_error=False)
+            self._sync_algorithm_config(show_error=False)
+            self._sync_scoring_config(show_error=False)
+            sim_cfg = self._engine_sim_config()
+            output_root = Path("bo_simulations")
+            result = run_optimizer_simulation(
+                self._config,
+                sim_cfg,
+                output_root=output_root,
+                iterations=sim_cfg["iterations"],
+            )
+            self._simulation_result = result
+            self._engine_selected_index = max(0, len(result.get("rows", [])) - 1)
+            self._engine_refresh_results()
+            self._engine_render_plot(show_all=True)
+            self._engine_update_trace_text()
+            self._engine_go_page(2)
+            best = min((row for row in result["rows"]), key=lambda r: r.get("distance", 1.0), default=None)
+            if best:
+                self._engine_status_var.set(
+                    f"Completed {len(result['rows'])} simulated BO iteration(s). "
+                    f"Closest distance={best['distance']:.3f}, computed Q={best['Q_run']:.3f}, true Q={best['true_Q']:.3f}."
+                )
+            else:
+                self._engine_status_var.set("Simulation completed without optimizer rows.")
         except Exception as exc:
-            messagebox.showerror("BO Simulation", str(exc))
+            messagebox.showerror("Simulation Engine", str(exc))
+
+    def _engine_refresh_results(self):
+        if not hasattr(self, "_engine_result_tree"):
+            return
+        for row in self._engine_result_tree.get_children():
+            self._engine_result_tree.delete(row)
+        rows = (self._simulation_result or {}).get("rows", [])
+        session = (self._simulation_result or {}).get("session")
+        observations = session.observations if session is not None else []
+        for idx, row in enumerate(rows):
+            obs = observations[idx] if idx < len(observations) else {}
+            peak, snr = self._engine_peak_snr_for_obs(obs)
+            self._engine_result_tree.insert(
+                "",
+                "end",
+                iid=str(idx),
+                text=str(row.get("iteration", idx + 1)),
+                values=(
+                    self._fmt(row.get("Q_run")),
+                    self._fmt(row.get("true_Q")),
+                    self._fmt(row.get("distance")),
+                    self._fmt(peak),
+                    self._fmt(snr),
+                    self._fmt_raw(row.get("begin_potential")),
+                    self._fmt_raw(row.get("end_potential")),
+                    self._fmt_raw(row.get("step_potential")),
+                    self._fmt_raw(row.get("amplitude")),
+                    self._fmt_raw(row.get("frequency")),
+                ),
+            )
+        if rows:
+            self._engine_result_tree.selection_set(str(self._engine_selected_index))
+            self._engine_result_tree.see(str(self._engine_selected_index))
+        else:
+            self._clear_text(self._engine_trace_text)
+
+    def _engine_step_window(self, delta):
+        rows = (self._simulation_result or {}).get("rows", [])
+        if not rows:
+            return
+        self._engine_selected_index = max(0, min(len(rows) - 1, self._engine_selected_index + int(delta)))
+        self._engine_result_tree.selection_set(str(self._engine_selected_index))
+        self._engine_result_tree.see(str(self._engine_selected_index))
+        self._engine_render_plot(show_all=False)
+        self._engine_update_trace_text()
+
+    def _engine_show_all(self):
+        rows = (self._simulation_result or {}).get("rows", [])
+        if rows:
+            self._engine_selected_index = len(rows) - 1
+            self._engine_result_tree.selection_set(str(self._engine_selected_index))
+            self._engine_result_tree.see(str(self._engine_selected_index))
+        self._engine_render_plot(show_all=True)
+        self._engine_update_trace_text()
+
+    def _engine_select_iteration_from_table(self):
+        if not hasattr(self, "_engine_result_tree"):
+            return
+        selection = self._engine_result_tree.selection()
+        if not selection:
+            return
+        try:
+            self._engine_selected_index = int(selection[0])
+            self._engine_render_plot(show_all=False)
+            self._engine_update_trace_text()
+        except Exception:
+            pass
+
+    def _engine_apply_best_to_setup(self):
+        result = self._simulation_result or {}
+        rows = result.get("rows", [])
+        if self._config is None or not rows:
+            messagebox.showwarning("Simulation Engine", "Run an optimizer simulation first.")
+            return
+        best = max(rows, key=lambda row: float(row.get("Q_run", 0.0)))
+        if not messagebox.askyesno(
+            "Apply Simulated Best",
+            "Use the best simulated parameter set as the Setup initial parameters?",
+        ):
+            return
+        updated = {name: best.get(name) for name in PARAMETER_ORDER if best.get(name) is not None}
+        self._save_initial_parameters(updated)
+        self._engine_status_var.set(f"Applied simulated iteration {best['iteration']} as Setup initial parameters.")
+
+    def _engine_render_plot(self, show_all=False):
+        if not hasattr(self, "_engine_plot_frame"):
+            return
+        for child in self._engine_plot_frame.winfo_children():
+            child.destroy()
+        result = self._simulation_result or {}
+        landscape = result.get("landscape") or {}
+        dims = landscape.get("dimensions") or []
+        points = landscape.get("points") or []
+        rows = result.get("rows") or []
+        try:
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+            from matplotlib.figure import Figure
+        except Exception as exc:
+            ttk.Label(self._engine_plot_frame, text=f"Matplotlib plot unavailable: {exc}").pack(fill="both", expand=True)
+            return
+        fig = Figure(figsize=(7.2, 4.5), dpi=100)
+        path_rows = rows if show_all else rows[: self._engine_selected_index + 1]
+        if not dims or not points:
+            ax = fig.add_subplot(111)
+            ax.text(0.5, 0.5, "No simulation landscape yet", ha="center", va="center")
+            ax.set_axis_off()
+        elif len(dims) == 1:
+            name = dims[0]["name"]
+            ax = fig.add_subplot(111)
+            ordered = sorted(points, key=lambda p: p[name])
+            ax.plot([p[name] for p in ordered], [p["true_Q"] for p in ordered], color=self.ACCENT_DARK)
+            if path_rows:
+                ax.scatter([r.get(name) for r in path_rows], [r.get("true_Q") for r in path_rows], color="#d67b32", s=38, zorder=3)
+            ax.set_xlabel(name)
+            ax.set_ylabel("True Q")
+            ax.set_ylim(0.0, 1.02)
+            ax.grid(alpha=0.25)
+        elif len(dims) == 2:
+            x_name, y_name = dims[0]["name"], dims[1]["name"]
+            ax = fig.add_subplot(111)
+            scatter = ax.scatter(
+                [p[x_name] for p in points],
+                [p[y_name] for p in points],
+                c=[p["true_Q"] for p in points],
+                cmap="viridis",
+                s=18,
+                alpha=0.8,
+            )
+            if path_rows:
+                ax.plot([r.get(x_name) for r in path_rows], [r.get(y_name) for r in path_rows], color="#d67b32", marker="o", linewidth=2)
+            fig.colorbar(scatter, ax=ax, label="True Q")
+            ax.set_xlabel(x_name)
+            ax.set_ylabel(y_name)
+            ax.grid(alpha=0.2)
+        else:
+            x_name, y_name, z_name = dims[0]["name"], dims[1]["name"], dims[2]["name"]
+            ax = fig.add_subplot(111, projection="3d")
+            scatter = ax.scatter(
+                [p[x_name] for p in points],
+                [p[y_name] for p in points],
+                [p[z_name] for p in points],
+                c=[p["true_Q"] for p in points],
+                cmap="viridis",
+                s=10,
+                alpha=0.35,
+            )
+            if path_rows:
+                ax.plot(
+                    [r.get(x_name) for r in path_rows],
+                    [r.get(y_name) for r in path_rows],
+                    [r.get(z_name) for r in path_rows],
+                    color="#d67b32",
+                    marker="o",
+                    linewidth=2,
+                )
+            fig.colorbar(scatter, ax=ax, label="True Q", shrink=0.75)
+            ax.set_xlabel(x_name)
+            ax.set_ylabel(y_name)
+            ax.set_zlabel(z_name)
+        if path_rows:
+            fig.suptitle(f"Optimizer path through iteration {path_rows[-1].get('iteration', len(path_rows))}")
+        fig.tight_layout()
+        canvas = FigureCanvasTkAgg(fig, master=self._engine_plot_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+        self._engine_plot_canvas = canvas
+
+    def _engine_update_trace_text(self):
+        result = self._simulation_result or {}
+        session = result.get("session")
+        if session is None or not session.observations:
+            self._clear_text(self._engine_trace_text)
+            return
+        idx = max(0, min(self._engine_selected_index, len(session.observations) - 1))
+        obs = session.observations[idx]
+        truth = obs.get("simulation_truth", {})
+        lines = [
+            f"Iteration {obs.get('iteration')}",
+            f"Computed Q_run: {self._fmt(obs.get('Q_run'))}",
+            f"True simulated Q: {self._fmt(truth.get('true_Q'))}",
+            f"Distance to true optimum: {self._fmt(truth.get('normalized_distance'))}",
+            "",
+            "Parameters:",
+        ]
+        for name in PARAMETER_ORDER:
+            if name in obs.get("params", {}):
+                lines.append(f"  {name}: {self._fmt_raw(obs['params'].get(name))}")
+        peak, snr = self._engine_peak_snr_for_obs(obs)
+        lines.extend(["", f"Mean channel peak height: {self._fmt(peak)} uA", f"Mean raw SNR: {self._fmt(snr)}"])
+        lines.extend([""] + self._q_breakdown_lines(obs, config=session.config if session is not None else None))
+        traces = obs.get("swv_trace_preview", {})
+        if traces:
+            ch, trace = next(iter(traces.items()))
+            volts = trace.get("voltage_v", [])[:8]
+            currents = trace.get("current_uA", [])[:8]
+            pairs = ", ".join(f"{v:g}V/{i:g}uA" for v, i in zip(volts, currents))
+            lines.extend(["", f"Trace preview ch {ch}:", pairs])
+        self._write_text(self._engine_trace_text, "\n".join(lines))
+
+    @staticmethod
+    def _engine_peak_snr_for_obs(obs):
+        metrics = (obs or {}).get("channel_metrics", {})
+        if not isinstance(metrics, dict) or not metrics:
+            return None, None
+        peaks = []
+        snrs = []
+        for data in metrics.values():
+            if not isinstance(data, dict):
+                continue
+            if data.get("mean_peak_current_uA") is not None:
+                peaks.append(float(data.get("mean_peak_current_uA")))
+            elif data.get("median_peak_current_uA") is not None:
+                peaks.append(float(data.get("median_peak_current_uA")))
+            if data.get("snr") is not None:
+                snrs.append(float(data.get("snr")))
+        peak = sum(peaks) / len(peaks) if peaks else None
+        snr = sum(snrs) / len(snrs) if snrs else None
+        return peak, snr
 
     def _run_in_repo_analysis(self) -> Path:
         if self._bo_session is None or self._bo_session.pending is None:
@@ -1151,13 +1766,17 @@ class BayesianOptimizationTab:
         for row in self._score_tree.get_children():
             self._score_tree.delete(row)
         components = observation["quality"].get("channel_components", {})
+        channel_metrics = observation.get("channel_metrics", {})
         for ch, data in sorted(components.items(), key=lambda item: int(item[0])):
+            metrics = channel_metrics.get(str(ch), {}) if isinstance(channel_metrics, dict) else {}
             self._score_tree.insert(
                 "",
                 "end",
                 text=str(ch),
                 values=(
                     self._fmt(data.get("Q_channel")),
+                    self._fmt(self._channel_peak_height(metrics)),
+                    self._fmt(data.get("snr_raw")),
                     self._fmt(data.get("normalized_SNR")),
                     self._fmt(data.get("peak_shape_score")),
                     self._fmt(data.get("baseline_stability_score")),
@@ -1173,6 +1792,7 @@ class BayesianOptimizationTab:
             return
         for obs in self._bo_session.observations:
             q = obs.get("quality", {})
+            params = obs.get("params", {})
             self._history_tree.insert(
                 "",
                 "end",
@@ -1183,6 +1803,13 @@ class BayesianOptimizationTab:
                     self._fmt(q.get("std_Q_channel")),
                     self._fmt(q.get("failed_channel_fraction")),
                     self._fmt(q.get("low_channel_fraction")),
+                    self._fmt_raw(params.get("begin_potential")),
+                    self._fmt_raw(params.get("end_potential")),
+                    self._fmt_raw(params.get("step_potential")),
+                    self._fmt_raw(params.get("amplitude")),
+                    self._fmt_raw(params.get("frequency")),
+                    self._fmt_raw(params.get("conditioning_potential")),
+                    self._fmt_raw(params.get("conditioning_time")),
                 ),
             )
 
@@ -1197,9 +1824,55 @@ class BayesianOptimizationTab:
             f"Method ID: {best['method_id']}",
             "",
         ]
+        lines.extend(self._q_breakdown_lines(best, config=self._bo_session.config if self._bo_session else None))
+        lines.append("")
         for name in PARAMETER_ORDER:
             lines.append(f"{name}: {self._fmt_raw(best['params'].get(name))}")
         self._write_text(self._best_text, "\n".join(lines))
+
+    def _q_breakdown_lines(self, observation, config=None):
+        quality = dict((observation or {}).get("quality") or {})
+        source_config = config if config is not None else (self._bo_session.config if self._bo_session else self._config or {})
+        scoring = dict(source_config.get("scoring") or {})
+        channel_weights = dict(scoring.get("channel_weights") or {})
+        run_weights = dict(scoring.get("run_weights") or {})
+        q_run = float(observation.get("Q_run", quality.get("Q_run", 0.0)) or 0.0)
+        mean_q = float(quality.get("mean_Q_channel", 0.0) or 0.0)
+        std_q = float(quality.get("std_Q_channel", 0.0) or 0.0)
+        failed = float(quality.get("failed_channel_fraction", 0.0) or 0.0)
+        low = float(quality.get("low_channel_fraction", 0.0) or 0.0)
+        lambda_var = float(run_weights.get("lambda_variability", 0.20))
+        lambda_failed = float(run_weights.get("lambda_failed", 0.40))
+        lambda_low = float(run_weights.get("lambda_low", 0.20))
+        threshold = float(run_weights.get("low_channel_threshold", 0.50))
+        total = sum(
+            float(channel_weights.get(key, default))
+            for key, default in (
+                ("snr", 0.35),
+                ("peak_shape", 0.20),
+                ("baseline", 0.20),
+                ("replicate_consistency", 0.15),
+                ("success", 0.10),
+            )
+        )
+        return [
+            "Q_run breakdown:",
+            f"  mean channel Q: {mean_q:.4f}",
+            f"  variability penalty: {lambda_var:g} x std {std_q:.4f} = {lambda_var * std_q:.4f}",
+            f"  failed-channel penalty: {lambda_failed:g} x fraction {failed:.4f} = {lambda_failed * failed:.4f}",
+            f"  low-channel penalty: {lambda_low:g} x fraction {low:.4f} = {lambda_low * low:.4f} (low < {threshold:g})",
+            f"  final Q_run: {q_run:.4f}",
+            "",
+            "Q_channel weights:",
+            (
+                "  "
+                f"SNR {float(channel_weights.get('snr', 0.35)):g}, "
+                f"Shape {float(channel_weights.get('peak_shape', 0.20)):g}, "
+                f"Baseline {float(channel_weights.get('baseline', 0.20)):g}, "
+                f"Replicate {float(channel_weights.get('replicate_consistency', 0.15)):g}, "
+                f"Success {float(channel_weights.get('success', 0.10)):g}; total {total:g}"
+            ),
+        ]
 
     def _refresh_model_artifacts(self):
         if not hasattr(self, "_model_tree"):
@@ -1259,6 +1932,16 @@ class BayesianOptimizationTab:
             return f"{float(value):.6g}"
         except (TypeError, ValueError):
             return ""
+
+    @staticmethod
+    def _channel_peak_height(metrics):
+        if not isinstance(metrics, dict):
+            return None
+        for key in ("mean_peak_current_uA", "median_peak_current_uA", "peak_current"):
+            value = metrics.get(key)
+            if value is not None:
+                return value
+        return None
 
     @staticmethod
     def _write_text(widget, text):

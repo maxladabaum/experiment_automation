@@ -1500,7 +1500,7 @@ class QueueTab:
         item["bo_record_dir"] = str(bo_session.record_dir)
         self.log(f"BO block started: {item.get('details', '')}")
 
-        while self._session.is_running and len(bo_session.observations) < target_iterations and not bo_session.should_stop():
+        while self._session.is_running and len(bo_session.observations) < target_iterations:
             suggestion = bo_session.ask_next()
             self.log(f"BO iteration {suggestion.iteration}: generating queue items")
             queue_items = bo_session.build_queue_items(self._session.registry, suggestion)
@@ -1566,7 +1566,7 @@ class QueueTab:
         if best is not None:
             item["bo_best_q"] = float(best.get("Q_run", 0.0))
             self.log(f"BO block best Q_run={item['bo_best_q']:.3f}")
-        return self._session.is_running and completed_iterations >= min(target_iterations, int(config.get("max_iterations", target_iterations)))
+        return self._session.is_running and completed_iterations >= target_iterations
 
     def _execute_queue(self, start_index: int = 0):
         queue = list(self._session.measurement_queue)

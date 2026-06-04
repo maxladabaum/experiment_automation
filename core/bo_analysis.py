@@ -76,6 +76,13 @@ def _score_from_cv(values: Iterable[Any]) -> float:
     return _clip01(1.0 / (1.0 + _cv(values)))
 
 
+def _mean(values: Iterable[Any], default: float = 0.0) -> float:
+    vals = [float(v) for v in values if v is not None]
+    if not vals:
+        return default
+    return sum(vals) / len(vals)
+
+
 def _build_channel_metrics(results: List[dict]) -> Dict[str, dict]:
     grouped: Dict[str, List[dict]] = {}
     for row in results:
@@ -104,16 +111,14 @@ def _build_channel_metrics(results: List[dict]) -> Dict[str, dict]:
 
         peak_currents = [abs(r.get("peak_current", 0.0)) for r in ok_rows]
         background_rms = [abs(r.get("background_current_rms", 0.0)) for r in ok_rows]
-        snr_values = [
-            abs(float(r.get("peak_current", 0.0))) / max(abs(float(r.get("background_current_rms", 0.0))), 1e-12)
-            for r in ok_rows
-        ]
         offset_scores = [max(0.0, 1.0 - abs(float(r.get("peak_offset_norm", 0.0)))) for r in ok_rows]
         width_scores = _score_from_cv(r.get("bracket_width_V", 0.0) for r in ok_rows)
         baseline_scores = _score_from_cv(background_rms)
         replicate_scores = _score_from_cv(peak_currents)
+        mean_peak_current = _mean(peak_currents, 0.0)
+        mean_background_rms = _mean(background_rms, 0.0)
         metrics[channel] = {
-            "snr": _median(snr_values, 0.0),
+            "snr": mean_peak_current / max(mean_background_rms, 1e-12),
             "peak_shape_score": _clip01(0.5 * _median(offset_scores, 0.0) + 0.5 * width_scores),
             "baseline_stability_score": _clip01(baseline_scores),
             "replicate_consistency_score": _clip01(replicate_scores),
@@ -121,7 +126,9 @@ def _build_channel_metrics(results: List[dict]) -> Dict[str, dict]:
             "ok_scan_count": len(ok_rows),
             "total_scan_count": total,
             "median_peak_current_uA": _median(peak_currents, 0.0),
+            "mean_peak_current_uA": mean_peak_current,
             "median_background_rms_uA": _median(background_rms, 0.0),
+            "mean_background_rms_uA": mean_background_rms,
         }
     return metrics
 

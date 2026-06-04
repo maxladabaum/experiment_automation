@@ -2,7 +2,6 @@
   "schema_version": 1,
   "name": "Default SWV mux Bayesian optimization",
   "description": "Editable default search space for closed-loop SWV method optimization across a mux batch.",
-  "max_iterations": 20,
   "n_initial_points": 8,
   "random_seed": 42,
   "channels": [
@@ -225,23 +224,6 @@
     "compute_wavelet_energy": false,
     "compute_wavelet_denoised_trace": false,
     "use_wavelet_for_correction": false
-  },
-  "simulation": {
-    "mode": "fake",
-    "seed": 42,
-    "noise": 0.04,
-    "channel_noise": 0.03,
-    "replay_dir": "",
-    "replay_glob": "*.json",
-    "optimum": {
-      "begin_potential": -0.62,
-      "end_potential": -0.08,
-      "step_potential": 0.003,
-      "amplitude": 0.04,
-      "frequency": 240.0,
-      "conditioning_potential": -0.62,
-      "conditioning_time": 1.0
-    }
   },
   "records": {
     "folder_prefix": "bo_session"

@@ -97,7 +97,6 @@ def normalize_bo_config(config: dict) -> dict:
     cfg = dict(config)
     cfg.setdefault("schema_version", 1)
     cfg.setdefault("name", "SWV mux Bayesian optimization")
-    cfg.setdefault("max_iterations", 20)
     cfg.setdefault("n_initial_points", 8)
     cfg.setdefault("random_seed", 42)
     cfg.setdefault("channels", list(range(1, 11)))
@@ -189,22 +188,6 @@ def normalize_bo_config(config: dict) -> dict:
     cfg["analysis"].setdefault("compute_wavelet_energy", False)
     cfg["analysis"].setdefault("compute_wavelet_denoised_trace", False)
     cfg["analysis"].setdefault("use_wavelet_for_correction", False)
-    cfg.setdefault("simulation", {})
-    cfg["simulation"].setdefault("mode", "off")
-    cfg["simulation"].setdefault("seed", int(cfg.get("random_seed", 42)))
-    cfg["simulation"].setdefault("noise", 0.04)
-    cfg["simulation"].setdefault("channel_noise", 0.03)
-    cfg["simulation"].setdefault("replay_dir", "")
-    cfg["simulation"].setdefault("replay_glob", "*.json")
-    cfg["simulation"].setdefault("optimum", {
-        "begin_potential": -0.62,
-        "end_potential": -0.08,
-        "step_potential": 0.003,
-        "amplitude": 0.040,
-        "frequency": 240.0,
-        "conditioning_potential": -0.62,
-        "conditioning_time": 1.0,
-    })
     cfg.setdefault("records", {})
     cfg["records"].setdefault("folder_prefix", "bo_session")
     return cfg
@@ -564,8 +547,6 @@ class BOIntegrationSession:
     def ask_next(self) -> BOSuggestion:
         if self.pending is not None:
             return BOSuggestion(**self.pending)
-        if len(self.observations) >= int(self.config.get("max_iterations", 20)):
-            raise RuntimeError("Maximum BO iterations reached")
         tried = {candidate_key(obs["params"]) for obs in self.observations}
         available = self._available_candidates(tried)
         if not available:
@@ -841,33 +822,13 @@ class BOIntegrationSession:
             raise FileNotFoundError(path)
         return path
 
-    def simulate_pending_result(self, notes: str = "Simulated BO result") -> dict:
-        if self.pending is None:
-            raise RuntimeError("No pending BO suggestion is waiting for simulation")
-        sim_cfg = self.config.get("simulation", {})
-        mode = str(sim_cfg.get("mode", "fake")).lower()
-        if mode == "replay":
-            replay = self._next_replay_analysis_file()
-            if replay is not None:
-                return self.import_analysis(replay, notes=notes)
-        iteration = int(self.pending["iteration"])
-        payload = {
-            "schema_version": 1,
-            "created_at": datetime.now().isoformat(timespec="seconds"),
-            "simulation": {"mode": "fake", "iteration": iteration},
-            "channel_metrics": self._fake_channel_metrics(iteration),
-        }
-        path = self.analysis_dir / f"iter_{iteration:03d}_simulated_analysis.json"
-        self._write_json(path, payload)
-        return self.import_analysis(path, notes=notes)
-
     def best_observation(self) -> Optional[dict]:
         if not self.observations:
             return None
         return max(self.observations, key=lambda obs: float(obs.get("Q_run", 0.0)))
 
     def should_stop(self) -> bool:
-        return len(self.observations) >= int(self.config.get("max_iterations", 20))
+        return False
 
     def save_state(self) -> Path:
         payload = {
@@ -1021,47 +982,6 @@ class BOIntegrationSession:
             candidates.append(candidate)
             seen.add(key)
         return candidates
-
-    def _fake_channel_metrics(self, iteration: int) -> dict:
-        sim_cfg = self.config.get("simulation", {})
-        rng = random.Random(int(sim_cfg.get("seed", self.config.get("random_seed", 42))) + iteration * 997)
-        params = dict(self.pending.get("params") or {})
-        optimum = dict(sim_cfg.get("optimum") or {})
-        encoded = encode_candidate(params, self.config)
-        opt_params = resolve_method_payload(self.config, optimum)
-        opt_encoded = encode_candidate(opt_params, self.config)
-        dist = _distance(encoded, opt_encoded)
-        base_q = _clip01(math.exp(-2.6 * dist * dist) + rng.gauss(0.0, float(sim_cfg.get("noise", 0.04))))
-        channel_noise = float(sim_cfg.get("channel_noise", 0.03))
-        metrics = {}
-        for channel in parse_channels(self.config.get("channels", [])):
-            q = _clip01(base_q + rng.gauss(0.0, channel_noise))
-            snr = 2.0 + 24.0 * q + rng.random() * 2.0
-            metrics[str(channel)] = {
-                "snr": snr,
-                "peak_shape_score": _clip01(0.20 + 0.80 * q + rng.gauss(0.0, channel_noise)),
-                "baseline_stability_score": _clip01(0.25 + 0.75 * q + rng.gauss(0.0, channel_noise)),
-                "replicate_consistency_score": _clip01(0.30 + 0.70 * q + rng.gauss(0.0, channel_noise)),
-                "success_score": _clip01(0.55 + 0.45 * q),
-                "ok_scan_count": 3,
-                "total_scan_count": 3,
-                "median_peak_current_uA": 1.0 + 4.0 * q,
-                "median_background_rms_uA": max(0.05, 0.6 - 0.4 * q),
-            }
-        return metrics
-
-    def _next_replay_analysis_file(self) -> Optional[Path]:
-        sim_cfg = self.config.get("simulation", {})
-        folder = Path(str(sim_cfg.get("replay_dir") or ""))
-        if not folder.exists() or not folder.is_dir():
-            return None
-        pattern = str(sim_cfg.get("replay_glob") or "*.json")
-        used = {str(obs.get("analysis_source")) for obs in self.observations}
-        files = sorted(p for p in folder.glob(pattern) if p.is_file())
-        for path in files:
-            if str(path) not in used:
-                return path
-        return None
 
     def _params_for_method_ref(self, params: dict) -> dict:
         result = {name: _format_float(params[name]) for name in PARAMETER_ORDER}

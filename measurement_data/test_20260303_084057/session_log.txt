@@ -2013,3 +2013,15 @@ Data saved to: C:\Users\Chien Lab\Desktop\experiment_automation\measurement_data
 [2026-06-02 23:16:17] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
 [2026-06-02 23:16:17] [SIM] Connected (COM8)
 [2026-06-02 23:17:28] Experiment started: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057\sim bo_20260602_231728
+[2026-06-02 23:39:39] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
+[2026-06-02 23:39:39] [SIM] Connected (COM8)
+[2026-06-03 22:52:17] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
+[2026-06-03 22:52:17] [SIM] Connected (COM8)
+[2026-06-03 23:01:24] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
+[2026-06-03 23:01:24] [SIM] Connected (COM8)
+[2026-06-03 23:19:42] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
+[2026-06-03 23:19:42] [SIM] Connected (COM8)
+[2026-06-03 23:21:49] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
+[2026-06-03 23:21:49] [SIM] Connected (COM8)
+[2026-06-03 23:39:32] Session opened: C:\Users\Asus\OneDrive\Documents\GitHub\experiment_automation\measurement_data\test_20260303_084057
+[2026-06-03 23:39:32] [SIM] Connected (COM8)
