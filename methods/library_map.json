@@ -15813,5 +15813,3333 @@
     "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_001 | MUX ch 10",
     "added_at": "2026-06-03T12:10:16",
     "filepath": "methods\\library\\mux_methods\\swv_ch10_a4c6bd.ms"
+  },
+  "swv_ch1_b294f1": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.01",
+      "amplitude": "0.077",
+      "frequency": "32",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_002 | MUX ch 1",
+    "added_at": "2026-06-03T12:12:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_b294f1.ms"
+  },
+  "swv_ch2_f708c4": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.01",
+      "amplitude": "0.077",
+      "frequency": "32",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_002 | MUX ch 2",
+    "added_at": "2026-06-03T12:12:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_f708c4.ms"
+  },
+  "swv_ch3_56a6f4": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.01",
+      "amplitude": "0.077",
+      "frequency": "32",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_002 | MUX ch 3",
+    "added_at": "2026-06-03T12:12:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_56a6f4.ms"
+  },
+  "swv_ch4_9e3b71": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.01",
+      "amplitude": "0.077",
+      "frequency": "32",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_002 | MUX ch 4",
+    "added_at": "2026-06-03T12:12:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_9e3b71.ms"
+  },
+  "swv_ch5_2cae7a": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.01",
+      "amplitude": "0.077",
+      "frequency": "32",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_002 | MUX ch 5",
+    "added_at": "2026-06-03T12:12:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_2cae7a.ms"
+  },
+  "swv_ch6_a4b06d": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.01",
+      "amplitude": "0.077",
+      "frequency": "32",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_002 | MUX ch 6",
+    "added_at": "2026-06-03T12:12:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_a4b06d.ms"
+  },
+  "swv_ch8_57d679": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.01",
+      "amplitude": "0.077",
+      "frequency": "32",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_002 | MUX ch 8",
+    "added_at": "2026-06-03T12:12:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_57d679.ms"
+  },
+  "swv_ch9_a5ffec": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.01",
+      "amplitude": "0.077",
+      "frequency": "32",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_002 | MUX ch 9",
+    "added_at": "2026-06-03T12:12:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_a5ffec.ms"
+  },
+  "swv_ch10_c8b328": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.01",
+      "amplitude": "0.077",
+      "frequency": "32",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_002 | MUX ch 10",
+    "added_at": "2026-06-03T12:12:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_c8b328.ms"
+  },
+  "swv_ch1_cb5515": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.011",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_003 | MUX ch 1",
+    "added_at": "2026-06-03T12:13:57",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_cb5515.ms"
+  },
+  "swv_ch2_0cc92d": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.011",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_003 | MUX ch 2",
+    "added_at": "2026-06-03T12:13:57",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_0cc92d.ms"
+  },
+  "swv_ch3_164574": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.011",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_003 | MUX ch 3",
+    "added_at": "2026-06-03T12:13:57",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_164574.ms"
+  },
+  "swv_ch4_a7fd5b": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.011",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_003 | MUX ch 4",
+    "added_at": "2026-06-03T12:13:57",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_a7fd5b.ms"
+  },
+  "swv_ch5_ca042d": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.011",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_003 | MUX ch 5",
+    "added_at": "2026-06-03T12:13:57",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_ca042d.ms"
+  },
+  "swv_ch6_8d7f4c": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.011",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_003 | MUX ch 6",
+    "added_at": "2026-06-03T12:13:57",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_8d7f4c.ms"
+  },
+  "swv_ch8_f3d69d": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.011",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_003 | MUX ch 8",
+    "added_at": "2026-06-03T12:13:57",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_f3d69d.ms"
+  },
+  "swv_ch9_46e201": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.011",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_003 | MUX ch 9",
+    "added_at": "2026-06-03T12:13:57",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_46e201.ms"
+  },
+  "swv_ch10_7d0a39": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.011",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_003 | MUX ch 10",
+    "added_at": "2026-06-03T12:13:57",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_7d0a39.ms"
+  },
+  "swv_ch1_b972e4": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.078",
+      "frequency": "27",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_004 | MUX ch 1",
+    "added_at": "2026-06-03T12:15:43",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_b972e4.ms"
+  },
+  "swv_ch2_2f3a5b": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.078",
+      "frequency": "27",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_004 | MUX ch 2",
+    "added_at": "2026-06-03T12:15:43",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_2f3a5b.ms"
+  },
+  "swv_ch3_ebc92c": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.078",
+      "frequency": "27",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_004 | MUX ch 3",
+    "added_at": "2026-06-03T12:15:43",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_ebc92c.ms"
+  },
+  "swv_ch4_55032f": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.078",
+      "frequency": "27",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_004 | MUX ch 4",
+    "added_at": "2026-06-03T12:15:43",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_55032f.ms"
+  },
+  "swv_ch5_637f78": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.078",
+      "frequency": "27",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_004 | MUX ch 5",
+    "added_at": "2026-06-03T12:15:43",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_637f78.ms"
+  },
+  "swv_ch6_aa380c": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.078",
+      "frequency": "27",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_004 | MUX ch 6",
+    "added_at": "2026-06-03T12:15:43",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_aa380c.ms"
+  },
+  "swv_ch8_bf0a62": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.078",
+      "frequency": "27",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_004 | MUX ch 8",
+    "added_at": "2026-06-03T12:15:44",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_bf0a62.ms"
+  },
+  "swv_ch9_561b5f": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.078",
+      "frequency": "27",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_004 | MUX ch 9",
+    "added_at": "2026-06-03T12:15:44",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_561b5f.ms"
+  },
+  "swv_ch10_b1b28d": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.078",
+      "frequency": "27",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_004 | MUX ch 10",
+    "added_at": "2026-06-03T12:15:44",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_b1b28d.ms"
+  },
+  "swv_ch1_bd5ac9": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.075",
+      "frequency": "639",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_005 | MUX ch 1",
+    "added_at": "2026-06-03T12:18:14",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_bd5ac9.ms"
+  },
+  "swv_ch2_69310e": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.075",
+      "frequency": "639",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_005 | MUX ch 2",
+    "added_at": "2026-06-03T12:18:14",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_69310e.ms"
+  },
+  "swv_ch3_dd2634": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.075",
+      "frequency": "639",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_005 | MUX ch 3",
+    "added_at": "2026-06-03T12:18:14",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_dd2634.ms"
+  },
+  "swv_ch4_9ae74c": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.075",
+      "frequency": "639",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_005 | MUX ch 4",
+    "added_at": "2026-06-03T12:18:14",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_9ae74c.ms"
+  },
+  "swv_ch5_b7f21e": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.075",
+      "frequency": "639",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_005 | MUX ch 5",
+    "added_at": "2026-06-03T12:18:14",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_b7f21e.ms"
+  },
+  "swv_ch6_30324c": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.075",
+      "frequency": "639",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_005 | MUX ch 6",
+    "added_at": "2026-06-03T12:18:14",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_30324c.ms"
+  },
+  "swv_ch8_1d88aa": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.075",
+      "frequency": "639",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_005 | MUX ch 8",
+    "added_at": "2026-06-03T12:18:14",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_1d88aa.ms"
+  },
+  "swv_ch9_b2d2bd": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.075",
+      "frequency": "639",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_005 | MUX ch 9",
+    "added_at": "2026-06-03T12:18:14",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_b2d2bd.ms"
+  },
+  "swv_ch10_345083": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.075",
+      "frequency": "639",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_005 | MUX ch 10",
+    "added_at": "2026-06-03T12:18:14",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_345083.ms"
+  },
+  "swv_ch1_506974": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.018",
+      "frequency": "25",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_006 | MUX ch 1",
+    "added_at": "2026-06-03T12:20:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_506974.ms"
+  },
+  "swv_ch2_a71c66": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.018",
+      "frequency": "25",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_006 | MUX ch 2",
+    "added_at": "2026-06-03T12:20:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_a71c66.ms"
+  },
+  "swv_ch3_afecf2": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.018",
+      "frequency": "25",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_006 | MUX ch 3",
+    "added_at": "2026-06-03T12:20:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_afecf2.ms"
+  },
+  "swv_ch4_84b032": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.018",
+      "frequency": "25",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_006 | MUX ch 4",
+    "added_at": "2026-06-03T12:20:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_84b032.ms"
+  },
+  "swv_ch5_3dc144": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.018",
+      "frequency": "25",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_006 | MUX ch 5",
+    "added_at": "2026-06-03T12:20:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_3dc144.ms"
+  },
+  "swv_ch6_cff913": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.018",
+      "frequency": "25",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_006 | MUX ch 6",
+    "added_at": "2026-06-03T12:20:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_cff913.ms"
+  },
+  "swv_ch8_20b377": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.018",
+      "frequency": "25",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_006 | MUX ch 8",
+    "added_at": "2026-06-03T12:20:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_20b377.ms"
+  },
+  "swv_ch9_2ce533": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.018",
+      "frequency": "25",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_006 | MUX ch 9",
+    "added_at": "2026-06-03T12:20:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_2ce533.ms"
+  },
+  "swv_ch10_cc34ac": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.018",
+      "frequency": "25",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_006 | MUX ch 10",
+    "added_at": "2026-06-03T12:20:05",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_cc34ac.ms"
+  },
+  "swv_ch1_7a0be4": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.046",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_007 | MUX ch 1",
+    "added_at": "2026-06-03T12:22:40",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_7a0be4.ms"
+  },
+  "swv_ch2_99143c": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.046",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_007 | MUX ch 2",
+    "added_at": "2026-06-03T12:22:40",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_99143c.ms"
+  },
+  "swv_ch3_4bd266": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.046",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_007 | MUX ch 3",
+    "added_at": "2026-06-03T12:22:40",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_4bd266.ms"
+  },
+  "swv_ch4_87e5a8": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.046",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_007 | MUX ch 4",
+    "added_at": "2026-06-03T12:22:40",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_87e5a8.ms"
+  },
+  "swv_ch5_037a9e": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.046",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_007 | MUX ch 5",
+    "added_at": "2026-06-03T12:22:40",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_037a9e.ms"
+  },
+  "swv_ch6_56e9dd": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.046",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_007 | MUX ch 6",
+    "added_at": "2026-06-03T12:22:40",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_56e9dd.ms"
+  },
+  "swv_ch8_96faeb": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.046",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_007 | MUX ch 8",
+    "added_at": "2026-06-03T12:22:40",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_96faeb.ms"
+  },
+  "swv_ch9_634aa8": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.046",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_007 | MUX ch 9",
+    "added_at": "2026-06-03T12:22:40",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_634aa8.ms"
+  },
+  "swv_ch10_8c8253": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.046",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_007 | MUX ch 10",
+    "added_at": "2026-06-03T12:22:40",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_8c8253.ms"
+  },
+  "swv_ch1_2e6d1f": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.075",
+      "frequency": "163",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_008 | MUX ch 1",
+    "added_at": "2026-06-03T12:24:22",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_2e6d1f.ms"
+  },
+  "swv_ch2_321816": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.075",
+      "frequency": "163",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_008 | MUX ch 2",
+    "added_at": "2026-06-03T12:24:22",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_321816.ms"
+  },
+  "swv_ch3_fa2fcc": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.075",
+      "frequency": "163",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_008 | MUX ch 3",
+    "added_at": "2026-06-03T12:24:22",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_fa2fcc.ms"
+  },
+  "swv_ch4_957c44": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.075",
+      "frequency": "163",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_008 | MUX ch 4",
+    "added_at": "2026-06-03T12:24:22",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_957c44.ms"
+  },
+  "swv_ch5_6ba235": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.075",
+      "frequency": "163",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_008 | MUX ch 5",
+    "added_at": "2026-06-03T12:24:22",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_6ba235.ms"
+  },
+  "swv_ch6_338aec": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.075",
+      "frequency": "163",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_008 | MUX ch 6",
+    "added_at": "2026-06-03T12:24:22",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_338aec.ms"
+  },
+  "swv_ch8_44cfe6": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.075",
+      "frequency": "163",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_008 | MUX ch 8",
+    "added_at": "2026-06-03T12:24:23",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_44cfe6.ms"
+  },
+  "swv_ch9_0ed91f": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.075",
+      "frequency": "163",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_008 | MUX ch 9",
+    "added_at": "2026-06-03T12:24:23",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_0ed91f.ms"
+  },
+  "swv_ch10_0a3efd": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.075",
+      "frequency": "163",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_008 | MUX ch 10",
+    "added_at": "2026-06-03T12:24:23",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_0a3efd.ms"
+  },
+  "swv_ch1_561d9c": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.018",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_009 | MUX ch 1",
+    "added_at": "2026-06-03T12:26:07",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_561d9c.ms"
+  },
+  "swv_ch2_4cfe52": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.018",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_009 | MUX ch 2",
+    "added_at": "2026-06-03T12:26:07",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_4cfe52.ms"
+  },
+  "swv_ch3_b5aafe": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.018",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_009 | MUX ch 3",
+    "added_at": "2026-06-03T12:26:07",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_b5aafe.ms"
+  },
+  "swv_ch4_f8a325": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.018",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_009 | MUX ch 4",
+    "added_at": "2026-06-03T12:26:07",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_f8a325.ms"
+  },
+  "swv_ch5_d64db9": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.018",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_009 | MUX ch 5",
+    "added_at": "2026-06-03T12:26:07",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_d64db9.ms"
+  },
+  "swv_ch6_e00e7f": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.018",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_009 | MUX ch 6",
+    "added_at": "2026-06-03T12:26:07",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_e00e7f.ms"
+  },
+  "swv_ch8_5157ca": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.018",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_009 | MUX ch 8",
+    "added_at": "2026-06-03T12:26:07",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_5157ca.ms"
+  },
+  "swv_ch9_5136ba": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.018",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_009 | MUX ch 9",
+    "added_at": "2026-06-03T12:26:07",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_5136ba.ms"
+  },
+  "swv_ch10_611e78": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.018",
+      "frequency": "53",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_009 | MUX ch 10",
+    "added_at": "2026-06-03T12:26:07",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_611e78.ms"
+  },
+  "swv_ch1_ddc92e": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.018",
+      "frequency": "200",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_010 | MUX ch 1",
+    "added_at": "2026-06-03T12:27:59",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_ddc92e.ms"
+  },
+  "swv_ch2_631254": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.018",
+      "frequency": "200",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_010 | MUX ch 2",
+    "added_at": "2026-06-03T12:27:59",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_631254.ms"
+  },
+  "swv_ch3_edcb0a": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.018",
+      "frequency": "200",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_010 | MUX ch 3",
+    "added_at": "2026-06-03T12:27:59",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_edcb0a.ms"
+  },
+  "swv_ch4_1a42c5": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.018",
+      "frequency": "200",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_010 | MUX ch 4",
+    "added_at": "2026-06-03T12:27:59",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_1a42c5.ms"
+  },
+  "swv_ch5_db340d": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.018",
+      "frequency": "200",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_010 | MUX ch 5",
+    "added_at": "2026-06-03T12:27:59",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_db340d.ms"
+  },
+  "swv_ch6_e17380": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.018",
+      "frequency": "200",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_010 | MUX ch 6",
+    "added_at": "2026-06-03T12:27:59",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_e17380.ms"
+  },
+  "swv_ch8_2a431d": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.018",
+      "frequency": "200",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_010 | MUX ch 8",
+    "added_at": "2026-06-03T12:27:59",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_2a431d.ms"
+  },
+  "swv_ch9_1fa67c": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.018",
+      "frequency": "200",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_010 | MUX ch 9",
+    "added_at": "2026-06-03T12:27:59",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_1fa67c.ms"
+  },
+  "swv_ch10_14416c": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.018",
+      "frequency": "200",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_010 | MUX ch 10",
+    "added_at": "2026-06-03T12:27:59",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_14416c.ms"
+  },
+  "swv_ch1_fad1b8": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.069",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_011 | MUX ch 1",
+    "added_at": "2026-06-03T12:29:41",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_fad1b8.ms"
+  },
+  "swv_ch2_8f485e": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.069",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_011 | MUX ch 2",
+    "added_at": "2026-06-03T12:29:41",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_8f485e.ms"
+  },
+  "swv_ch3_b39fa6": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.069",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_011 | MUX ch 3",
+    "added_at": "2026-06-03T12:29:41",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_b39fa6.ms"
+  },
+  "swv_ch4_ebaced": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.069",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_011 | MUX ch 4",
+    "added_at": "2026-06-03T12:29:41",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_ebaced.ms"
+  },
+  "swv_ch5_a57af8": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.069",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_011 | MUX ch 5",
+    "added_at": "2026-06-03T12:29:41",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_a57af8.ms"
+  },
+  "swv_ch6_1daf76": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.069",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_011 | MUX ch 6",
+    "added_at": "2026-06-03T12:29:41",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_1daf76.ms"
+  },
+  "swv_ch8_76bec1": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.069",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_011 | MUX ch 8",
+    "added_at": "2026-06-03T12:29:41",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_76bec1.ms"
+  },
+  "swv_ch9_408e57": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.069",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_011 | MUX ch 9",
+    "added_at": "2026-06-03T12:29:41",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_408e57.ms"
+  },
+  "swv_ch10_3f223a": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.069",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_011 | MUX ch 10",
+    "added_at": "2026-06-03T12:29:41",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_3f223a.ms"
+  },
+  "swv_ch1_1eb696": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.057",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_012 | MUX ch 1",
+    "added_at": "2026-06-03T12:31:25",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_1eb696.ms"
+  },
+  "swv_ch2_36e1bb": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.057",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_012 | MUX ch 2",
+    "added_at": "2026-06-03T12:31:25",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_36e1bb.ms"
+  },
+  "swv_ch3_572c70": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.057",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_012 | MUX ch 3",
+    "added_at": "2026-06-03T12:31:25",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_572c70.ms"
+  },
+  "swv_ch4_ffb009": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.057",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_012 | MUX ch 4",
+    "added_at": "2026-06-03T12:31:25",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_ffb009.ms"
+  },
+  "swv_ch5_bc0b77": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.057",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_012 | MUX ch 5",
+    "added_at": "2026-06-03T12:31:25",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_bc0b77.ms"
+  },
+  "swv_ch6_cfa084": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.057",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_012 | MUX ch 6",
+    "added_at": "2026-06-03T12:31:25",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_cfa084.ms"
+  },
+  "swv_ch8_4a5dbf": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.057",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_012 | MUX ch 8",
+    "added_at": "2026-06-03T12:31:25",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_4a5dbf.ms"
+  },
+  "swv_ch9_82868b": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.057",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_012 | MUX ch 9",
+    "added_at": "2026-06-03T12:31:25",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_82868b.ms"
+  },
+  "swv_ch10_342967": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.006",
+      "amplitude": "0.057",
+      "frequency": "117",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_012 | MUX ch 10",
+    "added_at": "2026-06-03T12:31:25",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_342967.ms"
+  },
+  "swv_ch1_4398e2": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.038",
+      "frequency": "201",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_013 | MUX ch 1",
+    "added_at": "2026-06-03T12:33:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_4398e2.ms"
+  },
+  "swv_ch2_84d168": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.038",
+      "frequency": "201",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_013 | MUX ch 2",
+    "added_at": "2026-06-03T12:33:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_84d168.ms"
+  },
+  "swv_ch3_7cfd86": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.038",
+      "frequency": "201",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_013 | MUX ch 3",
+    "added_at": "2026-06-03T12:33:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_7cfd86.ms"
+  },
+  "swv_ch4_e9a4d1": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.038",
+      "frequency": "201",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_013 | MUX ch 4",
+    "added_at": "2026-06-03T12:33:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_e9a4d1.ms"
+  },
+  "swv_ch5_12dfdb": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.038",
+      "frequency": "201",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_013 | MUX ch 5",
+    "added_at": "2026-06-03T12:33:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_12dfdb.ms"
+  },
+  "swv_ch6_d3007d": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.038",
+      "frequency": "201",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_013 | MUX ch 6",
+    "added_at": "2026-06-03T12:33:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_d3007d.ms"
+  },
+  "swv_ch8_e57d1d": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.038",
+      "frequency": "201",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_013 | MUX ch 8",
+    "added_at": "2026-06-03T12:33:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_e57d1d.ms"
+  },
+  "swv_ch9_c5b0c4": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.038",
+      "frequency": "201",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_013 | MUX ch 9",
+    "added_at": "2026-06-03T12:33:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_c5b0c4.ms"
+  },
+  "swv_ch10_af5047": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.038",
+      "frequency": "201",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_013 | MUX ch 10",
+    "added_at": "2026-06-03T12:33:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_af5047.ms"
+  },
+  "swv_ch1_0edda8": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.038",
+      "frequency": "110",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_014 | MUX ch 1",
+    "added_at": "2026-06-03T12:34:53",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_0edda8.ms"
+  },
+  "swv_ch2_b4e4e2": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.038",
+      "frequency": "110",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_014 | MUX ch 2",
+    "added_at": "2026-06-03T12:34:54",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_b4e4e2.ms"
+  },
+  "swv_ch3_6a21df": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.038",
+      "frequency": "110",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_014 | MUX ch 3",
+    "added_at": "2026-06-03T12:34:54",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_6a21df.ms"
+  },
+  "swv_ch4_f640a8": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.038",
+      "frequency": "110",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_014 | MUX ch 4",
+    "added_at": "2026-06-03T12:34:54",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_f640a8.ms"
+  },
+  "swv_ch5_783c0d": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.038",
+      "frequency": "110",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_014 | MUX ch 5",
+    "added_at": "2026-06-03T12:34:54",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_783c0d.ms"
+  },
+  "swv_ch6_9e6f24": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.038",
+      "frequency": "110",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_014 | MUX ch 6",
+    "added_at": "2026-06-03T12:34:54",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_9e6f24.ms"
+  },
+  "swv_ch8_ce73a7": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.038",
+      "frequency": "110",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_014 | MUX ch 8",
+    "added_at": "2026-06-03T12:34:54",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_ce73a7.ms"
+  },
+  "swv_ch9_3bddc2": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.038",
+      "frequency": "110",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_014 | MUX ch 9",
+    "added_at": "2026-06-03T12:34:54",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_3bddc2.ms"
+  },
+  "swv_ch10_a01003": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.009",
+      "amplitude": "0.038",
+      "frequency": "110",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_014 | MUX ch 10",
+    "added_at": "2026-06-03T12:34:54",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_a01003.ms"
+  },
+  "swv_ch1_8d0b1e": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.014",
+      "frequency": "102",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_015 | MUX ch 1",
+    "added_at": "2026-06-03T12:36:35",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_8d0b1e.ms"
+  },
+  "swv_ch2_1162df": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.014",
+      "frequency": "102",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_015 | MUX ch 2",
+    "added_at": "2026-06-03T12:36:35",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_1162df.ms"
+  },
+  "swv_ch3_b86fce": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.014",
+      "frequency": "102",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_015 | MUX ch 3",
+    "added_at": "2026-06-03T12:36:35",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_b86fce.ms"
+  },
+  "swv_ch4_e3e6ba": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.014",
+      "frequency": "102",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_015 | MUX ch 4",
+    "added_at": "2026-06-03T12:36:35",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_e3e6ba.ms"
+  },
+  "swv_ch5_69dbbf": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.014",
+      "frequency": "102",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_015 | MUX ch 5",
+    "added_at": "2026-06-03T12:36:35",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_69dbbf.ms"
+  },
+  "swv_ch6_c3bb2f": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.014",
+      "frequency": "102",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_015 | MUX ch 6",
+    "added_at": "2026-06-03T12:36:35",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_c3bb2f.ms"
+  },
+  "swv_ch8_c9b1d5": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.014",
+      "frequency": "102",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_015 | MUX ch 8",
+    "added_at": "2026-06-03T12:36:35",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_c9b1d5.ms"
+  },
+  "swv_ch9_9d979c": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.014",
+      "frequency": "102",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_015 | MUX ch 9",
+    "added_at": "2026-06-03T12:36:35",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_9d979c.ms"
+  },
+  "swv_ch10_93eb23": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.005",
+      "amplitude": "0.014",
+      "frequency": "102",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_015 | MUX ch 10",
+    "added_at": "2026-06-03T12:36:35",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_93eb23.ms"
+  },
+  "swv_ch1_8b2e2a": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_016 | MUX ch 1",
+    "added_at": "2026-06-03T12:38:21",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_8b2e2a.ms"
+  },
+  "swv_ch2_155a4f": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_016 | MUX ch 2",
+    "added_at": "2026-06-03T12:38:21",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_155a4f.ms"
+  },
+  "swv_ch3_2beca7": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_016 | MUX ch 3",
+    "added_at": "2026-06-03T12:38:21",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_2beca7.ms"
+  },
+  "swv_ch4_dc475b": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_016 | MUX ch 4",
+    "added_at": "2026-06-03T12:38:21",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_dc475b.ms"
+  },
+  "swv_ch5_2ed47b": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_016 | MUX ch 5",
+    "added_at": "2026-06-03T12:38:21",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_2ed47b.ms"
+  },
+  "swv_ch6_20765f": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_016 | MUX ch 6",
+    "added_at": "2026-06-03T12:38:21",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_20765f.ms"
+  },
+  "swv_ch8_9dca14": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_016 | MUX ch 8",
+    "added_at": "2026-06-03T12:38:21",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_9dca14.ms"
+  },
+  "swv_ch9_e3902f": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_016 | MUX ch 9",
+    "added_at": "2026-06-03T12:38:21",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_e3902f.ms"
+  },
+  "swv_ch10_708e6e": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_016 | MUX ch 10",
+    "added_at": "2026-06-03T12:38:21",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_708e6e.ms"
+  },
+  "swv_ch1_4e72c4": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.01",
+      "frequency": "236",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_017 | MUX ch 1",
+    "added_at": "2026-06-03T12:40:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_4e72c4.ms"
+  },
+  "swv_ch2_c67d00": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.01",
+      "frequency": "236",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_017 | MUX ch 2",
+    "added_at": "2026-06-03T12:40:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_c67d00.ms"
+  },
+  "swv_ch3_8aff82": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.01",
+      "frequency": "236",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_017 | MUX ch 3",
+    "added_at": "2026-06-03T12:40:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_8aff82.ms"
+  },
+  "swv_ch4_441c7c": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.01",
+      "frequency": "236",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_017 | MUX ch 4",
+    "added_at": "2026-06-03T12:40:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_441c7c.ms"
+  },
+  "swv_ch5_8d0825": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.01",
+      "frequency": "236",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_017 | MUX ch 5",
+    "added_at": "2026-06-03T12:40:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_8d0825.ms"
+  },
+  "swv_ch6_1444df": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.01",
+      "frequency": "236",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_017 | MUX ch 6",
+    "added_at": "2026-06-03T12:40:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_1444df.ms"
+  },
+  "swv_ch8_e943a9": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.01",
+      "frequency": "236",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_017 | MUX ch 8",
+    "added_at": "2026-06-03T12:40:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_e943a9.ms"
+  },
+  "swv_ch9_98f1fe": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.01",
+      "frequency": "236",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_017 | MUX ch 9",
+    "added_at": "2026-06-03T12:40:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_98f1fe.ms"
+  },
+  "swv_ch10_b067ef": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.004",
+      "amplitude": "0.01",
+      "frequency": "236",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_017 | MUX ch 10",
+    "added_at": "2026-06-03T12:40:10",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_b067ef.ms"
+  },
+  "swv_ch1_a2cd1c": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.01",
+      "frequency": "222",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_018 | MUX ch 1",
+    "added_at": "2026-06-03T12:41:52",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_a2cd1c.ms"
+  },
+  "swv_ch2_34c672": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.01",
+      "frequency": "222",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_018 | MUX ch 2",
+    "added_at": "2026-06-03T12:41:52",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_34c672.ms"
+  },
+  "swv_ch3_776e0c": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.01",
+      "frequency": "222",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_018 | MUX ch 3",
+    "added_at": "2026-06-03T12:41:52",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_776e0c.ms"
+  },
+  "swv_ch4_a149dd": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.01",
+      "frequency": "222",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_018 | MUX ch 4",
+    "added_at": "2026-06-03T12:41:52",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_a149dd.ms"
+  },
+  "swv_ch5_44c59c": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.01",
+      "frequency": "222",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_018 | MUX ch 5",
+    "added_at": "2026-06-03T12:41:52",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_44c59c.ms"
+  },
+  "swv_ch6_57811b": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.01",
+      "frequency": "222",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_018 | MUX ch 6",
+    "added_at": "2026-06-03T12:41:52",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_57811b.ms"
+  },
+  "swv_ch8_ab4cec": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.01",
+      "frequency": "222",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_018 | MUX ch 8",
+    "added_at": "2026-06-03T12:41:52",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_ab4cec.ms"
+  },
+  "swv_ch9_6254e3": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.01",
+      "frequency": "222",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_018 | MUX ch 9",
+    "added_at": "2026-06-03T12:41:52",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_6254e3.ms"
+  },
+  "swv_ch10_50425b": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.003",
+      "amplitude": "0.01",
+      "frequency": "222",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_018 | MUX ch 10",
+    "added_at": "2026-06-03T12:41:52",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_50425b.ms"
+  },
+  "swv_ch1_dd9034": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.01",
+      "frequency": "111",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_019 | MUX ch 1",
+    "added_at": "2026-06-03T12:43:36",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_dd9034.ms"
+  },
+  "swv_ch2_5ea4db": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.01",
+      "frequency": "111",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_019 | MUX ch 2",
+    "added_at": "2026-06-03T12:43:36",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_5ea4db.ms"
+  },
+  "swv_ch3_092f4d": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.01",
+      "frequency": "111",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_019 | MUX ch 3",
+    "added_at": "2026-06-03T12:43:36",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_092f4d.ms"
+  },
+  "swv_ch4_c074ad": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.01",
+      "frequency": "111",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_019 | MUX ch 4",
+    "added_at": "2026-06-03T12:43:36",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_c074ad.ms"
+  },
+  "swv_ch5_8aba5c": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.01",
+      "frequency": "111",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_019 | MUX ch 5",
+    "added_at": "2026-06-03T12:43:36",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_8aba5c.ms"
+  },
+  "swv_ch6_6ea169": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.01",
+      "frequency": "111",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_019 | MUX ch 6",
+    "added_at": "2026-06-03T12:43:36",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_6ea169.ms"
+  },
+  "swv_ch8_24eb2b": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.01",
+      "frequency": "111",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_019 | MUX ch 8",
+    "added_at": "2026-06-03T12:43:36",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_24eb2b.ms"
+  },
+  "swv_ch9_b393d1": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.01",
+      "frequency": "111",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_019 | MUX ch 9",
+    "added_at": "2026-06-03T12:43:36",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_b393d1.ms"
+  },
+  "swv_ch10_00d4e3": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.001",
+      "amplitude": "0.01",
+      "frequency": "111",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_019 | MUX ch 10",
+    "added_at": "2026-06-03T12:43:36",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_00d4e3.ms"
+  },
+  "swv_ch1_2c34fe": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.013",
+      "frequency": "107",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_020 | MUX ch 1",
+    "added_at": "2026-06-03T12:45:48",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_2c34fe.ms"
+  },
+  "swv_ch2_492ecb": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.013",
+      "frequency": "107",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_020 | MUX ch 2",
+    "added_at": "2026-06-03T12:45:48",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_492ecb.ms"
+  },
+  "swv_ch3_ee0142": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.013",
+      "frequency": "107",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_020 | MUX ch 3",
+    "added_at": "2026-06-03T12:45:48",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_ee0142.ms"
+  },
+  "swv_ch4_791742": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.013",
+      "frequency": "107",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_020 | MUX ch 4",
+    "added_at": "2026-06-03T12:45:49",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_791742.ms"
+  },
+  "swv_ch5_87400c": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.013",
+      "frequency": "107",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_020 | MUX ch 5",
+    "added_at": "2026-06-03T12:45:49",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_87400c.ms"
+  },
+  "swv_ch6_8339e9": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.013",
+      "frequency": "107",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_020 | MUX ch 6",
+    "added_at": "2026-06-03T12:45:49",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_8339e9.ms"
+  },
+  "swv_ch8_ebfcf9": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.013",
+      "frequency": "107",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_020 | MUX ch 8",
+    "added_at": "2026-06-03T12:45:49",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_ebfcf9.ms"
+  },
+  "swv_ch9_182b83": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.013",
+      "frequency": "107",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_020 | MUX ch 9",
+    "added_at": "2026-06-03T12:45:49",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_182b83.ms"
+  },
+  "swv_ch10_93cfca": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.007",
+      "amplitude": "0.013",
+      "frequency": "107",
+      "conditioning_potential": "-0.5",
+      "conditioning_time": "1",
+      "bandwidth": "4k",
+      "bo_session_id": "default_swv_mux_bayesian_optimization_20260603_121010_992560"
+    },
+    "note": "BO default_swv_mux_bayesian_optimization_20260603_121010_992560_iter_020 | MUX ch 10",
+    "added_at": "2026-06-03T12:45:49",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_93cfca.ms"
+  },
+  "swv_ch1_480890": {
+    "technique": "SWV",
+    "mux_channel": 1,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "n_scans": "1",
+      "cycle_delay": "0",
+      "cond_potential": "-0.5",
+      "cond_time": "1",
+      "mux_channel": "1-10",
+      "bandwidth": "4k",
+      "ba_autorange": "0",
+      "ba_range_mode": "fixed",
+      "ba_fixed_range": "100 nA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 nA"
+    },
+    "note": "",
+    "added_at": "2026-06-03T16:10:37",
+    "filepath": "methods\\library\\mux_methods\\swv_ch1_480890.ms"
+  },
+  "swv_ch2_b3add2": {
+    "technique": "SWV",
+    "mux_channel": 2,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "n_scans": "1",
+      "cycle_delay": "0",
+      "cond_potential": "-0.5",
+      "cond_time": "1",
+      "mux_channel": "1-10",
+      "bandwidth": "4k",
+      "ba_autorange": "0",
+      "ba_range_mode": "fixed",
+      "ba_fixed_range": "100 nA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 nA"
+    },
+    "note": "",
+    "added_at": "2026-06-03T16:10:48",
+    "filepath": "methods\\library\\mux_methods\\swv_ch2_b3add2.ms"
+  },
+  "swv_ch3_4ec686": {
+    "technique": "SWV",
+    "mux_channel": 3,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "n_scans": "1",
+      "cycle_delay": "0",
+      "cond_potential": "-0.5",
+      "cond_time": "1",
+      "mux_channel": "1-10",
+      "bandwidth": "4k",
+      "ba_autorange": "0",
+      "ba_range_mode": "fixed",
+      "ba_fixed_range": "100 nA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 nA"
+    },
+    "note": "",
+    "added_at": "2026-06-03T16:10:59",
+    "filepath": "methods\\library\\mux_methods\\swv_ch3_4ec686.ms"
+  },
+  "swv_ch4_ad5314": {
+    "technique": "SWV",
+    "mux_channel": 4,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "n_scans": "1",
+      "cycle_delay": "0",
+      "cond_potential": "-0.5",
+      "cond_time": "1",
+      "mux_channel": "1-10",
+      "bandwidth": "4k",
+      "ba_autorange": "0",
+      "ba_range_mode": "fixed",
+      "ba_fixed_range": "100 nA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 nA"
+    },
+    "note": "",
+    "added_at": "2026-06-03T16:11:09",
+    "filepath": "methods\\library\\mux_methods\\swv_ch4_ad5314.ms"
+  },
+  "swv_ch5_ede417": {
+    "technique": "SWV",
+    "mux_channel": 5,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "n_scans": "1",
+      "cycle_delay": "0",
+      "cond_potential": "-0.5",
+      "cond_time": "1",
+      "mux_channel": "1-10",
+      "bandwidth": "4k",
+      "ba_autorange": "0",
+      "ba_range_mode": "fixed",
+      "ba_fixed_range": "100 nA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 nA"
+    },
+    "note": "",
+    "added_at": "2026-06-03T16:11:20",
+    "filepath": "methods\\library\\mux_methods\\swv_ch5_ede417.ms"
+  },
+  "swv_ch6_5862cf": {
+    "technique": "SWV",
+    "mux_channel": 6,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "n_scans": "1",
+      "cycle_delay": "0",
+      "cond_potential": "-0.5",
+      "cond_time": "1",
+      "mux_channel": "1-10",
+      "bandwidth": "4k",
+      "ba_autorange": "0",
+      "ba_range_mode": "fixed",
+      "ba_fixed_range": "100 nA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 nA"
+    },
+    "note": "",
+    "added_at": "2026-06-03T16:11:30",
+    "filepath": "methods\\library\\mux_methods\\swv_ch6_5862cf.ms"
+  },
+  "swv_ch7_eb6924": {
+    "technique": "SWV",
+    "mux_channel": 7,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "n_scans": "1",
+      "cycle_delay": "0",
+      "cond_potential": "-0.5",
+      "cond_time": "1",
+      "mux_channel": "1-10",
+      "bandwidth": "4k",
+      "ba_autorange": "0",
+      "ba_range_mode": "fixed",
+      "ba_fixed_range": "100 nA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 nA"
+    },
+    "note": "",
+    "added_at": "2026-06-03T16:11:41",
+    "filepath": "methods\\library\\mux_methods\\swv_ch7_eb6924.ms"
+  },
+  "swv_ch8_4ed4b0": {
+    "technique": "SWV",
+    "mux_channel": 8,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "n_scans": "1",
+      "cycle_delay": "0",
+      "cond_potential": "-0.5",
+      "cond_time": "1",
+      "mux_channel": "1-10",
+      "bandwidth": "4k",
+      "ba_autorange": "0",
+      "ba_range_mode": "fixed",
+      "ba_fixed_range": "100 nA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 nA"
+    },
+    "note": "",
+    "added_at": "2026-06-03T16:11:51",
+    "filepath": "methods\\library\\mux_methods\\swv_ch8_4ed4b0.ms"
+  },
+  "swv_ch9_71a4eb": {
+    "technique": "SWV",
+    "mux_channel": 9,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "n_scans": "1",
+      "cycle_delay": "0",
+      "cond_potential": "-0.5",
+      "cond_time": "1",
+      "mux_channel": "1-10",
+      "bandwidth": "4k",
+      "ba_autorange": "0",
+      "ba_range_mode": "fixed",
+      "ba_fixed_range": "100 nA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 nA"
+    },
+    "note": "",
+    "added_at": "2026-06-03T16:12:02",
+    "filepath": "methods\\library\\mux_methods\\swv_ch9_71a4eb.ms"
+  },
+  "swv_ch10_5c52f4": {
+    "technique": "SWV",
+    "mux_channel": 10,
+    "params": {
+      "begin_potential": "-0.5",
+      "end_potential": "0",
+      "step_potential": "0.002",
+      "amplitude": "0.012",
+      "frequency": "227",
+      "n_scans": "1",
+      "cycle_delay": "0",
+      "cond_potential": "-0.5",
+      "cond_time": "1",
+      "mux_channel": "1-10",
+      "bandwidth": "4k",
+      "ba_autorange": "0",
+      "ba_range_mode": "fixed",
+      "ba_fixed_range": "100 nA",
+      "ba_auto_min": "100 nA",
+      "ba_auto_max": "100 nA"
+    },
+    "note": "",
+    "added_at": "2026-06-03T16:12:12",
+    "filepath": "methods\\library\\mux_methods\\swv_ch10_5c52f4.ms"
   }
 }

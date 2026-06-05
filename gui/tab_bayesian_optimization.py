@@ -78,8 +78,10 @@ class BayesianOptimizationTab:
         self._analysis_wavelet_correction_var = tk.BooleanVar(value=False)
         self._channels_var = tk.StringVar(value="")
         self._exploration_var = tk.DoubleVar(value=0.35)
+        self._exploration_text_var = tk.StringVar(value="0.35")
         self._candidate_pool_var = tk.StringVar(value="600")
         self._local_pool_var = tk.StringVar(value="120")
+        self._initial_point_mode_var = tk.StringVar(value="specific")
         self._score_snr_weight_var = tk.StringVar(value="0.35")
         self._score_shape_weight_var = tk.StringVar(value="0.20")
         self._score_baseline_weight_var = tk.StringVar(value="0.20")
@@ -115,6 +117,16 @@ class BayesianOptimizationTab:
         self._simulation_result = None
         self._simulation_dims = []
         self._engine_plot_canvas = None
+        self._engine_plot_figure = None
+        self._engine_plot_ax = None
+        self._engine_plot_colorbar = None
+        self._engine_plot_signature = None
+        self._engine_plot_overlay_artists = []
+        self._engine_distribution_canvas = None
+        self._engine_distribution_figure = None
+        self._engine_distribution_ax = None
+        self._engine_distribution_lines = {}
+        self._engine_distribution_empty_text = None
         self._engine_selected_index = 0
         self._engine_page_index = 0
         self._engine_pages = []
@@ -185,6 +197,13 @@ class BayesianOptimizationTab:
         pane.add(left, weight=2)
         pane.add(right, weight=3)
 
+        right_pane = ttk.PanedWindow(right, orient=tk.VERTICAL)
+        right_pane.pack(fill="both", expand=True)
+        params_host = ttk.Frame(right_pane)
+        controls_host = ttk.Frame(right_pane)
+        right_pane.add(params_host, weight=3)
+        right_pane.add(controls_host, weight=2)
+
         cfg = ttk.LabelFrame(left, text="Configuration and Analysis Output", padding=8)
         cfg.pack(fill="x", pady=(0, 8))
         cfg.columnconfigure(1, weight=1)
@@ -226,7 +245,7 @@ class BayesianOptimizationTab:
         algo_box = ttk.LabelFrame(left, text="Optimizer Behavior", padding=8)
         algo_box.pack(fill="x", pady=(0, 8))
         algo_box.columnconfigure(1, weight=1)
-        ttk.Label(algo_box, text="Exploit").grid(row=0, column=0, sticky="w")
+        ttk.Label(algo_box, text="Exploit <-> Explore").grid(row=0, column=0, sticky="w")
         ttk.Scale(
             algo_box,
             from_=0.0,
@@ -235,13 +254,94 @@ class BayesianOptimizationTab:
             variable=self._exploration_var,
             command=lambda _v: self._sync_algorithm_config(show_error=False),
         ).grid(row=0, column=1, sticky="ew", padx=6)
-        ttk.Label(algo_box, text="Explore").grid(row=0, column=2, sticky="e")
-        ttk.Label(algo_box, text="Candidate pools:").grid(row=1, column=0, sticky="w", pady=2)
+        ttk.Label(algo_box, textvariable=self._exploration_text_var, foreground=self.ACCENT).grid(row=0, column=2, sticky="e")
+        ttk.Label(algo_box, text="Global pool:").grid(row=1, column=0, sticky="w", pady=2)
         ttk.Entry(algo_box, textvariable=self._candidate_pool_var, width=8).grid(row=1, column=1, sticky="w", padx=6)
-        ttk.Entry(algo_box, textvariable=self._local_pool_var, width=8).grid(row=1, column=1, sticky="w", padx=(76, 6))
+        ttk.Label(algo_box, text="Local pool:").grid(row=1, column=2, sticky="w", pady=2)
+        ttk.Entry(algo_box, textvariable=self._local_pool_var, width=8).grid(row=1, column=2, sticky="e", padx=(6, 0))
+        ttk.Label(algo_box, text="Start point:").grid(row=2, column=0, sticky="w", pady=2)
+        start_mode = ttk.Combobox(
+            algo_box,
+            textvariable=self._initial_point_mode_var,
+            values=("specific", "random"),
+            state="readonly",
+            width=12,
+        )
+        start_mode.grid(row=2, column=1, sticky="w", padx=6, pady=2)
+        start_mode.bind("<<ComboboxSelected>>", lambda _e: self._sync_algorithm_config(show_error=False))
+        ttk.Label(
+            algo_box,
+            text="`specific` uses Initial Parameters. `random` chooses one valid candidate as the first BO point.",
+            foreground=self.ACCENT,
+        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(2, 0))
 
-        scoring_box = ttk.LabelFrame(left, text="Q Score Decomposition", padding=8)
-        scoring_box.pack(fill="x", pady=(0, 8))
+        init_box = ttk.LabelFrame(left, text="Initial Parameters", padding=8)
+        init_box.pack(fill="both", expand=True)
+        init_toolbar = ttk.Frame(init_box)
+        init_toolbar.pack(fill="x", pady=(0, 6))
+        ttk.Button(init_toolbar, text="Edit Initial Parameters", command=self._edit_initial_parameters).pack(side="left", padx=2)
+        ttk.Label(
+            init_toolbar,
+            text="Specific mode starts here. Random mode ignores this as the first BO point, but keeps it as the editable reference method.",
+            foreground=self.ACCENT,
+        ).pack(side="left", padx=8)
+
+        init_cols = ("Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t")
+        self._initial_tree = ttk.Treeview(
+            init_box, columns=init_cols, show="tree headings", height=8, style="BO.Treeview"
+        )
+        self._initial_tree.heading("#0", text="#")
+        self._initial_tree.column("#0", width=38, anchor="center")
+        for col in init_cols:
+            self._initial_tree.heading(col, text=col)
+            self._initial_tree.column(col, width=70, anchor="center")
+        self._initial_tree.pack(fill="both", expand=True)
+        self._initial_tree.bind("<Double-1>", lambda _e: self._edit_initial_parameters())
+
+        params = ttk.LabelFrame(params_host, text="Parameter Space", padding=8)
+        params.pack(fill="both", expand=True)
+        toolbar = ttk.Frame(params)
+        toolbar.pack(fill="x", pady=(0, 6))
+        ttk.Button(toolbar, text="Edit Selected", command=self._edit_selected_parameter).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="Active", command=lambda: self._set_selected_mode("active")).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="Locked", command=lambda: self._set_selected_mode("locked")).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="Tied", command=lambda: self._set_selected_mode("tied")).pack(side="left", padx=2)
+
+        legend = ttk.Frame(params)
+        legend.pack(fill="x", pady=(0, 6))
+        tk.Label(legend, text="Active = optimized", bg="#dff7f5", fg="#0f3d44", padx=6).pack(side="left", padx=2)
+        tk.Label(legend, text="Locked = fixed", bg="#eeeeee", fg="#333333", padx=6).pack(side="left", padx=2)
+        tk.Label(legend, text="Tied = follows another", bg="#fff1d6", fg="#6b3b00", padx=6).pack(side="left", padx=2)
+
+        cols = ("Mode", "Space", "Values", "Tie")
+        self._param_tree = ttk.Treeview(
+            params, columns=cols, show="tree headings", height=16, style="BO.Treeview"
+        )
+        self._param_tree.heading("#0", text="Parameter")
+        self._param_tree.heading("Mode", text="Mode")
+        self._param_tree.heading("Space", text="Space")
+        self._param_tree.heading("Values", text="Range / Values / Lock")
+        self._param_tree.heading("Tie", text="Tie")
+        self._param_tree.column("#0", width=165)
+        self._param_tree.column("Mode", width=75)
+        self._param_tree.column("Space", width=85)
+        self._param_tree.column("Values", width=330)
+        self._param_tree.column("Tie", width=110)
+        self._param_tree.tag_configure("active", background="#dff7f5", foreground="#0f3d44")
+        self._param_tree.tag_configure("locked", background="#eeeeee", foreground="#333333")
+        self._param_tree.tag_configure("tied", background="#fff1d6", foreground="#6b3b00")
+        self._param_tree.pack(fill="both", expand=True)
+        self._param_tree.bind("<Double-1>", lambda _e: self._edit_selected_parameter())
+
+        setup_tools = ttk.Notebook(controls_host)
+        setup_tools.pack(fill="both", expand=True)
+        analysis_tab = ttk.Frame(setup_tools)
+        scoring_tab = ttk.Frame(setup_tools)
+        setup_tools.add(analysis_tab, text="Analysis Settings")
+        setup_tools.add(scoring_tab, text="Q Scoring")
+
+        scoring_box = ttk.LabelFrame(scoring_tab, text="Q Score Decomposition", padding=8)
+        scoring_box.pack(fill="both", expand=True, pady=(0, 8), padx=2)
         for idx in range(6):
             scoring_box.columnconfigure(idx, weight=1 if idx in (1, 3, 5) else 0)
         entries = [
@@ -284,8 +384,8 @@ class BayesianOptimizationTab:
             pady=(6, 0),
         )
 
-        analysis_box = ttk.LabelFrame(left, text="Headless Analysis Settings", padding=8)
-        analysis_box.pack(fill="x", pady=(0, 8))
+        analysis_box = ttk.LabelFrame(analysis_tab, text="Headless Analysis Settings", padding=8)
+        analysis_box.pack(fill="both", expand=True, pady=(0, 8), padx=2)
         for idx in range(4):
             analysis_box.columnconfigure(idx, weight=1 if idx in (1, 3) else 0)
         ttk.Label(analysis_box, text="Crop min/max (V):").grid(row=0, column=0, sticky="w", pady=2)
@@ -313,64 +413,6 @@ class BayesianOptimizationTab:
             text="These settings are used by the in-repo BO analysis runner.",
             foreground=self.ACCENT,
         ).grid(row=5, column=0, columnspan=4, sticky="w", pady=(4, 0))
-
-        init_box = ttk.LabelFrame(left, text="Initial Parameters", padding=8)
-        init_box.pack(fill="both", expand=True)
-        init_toolbar = ttk.Frame(init_box)
-        init_toolbar.pack(fill="x", pady=(0, 6))
-        ttk.Button(init_toolbar, text="Edit Initial Parameters", command=self._edit_initial_parameters).pack(side="left", padx=2)
-        ttk.Label(
-            init_toolbar,
-            text="BO runs this method first, then chooses additional early points automatically.",
-            foreground=self.ACCENT,
-        ).pack(side="left", padx=8)
-
-        init_cols = ("Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t")
-        self._initial_tree = ttk.Treeview(
-            init_box, columns=init_cols, show="tree headings", height=8, style="BO.Treeview"
-        )
-        self._initial_tree.heading("#0", text="#")
-        self._initial_tree.column("#0", width=38, anchor="center")
-        for col in init_cols:
-            self._initial_tree.heading(col, text=col)
-            self._initial_tree.column(col, width=70, anchor="center")
-        self._initial_tree.pack(fill="both", expand=True)
-        self._initial_tree.bind("<Double-1>", lambda _e: self._edit_initial_parameters())
-
-        params = ttk.LabelFrame(right, text="Parameter Space", padding=8)
-        params.pack(fill="both", expand=True)
-        toolbar = ttk.Frame(params)
-        toolbar.pack(fill="x", pady=(0, 6))
-        ttk.Button(toolbar, text="Edit Selected", command=self._edit_selected_parameter).pack(side="left", padx=2)
-        ttk.Button(toolbar, text="Active", command=lambda: self._set_selected_mode("active")).pack(side="left", padx=2)
-        ttk.Button(toolbar, text="Locked", command=lambda: self._set_selected_mode("locked")).pack(side="left", padx=2)
-        ttk.Button(toolbar, text="Tied", command=lambda: self._set_selected_mode("tied")).pack(side="left", padx=2)
-
-        legend = ttk.Frame(params)
-        legend.pack(fill="x", pady=(0, 6))
-        tk.Label(legend, text="Active = optimized", bg="#dff7f5", fg="#0f3d44", padx=6).pack(side="left", padx=2)
-        tk.Label(legend, text="Locked = fixed", bg="#eeeeee", fg="#333333", padx=6).pack(side="left", padx=2)
-        tk.Label(legend, text="Tied = follows another", bg="#fff1d6", fg="#6b3b00", padx=6).pack(side="left", padx=2)
-
-        cols = ("Mode", "Space", "Values", "Tie")
-        self._param_tree = ttk.Treeview(
-            params, columns=cols, show="tree headings", height=16, style="BO.Treeview"
-        )
-        self._param_tree.heading("#0", text="Parameter")
-        self._param_tree.heading("Mode", text="Mode")
-        self._param_tree.heading("Space", text="Space")
-        self._param_tree.heading("Values", text="Range / Values / Lock")
-        self._param_tree.heading("Tie", text="Tie")
-        self._param_tree.column("#0", width=165)
-        self._param_tree.column("Mode", width=75)
-        self._param_tree.column("Space", width=85)
-        self._param_tree.column("Values", width=330)
-        self._param_tree.column("Tie", width=110)
-        self._param_tree.tag_configure("active", background="#dff7f5", foreground="#0f3d44")
-        self._param_tree.tag_configure("locked", background="#eeeeee", foreground="#333333")
-        self._param_tree.tag_configure("tied", background="#fff1d6", foreground="#6b3b00")
-        self._param_tree.pack(fill="both", expand=True)
-        self._param_tree.bind("<Double-1>", lambda _e: self._edit_selected_parameter())
 
     def _build_run_tab(self, parent):
         controls = ttk.LabelFrame(parent, text="Manual Closed Loop", padding=8)
@@ -437,17 +479,24 @@ class BayesianOptimizationTab:
             ("3/3 Results", results_page),
         ]
 
-        dims_box = ttk.LabelFrame(landscape_page, text="Synthetic Parameter Landscape", padding=8)
+        dims_box = ttk.LabelFrame(landscape_page, text="Synthetic Parameter Landscape Map", padding=8)
         dims_box.pack(fill="both", expand=True)
+        dims_split = ttk.PanedWindow(dims_box, orient=tk.HORIZONTAL)
+        dims_split.pack(fill="both", expand=True)
 
-        toolbar = ttk.Frame(dims_box)
+        dims_left = ttk.Frame(dims_split)
+        dims_right = ttk.Frame(dims_split)
+        dims_split.add(dims_left, weight=2)
+        dims_split.add(dims_right, weight=3)
+
+        toolbar = ttk.Frame(dims_left)
         toolbar.pack(fill="x", pady=(0, 6))
         ttk.Button(toolbar, text="Load Active Parameters", command=self._engine_load_active_dimensions).pack(side="left", padx=2)
         ttk.Button(toolbar, text="Edit Selected", command=self._engine_edit_dimension).pack(side="left", padx=2)
         ttk.Button(toolbar, text="Next: Signal Model", command=self._engine_next_page).pack(side="right", padx=2)
 
         dim_cols = ("Min", "Max", "Optimum", "Spread", "Shape", "Weight")
-        self._engine_dim_tree = ttk.Treeview(dims_box, columns=dim_cols, show="tree headings", height=14, style="BO.Treeview")
+        self._engine_dim_tree = ttk.Treeview(dims_left, columns=dim_cols, show="tree headings", height=14, style="BO.Treeview")
         self._engine_dim_tree.heading("#0", text="Parameter")
         self._engine_dim_tree.column("#0", width=150)
         for col in dim_cols:
@@ -455,6 +504,27 @@ class BayesianOptimizationTab:
             self._engine_dim_tree.column(col, width=82, anchor="center")
         self._engine_dim_tree.pack(fill="both", expand=True)
         self._engine_dim_tree.bind("<Double-1>", lambda _e: self._engine_edit_dimension())
+        self._engine_dim_tree.bind("<<TreeviewSelect>>", lambda _e: self._engine_refresh_landscape_inspector(refresh_cube=False))
+
+        dist_box = ttk.LabelFrame(dims_right, text="Map Slice: Per-Dimension Success Distribution", padding=6)
+        dist_box.pack(fill="both", expand=True)
+        self._engine_distribution_frame = ttk.Frame(dist_box)
+        self._engine_distribution_frame.pack(fill="both", expand=True)
+
+        cube_box = ttk.LabelFrame(dims_right, text="Example Fake Data From Map Cells", padding=6)
+        cube_box.pack(fill="both", expand=True, pady=(6, 0))
+        cube_cols = ("True Q", "Success", "Peak", "Noise")
+        self._engine_cube_tree = ttk.Treeview(cube_box, columns=cube_cols, show="tree headings", height=8, style="BO.Treeview")
+        self._engine_cube_tree.heading("#0", text="Point")
+        self._engine_cube_tree.column("#0", width=180)
+        for col in cube_cols:
+            self._engine_cube_tree.heading(col, text=col)
+            self._engine_cube_tree.column(col, width=74, anchor="center")
+        self._engine_cube_tree.pack(fill="both", expand=True)
+        cube_x = ttk.Scrollbar(cube_box, orient=tk.HORIZONTAL, command=self._engine_cube_tree.xview)
+        self._engine_cube_tree.configure(xscrollcommand=cube_x.set)
+        cube_x.pack(fill="x")
+        self._engine_cube_tree.bind("<<TreeviewSelect>>", lambda _e: self._engine_preview_selected_cube_point())
 
         model_box = ttk.LabelFrame(model_page, text="Synthetic SWV Model", padding=8)
         model_box.pack(fill="both", expand=True)
@@ -486,8 +556,9 @@ class BayesianOptimizationTab:
             model_box,
             text=(
                 "Peak emphasis controls how strongly the synthetic system rewards signal height relative "
-                "to low noise and shape. Run simulations with different Q weights in Setup to see whether "
-                "the optimizer follows the intended landscape."
+                "to low noise and shape. Synthetic success is separate from Q and is driven mostly by peak "
+                "height, then low noise. Think of the landscape as a topographic map over parameter space: "
+                "high regions are good operating zones, and the optimizer is trying to climb into them."
             ),
             foreground=self.ACCENT,
             wraplength=760,
@@ -527,8 +598,10 @@ class BayesianOptimizationTab:
 
         trace_box = ttk.LabelFrame(detail_box, text="Synthetic SWV Trace Preview", padding=4)
         trace_box.pack(fill="both", expand=True, pady=(6, 0))
+        self._engine_trace_plot_frame = ttk.Frame(trace_box)
+        self._engine_trace_plot_frame.pack(fill="both", expand=True)
         self._engine_trace_text = scrolledtext.ScrolledText(trace_box, height=6, wrap=tk.WORD)
-        self._engine_trace_text.pack(fill="both", expand=True)
+        self._engine_trace_text.pack(fill="both", expand=True, pady=(6, 0))
         self._engine_trace_text.config(state="disabled")
         self._engine_go_page(0)
 
@@ -711,8 +784,10 @@ class BayesianOptimizationTab:
     def _set_algorithm_vars_from_config(self, cfg: dict):
         acquisition = dict((cfg or {}).get("acquisition") or {})
         self._exploration_var.set(float(acquisition.get("exploration", 0.35)))
+        self._exploration_text_var.set(f"{float(acquisition.get('exploration', 0.35)):.2f}")
         self._candidate_pool_var.set(str(acquisition.get("candidate_pool_size", 600)))
         self._local_pool_var.set(str(acquisition.get("local_candidate_pool_size", 120)))
+        self._initial_point_mode_var.set(str(acquisition.get("initial_point_mode", "specific")))
 
     def _sync_algorithm_config(self, show_error=True):
         if self._config is None:
@@ -720,8 +795,11 @@ class BayesianOptimizationTab:
         try:
             acquisition = self._config.setdefault("acquisition", {})
             acquisition["exploration"] = max(0.0, min(1.0, float(self._exploration_var.get())))
+            self._exploration_text_var.set(f"{float(acquisition['exploration']):.2f}")
             acquisition["candidate_pool_size"] = max(50, int(self._candidate_pool_var.get() or 600))
             acquisition["local_candidate_pool_size"] = max(0, int(self._local_pool_var.get() or 120))
+            mode = str(self._initial_point_mode_var.get() or "specific").strip().lower()
+            acquisition["initial_point_mode"] = "random" if mode == "random" else "specific"
         except Exception as exc:
             if show_error:
                 messagebox.showerror("Optimizer Behavior", str(exc))
@@ -732,7 +810,9 @@ class BayesianOptimizationTab:
             "Q terms: Peak uA is the measured signal height. Raw SNR is peak height / background RMS. "
             "SNR Score is Raw SNR / SNR sat, clipped 0-1. Shape rewards a centered, stable peak. "
             "Baseline rewards low/stable background. Replicate rewards consistent peak heights across scans. "
-            "Success is OK scans / total scans. Q_channel is the weighted mean of those component scores. "
+            "Success is a separate outcome measure, not the same thing as Q; in simulation it is peak-first "
+            "with noise as a secondary factor, while real analysis still uses OK scans / total scans. "
+            "Q_channel is the weighted mean of those component scores. "
             "Q_run is mean channel Q minus variability, failed-channel, and low-channel penalties."
         )
 
@@ -972,6 +1052,10 @@ class BayesianOptimizationTab:
         try:
             self._simulation_dims = default_dimensions(self._config, limit=3)
             self._engine_refresh_dimension_tree()
+            if self._simulation_dims:
+                self._engine_dim_tree.selection_set("0")
+                self._engine_dim_tree.see("0")
+            self._engine_refresh_landscape_inspector()
             self._engine_status_var.set(f"Loaded {len(self._simulation_dims)} active simulation dimension(s).")
         except Exception as exc:
             messagebox.showerror("Simulation Engine", str(exc))
@@ -1058,6 +1142,8 @@ class BayesianOptimizationTab:
                 updated["optimum"] = min(max(updated["optimum"], updated["minimum"]), updated["maximum"])
                 self._simulation_dims[idx] = updated
                 self._engine_refresh_dimension_tree()
+                self._engine_dim_tree.selection_set(str(idx))
+                self._engine_refresh_landscape_inspector()
                 win.destroy()
             except Exception as exc:
                 messagebox.showerror("Simulation Dimension", str(exc), parent=win)
@@ -1098,12 +1184,14 @@ class BayesianOptimizationTab:
                 "engine": engine,
                 "rows": [],
                 "landscape": engine.sample_landscape(sim_cfg["grid_size"]),
+                "distributions": engine.dimension_distributions(),
             }
             self._engine_selected_index = 0
             self._engine_refresh_results()
+            self._engine_refresh_landscape_inspector()
             self._engine_render_plot(show_all=True)
             self._engine_go_page(2)
-            self._engine_status_var.set("Drew synthetic Q landscape. Run the optimizer to add a path.")
+            self._engine_status_var.set("Drew synthetic landscape map. Run the optimizer to add a path.")
         except Exception as exc:
             messagebox.showerror("Simulation Engine", str(exc))
 
@@ -1126,6 +1214,7 @@ class BayesianOptimizationTab:
             self._simulation_result = result
             self._engine_selected_index = max(0, len(result.get("rows", [])) - 1)
             self._engine_refresh_results()
+            self._engine_refresh_landscape_inspector()
             self._engine_render_plot(show_all=True)
             self._engine_update_trace_text()
             self._engine_go_page(2)
@@ -1251,7 +1340,17 @@ class BayesianOptimizationTab:
             ordered = sorted(points, key=lambda p: p[name])
             ax.plot([p[name] for p in ordered], [p["true_Q"] for p in ordered], color=self.ACCENT_DARK)
             if path_rows:
-                ax.scatter([r.get(name) for r in path_rows], [r.get("true_Q") for r in path_rows], color="#d67b32", s=38, zorder=3)
+                ax.scatter([r.get(name) for r in path_rows], [r.get("true_Q") for r in path_rows], color="#d67b32", s=20, zorder=3)
+                selected = path_rows[-1]
+                ax.scatter(
+                    [selected.get(name)],
+                    [selected.get("true_Q")],
+                    color="#ffd166",
+                    edgecolors="black",
+                    linewidths=0.9,
+                    s=95,
+                    zorder=4,
+                )
             ax.set_xlabel(name)
             ax.set_ylabel("True Q")
             ax.set_ylim(0.0, 1.02)
@@ -1259,19 +1358,29 @@ class BayesianOptimizationTab:
         elif len(dims) == 2:
             x_name, y_name = dims[0]["name"], dims[1]["name"]
             ax = fig.add_subplot(111)
-            scatter = ax.scatter(
-                [p[x_name] for p in points],
-                [p[y_name] for p in points],
-                c=[p["true_Q"] for p in points],
-                cmap="viridis",
-                s=18,
-                alpha=0.8,
-            )
+            x_vals = [p[x_name] for p in points]
+            y_vals = [p[y_name] for p in points]
+            z_vals = [p["true_Q"] for p in points]
+            contour = ax.tricontourf(x_vals, y_vals, z_vals, levels=12, cmap="viridis")
+            ax.tricontour(x_vals, y_vals, z_vals, levels=12, colors="white", linewidths=0.45, alpha=0.55)
             if path_rows:
-                ax.plot([r.get(x_name) for r in path_rows], [r.get(y_name) for r in path_rows], color="#d67b32", marker="o", linewidth=2)
-            fig.colorbar(scatter, ax=ax, label="True Q")
+                path_x = [r.get(x_name) for r in path_rows]
+                path_y = [r.get(y_name) for r in path_rows]
+                ax.plot(path_x, path_y, color="#d67b32", linewidth=1.6, alpha=0.9, zorder=3)
+                ax.scatter(path_x, path_y, color="#d67b32", s=14, zorder=4)
+                ax.scatter(
+                    [path_x[-1]],
+                    [path_y[-1]],
+                    color="#ffd166",
+                    edgecolors="black",
+                    linewidths=1.0,
+                    s=85,
+                    zorder=5,
+                )
+            fig.colorbar(contour, ax=ax, label="True Q")
             ax.set_xlabel(x_name)
             ax.set_ylabel(y_name)
+            ax.set_title("2D landscape map")
             ax.grid(alpha=0.2)
         else:
             x_name, y_name, z_name = dims[0]["name"], dims[1]["name"], dims[2]["name"]
@@ -1282,22 +1391,36 @@ class BayesianOptimizationTab:
                 [p[z_name] for p in points],
                 c=[p["true_Q"] for p in points],
                 cmap="viridis",
-                s=10,
-                alpha=0.35,
+                s=4,
+                alpha=0.22,
             )
             if path_rows:
+                path_x = [r.get(x_name) for r in path_rows]
+                path_y = [r.get(y_name) for r in path_rows]
+                path_z = [r.get(z_name) for r in path_rows]
                 ax.plot(
-                    [r.get(x_name) for r in path_rows],
-                    [r.get(y_name) for r in path_rows],
-                    [r.get(z_name) for r in path_rows],
+                    path_x,
+                    path_y,
+                    path_z,
                     color="#d67b32",
-                    marker="o",
-                    linewidth=2,
+                    linewidth=1.5,
+                )
+                ax.scatter(path_x, path_y, path_z, color="#d67b32", s=16, depthshade=False)
+                ax.scatter(
+                    [path_x[-1]],
+                    [path_y[-1]],
+                    [path_z[-1]],
+                    color="#ffd166",
+                    edgecolors="black",
+                    linewidths=0.8,
+                    s=85,
+                    depthshade=False,
                 )
             fig.colorbar(scatter, ax=ax, label="True Q", shrink=0.75)
             ax.set_xlabel(x_name)
             ax.set_ylabel(y_name)
             ax.set_zlabel(z_name)
+            ax.set_title("3D landscape map")
         if path_rows:
             fig.suptitle(f"Optimizer path through iteration {path_rows[-1].get('iteration', len(path_rows))}")
         fig.tight_layout()
@@ -1306,19 +1429,262 @@ class BayesianOptimizationTab:
         canvas.get_tk_widget().pack(fill="both", expand=True)
         self._engine_plot_canvas = canvas
 
+    def _engine_refresh_landscape_inspector(self, refresh_cube=True):
+        if not hasattr(self, "_engine_distribution_frame"):
+            return
+        if refresh_cube and hasattr(self, "_engine_cube_tree"):
+            for row in self._engine_cube_tree.get_children():
+                self._engine_cube_tree.delete(row)
+        if self._config is None:
+            return
+        try:
+            sim_cfg = self._engine_sim_config()
+            engine = ((self._simulation_result or {}).get("engine")) or None
+            if engine is None:
+                from core.bo_simulation import SyntheticSWVSimulationEngine
+
+                engine = SyntheticSWVSimulationEngine(self._config, sim_cfg)
+            landscape = ((self._simulation_result or {}).get("landscape")) or engine.sample_landscape(sim_cfg["grid_size"])
+            distributions = ((self._simulation_result or {}).get("distributions")) or engine.dimension_distributions()
+        except Exception as exc:
+            ttk.Label(self._engine_distribution_frame, text=f"Inspector unavailable: {exc}").pack(fill="both", expand=True)
+            return
+
+        selected_dim = None
+        selection = self._engine_dim_tree.selection() if hasattr(self, "_engine_dim_tree") else ()
+        if selection:
+            try:
+                selected_dim = self._simulation_dims[int(selection[0])]["name"]
+            except Exception:
+                selected_dim = None
+        curves = {
+            row.get("name"): row.get("curve", [])
+            for row in (distributions.get("dimensions") or [])
+            if isinstance(row, dict)
+        }
+        curve = curves.get(selected_dim) or next(iter(curves.values()), [])
+        title = selected_dim or "No dimension selected"
+        self._engine_render_distribution_plot(curve, title)
+        if refresh_cube:
+            self._engine_refresh_cube_matrix(landscape)
+
+    def _engine_render_distribution_plot(self, curve, title):
+        try:
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+            from matplotlib.figure import Figure
+        except Exception as exc:
+            ttk.Label(self._engine_distribution_frame, text=f"Matplotlib plot unavailable: {exc}").pack(fill="both", expand=True)
+            return
+        if self._engine_distribution_canvas is None or self._engine_distribution_ax is None:
+            for child in self._engine_distribution_frame.winfo_children():
+                child.destroy()
+            fig = Figure(figsize=(6.2, 3.1), dpi=100)
+            ax = fig.add_subplot(111)
+            success_line, = ax.plot([], [], color="#c96b1e", linewidth=2.2, label="Success")
+            q_line, = ax.plot([], [], color=self.ACCENT_DARK, linewidth=2.0, label="True Q")
+            peak_line, = ax.plot([], [], color="#2f7d32", linewidth=1.4, alpha=0.9, label="Peak")
+            noise_line, = ax.plot([], [], color="#5a6b84", linewidth=1.2, alpha=0.85, label="Noise")
+            self._engine_distribution_lines = {
+                "success": success_line,
+                "q": q_line,
+                "peak": peak_line,
+                "noise": noise_line,
+            }
+            self._engine_distribution_empty_text = ax.text(0.5, 0.5, "No distribution data yet", ha="center", va="center")
+            self._engine_distribution_empty_text.set_visible(False)
+            ax.set_ylabel("Score")
+            ax.set_ylim(0.0, 1.02)
+            ax.grid(alpha=0.2)
+            ax.legend(loc="best", fontsize=8)
+            canvas = FigureCanvasTkAgg(fig, master=self._engine_distribution_frame)
+            canvas.get_tk_widget().pack(fill="both", expand=True)
+            self._engine_distribution_figure = fig
+            self._engine_distribution_ax = ax
+            self._engine_distribution_canvas = canvas
+        else:
+            fig = self._engine_distribution_figure
+            ax = self._engine_distribution_ax
+            canvas = self._engine_distribution_canvas
+        if not curve:
+            for line in self._engine_distribution_lines.values():
+                line.set_data([], [])
+            if self._engine_distribution_empty_text is not None:
+                self._engine_distribution_empty_text.set_visible(True)
+            ax.set_xlabel(title)
+            ax.set_xlim(0.0, 1.0)
+        else:
+            x = [row.get("value") for row in curve]
+            q = [row.get("true_Q") for row in curve]
+            success = [row.get("success_score") for row in curve]
+            peak = [row.get("peak_score") for row in curve]
+            noise = [row.get("noise_score") for row in curve]
+            self._engine_distribution_lines["success"].set_data(x, success)
+            self._engine_distribution_lines["q"].set_data(x, q)
+            self._engine_distribution_lines["peak"].set_data(x, peak)
+            self._engine_distribution_lines["noise"].set_data(x, noise)
+            if self._engine_distribution_empty_text is not None:
+                self._engine_distribution_empty_text.set_visible(False)
+            ax.set_xlabel(title)
+            x_min = min(x) if x else 0.0
+            x_max = max(x) if x else 1.0
+            if x_max <= x_min:
+                x_max = x_min + 1.0
+            ax.set_xlim(x_min, x_max)
+        canvas.draw_idle()
+
+    def _engine_refresh_cube_matrix(self, landscape):
+        if not hasattr(self, "_engine_cube_tree"):
+            return
+        dims = landscape.get("dimensions") or []
+        points = landscape.get("points") or []
+        names = [str(dim.get("name", "")) for dim in dims[:3]]
+        if names:
+            self._engine_cube_tree.heading("#0", text=" / ".join(names))
+        else:
+            self._engine_cube_tree.heading("#0", text="Point")
+        points = sorted(
+            points,
+            key=lambda row: (
+                -float(row.get("success_score", 0.0)),
+                -float(row.get("true_Q", 0.0)),
+                float(row.get("distance", 1.0)),
+            ),
+        )[:12]
+        for idx, point in enumerate(points, start=1):
+            label = ", ".join(f"{name}={self._fmt_raw(point.get(name))}" for name in names if name)
+            self._engine_cube_tree.insert(
+                "",
+                "end",
+                iid=str(idx),
+                text=label or f"Point {idx}",
+                values=(
+                    self._fmt(point.get("true_Q")),
+                    self._fmt(point.get("success_score")),
+                    self._fmt(point.get("peak_score")),
+                    self._fmt(point.get("noise_score")),
+                ),
+            )
+
+    def _engine_preview_selected_cube_point(self):
+        if not hasattr(self, "_engine_cube_tree"):
+            return
+        selection = self._engine_cube_tree.selection()
+        if not selection:
+            return
+        result = self._simulation_result or {}
+        engine = result.get("engine")
+        landscape = result.get("landscape") or {}
+        if engine is None:
+            return
+        points = sorted(
+            landscape.get("points") or [],
+            key=lambda row: (
+                -float(row.get("success_score", 0.0)),
+                -float(row.get("true_Q", 0.0)),
+                float(row.get("distance", 1.0)),
+            ),
+        )[:12]
+        try:
+            idx = max(0, int(selection[0]) - 1)
+        except Exception:
+            return
+        if idx >= len(points):
+            return
+        point = points[idx]
+        params = resolve_initial_parameters(self._config)
+        for dim in landscape.get("dimensions") or []:
+            name = str(dim.get("name", ""))
+            if name and name in point:
+                params[name] = point[name]
+        payload = engine.analysis_payload(params, iteration=0)
+        self._engine_write_fake_payload_preview(payload, title="Fake data preview from selected map cell")
+
+    def _engine_write_fake_payload_preview(self, payload, title="Fake data preview"):
+        truth = dict(payload.get("simulation_truth") or {})
+        metrics = dict(payload.get("channel_metrics") or {})
+        traces = dict(payload.get("swv_traces") or {})
+        params = dict(((payload.get("simulation_engine") or {}).get("parameters")) or {})
+        self._engine_render_trace_plot(traces, title="Fake SWV plot")
+        lines = [title, ""]
+        lines.append(f"True Q: {self._fmt(truth.get('true_Q'))}")
+        lines.append(f"Success: {self._fmt(truth.get('success_score'))}")
+        lines.append(f"Peak component: {self._fmt(truth.get('peak_score'))}")
+        lines.append(f"Noise component: {self._fmt(truth.get('noise_score'))}")
+        lines.append("")
+        lines.append("Parameters:")
+        for name in PARAMETER_ORDER:
+            if name in params:
+                lines.append(f"  {name}: {self._fmt_raw(params.get(name))}")
+        if metrics:
+            first_key = sorted(metrics.keys(), key=lambda value: int(value))[0]
+            first = metrics.get(first_key) or {}
+            lines.extend(
+                [
+                    "",
+                    f"Example channel: {first_key}",
+                    f"  Peak height: {self._fmt(first.get('mean_peak_current_uA'))} uA",
+                    f"  Raw SNR: {self._fmt(first.get('snr'))}",
+                    f"  Success score: {self._fmt(first.get('success_score'))}",
+                ]
+            )
+        if traces:
+            ch, trace = next(iter(traces.items()))
+            volts = trace.get("voltage_v", [])[:8]
+            currents = trace.get("current_uA", [])[:8]
+            pairs = ", ".join(f"{v:g}V/{i:g}uA" for v, i in zip(volts, currents))
+            lines.extend(["", f"Trace preview ch {ch}:", pairs])
+        self._write_text(self._engine_trace_text, "\n".join(lines))
+
+    def _engine_render_trace_plot(self, traces, title="Synthetic SWV trace"):
+        if not hasattr(self, "_engine_trace_plot_frame"):
+            return
+        for child in self._engine_trace_plot_frame.winfo_children():
+            child.destroy()
+        if not isinstance(traces, dict) or not traces:
+            ttk.Label(self._engine_trace_plot_frame, text="No synthetic SWV trace yet").pack(fill="both", expand=True)
+            return
+        try:
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+            from matplotlib.figure import Figure
+        except Exception as exc:
+            ttk.Label(self._engine_trace_plot_frame, text=f"Matplotlib plot unavailable: {exc}").pack(fill="both", expand=True)
+            return
+        fig = Figure(figsize=(5.2, 2.6), dpi=100)
+        ax = fig.add_subplot(111)
+        palette = [self.ACCENT_DARK, "#d67b32", "#2f7d32"]
+        for idx, (ch, trace) in enumerate(sorted(traces.items(), key=lambda item: int(item[0]))):
+            volts = trace.get("voltage_v", [])
+            currents = trace.get("current_uA", [])
+            if volts and currents:
+                ax.plot(volts, currents, color=palette[idx % len(palette)], linewidth=1.4, label=f"Ch {ch}")
+        ax.set_title(title)
+        ax.set_xlabel("Voltage (V)")
+        ax.set_ylabel("Current (uA)")
+        ax.grid(alpha=0.2)
+        if len(traces) > 1:
+            ax.legend(loc="best", fontsize=8)
+        fig.tight_layout()
+        canvas = FigureCanvasTkAgg(fig, master=self._engine_trace_plot_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
     def _engine_update_trace_text(self):
         result = self._simulation_result or {}
         session = result.get("session")
         if session is None or not session.observations:
+            self._engine_render_trace_plot({}, title="Synthetic SWV trace")
             self._clear_text(self._engine_trace_text)
             return
         idx = max(0, min(self._engine_selected_index, len(session.observations) - 1))
         obs = session.observations[idx]
         truth = obs.get("simulation_truth", {})
+        traces = obs.get("swv_trace_preview", {})
+        self._engine_render_trace_plot(traces, title=f"Iteration {obs.get('iteration')} synthetic SWV")
         lines = [
             f"Iteration {obs.get('iteration')}",
             f"Computed Q_run: {self._fmt(obs.get('Q_run'))}",
             f"True simulated Q: {self._fmt(truth.get('true_Q'))}",
+            f"Simulated success: {self._fmt(truth.get('success_score'))}",
             f"Distance to true optimum: {self._fmt(truth.get('normalized_distance'))}",
             "",
             "Parameters:",
@@ -1327,9 +1693,15 @@ class BayesianOptimizationTab:
             if name in obs.get("params", {}):
                 lines.append(f"  {name}: {self._fmt_raw(obs['params'].get(name))}")
         peak, snr = self._engine_peak_snr_for_obs(obs)
-        lines.extend(["", f"Mean channel peak height: {self._fmt(peak)} uA", f"Mean raw SNR: {self._fmt(snr)}"])
+        lines.extend(
+            [
+                "",
+                f"Mean channel peak height: {self._fmt(peak)} uA",
+                f"Mean raw SNR: {self._fmt(snr)}",
+                f"Truth components: peak {self._fmt(truth.get('peak_score'))}, noise {self._fmt(truth.get('noise_score'))}, shape {self._fmt(truth.get('shape_score'))}",
+            ]
+        )
         lines.extend([""] + self._q_breakdown_lines(obs, config=session.config if session is not None else None))
-        traces = obs.get("swv_trace_preview", {})
         if traces:
             ch, trace = next(iter(traces.items()))
             volts = trace.get("voltage_v", [])[:8]

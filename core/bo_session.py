@@ -24,6 +24,7 @@ import os
 import pickle
 import random
 import shutil
+import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -150,6 +151,9 @@ def normalize_bo_config(config: dict) -> dict:
     cfg["acquisition"].setdefault("exploration", 0.35)
     cfg["acquisition"].setdefault("candidate_pool_size", 600)
     cfg["acquisition"].setdefault("local_candidate_pool_size", 120)
+    cfg["acquisition"].setdefault("initial_point_mode", "specific")
+    cfg["acquisition"].setdefault("use_gp", True)
+    cfg["acquisition"].setdefault("gp_optimizer_restarts", 2)
     cfg.setdefault("scoring", {})
     cfg["scoring"].setdefault(
         "channel_weights",
@@ -528,6 +532,7 @@ class BOIntegrationSession:
         self.suggestions: List[dict] = []
         self.pending: Optional[dict] = None
         self._rng = random.Random(int(self.config.get("random_seed", 42)))
+        self._start_candidate = self._resolve_start_candidate()
         self._write_session_start_files()
         self.save_state()
 
@@ -851,19 +856,20 @@ class BOIntegrationSession:
     def _choose_candidate(self, available: List[Dict[str, float]]) -> Dict[str, float]:
         tried = {candidate_key(obs["params"]) for obs in self.observations}
         available_keys = {candidate_key(c) for c in available}
-        initial = resolve_initial_parameters(self.config)
+        initial = dict(self._start_candidate)
         key = candidate_key(initial)
         if key not in tried and key in available_keys:
             return initial
         if len(self.observations) < int(self.config.get("n_initial_points", 8)):
             return self._maximin_candidate(available)
-        gp_choice = self._gp_expected_improvement_candidate(available)
-        if gp_choice is not None:
-            return gp_choice
+        if bool(self.config.get("acquisition", {}).get("use_gp", True)):
+            gp_choice = self._gp_expected_improvement_candidate(available)
+            if gp_choice is not None:
+                return gp_choice
         return self._distance_surrogate_candidate(available)
 
     def _maximin_candidate(self, available: List[Dict[str, float]]) -> Dict[str, float]:
-        anchors = [resolve_initial_parameters(self.config)] + [obs["params"] for obs in self.observations]
+        anchors = [dict(self._start_candidate)] + [obs["params"] for obs in self.observations]
         if not anchors:
             return self._rng.choice(available)
         encoded_anchors = [encode_candidate(a, self.config) for a in anchors]
@@ -918,6 +924,7 @@ class BOIntegrationSession:
         try:
             import numpy as np
             from sklearn.gaussian_process import GaussianProcessRegressor
+            from sklearn.exceptions import ConvergenceWarning
             from sklearn.gaussian_process.kernels import ConstantKernel, Matern, WhiteKernel
         except Exception:
             return None, None
@@ -935,9 +942,11 @@ class BOIntegrationSession:
                 kernel=kernel,
                 normalize_y=True,
                 random_state=int(self.config.get("random_seed", 42)),
-                n_restarts_optimizer=2,
+                n_restarts_optimizer=max(0, int(self.config.get("acquisition", {}).get("gp_optimizer_restarts", 2))),
             )
-            gp.fit(x_train, y_train)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", ConvergenceWarning)
+                gp.fit(x_train, y_train)
             return gp, {"x_train": x_train, "y_train": y_train}
         except Exception:
             return None, None
@@ -954,7 +963,7 @@ class BOIntegrationSession:
         if target <= 0:
             return []
         best = self.best_observation()
-        center = dict(best["params"]) if best else resolve_initial_parameters(self.config)
+        center = dict(best["params"]) if best else dict(self._start_candidate)
         rng = random.Random(int(self.config.get("random_seed", 42)) + 1009 * (len(self.observations) + 1))
         candidates: List[Dict[str, float]] = []
         seen = set(tried)
@@ -1006,10 +1015,20 @@ class BOIntegrationSession:
             self.record_dir / "initial_parameters_preview.json",
             {
                 "initial_parameters": resolve_initial_parameters(self.config),
+                "initial_point_mode": str(self.config.get("acquisition", {}).get("initial_point_mode", "specific")),
+                "start_candidate": dict(self._start_candidate),
                 "candidate_count": len(self.candidates),
                 "initial_candidates": self.candidates[: int(self.config.get("n_initial_points", 8))],
             },
         )
+
+    def _resolve_start_candidate(self) -> Dict[str, float]:
+        mode = str(self.config.get("acquisition", {}).get("initial_point_mode", "specific")).strip().lower()
+        if mode == "random":
+            if not self.candidates:
+                raise ValueError("No valid BO candidates available for random start")
+            return dict(self._rng.choice(self.candidates))
+        return resolve_initial_parameters(self.config)
 
     def _write_history_csv(self) -> None:
         path = self.record_dir / "history.csv"

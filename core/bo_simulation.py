@@ -167,6 +167,7 @@ class SyntheticSWVSimulationEngine:
         peak_score = _clip01(0.10 + 0.90 * landscape_q)
         noise_score = _clip01(1.0 - 0.80 * distance)
         shape_score = _clip01(0.25 + 0.75 * landscape_q)
+        success_score = _clip01((peak_score ** 1.8) * (0.60 + 0.40 * noise_score))
         true_q = _clip01(
             self.peak_emphasis * peak_score
             + 0.15 * noise_score
@@ -175,8 +176,12 @@ class SyntheticSWVSimulationEngine:
         )
         return {
             "true_Q": true_q,
+            "success_score": success_score,
             "landscape_Q": landscape_q,
             "normalized_distance": distance,
+            "peak_score": peak_score,
+            "noise_score": noise_score,
+            "shape_score": shape_score,
             "component_scores": {
                 dim.name: score for dim, score in zip(self.dimensions, component_scores)
             },
@@ -208,12 +213,37 @@ class SyntheticSWVSimulationEngine:
             point.update(
                 {
                     "true_Q": truth["true_Q"],
+                    "success_score": truth["success_score"],
                     "landscape_Q": truth["landscape_Q"],
                     "distance": truth["normalized_distance"],
+                    "peak_score": truth["peak_score"],
+                    "noise_score": truth["noise_score"],
                 }
             )
             points.append(point)
         return {"dimensions": [dim.__dict__ for dim in dims], "points": points}
+
+    def dimension_distributions(self, grid_size: int = 61) -> dict:
+        base = resolve_initial_parameters(self.bo_config)
+        rows = []
+        for dim in self.dimensions[:3]:
+            values = _linspace(dim.minimum, dim.maximum, max(11, min(201, int(grid_size))))
+            curve = []
+            for value in values:
+                params = dict(base)
+                params[dim.name] = value
+                truth = self.evaluate_truth(params)
+                curve.append(
+                    {
+                        "value": value,
+                        "true_Q": truth["true_Q"],
+                        "success_score": truth["success_score"],
+                        "peak_score": truth["peak_score"],
+                        "noise_score": truth["noise_score"],
+                    }
+                )
+            rows.append({"name": dim.name, "curve": curve})
+        return {"dimensions": rows}
 
     def _dimension_score(self, dim: SimulationDimension, value: float) -> float:
         z = (value - dim.optimum) / max(dim.spread, 1e-12)
@@ -244,7 +274,14 @@ class SyntheticSWVSimulationEngine:
             "peak_shape_score": _clip01(0.25 + 0.75 * channel_q + rng.gauss(0.0, self.channel_noise)),
             "baseline_stability_score": _clip01(1.0 - background_rms / max(self.base_noise_uA + self.noise_gain_uA, 1e-12)),
             "replicate_consistency_score": _clip01(0.35 + 0.65 * channel_q + rng.gauss(0.0, self.channel_noise)),
-            "success_score": _clip01(0.60 + 0.40 * channel_q),
+            "success_score": _clip01(
+                (max(0.0, peak_current - self.base_peak_uA) / max(self.peak_gain_uA, 1e-12)) ** 1.6
+                * (
+                    0.65
+                    + 0.35
+                    * _clip01(1.0 - background_rms / max(self.base_noise_uA + self.noise_gain_uA, 1e-12))
+                )
+            ),
             "ok_scan_count": 3,
             "total_scan_count": 3,
             "mean_peak_current_uA": peak_current,
@@ -310,6 +347,7 @@ def run_optimizer_simulation(
         "engine": engine,
         "rows": rows,
         "landscape": engine.sample_landscape(int(sim_config.get("grid_size", 25))),
+        "distributions": engine.dimension_distributions(),
     }
 
 
