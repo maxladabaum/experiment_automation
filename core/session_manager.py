@@ -355,6 +355,7 @@ class SessionManager:
         self._write_json(self._experiment_metadata_path, self._experiment_raw)
         self._update_status_var()
         self.log(f"Experiment started: {exp_path}")
+        self.notify_slack(f"Experiment started: {exp_path.name}")
         if callable(self._on_experiment_started):
             try:
                 self._on_experiment_started(exp_path)

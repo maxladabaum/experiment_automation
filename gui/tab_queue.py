@@ -280,8 +280,34 @@ class QueueTab:
         if not queue:
             return "Queue is empty."
         if self._session.is_running:
-            return "\n".join(self._build_live_eta_lines())
-        return "\n".join(self._build_static_eta_lines(0, "entire queue"))
+            return self._build_slack_remaining_text()
+        return f"Remaining measurements: {self._count_measurement_items(queue, start_index=0)}"
+
+    def _build_slack_remaining_text(self) -> str:
+        queue = self._session.measurement_queue
+        status = self._session.get_queue_status()
+        active_index = self._coerce_int(status.get("active_queue_index"))
+        current_index = self._coerce_int(status.get("current_index"))
+        total = self._coerce_int(status.get("total"))
+        remaining = self._count_measurement_items(queue, start_index=active_index if active_index is not None else 0)
+        if current_index is not None and total is not None:
+            return f"Queue status: step {current_index}/{total} | remaining measurements: {remaining}"
+        return f"Remaining measurements: {remaining}"
+
+    @staticmethod
+    def _count_measurement_items(queue, start_index: int = 0) -> int:
+        count = 0
+        for item in list(queue)[max(0, int(start_index or 0)):]:
+            item_type = str((item or {}).get("type") or "").strip().upper()
+            if item_type in {"CV", "SWV", "DPV", "LSV", "EIS", "CUSTOM", "CUSTOM_MUX"}:
+                count += 1
+            elif item_type == "BO_AUTO_LOOP":
+                try:
+                    target = int(((item or {}).get("bo_block") or {}).get("target_iterations", 0) or 0)
+                except Exception:
+                    target = 0
+                count += max(0, target)
+        return count
 
     def _build_static_eta_lines(self, start_index: int, scope: str) -> list:
         eta = estimate_queue_eta(
@@ -1107,6 +1133,9 @@ class QueueTab:
         session_mgr = getattr(self._session, "session_manager", None)
         if session_mgr is None:
             return
+        ran = self._session.measurement_queue[start_index:]
+        if ran and all(str((item or {}).get("type") or "").strip().upper() == "BO_AUTO_LOOP" for item in ran):
+            return
         total = max(0, len(self._session.measurement_queue) - start_index)
         session_name = (
             session_mgr.current_session_path.name
@@ -1131,6 +1160,8 @@ class QueueTab:
 
         ran = self._session.measurement_queue[start_index:]
         if not ran:
+            return
+        if all(str((item or {}).get("type") or "").strip().upper() == "BO_AUTO_LOOP" for item in ran):
             return
 
         total = len(ran)

@@ -1051,6 +1051,7 @@ class BayesianOptimizationTab:
             return
         try:
             self._simulation_dims = default_dimensions(self._config, limit=3)
+            self._engine_rebuild_landscape_cache(refresh_plot=False)
             self._engine_refresh_dimension_tree()
             if self._simulation_dims:
                 self._engine_dim_tree.selection_set("0")
@@ -1141,6 +1142,7 @@ class BayesianOptimizationTab:
                     raise ValueError("Spread must be positive.")
                 updated["optimum"] = min(max(updated["optimum"], updated["minimum"]), updated["maximum"])
                 self._simulation_dims[idx] = updated
+                self._engine_rebuild_landscape_cache(refresh_plot=True)
                 self._engine_refresh_dimension_tree()
                 self._engine_dim_tree.selection_set(str(idx))
                 self._engine_refresh_landscape_inspector()
@@ -1175,17 +1177,7 @@ class BayesianOptimizationTab:
             messagebox.showwarning("Simulation Engine", "Load a BO config first.")
             return
         try:
-            sim_cfg = self._engine_sim_config()
-            from core.bo_simulation import SyntheticSWVSimulationEngine
-
-            engine = SyntheticSWVSimulationEngine(self._config, sim_cfg)
-            self._simulation_result = {
-                "session": None,
-                "engine": engine,
-                "rows": [],
-                "landscape": engine.sample_landscape(sim_cfg["grid_size"]),
-                "distributions": engine.dimension_distributions(),
-            }
+            self._engine_rebuild_landscape_cache(refresh_plot=False)
             self._engine_selected_index = 0
             self._engine_refresh_results()
             self._engine_refresh_landscape_inspector()
@@ -1194,6 +1186,34 @@ class BayesianOptimizationTab:
             self._engine_status_var.set("Drew synthetic landscape map. Run the optimizer to add a path.")
         except Exception as exc:
             messagebox.showerror("Simulation Engine", str(exc))
+
+    def _engine_rebuild_landscape_cache(self, refresh_plot=False):
+        if self._config is None:
+            return
+        sim_cfg = self._engine_sim_config()
+        from core.bo_simulation import SyntheticSWVSimulationEngine
+
+        engine = SyntheticSWVSimulationEngine(self._config, sim_cfg)
+        rows = []
+        session = None
+        if isinstance(self._simulation_result, dict):
+            rows = list(self._simulation_result.get("rows") or [])
+            session = self._simulation_result.get("session")
+        if rows:
+            rows = []
+            session = None
+            self._engine_selected_index = 0
+            self._engine_status_var.set("Simulation dimensions changed. Landscape cache rebuilt; rerun optimizer to regenerate the path.")
+        self._simulation_result = {
+            "session": session,
+            "engine": engine,
+            "rows": rows,
+            "landscape": engine.sample_landscape(sim_cfg["grid_size"]),
+            "distributions": engine.dimension_distributions(),
+        }
+        if refresh_plot and hasattr(self, "_engine_plot_frame"):
+            self._engine_refresh_results()
+            self._engine_render_plot(show_all=True)
 
     def _engine_run_optimizer(self):
         if self._config is None:
