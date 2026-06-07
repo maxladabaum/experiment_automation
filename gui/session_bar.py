@@ -24,11 +24,13 @@ class SessionBar:
         self._session_name_var = tk.StringVar()
         self._session_user_var = tk.StringVar()
         self._session_notes_var = tk.StringVar()
+        self._session_timestamp_suffix_var = tk.BooleanVar(value=True)
 
         self._experiment_name_var = tk.StringVar()
         self._experiment_chip_id_var = tk.StringVar()
         self._experiment_aptamer_type_var = tk.StringVar()
         self._experiment_notes_var = tk.StringVar()
+        self._experiment_timestamp_suffix_var = tk.BooleanVar(value=True)
 
         self._build()
 
@@ -78,6 +80,11 @@ class SessionBar:
         ttk.Button(sess, text="Update Session Metadata", command=self._on_update_session).grid(
             row=3, column=0, columnspan=2, sticky="w", padx=5, pady=2
         )
+        ttk.Checkbutton(
+            sess,
+            text="Add timestamp suffix",
+            variable=self._session_timestamp_suffix_var,
+        ).grid(row=3, column=2, columnspan=3, sticky="w", padx=5, pady=2)
 
         exp = ttk.LabelFrame(row, text="Experiment")
         exp.pack(side="right", fill="x", expand=True, padx=(4, 0))
@@ -113,13 +120,19 @@ class SessionBar:
             side="left", padx=(0, 4)
         )
         ttk.Button(btn_row, text="End Experiment", command=self._on_end_experiment).pack(side="left", padx=(0, 4))
-        ttk.Button(btn_row, text="Update Experiment Metadata", command=self._on_update_experiment).pack(side="left")
+        ttk.Button(btn_row, text="Update Experiment Metadata", command=self._on_update_experiment).pack(side="left", padx=(0, 8))
+        ttk.Checkbutton(
+            btn_row,
+            text="Add timestamp suffix",
+            variable=self._experiment_timestamp_suffix_var,
+        ).pack(side="left")
 
     def _on_start_session(self):
         started = self._mgr.start_session(
             name=self._session_name_var.get(),
             user=self._session_user_var.get(),
             notes=self._session_notes_var.get(),
+            add_timestamp_suffix=self._session_timestamp_suffix_var.get(),
         )
         if started and self._on_start_session_cb:
             self._apply_experiment_metadata({})
@@ -150,6 +163,7 @@ class SessionBar:
         self._session_name_var.set(data.get("session_name", ""))
         self._session_user_var.set(data.get("user", ""))
         self._session_notes_var.set(data.get("notes", ""))
+        self._session_timestamp_suffix_var.set(bool(data.get("timestamp_suffix_enabled", True)))
         if not self._mgr.has_experiment and not self._experiment_chip_id_var.get().strip():
             self._experiment_chip_id_var.set(data.get("chip_id", ""))
 
@@ -165,6 +179,7 @@ class SessionBar:
             chip_id=self._experiment_chip_id_var.get(),
             aptamer_type=self._experiment_aptamer_type_var.get(),
             notes=self._experiment_notes_var.get(),
+            add_timestamp_suffix=self._experiment_timestamp_suffix_var.get(),
         )
         if started:
             self._apply_experiment_metadata(self._mgr.experiment_metadata())
@@ -191,6 +206,7 @@ class SessionBar:
         self._experiment_chip_id_var.set(data.get("chip_id", ""))
         self._experiment_aptamer_type_var.set(data.get("aptamer_type", data.get("polymer_type", "")))
         self._experiment_notes_var.set(data.get("notes", ""))
+        self._experiment_timestamp_suffix_var.set(bool(data.get("timestamp_suffix_enabled", True)))
 
     def _on_update_experiment(self):
         self._mgr.update_experiment_metadata(

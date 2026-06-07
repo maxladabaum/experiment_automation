@@ -580,8 +580,16 @@ class BayesianOptimizationTab:
         ttk.Button(result_toolbar, text="< Iter", command=lambda: self._engine_step_window(-1)).pack(side="left", padx=2)
         ttk.Button(result_toolbar, text="Iter >", command=lambda: self._engine_step_window(1)).pack(side="left", padx=2)
         ttk.Button(result_toolbar, text="Show All", command=self._engine_show_all).pack(side="left", padx=2)
-        self._engine_plot_frame = ttk.Frame(plot_box)
+        engine_output_tabs = ttk.Notebook(plot_box)
+        engine_output_tabs.pack(fill="both", expand=True)
+        movement_tab = ttk.Frame(engine_output_tabs)
+        q_tab = ttk.Frame(engine_output_tabs)
+        engine_output_tabs.add(movement_tab, text="Movement")
+        engine_output_tabs.add(q_tab, text="Q Trend")
+        self._engine_plot_frame = ttk.Frame(movement_tab)
         self._engine_plot_frame.pack(fill="both", expand=True)
+        self._engine_q_plot_frame = ttk.Frame(q_tab)
+        self._engine_q_plot_frame.pack(fill="both", expand=True)
 
         result_cols = ("Q_run", "True Q", "Distance", "Peak uA", "Raw SNR", "Begin", "End", "Step", "Amp", "Freq")
         self._engine_result_tree = ttk.Treeview(detail_box, columns=result_cols, show="tree headings", height=9, style="BO.Treeview")
@@ -636,8 +644,14 @@ class BayesianOptimizationTab:
         self._best_text.pack(fill="both", expand=True)
         self._best_text.config(state="disabled")
 
-        hist_box = ttk.LabelFrame(middle, text="BO History", padding=6)
-        hist_box.pack(fill="both", expand=True)
+        history_tabs = ttk.Notebook(middle)
+        history_tabs.pack(fill="both", expand=True)
+        hist_box = ttk.Frame(history_tabs)
+        q_plot_box = ttk.Frame(history_tabs)
+        history_tabs.add(hist_box, text="History Table")
+        history_tabs.add(q_plot_box, text="Q Trend")
+        self._analysis_q_plot_frame = ttk.Frame(q_plot_box)
+        self._analysis_q_plot_frame.pack(fill="both", expand=True, padx=6, pady=6)
         model_box = ttk.LabelFrame(bottom, text="Surrogate and Acquisition Artifacts", padding=6)
         hist_cols = ("Q_run", "Mean", "Std", "Failed", "Low", "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t")
         self._history_tree = ttk.Treeview(hist_box, columns=hist_cols, show="tree headings", height=10)
@@ -1224,7 +1238,7 @@ class BayesianOptimizationTab:
             self._sync_algorithm_config(show_error=False)
             self._sync_scoring_config(show_error=False)
             sim_cfg = self._engine_sim_config()
-            output_root = Path("bo_simulations")
+            output_root = Path("optimizer") / "bo_simulations"
             result = run_optimizer_simulation(
                 self._config,
                 sim_cfg,
@@ -1283,6 +1297,7 @@ class BayesianOptimizationTab:
             self._engine_result_tree.see(str(self._engine_selected_index))
         else:
             self._clear_text(self._engine_trace_text)
+        self._refresh_engine_q_trend()
 
     def _engine_step_window(self, delta):
         rows = (self._simulation_result or {}).get("rows", [])
@@ -1292,6 +1307,7 @@ class BayesianOptimizationTab:
         self._engine_result_tree.selection_set(str(self._engine_selected_index))
         self._engine_result_tree.see(str(self._engine_selected_index))
         self._engine_render_plot(show_all=False)
+        self._refresh_engine_q_trend()
         self._engine_update_trace_text()
 
     def _engine_show_all(self):
@@ -1301,6 +1317,7 @@ class BayesianOptimizationTab:
             self._engine_result_tree.selection_set(str(self._engine_selected_index))
             self._engine_result_tree.see(str(self._engine_selected_index))
         self._engine_render_plot(show_all=True)
+        self._refresh_engine_q_trend()
         self._engine_update_trace_text()
 
     def _engine_select_iteration_from_table(self):
@@ -1312,6 +1329,7 @@ class BayesianOptimizationTab:
         try:
             self._engine_selected_index = int(selection[0])
             self._engine_render_plot(show_all=False)
+            self._refresh_engine_q_trend()
             self._engine_update_trace_text()
         except Exception:
             pass
@@ -1729,6 +1747,88 @@ class BayesianOptimizationTab:
             pairs = ", ".join(f"{v:g}V/{i:g}uA" for v, i in zip(volts, currents))
             lines.extend(["", f"Trace preview ch {ch}:", pairs])
         self._write_text(self._engine_trace_text, "\n".join(lines))
+
+    def _refresh_engine_q_trend(self):
+        if not hasattr(self, "_engine_q_plot_frame"):
+            return
+        rows = list((self._simulation_result or {}).get("rows") or [])
+        self._render_q_trend_plot(
+            self._engine_q_plot_frame,
+            rows,
+            empty_text="Run an optimizer simulation to see Q over iterations.",
+            include_true_q=True,
+            selected_index=self._engine_selected_index if rows else None,
+        )
+
+    def _refresh_analysis_q_trend(self):
+        if not hasattr(self, "_analysis_q_plot_frame"):
+            return
+        rows = list(self._bo_session.observations) if self._bo_session is not None else []
+        self._render_q_trend_plot(
+            self._analysis_q_plot_frame,
+            rows,
+            empty_text="Import analysis results to see Q over iterations.",
+            include_true_q=False,
+        )
+
+    def _render_q_trend_plot(self, parent, rows, empty_text, include_true_q=False, selected_index=None):
+        for child in parent.winfo_children():
+            child.destroy()
+        try:
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+            from matplotlib.figure import Figure
+        except Exception as exc:
+            ttk.Label(parent, text=f"Matplotlib plot unavailable: {exc}").pack(fill="both", expand=True)
+            return
+
+        fig = Figure(figsize=(6.2, 2.8), dpi=100)
+        ax = fig.add_subplot(111)
+        if not rows:
+            ax.text(0.5, 0.5, empty_text, ha="center", va="center")
+            ax.set_axis_off()
+        else:
+            iterations = [int(row.get("iteration", idx + 1)) for idx, row in enumerate(rows)]
+            q_values = [float(row.get("Q_run", 0.0) or 0.0) for row in rows]
+            best_so_far = []
+            running_best = 0.0
+            for value in q_values:
+                running_best = max(running_best, value)
+                best_so_far.append(running_best)
+            ax.plot(iterations, q_values, marker="o", color=self.ACCENT_DARK, linewidth=1.8, label="Q_run")
+            ax.plot(iterations, best_so_far, color="#d67b32", linewidth=1.6, label="Best so far")
+            if include_true_q:
+                true_rows = [(iteration, row.get("true_Q")) for iteration, row in zip(iterations, rows) if row.get("true_Q") is not None]
+                if true_rows:
+                    ax.plot(
+                        [iteration for iteration, _value in true_rows],
+                        [float(value) for _iteration, value in true_rows],
+                        color="#2f7d32",
+                        linewidth=1.2,
+                        linestyle="--",
+                        label="True Q",
+                    )
+            if selected_index is not None and 0 <= int(selected_index) < len(rows):
+                idx = int(selected_index)
+                ax.scatter(
+                    [iterations[idx]],
+                    [q_values[idx]],
+                    color="#ffd166",
+                    edgecolors="black",
+                    linewidths=0.8,
+                    s=80,
+                    zorder=4,
+                    label="Selected",
+                )
+            ax.set_ylim(0.0, 1.02)
+            ax.set_xlabel("BO iteration")
+            ax.set_ylabel("Q")
+            ax.set_title("Q improvement over iterations")
+            ax.grid(alpha=0.25)
+            ax.legend(loc="best", fontsize=8)
+        fig.tight_layout()
+        canvas = FigureCanvasTkAgg(fig, master=parent)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
 
     @staticmethod
     def _engine_peak_snr_for_obs(obs):
@@ -2181,6 +2281,7 @@ class BayesianOptimizationTab:
         for row in self._history_tree.get_children():
             self._history_tree.delete(row)
         if self._bo_session is None:
+            self._refresh_analysis_q_trend()
             return
         for obs in self._bo_session.observations:
             q = obs.get("quality", {})
@@ -2204,6 +2305,7 @@ class BayesianOptimizationTab:
                     self._fmt_raw(params.get("conditioning_time")),
                 ),
             )
+        self._refresh_analysis_q_trend()
 
     def _render_best(self):
         best = self._bo_session.best_observation() if self._bo_session else None

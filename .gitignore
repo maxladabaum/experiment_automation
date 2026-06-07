@@ -1,4 +1,12 @@
 venv_gui/
 __pycache__/
 *.pyc
+.DS_Store
+*.log
 measurement_data/*
+methods/library/mux_methods/*
+analysis_outputs/
+bo_simulations/
+bo_configs/local_paths.json
+optimizer/bo_simulations/
+optimizer/bo_configs/local_paths.json

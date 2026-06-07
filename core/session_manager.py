@@ -12,10 +12,10 @@ Handles the two-level folder hierarchy:
 
 Public API
 ----------
-SessionManager.start_session(name, user, notes)
+SessionManager.start_session(name, user, notes, add_timestamp_suffix)
 SessionManager.end_session()
 SessionManager.update_session_metadata(user, notes)
-SessionManager.start_experiment(name, chip_id, aptamer_type, notes)
+SessionManager.start_experiment(name, chip_id, aptamer_type, notes, add_timestamp_suffix)
 SessionManager.end_experiment()
 SessionManager.open_experiment(experiment_path)
 SessionManager.update_experiment_metadata(name, chip_id, aptamer_type, notes)
@@ -185,6 +185,7 @@ class SessionManager:
         name:    str,
         user:    str,
         notes:   str = "",
+        add_timestamp_suffix: bool = True,
     ) -> bool:
         """Create the session folder and write initial metadata.
 
@@ -211,9 +212,9 @@ class SessionManager:
             self.end_session()
 
         ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
-        fallback = f"session_{ts}"
+        fallback = "session"
         base_name  = self._sanitize(name, fallback)
-        folder_name = f"{base_name}_{ts}"
+        folder_name = f"{base_name}_{ts}" if add_timestamp_suffix else base_name
         session_path = self._unique_path(self._data_root / folder_name)
         session_path.mkdir(parents=True, exist_ok=True)
 
@@ -228,6 +229,7 @@ class SessionManager:
             "session_folder": session_path.name,
             "user": user.strip(),
             "notes": notes.strip(),
+            "timestamp_suffix_enabled": bool(add_timestamp_suffix),
             "started_at": self._session_started_at,
             "ended_at": None,
             "software_version": APP_VERSION,
@@ -310,7 +312,14 @@ class SessionManager:
 
     # ── Experiment lifecycle ───────────────────────────────────────────────────
 
-    def start_experiment(self, name: str, chip_id: str, aptamer_type: str = "", notes: str = "") -> bool:
+    def start_experiment(
+        self,
+        name: str,
+        chip_id: str,
+        aptamer_type: str = "",
+        notes: str = "",
+        add_timestamp_suffix: bool = True,
+    ) -> bool:
         """Create an experiment subfolder inside the current session.
 
         Returns True on success.
@@ -333,9 +342,9 @@ class SessionManager:
             self.end_experiment()
 
         ts          = datetime.now().strftime("%Y%m%d_%H%M%S")
-        fallback    = f"experiment_{ts}"
+        fallback    = "experiment"
         base_name   = self._sanitize(name, fallback) if name.strip() else fallback
-        folder_name = f"{base_name}_{ts}"
+        folder_name = f"{base_name}_{ts}" if add_timestamp_suffix else base_name
         exp_path    = self._unique_path(self.current_session_path / folder_name)
         exp_path.mkdir(parents=True, exist_ok=True)
 
@@ -349,6 +358,7 @@ class SessionManager:
             "chip_id":           chip_id.strip(),
             "aptamer_type":      aptamer_type.strip(),
             "notes":             notes.strip(),
+            "timestamp_suffix_enabled": bool(add_timestamp_suffix),
             "started_at":        self._experiment_started_at,
             "ended_at":          None,
         }
