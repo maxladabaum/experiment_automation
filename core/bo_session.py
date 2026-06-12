@@ -549,6 +549,47 @@ class BOIntegrationSession:
             raise ValueError("; ".join(errors))
         return cls(config, experiment_dir, config_path=config_path, analysis_output_dir=analysis_output_dir)
 
+    @classmethod
+    def load(cls, record_dir: str | Path) -> "BOIntegrationSession":
+        record_path = Path(record_dir)
+        state_path = record_path / cls.STATE_FILE
+        if not state_path.exists():
+            raise FileNotFoundError(f"BO session state not found: {state_path}")
+        with open(state_path, "r", encoding="utf-8") as fh:
+            state = json.load(fh)
+        config_path = Path(state["config_path"]) if state.get("config_path") else None
+        snapshot_path = record_path / "bo_config_snapshot.json"
+        if snapshot_path.exists():
+            with open(snapshot_path, "r", encoding="utf-8") as fh:
+                config = json.load(fh)
+        elif config_path is not None and config_path.exists():
+            config = load_bo_config(config_path)
+        else:
+            raise FileNotFoundError("Unable to load BO config snapshot or config path for saved session")
+
+        session = cls.__new__(cls)
+        session.config = normalize_bo_config(config)
+        session.config_path = config_path
+        session.experiment_dir = record_path.parent.parent
+        session.analysis_output_dir = Path(
+            state.get("analysis_output_dir") or (session.experiment_dir / "bo_analysis")
+        )
+        session.session_id = str(state.get("session_id") or record_path.name)
+        session.record_dir = record_path
+        session.methods_dir = record_path / "methods"
+        session.analysis_dir = record_path / "analysis"
+        session.queue_dir = record_path / "queue"
+        session.surrogate_dir = record_path / "surrogate"
+        session.acquisition_dir = record_path / "acquisition"
+        session.plots_dir = record_path / "plots"
+        session.candidates = generate_candidates(session.config)
+        session.observations = list(state.get("observations") or [])
+        session.suggestions = list(state.get("suggestions") or [])
+        session.pending = dict(state["pending"]) if isinstance(state.get("pending"), dict) else None
+        session._rng = random.Random(int(session.config.get("random_seed", 42)))
+        session._start_candidate = session._resolve_start_candidate()
+        return session
+
     def ask_next(self) -> BOSuggestion:
         if self.pending is not None:
             return BOSuggestion(**self.pending)

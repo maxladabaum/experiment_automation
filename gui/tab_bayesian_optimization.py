@@ -130,6 +130,7 @@ class BayesianOptimizationTab:
         self._engine_selected_index = 0
         self._engine_page_index = 0
         self._engine_pages = []
+        self._history_rows = {}
 
         self._build()
         self._load_config(initial=True)
@@ -227,7 +228,8 @@ class BayesianOptimizationTab:
         channels.bind("<FocusOut>", lambda _e: self._sync_channels_from_entry())
         channels.bind("<Return>", lambda _e: self._sync_channels_from_entry())
         ttk.Button(cfg, text="Validate", command=self._validate_config).grid(row=3, column=2, padx=2)
-        ttk.Button(cfg, text="Start BO Session", command=self._start_bo_session).grid(row=3, column=3, columnspan=2, padx=2)
+        ttk.Button(cfg, text="Load BO Session", command=self._load_bo_session).grid(row=3, column=3, padx=2)
+        ttk.Button(cfg, text="Start BO Session", command=self._start_bo_session).grid(row=3, column=4, padx=2)
 
         clue = ttk.LabelFrame(left, text="Setup Cues", padding=8)
         clue.pack(fill="x", pady=(0, 8))
@@ -653,7 +655,7 @@ class BayesianOptimizationTab:
         self._analysis_q_plot_frame = ttk.Frame(q_plot_box)
         self._analysis_q_plot_frame.pack(fill="both", expand=True, padx=6, pady=6)
         model_box = ttk.LabelFrame(bottom, text="Surrogate and Acquisition Artifacts", padding=6)
-        hist_cols = ("Q_run", "Mean", "Std", "Failed", "Low", "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t")
+        hist_cols = ("Q_run", "Mean", "Std", "Failed", "Low", "Peak uA", "RMS uA", "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t")
         self._history_tree = ttk.Treeview(hist_box, columns=hist_cols, show="tree headings", height=10)
         self._history_tree.heading("#0", text="Iter")
         self._history_tree.column("#0", width=55, anchor="center")
@@ -661,6 +663,7 @@ class BayesianOptimizationTab:
             self._history_tree.heading(col, text=col)
             self._history_tree.column(col, width=76, anchor="center")
         self._history_tree.pack(fill="both", expand=True)
+        self._history_tree.bind("<<TreeviewSelect>>", lambda _e: self._select_history_iteration())
         history_x = ttk.Scrollbar(hist_box, orient=tk.HORIZONTAL, command=self._history_tree.xview)
         self._history_tree.configure(xscrollcommand=history_x.set)
         history_x.pack(fill="x")
@@ -948,6 +951,43 @@ class BayesianOptimizationTab:
             self._tabs.select(1)
         except Exception as exc:
             messagebox.showerror("Start BO Session", str(exc))
+
+    def _load_bo_session(self):
+        session_mgr = getattr(self._session, "session_manager", None)
+        exp_path = session_mgr.require_experiment() if session_mgr is not None else None
+        if exp_path is None:
+            return
+        base_dir = Path(exp_path) / "bo_sessions"
+        path = filedialog.askdirectory(
+            title="Choose saved BO session folder",
+            initialdir=str(base_dir if base_dir.exists() else exp_path),
+        )
+        if not path:
+            return
+        try:
+            loaded = BOIntegrationSession.load(path)
+            self._bo_session = loaded
+            self._config = dict(loaded.config)
+            if loaded.config_path is not None:
+                self._config_path_var.set(str(loaded.config_path))
+            self._analysis_dir_var.set(str(loaded.analysis_output_dir))
+            self._set_analysis_vars_from_config(self._config.get("analysis", {}))
+            self._set_algorithm_vars_from_config(self._config)
+            self._set_scoring_vars_from_config(self._config)
+            self._channels_var.set(", ".join(str(ch) for ch in self._config.get("channels", [])))
+            self._refresh_parameter_table()
+            self._refresh_initial_parameters_table()
+            self._suggestion = None
+            self._record_dir_var.set(f"Record folder: {loaded.record_dir}")
+            self._refresh_history()
+            self._render_best()
+            self._refresh_model_artifacts()
+            self._refresh_record_files()
+            self._select_latest_history_iteration()
+            self._tabs.select(3)
+            self._status_var.set(f"Loaded BO session: {loaded.session_id}")
+        except Exception as exc:
+            messagebox.showerror("Load BO Session", str(exc))
 
     def _suggest_next(self):
         if self._bo_session is None:
@@ -1876,6 +1916,7 @@ class BayesianOptimizationTab:
             self._suggestion = None
             self._render_scores(obs)
             self._refresh_history()
+            self._select_history_iteration(str(obs.get("iteration")))
             self._render_best()
             self._refresh_model_artifacts()
             self._refresh_record_files()
@@ -2280,22 +2321,31 @@ class BayesianOptimizationTab:
     def _refresh_history(self):
         for row in self._history_tree.get_children():
             self._history_tree.delete(row)
+        self._history_rows = {}
         if self._bo_session is None:
+            for row in self._score_tree.get_children():
+                self._score_tree.delete(row)
             self._refresh_analysis_q_trend()
             return
         for obs in self._bo_session.observations:
             q = obs.get("quality", {})
             params = obs.get("params", {})
+            iteration = str(obs.get("iteration"))
+            peak_uA, rms_uA = self._observation_peak_rms(obs)
+            self._history_rows[iteration] = obs
             self._history_tree.insert(
                 "",
                 "end",
-                text=str(obs.get("iteration")),
+                iid=iteration,
+                text=iteration,
                 values=(
                     self._fmt(obs.get("Q_run")),
                     self._fmt(q.get("mean_Q_channel")),
                     self._fmt(q.get("std_Q_channel")),
                     self._fmt(q.get("failed_channel_fraction")),
                     self._fmt(q.get("low_channel_fraction")),
+                    self._fmt(peak_uA),
+                    self._fmt(rms_uA),
                     self._fmt_raw(params.get("begin_potential")),
                     self._fmt_raw(params.get("end_potential")),
                     self._fmt_raw(params.get("step_potential")),
@@ -2305,7 +2355,35 @@ class BayesianOptimizationTab:
                     self._fmt_raw(params.get("conditioning_time")),
                 ),
             )
+        if not self._history_rows:
+            for row in self._score_tree.get_children():
+                self._score_tree.delete(row)
         self._refresh_analysis_q_trend()
+
+    def _select_history_iteration(self, iteration=None):
+        if self._bo_session is None:
+            return
+        target = iteration
+        if target is None:
+            selection = self._history_tree.selection()
+            if not selection:
+                return
+            target = selection[0]
+        obs = self._history_rows.get(str(target))
+        if obs is None:
+            return
+        self._render_scores(obs)
+        self._status_var.set(
+            f"Viewing BO iteration {obs.get('iteration')}: Q_run={float(obs.get('Q_run', 0.0)):.3f}"
+        )
+
+    def _select_latest_history_iteration(self):
+        if not self._history_rows:
+            return
+        latest = max(self._history_rows, key=lambda value: int(value))
+        self._history_tree.selection_set(latest)
+        self._history_tree.see(latest)
+        self._select_history_iteration(latest)
 
     def _render_best(self):
         best = self._bo_session.best_observation() if self._bo_session else None
@@ -2436,6 +2514,34 @@ class BayesianOptimizationTab:
             if value is not None:
                 return value
         return None
+
+    @staticmethod
+    def _channel_background_rms(metrics):
+        if not isinstance(metrics, dict):
+            return None
+        for key in ("mean_background_rms_uA", "median_background_rms_uA", "background_current_rms", "baseline_noise"):
+            value = metrics.get(key)
+            if value is not None:
+                return value
+        return None
+
+    @classmethod
+    def _observation_peak_rms(cls, observation):
+        metrics = (observation or {}).get("channel_metrics", {})
+        if not isinstance(metrics, dict) or not metrics:
+            return None, None
+        peaks = []
+        rms_values = []
+        for data in metrics.values():
+            peak = cls._channel_peak_height(data)
+            rms = cls._channel_background_rms(data)
+            if peak is not None:
+                peaks.append(float(peak))
+            if rms is not None:
+                rms_values.append(float(rms))
+        peak_avg = sum(peaks) / len(peaks) if peaks else None
+        rms_avg = sum(rms_values) / len(rms_values) if rms_values else None
+        return peak_avg, rms_avg
 
     @staticmethod
     def _write_text(widget, text):

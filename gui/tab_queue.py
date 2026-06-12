@@ -21,6 +21,7 @@ from tkinter import filedialog, messagebox
 import tkinter as tk
 from tkinter import ttk, scrolledtext, simpledialog
 from typing import Optional
+import math
 
 from core.queue_eta import (
     estimate_item_seconds,
@@ -1530,6 +1531,8 @@ class QueueTab:
         item["bo_session_id"] = bo_session.session_id
         item["bo_record_dir"] = str(bo_session.record_dir)
         self.log(f"BO block started: {item.get('details', '')}")
+        halfway_iteration = max(1, int(math.ceil(target_iterations / 2.0)))
+        halfway_notified = False
 
         while self._session.is_running and len(bo_session.observations) < target_iterations:
             suggestion = bo_session.ask_next()
@@ -1585,11 +1588,24 @@ class QueueTab:
             }
             bo_session.record_queue_completion(queue_summary)
             if failed or stopped or not self._session.is_running:
+                if session_mgr is not None:
+                    state = "stopped" if stopped or not self._session.is_running else "failed"
+                    session_mgr.notify_slack(
+                        f"BO session {state}: iter {suggestion.iteration}/{target_iterations}. "
+                        f"Session={bo_session.session_id}; Experiment={Path(exp_path).name}."
+                    )
                 return False
 
             summary_path = self._run_bo_analysis(bo_session, block)
             obs = bo_session.import_analysis(summary_path, notes="Imported from recipe BO block")
             self.log(f"BO iteration {obs['iteration']} complete: Q_run={obs['Q_run']:.3f}")
+            if session_mgr is not None and not halfway_notified and int(obs["iteration"]) >= halfway_iteration:
+                halfway_notified = True
+                session_mgr.notify_slack(
+                    f"BO progress: iter {obs['iteration']}/{target_iterations} complete "
+                    f"(halfway). Q_run={float(obs['Q_run']):.3f}. "
+                    f"Session={bo_session.session_id}; Experiment={Path(exp_path).name}."
+                )
 
         completed_iterations = len(bo_session.observations)
         item["details"] = f"{self._format_bo_block_details(block)} | done {completed_iterations}/{target_iterations}"
@@ -1597,6 +1613,14 @@ class QueueTab:
         if best is not None:
             item["bo_best_q"] = float(best.get("Q_run", 0.0))
             self.log(f"BO block best Q_run={item['bo_best_q']:.3f}")
+        if session_mgr is not None and completed_iterations >= target_iterations:
+            best_text = ""
+            if best is not None:
+                best_text = f" Best Q_run={float(best.get('Q_run', 0.0)):.3f} at iter {int(best.get('iteration', 0) or 0)}."
+            session_mgr.notify_slack(
+                f"BO session completed: {completed_iterations}/{target_iterations} iterations. "
+                f"Session={bo_session.session_id}; Experiment={Path(exp_path).name}.{best_text}"
+            )
         return self._session.is_running and completed_iterations >= target_iterations
 
     def _execute_queue(self, start_index: int = 0):

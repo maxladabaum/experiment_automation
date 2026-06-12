@@ -73,6 +73,56 @@
     {
       "type": "PUMP_VALVE",
       "status": "pending",
+      "details": "Pump: Valve -> 3",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 3
+        }
+      },
+      "block_name": "di_flush"
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 225.00 uL @ S15R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      },
+      "block_name": "di_flush"
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      },
+      "block_name": "di_flush"
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 225.00 uL @ S15R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      },
+      "block_name": "di_flush"
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
       "details": "Pump: Valve -> 4",
       "pump_action": {
         "name": "VALVE",
@@ -123,18 +173,18 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_5b328f.ms | MUX ch 1",
+      "details": "cv_36c97c.ms | MUX ch 1",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_5b328f",
+        "hash_key": "cv_36c97c",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.01",
           "scan_rate": "1",
-          "n_scans": "3",
+          "n_scans": "25",
           "cond_potential": "0",
           "cond_time": "0",
           "mux_channel": "0",
@@ -150,18 +200,18 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_5b328f.ms | MUX ch 2",
+      "details": "cv_36c97c.ms | MUX ch 2",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_5b328f",
+        "hash_key": "cv_36c97c",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.01",
           "scan_rate": "1",
-          "n_scans": "3",
+          "n_scans": "25",
           "cond_potential": "0",
           "cond_time": "0",
           "mux_channel": "0",
@@ -177,18 +227,18 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_5b328f.ms | MUX ch 3",
+      "details": "cv_36c97c.ms | MUX ch 3",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_5b328f",
+        "hash_key": "cv_36c97c",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.01",
           "scan_rate": "1",
-          "n_scans": "3",
+          "n_scans": "25",
           "cond_potential": "0",
           "cond_time": "0",
           "mux_channel": "0",
@@ -204,18 +254,18 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_5b328f.ms | MUX ch 4",
+      "details": "cv_36c97c.ms | MUX ch 4",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_5b328f",
+        "hash_key": "cv_36c97c",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.01",
           "scan_rate": "1",
-          "n_scans": "3",
+          "n_scans": "25",
           "cond_potential": "0",
           "cond_time": "0",
           "mux_channel": "0",
@@ -231,18 +281,18 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_5b328f.ms | MUX ch 5",
+      "details": "cv_36c97c.ms | MUX ch 5",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_5b328f",
+        "hash_key": "cv_36c97c",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.01",
           "scan_rate": "1",
-          "n_scans": "3",
+          "n_scans": "25",
           "cond_potential": "0",
           "cond_time": "0",
           "mux_channel": "0",
@@ -258,18 +308,18 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_5b328f.ms | MUX ch 6",
+      "details": "cv_36c97c.ms | MUX ch 6",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_5b328f",
+        "hash_key": "cv_36c97c",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.01",
           "scan_rate": "1",
-          "n_scans": "3",
+          "n_scans": "25",
           "cond_potential": "0",
           "cond_time": "0",
           "mux_channel": "0",
@@ -285,18 +335,18 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_5b328f.ms | MUX ch 7",
+      "details": "cv_36c97c.ms | MUX ch 7",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_5b328f",
+        "hash_key": "cv_36c97c",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.01",
           "scan_rate": "1",
-          "n_scans": "3",
+          "n_scans": "25",
           "cond_potential": "0",
           "cond_time": "0",
           "mux_channel": "0",
@@ -312,18 +362,18 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_5b328f.ms | MUX ch 8",
+      "details": "cv_36c97c.ms | MUX ch 8",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_5b328f",
+        "hash_key": "cv_36c97c",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.01",
           "scan_rate": "1",
-          "n_scans": "3",
+          "n_scans": "25",
           "cond_potential": "0",
           "cond_time": "0",
           "mux_channel": "0",
@@ -339,18 +389,18 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_5b328f.ms | MUX ch 9",
+      "details": "cv_36c97c.ms | MUX ch 9",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_5b328f",
+        "hash_key": "cv_36c97c",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.01",
           "scan_rate": "1",
-          "n_scans": "3",
+          "n_scans": "25",
           "cond_potential": "0",
           "cond_time": "0",
           "mux_channel": "0",
@@ -366,18 +416,18 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_5b328f.ms | MUX ch 10",
+      "details": "cv_36c97c.ms | MUX ch 10",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_5b328f",
+        "hash_key": "cv_36c97c",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.01",
           "scan_rate": "1",
-          "n_scans": "3",
+          "n_scans": "25",
           "cond_potential": "0",
           "cond_time": "0",
           "mux_channel": "0",
@@ -493,15 +543,15 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_767a51.ms | MUX ch 1",
+      "details": "cv_743702.ms | MUX ch 1",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_767a51",
+        "hash_key": "cv_743702",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
@@ -520,15 +570,15 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_767a51.ms | MUX ch 2",
+      "details": "cv_743702.ms | MUX ch 2",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_767a51",
+        "hash_key": "cv_743702",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
@@ -547,15 +597,15 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_767a51.ms | MUX ch 3",
+      "details": "cv_743702.ms | MUX ch 3",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_767a51",
+        "hash_key": "cv_743702",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
@@ -574,15 +624,15 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_767a51.ms | MUX ch 4",
+      "details": "cv_743702.ms | MUX ch 4",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_767a51",
+        "hash_key": "cv_743702",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
@@ -601,15 +651,15 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_767a51.ms | MUX ch 5",
+      "details": "cv_743702.ms | MUX ch 5",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_767a51",
+        "hash_key": "cv_743702",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
@@ -628,15 +678,15 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_767a51.ms | MUX ch 6",
+      "details": "cv_743702.ms | MUX ch 6",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_767a51",
+        "hash_key": "cv_743702",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
@@ -655,15 +705,15 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_767a51.ms | MUX ch 7",
+      "details": "cv_743702.ms | MUX ch 7",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_767a51",
+        "hash_key": "cv_743702",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
@@ -682,15 +732,15 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_767a51.ms | MUX ch 8",
+      "details": "cv_743702.ms | MUX ch 8",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_767a51",
+        "hash_key": "cv_743702",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
@@ -709,15 +759,15 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_767a51.ms | MUX ch 9",
+      "details": "cv_743702.ms | MUX ch 9",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_767a51",
+        "hash_key": "cv_743702",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
@@ -736,15 +786,15 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_767a51.ms | MUX ch 10",
+      "details": "cv_743702.ms | MUX ch 10",
       "block_name": "Sweep CV (10 ch x 1)",
       "method_ref": {
-        "hash_key": "cv_767a51",
+        "hash_key": "cv_743702",
         "technique": "CV",
         "params": {
-          "begin_potential": "-0.6",
-          "vertex1": "-0.6",
-          "vertex2": "1.1",
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.25",
           "step_potential": "0.001",
           "scan_rate": "0.1",
           "n_scans": "3",
@@ -759,56 +809,6 @@
         },
         "mux_channel": 10
       }
-    },
-    {
-      "type": "PUMP_VALVE",
-      "status": "pending",
-      "details": "Pump: Valve -> 9",
-      "pump_action": {
-        "name": "VALVE",
-        "params": {
-          "port": 9
-        }
-      },
-      "block_name": "air_flush"
-    },
-    {
-      "type": "PUMP_ASPIRATE",
-      "status": "pending",
-      "details": "Pump: Aspirate 225.00 uL @ S15R",
-      "pump_action": {
-        "name": "ASPIRATE",
-        "params": {
-          "volume": 225.0,
-          "speed": 15
-        }
-      },
-      "block_name": "air_flush"
-    },
-    {
-      "type": "PUMP_VALVE",
-      "status": "pending",
-      "details": "Pump: Valve -> 1",
-      "pump_action": {
-        "name": "VALVE",
-        "params": {
-          "port": 1
-        }
-      },
-      "block_name": "air_flush"
-    },
-    {
-      "type": "PUMP_DISPENSE",
-      "status": "pending",
-      "details": "Pump: Dispense 225.00 uL @ S15R",
-      "pump_action": {
-        "name": "DISPENSE",
-        "params": {
-          "volume": 225.0,
-          "speed": 15
-        }
-      },
-      "block_name": "air_flush"
     },
     {
       "type": "PUMP_VALVE",

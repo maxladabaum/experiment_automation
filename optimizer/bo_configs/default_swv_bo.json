@@ -6,14 +6,9 @@
   "random_seed": 42,
   "channels": [
     1,
-    2,
     3,
-    4,
-    5,
-    6,
-    8,
-    9,
-    10
+    7,
+    8
   ],
   "method_options": {
     "bandwidth": "4k",
@@ -25,12 +20,12 @@
     }
   },
   "initial_parameters": {
-    "begin_potential": -0.5,
-    "end_potential": 0.0,
+    "begin_potential": -0.7,
+    "end_potential": -0.1,
     "step_potential": 0.002,
     "amplitude": 0.036,
     "frequency": 200.0,
-    "conditioning_potential": -0.5,
+    "conditioning_potential": -0.7,
     "conditioning_time": 1.0
   },
   "parameters": {
@@ -52,7 +47,7 @@
         -0.6,
         -0.5
       ],
-      "value": -0.5,
+      "value": -0.7,
       "tie_to": "begin_potential"
     },
     "end_potential": {
@@ -73,7 +68,7 @@
         -0.1,
         0.0
       ],
-      "value": 0.0,
+      "value": -0.1,
       "tie_to": "begin_potential"
     },
     "step_potential": {
@@ -187,9 +182,12 @@
     "conditioning_potential_tied_by_default": true
   },
   "acquisition": {
-    "exploration": 0.35,
+    "exploration": 0.0,
     "candidate_pool_size": 600,
-    "local_candidate_pool_size": 120
+    "local_candidate_pool_size": 120,
+    "initial_point_mode": "specific",
+    "use_gp": true,
+    "gp_optimizer_restarts": 2
   },
   "scoring": {
     "channel_weights": {
@@ -210,7 +208,7 @@
   "analysis": {
     "file_glob": "*.json",
     "copy_outputs_into_record": true,
-    "crop_min_v": -0.4,
+    "crop_min_v": -0.6,
     "crop_max_v": 0.0,
     "smooth_window": 15,
     "smooth_polyorder": 2,
@@ -218,7 +216,7 @@
     "use_prominent_minima": false,
     "use_double_correction": true,
     "min_peak_height_ua": null,
-    "min_start_voltage_v": -0.6,
+    "min_start_voltage_v": -0.7,
     "scan_windows": "",
     "compute_skew": false,
     "compute_wavelet_energy": false,
