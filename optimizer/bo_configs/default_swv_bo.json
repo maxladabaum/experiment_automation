@@ -196,14 +196,16 @@
       "baseline": 0.2,
       "replicate_consistency": 0.15,
       "success": 0.1,
-      "snr_saturation": 20.0
+      "snr_saturation": 20.0,
+      "peak_height": 0.0
     },
     "run_weights": {
       "lambda_variability": 0.2,
       "lambda_failed": 0.4,
       "lambda_low": 0.2,
       "low_channel_threshold": 0.5
-    }
+    },
+    "mode": "signal_priority_unbounded"
   },
   "analysis": {
     "file_glob": "*.json",

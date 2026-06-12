@@ -155,10 +155,12 @@ def normalize_bo_config(config: dict) -> dict:
     cfg["acquisition"].setdefault("use_gp", True)
     cfg["acquisition"].setdefault("gp_optimizer_restarts", 2)
     cfg.setdefault("scoring", {})
+    cfg["scoring"].setdefault("mode", "classic_bounded")
     cfg["scoring"].setdefault(
         "channel_weights",
         {
             "snr": 0.35,
+            "peak_height": 0.0,
             "peak_shape": 0.20,
             "baseline": 0.20,
             "replicate_consistency": 0.15,
@@ -415,6 +417,7 @@ def validate_candidate(candidate: Dict[str, float], config: dict) -> List[str]:
 
 
 def compute_channel_quality(metrics: dict, scoring: dict) -> dict:
+    mode = str(scoring.get("mode", "classic_bounded") or "classic_bounded").strip().lower()
     weights = scoring.get("channel_weights", {})
     snr_saturation = float(weights.get("snr_saturation", 20.0))
     if "snr" in metrics:
@@ -423,34 +426,66 @@ def compute_channel_quality(metrics: dict, scoring: dict) -> dict:
         peak_current = abs(float(metrics.get("peak_current", 0.0)))
         baseline_noise = float(metrics.get("baseline_noise", 0.0))
         snr_raw = peak_current / (baseline_noise + 1e-12)
+    peak_height_raw = abs(
+        float(
+            metrics.get(
+                "mean_peak_current_uA",
+                metrics.get("median_peak_current_uA", metrics.get("peak_current", 0.0)),
+            )
+            or 0.0
+        )
+    )
 
     component_scores = {
         "normalized_SNR": _clip01(snr_raw / max(snr_saturation, 1e-12)),
+        "peak_height_raw": peak_height_raw,
+        "log_snr": math.log1p(max(0.0, snr_raw)),
+        "log_peak_height": math.log1p(max(0.0, peak_height_raw)),
         "peak_shape_score": _clip01(metrics.get("peak_shape_score", 0.0)),
         "baseline_stability_score": _clip01(metrics.get("baseline_stability_score", 0.0)),
         "replicate_consistency_score": _clip01(metrics.get("replicate_consistency_score", 0.0)),
         "success_score": _clip01(metrics.get("success_score", 1.0)),
     }
-    weighted = (
-        float(weights.get("snr", 0.35)) * component_scores["normalized_SNR"]
-        + float(weights.get("peak_shape", 0.20)) * component_scores["peak_shape_score"]
-        + float(weights.get("baseline", 0.20)) * component_scores["baseline_stability_score"]
-        + float(weights.get("replicate_consistency", 0.15)) * component_scores["replicate_consistency_score"]
-        + float(weights.get("success", 0.10)) * component_scores["success_score"]
-    )
-    total_weight = (
-        float(weights.get("snr", 0.35))
-        + float(weights.get("peak_shape", 0.20))
-        + float(weights.get("baseline", 0.20))
-        + float(weights.get("replicate_consistency", 0.15))
-        + float(weights.get("success", 0.10))
-    )
-    component_scores["Q_channel"] = _clip01(weighted / max(total_weight, 1e-12))
+    if mode == "signal_priority_unbounded":
+        weighted = (
+            float(weights.get("snr", 0.45)) * component_scores["log_snr"]
+            + float(weights.get("peak_height", 0.35)) * component_scores["log_peak_height"]
+            + float(weights.get("baseline", 0.12)) * component_scores["baseline_stability_score"]
+            + float(weights.get("peak_shape", 0.05)) * component_scores["peak_shape_score"]
+            + float(weights.get("replicate_consistency", 0.03)) * component_scores["replicate_consistency_score"]
+            + float(weights.get("success", 0.0)) * component_scores["success_score"]
+        )
+        total_weight = (
+            float(weights.get("snr", 0.45))
+            + float(weights.get("peak_height", 0.35))
+            + float(weights.get("baseline", 0.12))
+            + float(weights.get("peak_shape", 0.05))
+            + float(weights.get("replicate_consistency", 0.03))
+            + float(weights.get("success", 0.0))
+        )
+        component_scores["Q_channel"] = weighted / max(total_weight, 1e-12)
+    else:
+        weighted = (
+            float(weights.get("snr", 0.35)) * component_scores["normalized_SNR"]
+            + float(weights.get("peak_shape", 0.20)) * component_scores["peak_shape_score"]
+            + float(weights.get("baseline", 0.20)) * component_scores["baseline_stability_score"]
+            + float(weights.get("replicate_consistency", 0.15)) * component_scores["replicate_consistency_score"]
+            + float(weights.get("success", 0.10)) * component_scores["success_score"]
+        )
+        total_weight = (
+            float(weights.get("snr", 0.35))
+            + float(weights.get("peak_shape", 0.20))
+            + float(weights.get("baseline", 0.20))
+            + float(weights.get("replicate_consistency", 0.15))
+            + float(weights.get("success", 0.10))
+        )
+        component_scores["Q_channel"] = _clip01(weighted / max(total_weight, 1e-12))
     component_scores["snr_raw"] = snr_raw
     return component_scores
 
 
 def compute_run_quality(channel_metrics: dict, scoring: dict) -> dict:
+    mode = str(scoring.get("mode", "classic_bounded") or "classic_bounded").strip().lower()
     per_channel = {}
     q_values = []
     for channel, metrics in _channel_items(channel_metrics):
@@ -464,7 +499,9 @@ def compute_run_quality(channel_metrics: dict, scoring: dict) -> dict:
     mean_q = sum(q_values) / len(q_values)
     std_q = _std(q_values)
     threshold = float(run_weights.get("low_channel_threshold", 0.5))
-    failed_fraction = sum(1 for q in q_values if q <= 0.0) / len(q_values)
+    failed_fraction = (
+        sum(1 for data in per_channel.values() if float(data.get("success_score", 1.0) or 0.0) <= 0.0) / len(q_values)
+    )
     low_fraction = sum(1 for q in q_values if q < threshold) / len(q_values)
     q_run = (
         mean_q
@@ -472,8 +509,9 @@ def compute_run_quality(channel_metrics: dict, scoring: dict) -> dict:
         - float(run_weights.get("lambda_failed", 0.40)) * failed_fraction
         - float(run_weights.get("lambda_low", 0.20)) * low_fraction
     )
+    final_q = q_run if mode == "signal_priority_unbounded" else _clip01(q_run)
     return {
-        "Q_run": _clip01(q_run),
+        "Q_run": final_q,
         "mean_Q_channel": mean_q,
         "std_Q_channel": std_q,
         "failed_channel_fraction": failed_fraction,

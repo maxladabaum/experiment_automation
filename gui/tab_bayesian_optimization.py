@@ -82,7 +82,9 @@ class BayesianOptimizationTab:
         self._candidate_pool_var = tk.StringVar(value="600")
         self._local_pool_var = tk.StringVar(value="120")
         self._initial_point_mode_var = tk.StringVar(value="specific")
+        self._score_mode_var = tk.StringVar(value="classic_bounded")
         self._score_snr_weight_var = tk.StringVar(value="0.35")
+        self._score_peak_height_weight_var = tk.StringVar(value="0.00")
         self._score_shape_weight_var = tk.StringVar(value="0.20")
         self._score_baseline_weight_var = tk.StringVar(value="0.20")
         self._score_replicate_weight_var = tk.StringVar(value="0.15")
@@ -346,8 +348,20 @@ class BayesianOptimizationTab:
         scoring_box.pack(fill="both", expand=True, pady=(0, 8), padx=2)
         for idx in range(6):
             scoring_box.columnconfigure(idx, weight=1 if idx in (1, 3, 5) else 0)
+        ttk.Label(scoring_box, text="Score mode:").grid(row=0, column=0, sticky="w", pady=2)
+        mode_combo = ttk.Combobox(
+            scoring_box,
+            textvariable=self._score_mode_var,
+            values=("classic_bounded", "signal_priority_unbounded"),
+            state="readonly",
+            width=26,
+        )
+        mode_combo.grid(row=0, column=1, columnspan=2, sticky="w", padx=(4, 10), pady=2)
+        mode_combo.bind("<<ComboboxSelected>>", lambda _e: self._sync_scoring_config(show_error=False))
+        ttk.Button(scoring_box, text="Signal Preset", command=self._apply_signal_priority_preset).grid(row=0, column=3, sticky="w", pady=2)
         entries = [
             ("SNR w:", self._score_snr_weight_var),
+            ("Peak w:", self._score_peak_height_weight_var),
             ("Shape w:", self._score_shape_weight_var),
             ("Baseline w:", self._score_baseline_weight_var),
             ("Replicate w:", self._score_replicate_weight_var),
@@ -359,7 +373,7 @@ class BayesianOptimizationTab:
             ("Low threshold:", self._score_low_threshold_var),
         ]
         for idx, (label, var) in enumerate(entries):
-            row = idx // 2
+            row = 1 + idx // 2
             base_col = (idx % 2) * 3
             ttk.Label(scoring_box, text=label).grid(row=row, column=base_col, sticky="w", pady=2)
             entry = ttk.Entry(scoring_box, textvariable=var, width=9)
@@ -367,7 +381,7 @@ class BayesianOptimizationTab:
             entry.bind("<FocusOut>", lambda _e: self._sync_scoring_config(show_error=False))
             entry.bind("<Return>", lambda _e: self._sync_scoring_config(show_error=False))
         ttk.Label(scoring_box, textvariable=self._score_formula_var, foreground=self.ACCENT, wraplength=460, justify="left").grid(
-            row=5,
+            row=7,
             column=0,
             columnspan=6,
             sticky="w",
@@ -379,7 +393,7 @@ class BayesianOptimizationTab:
             wraplength=460,
             justify="left",
         ).grid(
-            row=6,
+            row=8,
             column=0,
             columnspan=6,
             sticky="w",
@@ -829,15 +843,17 @@ class BayesianOptimizationTab:
             "Baseline rewards low/stable background. Replicate rewards consistent peak heights across scans. "
             "Success is a separate outcome measure, not the same thing as Q; in simulation it is peak-first "
             "with noise as a secondary factor, while real analysis still uses OK scans / total scans. "
-            "Q_channel is the weighted mean of those component scores. "
-            "Q_run is mean channel Q minus variability, failed-channel, and low-channel penalties."
+            "Classic mode bounds SNR and Q. Signal-priority mode removes the SNR ceiling and uses log1p(SNR) "
+            "+ log1p(peak height) so stronger peaks keep separating instead of flattening."
         )
 
     def _set_scoring_vars_from_config(self, cfg: dict):
         scoring = dict((cfg or {}).get("scoring") or {})
+        self._score_mode_var.set(str(scoring.get("mode", "classic_bounded")))
         channel = dict(scoring.get("channel_weights") or {})
         run = dict(scoring.get("run_weights") or {})
         self._score_snr_weight_var.set(str(channel.get("snr", 0.35)))
+        self._score_peak_height_weight_var.set(str(channel.get("peak_height", 0.0)))
         self._score_shape_weight_var.set(str(channel.get("peak_shape", 0.20)))
         self._score_baseline_weight_var.set(str(channel.get("baseline", 0.20)))
         self._score_replicate_weight_var.set(str(channel.get("replicate_consistency", 0.15)))
@@ -854,8 +870,11 @@ class BayesianOptimizationTab:
             return
         try:
             scoring = self._config.setdefault("scoring", {})
+            mode = str(self._score_mode_var.get() or "classic_bounded").strip().lower()
+            scoring["mode"] = "signal_priority_unbounded" if mode == "signal_priority_unbounded" else "classic_bounded"
             channel = scoring.setdefault("channel_weights", {})
             channel["snr"] = max(0.0, float(self._score_snr_weight_var.get() or 0.0))
+            channel["peak_height"] = max(0.0, float(self._score_peak_height_weight_var.get() or 0.0))
             channel["peak_shape"] = max(0.0, float(self._score_shape_weight_var.get() or 0.0))
             channel["baseline"] = max(0.0, float(self._score_baseline_weight_var.get() or 0.0))
             channel["replicate_consistency"] = max(0.0, float(self._score_replicate_weight_var.get() or 0.0))
@@ -873,8 +892,10 @@ class BayesianOptimizationTab:
 
     def _refresh_score_formula(self):
         try:
+            mode = str(self._score_mode_var.get() or "classic_bounded").strip().lower()
             total = (
                 float(self._score_snr_weight_var.get() or 0.0)
+                + float(self._score_peak_height_weight_var.get() or 0.0)
                 + float(self._score_shape_weight_var.get() or 0.0)
                 + float(self._score_baseline_weight_var.get() or 0.0)
                 + float(self._score_replicate_weight_var.get() or 0.0)
@@ -883,10 +904,32 @@ class BayesianOptimizationTab:
         except Exception:
             self._score_formula_var.set("Q_channel = weighted component score. Enter numeric weights.")
             return
-        self._score_formula_var.set(
-            "Q_channel = (SNR + shape + baseline + replicate + success weighted scores) / "
-            f"{total:.3g}; Q_run = mean channels - variability/failed/low penalties."
-        )
+        if mode == "signal_priority_unbounded":
+            self._score_formula_var.set(
+                "Q_channel = (w_snr*log1p(SNR) + w_peak*log1p(Peak uA) + w_base*baseline + "
+                f"w_shape*shape + w_rep*replicate + w_success*success) / {total:.3g}; "
+                "Q_run = mean channels - variability/failed/low penalties. No SNR cap, no Q clipping."
+            )
+        else:
+            self._score_formula_var.set(
+                "Q_channel = (SNR + shape + baseline + replicate + success weighted scores) / "
+                f"{total:.3g}; Q_run = mean channels - variability/failed/low penalties."
+            )
+
+    def _apply_signal_priority_preset(self):
+        self._score_mode_var.set("signal_priority_unbounded")
+        self._score_snr_weight_var.set("0.45")
+        self._score_peak_height_weight_var.set("0.35")
+        self._score_shape_weight_var.set("0.05")
+        self._score_baseline_weight_var.set("0.12")
+        self._score_replicate_weight_var.set("0.03")
+        self._score_success_weight_var.set("0.00")
+        self._score_snr_saturation_var.set("20.0")
+        self._score_variability_penalty_var.set("0.10")
+        self._score_failed_penalty_var.set("0.10")
+        self._score_low_penalty_var.set("0.05")
+        self._score_low_threshold_var.set("1.50")
+        self._sync_scoring_config(show_error=False)
 
     def _sync_channels_from_entry(self, show_error=True):
         if self._config is None:
@@ -2406,6 +2449,7 @@ class BayesianOptimizationTab:
         quality = dict((observation or {}).get("quality") or {})
         source_config = config if config is not None else (self._bo_session.config if self._bo_session else self._config or {})
         scoring = dict(source_config.get("scoring") or {})
+        mode = str(scoring.get("mode", "classic_bounded") or "classic_bounded").strip().lower()
         channel_weights = dict(scoring.get("channel_weights") or {})
         run_weights = dict(scoring.get("run_weights") or {})
         q_run = float(observation.get("Q_run", quality.get("Q_run", 0.0)) or 0.0)
@@ -2421,13 +2465,14 @@ class BayesianOptimizationTab:
             float(channel_weights.get(key, default))
             for key, default in (
                 ("snr", 0.35),
+                ("peak_height", 0.0),
                 ("peak_shape", 0.20),
                 ("baseline", 0.20),
                 ("replicate_consistency", 0.15),
                 ("success", 0.10),
             )
         )
-        return [
+        lines = [
             "Q_run breakdown:",
             f"  mean channel Q: {mean_q:.4f}",
             f"  variability penalty: {lambda_var:g} x std {std_q:.4f} = {lambda_var * std_q:.4f}",
@@ -2435,16 +2480,38 @@ class BayesianOptimizationTab:
             f"  low-channel penalty: {lambda_low:g} x fraction {low:.4f} = {lambda_low * low:.4f} (low < {threshold:g})",
             f"  final Q_run: {q_run:.4f}",
             "",
-            "Q_channel weights:",
-            (
-                "  "
-                f"SNR {float(channel_weights.get('snr', 0.35)):g}, "
-                f"Shape {float(channel_weights.get('peak_shape', 0.20)):g}, "
-                f"Baseline {float(channel_weights.get('baseline', 0.20)):g}, "
-                f"Replicate {float(channel_weights.get('replicate_consistency', 0.15)):g}, "
-                f"Success {float(channel_weights.get('success', 0.10)):g}; total {total:g}"
-            ),
         ]
+        if mode == "signal_priority_unbounded":
+            lines.extend(
+                [
+                    "Q_channel terms:",
+                    (
+                        "  "
+                        f"log1p(SNR) {float(channel_weights.get('snr', 0.45)):g}, "
+                        f"log1p(Peak) {float(channel_weights.get('peak_height', 0.35)):g}, "
+                        f"Baseline {float(channel_weights.get('baseline', 0.12)):g}, "
+                        f"Shape {float(channel_weights.get('peak_shape', 0.05)):g}, "
+                        f"Replicate {float(channel_weights.get('replicate_consistency', 0.03)):g}, "
+                        f"Success {float(channel_weights.get('success', 0.0)):g}; total {total:g}"
+                    ),
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "Q_channel weights:",
+                    (
+                        "  "
+                        f"SNR {float(channel_weights.get('snr', 0.35)):g}, "
+                        f"Peak {float(channel_weights.get('peak_height', 0.0)):g}, "
+                        f"Shape {float(channel_weights.get('peak_shape', 0.20)):g}, "
+                        f"Baseline {float(channel_weights.get('baseline', 0.20)):g}, "
+                        f"Replicate {float(channel_weights.get('replicate_consistency', 0.15)):g}, "
+                        f"Success {float(channel_weights.get('success', 0.10)):g}; total {total:g}"
+                    ),
+                ]
+            )
+        return lines
 
     def _refresh_model_artifacts(self):
         if not hasattr(self, "_model_tree"):

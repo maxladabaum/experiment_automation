@@ -1135,7 +1135,7 @@ class QueueTab:
         if session_mgr is None:
             return
         ran = self._session.measurement_queue[start_index:]
-        if ran and all(str((item or {}).get("type") or "").strip().upper() == "BO_AUTO_LOOP" for item in ran):
+        if self._is_bo_only_run(ran):
             return
         total = max(0, len(self._session.measurement_queue) - start_index)
         session_name = (
@@ -1162,7 +1162,7 @@ class QueueTab:
         ran = self._session.measurement_queue[start_index:]
         if not ran:
             return
-        if all(str((item or {}).get("type") or "").strip().upper() == "BO_AUTO_LOOP" for item in ran):
+        if self._is_bo_only_run(ran):
             return
 
         total = len(ran)
@@ -1207,6 +1207,20 @@ class QueueTab:
             f"Session={session_name}; Experiment={experiment_name}."
         )
         session_mgr.notify_slack(msg)
+
+    @staticmethod
+    def _is_bo_only_run(items) -> bool:
+        if not items:
+            return False
+        for item in items:
+            item_type = str((item or {}).get("type") or "").strip().upper()
+            if item_type == "BO_AUTO_LOOP":
+                continue
+            bo_ref = (item or {}).get("bo_ref")
+            if isinstance(bo_ref, dict) and str(bo_ref.get("session_id") or "").strip():
+                continue
+            return False
+        return True
 
     def _ensure_mux_script_for_item(self, item: dict):
         """Auto-correct script_path to requested MUX channel before execution."""
