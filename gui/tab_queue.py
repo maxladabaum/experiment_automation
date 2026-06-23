@@ -34,6 +34,7 @@ from core.runner import SerialMeasurementRunner
 from core.bo_session import BOIntegrationSession, load_bo_config, normalize_bo_config, parse_channels, validate_bo_config
 from methods import library_map
 from core.session import SessionState
+from gui.widgets import FlowFrame
 
 
 class QueueTab:
@@ -82,23 +83,23 @@ class QueueTab:
         bottom = ttk.Frame(pane); pane.add(bottom, weight=1)
 
         # ── Control bar ───────────────────────────────────────────────────────
-        ctrl = ttk.Frame(top)
+        ctrl = FlowFrame(top)
         ctrl.pack(pady=8, fill="x", padx=10)
 
-        ttk.Button(ctrl, text="▶ Run Queue",       command=self.run_queue).pack(side="left", padx=4)
-        ttk.Button(ctrl, text="▶ From Selected",   command=self.run_from_selected).pack(side="left", padx=4)
-        ttk.Button(ctrl, text="⏹ Stop",            command=self.stop_queue).pack(side="left", padx=4)
-        ttk.Separator(ctrl, orient="vertical").pack(side="left", fill="y", padx=6)
-        ttk.Button(ctrl, text="💾 Save",            command=self.save_queue).pack(side="left", padx=4)
-        ttk.Button(ctrl, text="📂 Load",            command=self.load_queue).pack(side="left", padx=4)
-        ttk.Separator(ctrl, orient="vertical").pack(side="left", fill="y", padx=6)
-        ttk.Button(ctrl, text="📋 Copy",            command=self.copy_selected).pack(side="left", padx=2)
-        ttk.Button(ctrl, text="📌 Paste",           command=self.paste_after_selected).pack(side="left", padx=2)
-        ttk.Button(ctrl, text="⧉ Duplicate",       command=self.duplicate_selected).pack(side="left", padx=2)
-        ttk.Separator(ctrl, orient="vertical").pack(side="left", fill="y", padx=6)
-        ttk.Button(ctrl, text="🗑 Delete",          command=self.delete_selected).pack(side="left", padx=2)
-        ttk.Button(ctrl, text="✓ Confirm Move",    command=self.confirm_reorder).pack(side="left", padx=4)
-        ttk.Button(ctrl, text="🗑 Clear All",       command=self.clear_queue).pack(side="left", padx=4)
+        ctrl.add(ttk.Button(ctrl, text="Run Queue", command=self.run_queue))
+        ctrl.add(ttk.Button(ctrl, text="From Selected", command=self.run_from_selected))
+        ctrl.add(ttk.Button(ctrl, text="Stop", command=self.stop_queue))
+        ctrl.separator()
+        ctrl.add(ttk.Button(ctrl, text="Save", command=self.save_queue))
+        ctrl.add(ttk.Button(ctrl, text="Load", command=self.load_queue))
+        ctrl.separator()
+        ctrl.add(ttk.Button(ctrl, text="Copy", command=self.copy_selected))
+        ctrl.add(ttk.Button(ctrl, text="Paste", command=self.paste_after_selected))
+        ctrl.add(ttk.Button(ctrl, text="Duplicate", command=self.duplicate_selected))
+        ctrl.separator()
+        ctrl.add(ttk.Button(ctrl, text="Delete", command=self.delete_selected))
+        ctrl.add(ttk.Button(ctrl, text="Confirm Move", command=self.confirm_reorder))
+        ctrl.add(ttk.Button(ctrl, text="Clear All", command=self.clear_queue))
 
         # ── Treeview ──────────────────────────────────────────────────────────
         cols = ("Type", "Status", "Details")

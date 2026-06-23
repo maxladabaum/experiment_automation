@@ -75,9 +75,9 @@ class PlotterTab:
     def _build(self):
         controls = ttk.Frame(self._frame)
         controls.pack(side="top", fill="x", pady=5, padx=5)
-        ttk.Button(controls, text="📂 Load and Plot CSV",
+        ttk.Button(controls, text="Load and Plot CSV",
                    command=self._load_and_plot_csv).pack(side="left")
-        ttk.Button(controls, text="🗑 Clear Plot",
+        ttk.Button(controls, text="Clear Plot",
                    command=self.clear_plot).pack(side="left", padx=5)
         ttk.Button(controls, text="Legend",
                    command=self._toggle_legend).pack(side="left")

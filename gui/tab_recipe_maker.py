@@ -24,6 +24,7 @@ from config import (
     BO_DEFAULT_CONFIG_PATH,
 )
 from core.bo_session import load_bo_config, normalize_bo_config
+from gui.widgets import FlowFrame
 
 
 class RecipeMakerTab:
@@ -59,37 +60,25 @@ class RecipeMakerTab:
         bottom = ttk.Frame(pane); pane.add(bottom, weight=1)
 
         # ── Control bar
-        ctrl = ttk.Frame(top)
+        ctrl = FlowFrame(top)
         ctrl.pack(pady=8, fill="x", padx=10)
 
-        ttk.Button(ctrl, text="Add Pump Step",
-                   command=self._add_pump_step).pack(side="left", padx=4)
-        ttk.Button(ctrl, text="Add Method Step",
-                   command=self._add_method_step).pack(side="left", padx=4)
-        ttk.Separator(ctrl, orient="vertical").pack(side="left", fill="y", padx=6)
-        ttk.Button(ctrl, text="Move Up",
-                   command=lambda: self._move_selected(-1)).pack(side="left", padx=4)
-        ttk.Button(ctrl, text="Move Down",
-                   command=lambda: self._move_selected(1)).pack(side="left", padx=4)
-        ttk.Separator(ctrl, orient="vertical").pack(side="left", fill="y", padx=6)
-        ttk.Button(ctrl, text="Copy",
-                   command=self._copy_selected).pack(side="left", padx=4)
-        ttk.Button(ctrl, text="Paste",
-                   command=self._paste_after_selected).pack(side="left", padx=4)
-        ttk.Button(ctrl, text="Duplicate",
-                   command=self._duplicate_selected).pack(side="left", padx=4)
-        ttk.Button(ctrl, text="Delete",
-                   command=self._delete_selected).pack(side="left", padx=4)
-        ttk.Separator(ctrl, orient="vertical").pack(side="left", fill="y", padx=6)
-        ttk.Button(ctrl, text="Save",
-                   command=self._save_recipe).pack(side="left", padx=4)
-        ttk.Button(ctrl, text="Load",
-                   command=self._load_recipe).pack(side="left", padx=4)
-        ttk.Button(ctrl, text="Clear",
-                   command=self._clear_recipe).pack(side="left", padx=4)
-        ttk.Separator(ctrl, orient="vertical").pack(side="left", fill="y", padx=6)
-        ttk.Button(ctrl, text="Send to Queue",
-                   command=self._send_to_queue).pack(side="left", padx=4)
+        ctrl.add(ttk.Button(ctrl, text="Add Pump Step", command=self._add_pump_step))
+        ctrl.add(ttk.Button(ctrl, text="Add Method Step", command=self._add_method_step))
+        ctrl.separator()
+        ctrl.add(ttk.Button(ctrl, text="Move Up", command=lambda: self._move_selected(-1)))
+        ctrl.add(ttk.Button(ctrl, text="Move Down", command=lambda: self._move_selected(1)))
+        ctrl.separator()
+        ctrl.add(ttk.Button(ctrl, text="Copy", command=self._copy_selected))
+        ctrl.add(ttk.Button(ctrl, text="Paste", command=self._paste_after_selected))
+        ctrl.add(ttk.Button(ctrl, text="Duplicate", command=self._duplicate_selected))
+        ctrl.add(ttk.Button(ctrl, text="Delete", command=self._delete_selected))
+        ctrl.separator()
+        ctrl.add(ttk.Button(ctrl, text="Save", command=self._save_recipe))
+        ctrl.add(ttk.Button(ctrl, text="Load", command=self._load_recipe))
+        ctrl.add(ttk.Button(ctrl, text="Clear", command=self._clear_recipe))
+        ctrl.separator()
+        ctrl.add(ttk.Button(ctrl, text="Send to Queue", command=self._send_to_queue))
 
 
         # ── Recipe Treeview

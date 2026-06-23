@@ -8,7 +8,10 @@ shows records. BO math lives in core.bo_session.
 
 from __future__ import annotations
 
+import ast
+import csv
 import json
+import re
 import time
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog
@@ -34,6 +37,8 @@ from core.bo_session import (
     validate_bo_config,
 )
 from core.bo_simulation import LANDSCAPE_TYPES, default_dimensions, run_optimizer_simulation
+from core.analysis_io import load_swv_csv
+from gui.widgets import FlowFrame, ScrollableFrame
 
 
 class BayesianOptimizationTab:
@@ -98,6 +103,7 @@ class BayesianOptimizationTab:
         self._status_var = tk.StringVar(value="Load a BO config to begin.")
         self._record_dir_var = tk.StringVar(value="Record folder: (not started)")
         self._auto_target_var = tk.StringVar(value="5")
+        self._analysis_trend_metric_var = tk.StringVar(value="Q_run")
         self._engine_iterations_var = tk.StringVar(value="20")
         self._engine_grid_var = tk.StringVar(value="25")
         self._engine_seed_var = tk.StringVar(value="42")
@@ -133,6 +139,9 @@ class BayesianOptimizationTab:
         self._engine_page_index = 0
         self._engine_pages = []
         self._history_rows = {}
+        self._selected_history_observation = None
+        self._active_results_tree = None
+        self._results_trace_panes_balanced = False
 
         self._build()
         self._load_config(initial=True)
@@ -192,7 +201,39 @@ class BayesianOptimizationTab:
             foreground=[("selected", "white")],
         )
 
+    def _balance_results_trace_panes(self):
+        if getattr(self, "_results_trace_panes_balanced", False):
+            return
+        panes = (
+            getattr(self, "_results_top_pane", None),
+            getattr(self, "_results_middle_pane", None),
+        )
+        if any(pane is None for pane in panes):
+            return
+        widths = []
+        for pane in (
+            getattr(self, "_results_top_pane", None),
+            getattr(self, "_results_middle_pane", None),
+        ):
+            try:
+                pane.update_idletasks()
+                width = pane.winfo_width()
+                if width <= 20:
+                    return
+                widths.append(width)
+            except Exception:
+                return
+        for pane, width in zip(panes, widths):
+            try:
+                pane.sashpos(0, width // 2)
+            except Exception:
+                return
+        self._results_trace_panes_balanced = True
+
     def _build_setup_tab(self, parent):
+        scroller = ScrollableFrame(parent, min_width=1080)
+        scroller.pack(fill="both", expand=True)
+        parent = scroller.content
         pane = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
         pane.pack(fill="both", expand=True, padx=4, pady=4)
         left = ttk.Frame(pane)
@@ -431,23 +472,30 @@ class BayesianOptimizationTab:
         ).grid(row=5, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
     def _build_run_tab(self, parent):
+        scroller = ScrollableFrame(parent, min_width=1020)
+        scroller.pack(fill="both", expand=True)
+        parent = scroller.content
         controls = ttk.LabelFrame(parent, text="Manual Closed Loop", padding=8)
         controls.pack(fill="x", padx=4, pady=(4, 8))
-        ttk.Button(controls, text="Suggest Next Method", command=self._suggest_next).pack(side="left", padx=3)
-        ttk.Button(controls, text="Send Batch to Queue", command=self._send_to_queue).pack(side="left", padx=3)
-        ttk.Button(controls, text="Preview Script", command=self._preview_suggestion).pack(side="left", padx=3)
-        ttk.Separator(controls, orient="vertical").pack(side="left", fill="y", padx=8)
-        ttk.Button(controls, text="Import Analysis JSON", command=self._import_analysis_dialog).pack(side="left", padx=3)
-        ttk.Button(controls, text="Use Latest Analysis", command=self._import_latest_analysis).pack(side="left", padx=3)
-        ttk.Button(controls, text="Run Analysis", command=self._run_analysis_for_pending).pack(side="left", padx=3)
+        manual_bar = FlowFrame(controls)
+        manual_bar.pack(fill="x")
+        manual_bar.add(ttk.Button(manual_bar, text="Suggest Next Method", command=self._suggest_next))
+        manual_bar.add(ttk.Button(manual_bar, text="Send Batch to Queue", command=self._send_to_queue))
+        manual_bar.add(ttk.Button(manual_bar, text="Preview Script", command=self._preview_suggestion))
+        manual_bar.separator()
+        manual_bar.add(ttk.Button(manual_bar, text="Import Analysis JSON", command=self._import_analysis_dialog))
+        manual_bar.add(ttk.Button(manual_bar, text="Use Latest Analysis", command=self._import_latest_analysis))
+        manual_bar.add(ttk.Button(manual_bar, text="Run Analysis", command=self._run_analysis_for_pending))
 
         auto = ttk.LabelFrame(parent, text="Auto Loop", padding=8)
         auto.pack(fill="x", padx=4, pady=(0, 8))
-        ttk.Label(auto, text="Target completed iterations:").pack(side="left", padx=(0, 4))
-        ttk.Entry(auto, textvariable=self._auto_target_var, width=6).pack(side="left", padx=(0, 10))
-        ttk.Button(auto, text="Start Auto Loop", command=self._start_auto_loop).pack(side="left", padx=3)
-        ttk.Button(auto, text="Stop Auto", command=self._stop_auto_loop).pack(side="left", padx=3)
-        ttk.Label(auto, textvariable=self._auto_status_var, foreground=self.ACCENT).pack(side="left", padx=12)
+        auto_bar = FlowFrame(auto)
+        auto_bar.pack(fill="x")
+        auto_bar.add(ttk.Label(auto_bar, text="Target completed iterations:"))
+        auto_bar.add(ttk.Entry(auto_bar, textvariable=self._auto_target_var, width=6))
+        auto_bar.add(ttk.Button(auto_bar, text="Start Auto Loop", command=self._start_auto_loop))
+        auto_bar.add(ttk.Button(auto_bar, text="Stop Auto", command=self._stop_auto_loop))
+        auto_bar.add(ttk.Label(auto_bar, textvariable=self._auto_status_var, foreground=self.ACCENT))
 
         clue = ttk.LabelFrame(parent, text="Workflow Cues", padding=8)
         clue.pack(fill="x", padx=4, pady=(0, 8))
@@ -633,41 +681,76 @@ class BayesianOptimizationTab:
         pane = ttk.PanedWindow(parent, orient=tk.VERTICAL)
         pane.pack(fill="both", expand=True, padx=4, pady=4)
         top = ttk.PanedWindow(pane, orient=tk.HORIZONTAL)
-        middle = ttk.Frame(pane)
+        middle = ttk.PanedWindow(pane, orient=tk.HORIZONTAL)
+        self._results_top_pane = top
+        self._results_middle_pane = middle
+        top.bind("<Configure>", lambda _e: self._balance_results_trace_panes(), add="+")
+        middle.bind("<Configure>", lambda _e: self._balance_results_trace_panes(), add="+")
         bottom = ttk.PanedWindow(pane, orient=tk.HORIZONTAL)
         pane.add(top, weight=1)
         pane.add(middle, weight=1)
         pane.add(bottom, weight=1)
 
         score_box = ttk.LabelFrame(top, text="Per-Channel Scores", padding=6)
-        best_box = ttk.LabelFrame(top, text="Best Method So Far", padding=6)
+        best_box = ttk.LabelFrame(top, text="Raw SWV Traces for Selected Iteration", padding=6)
         top.add(score_box, weight=1)
         top.add(best_box, weight=1)
 
         score_cols = ("Q", "Peak uA", "Raw SNR", "SNR Score", "Shape", "Baseline", "Replicate", "Success")
-        self._score_tree = ttk.Treeview(score_box, columns=score_cols, show="tree headings", height=10)
+        self._score_tree = ttk.Treeview(score_box, columns=score_cols, show="tree headings", height=10, selectmode="extended")
         self._score_tree.heading("#0", text="Ch")
         self._score_tree.column("#0", width=50, anchor="center")
         for col in score_cols:
             self._score_tree.heading(col, text=col)
             self._score_tree.column(col, width=78, anchor="center")
         self._score_tree.pack(fill="both", expand=True)
+        self._score_tree.configure(takefocus=True)
+        self._score_tree.bind("<ButtonPress-1>", self._focus_tree_on_click, add="+")
+        self._score_tree.bind("<Enter>", lambda _e: self._set_active_results_tree("score"), add="+")
+        self._score_tree.bind("<ButtonPress-1>", lambda _e: self._set_active_results_tree("score"), add="+")
+        self._score_tree.bind("<ButtonRelease-1>", lambda _e: self._restore_tree_focus(self._score_tree), add="+")
+        self._score_tree.bind("<<TreeviewSelect>>", lambda _e: self._on_score_tree_select())
+        self._score_tree.bind("<Up>", lambda event: self._move_score_selection(-1, event))
+        self._score_tree.bind("<Down>", lambda event: self._move_score_selection(1, event))
+        self._score_tree.bind("<Left>", lambda event: self._move_score_selection(-1, event))
+        self._score_tree.bind("<Right>", lambda event: self._move_score_selection(1, event))
         score_x = ttk.Scrollbar(score_box, orient=tk.HORIZONTAL, command=self._score_tree.xview)
         self._score_tree.configure(xscrollcommand=score_x.set)
         score_x.pack(fill="x")
+        self._q_equation_text = scrolledtext.ScrolledText(score_box, height=5, wrap=tk.WORD)
+        self._q_equation_text.pack(fill="x", pady=(6, 0))
+        self._q_equation_text.config(state="disabled")
 
-        self._best_text = scrolledtext.ScrolledText(best_box, height=10, wrap=tk.WORD)
-        self._best_text.pack(fill="both", expand=True)
-        self._best_text.config(state="disabled")
+        self._raw_trace_frame = ttk.Frame(best_box)
+        self._raw_trace_frame.pack(fill="both", expand=True)
 
-        history_tabs = ttk.Notebook(middle)
-        history_tabs.pack(fill="both", expand=True)
-        hist_box = ttk.Frame(history_tabs)
-        q_plot_box = ttk.Frame(history_tabs)
-        history_tabs.add(hist_box, text="History Table")
-        history_tabs.add(q_plot_box, text="Q Trend")
+        history_host = ttk.Frame(middle)
+        corrected_box = ttk.LabelFrame(middle, text="Smoothed Corrected Traces for Selected Iteration", padding=6)
+        middle.add(history_host, weight=1)
+        middle.add(corrected_box, weight=1)
+
+        self._history_tabs = ttk.Notebook(history_host)
+        self._history_tabs.pack(fill="both", expand=True)
+        hist_box = ttk.Frame(self._history_tabs)
+        q_plot_box = ttk.Frame(self._history_tabs)
+        self._history_tabs.add(hist_box, text="History Table")
+        self._history_tabs.add(q_plot_box, text="Trend Plot")
+        trend_toolbar = ttk.Frame(q_plot_box)
+        trend_toolbar.pack(fill="x", padx=6, pady=(6, 0))
+        ttk.Label(trend_toolbar, text="Metric:").pack(side="left", padx=(0, 4))
+        self._analysis_trend_combo = ttk.Combobox(
+            trend_toolbar,
+            textvariable=self._analysis_trend_metric_var,
+            values=self._analysis_trend_metric_options(),
+            state="readonly",
+            width=24,
+        )
+        self._analysis_trend_combo.pack(side="left")
+        self._analysis_trend_combo.bind("<<ComboboxSelected>>", lambda _e: self._refresh_analysis_q_trend())
         self._analysis_q_plot_frame = ttk.Frame(q_plot_box)
         self._analysis_q_plot_frame.pack(fill="both", expand=True, padx=6, pady=6)
+        self._corrected_trace_frame = ttk.Frame(corrected_box)
+        self._corrected_trace_frame.pack(fill="both", expand=True)
         model_box = ttk.LabelFrame(bottom, text="Surrogate and Acquisition Artifacts", padding=6)
         hist_cols = ("Q_run", "Mean", "Std", "Failed", "Low", "Peak uA", "RMS uA", "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t")
         self._history_tree = ttk.Treeview(hist_box, columns=hist_cols, show="tree headings", height=10)
@@ -677,7 +760,21 @@ class BayesianOptimizationTab:
             self._history_tree.heading(col, text=col)
             self._history_tree.column(col, width=76, anchor="center")
         self._history_tree.pack(fill="both", expand=True)
+        self._history_tree.configure(takefocus=True)
+        self._history_tree.bind("<ButtonPress-1>", self._focus_tree_on_click, add="+")
+        self._history_tree.bind("<Enter>", lambda _e: self._set_active_results_tree("history"), add="+")
+        self._history_tree.bind("<ButtonPress-1>", lambda _e: self._set_active_results_tree("history"), add="+")
+        self._history_tree.bind("<ButtonRelease-1>", lambda _e: self._restore_tree_focus(self._history_tree), add="+")
         self._history_tree.bind("<<TreeviewSelect>>", lambda _e: self._select_history_iteration())
+        self._history_tree.bind("<Double-1>", self._on_history_double_click)
+        self._history_tree.bind("<Up>", lambda event: self._move_history_selection(-1, event))
+        self._history_tree.bind("<Down>", lambda event: self._move_history_selection(1, event))
+        self._history_tree.bind("<Left>", lambda event: self._move_history_selection(-1, event))
+        self._history_tree.bind("<Right>", lambda event: self._move_history_selection(1, event))
+        self._history_tree.bind_all("<Up>", lambda event: self._route_results_arrow(-1, event), add="+")
+        self._history_tree.bind_all("<Down>", lambda event: self._route_results_arrow(1, event), add="+")
+        self._history_tree.bind_all("<Left>", lambda event: self._route_results_arrow(-1, event), add="+")
+        self._history_tree.bind_all("<Right>", lambda event: self._route_results_arrow(1, event), add="+")
         history_x = ttk.Scrollbar(hist_box, orient=tk.HORIZONTAL, command=self._history_tree.xview)
         self._history_tree.configure(xscrollcommand=history_x.set)
         history_x.pack(fill="x")
@@ -711,6 +808,7 @@ class BayesianOptimizationTab:
         self._record_tree.column("Folder", width=150)
         self._record_tree.column("File", width=430)
         self._record_tree.pack(fill="both", expand=True)
+        parent.after_idle(self._balance_results_trace_panes)
 
     # Config and path actions
     def _browse_config(self):
@@ -1008,6 +1106,7 @@ class BayesianOptimizationTab:
         if not path:
             return
         try:
+            path = self._resolve_bo_session_load_path(path)
             loaded = BOIntegrationSession.load(path)
             self._bo_session = loaded
             self._config = dict(loaded.config)
@@ -1028,9 +1127,50 @@ class BayesianOptimizationTab:
             self._refresh_record_files()
             self._select_latest_history_iteration()
             self._tabs.select(3)
-            self._status_var.set(f"Loaded BO session: {loaded.session_id}")
+            self._status_var.set(
+                f"Loaded BO session: {loaded.session_id} "
+                f"({len(loaded.observations)} completed iterations)"
+            )
         except Exception as exc:
             messagebox.showerror("Load BO Session", str(exc))
+
+    def _resolve_bo_session_load_path(self, path):
+        selected = Path(path)
+        if (selected / BOIntegrationSession.STATE_FILE).exists():
+            return selected
+
+        candidates = []
+        search_roots = []
+        if selected.name == "bo_sessions":
+            search_roots.append(selected)
+        if (selected / "bo_sessions").is_dir():
+            search_roots.append(selected / "bo_sessions")
+
+        for root in search_roots:
+            for child in root.iterdir():
+                if child.is_dir() and (child / BOIntegrationSession.STATE_FILE).exists():
+                    candidates.append(child)
+
+        if len(candidates) == 1:
+            return candidates[0]
+        if len(candidates) > 1:
+            latest = max(candidates, key=lambda p: (p / BOIntegrationSession.STATE_FILE).stat().st_mtime)
+            if messagebox.askyesno(
+                "Load BO Session",
+                "The selected folder contains multiple BO sessions.\n\n"
+                f"Load the most recently updated one?\n\n{latest}",
+            ):
+                return latest
+            raise FileNotFoundError(
+                "Choose a specific BO session folder inside bo_sessions "
+                f"that contains {BOIntegrationSession.STATE_FILE}."
+            )
+
+        raise FileNotFoundError(
+            "Selected folder is not a BO session. Choose the folder containing "
+            f"{BOIntegrationSession.STATE_FILE}, usually:\n\n"
+            "<experiment>/bo_sessions/<bo_session_folder>"
+        )
 
     def _suggest_next(self):
         if self._bo_session is None:
@@ -1847,12 +1987,90 @@ class BayesianOptimizationTab:
         if not hasattr(self, "_analysis_q_plot_frame"):
             return
         rows = list(self._bo_session.observations) if self._bo_session is not None else []
-        self._render_q_trend_plot(
+        metric = self._analysis_trend_metric_var.get() or "Q_run"
+        self._render_metric_trend_plot(
             self._analysis_q_plot_frame,
             rows,
-            empty_text="Import analysis results to see Q over iterations.",
-            include_true_q=False,
+            metric,
+            empty_text="Import analysis results to see trends over iterations.",
         )
+
+    def _render_metric_trend_plot(self, parent, rows, metric, empty_text):
+        for child in parent.winfo_children():
+            child.destroy()
+        try:
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+            from matplotlib.figure import Figure
+        except Exception as exc:
+            ttk.Label(parent, text=f"Matplotlib plot unavailable: {exc}").pack(fill="both", expand=True)
+            return
+
+        fig = Figure(figsize=(6.2, 2.8), dpi=100)
+        ax = fig.add_subplot(111)
+        values = []
+        iterations = []
+        for idx, row in enumerate(rows):
+            value = self._analysis_trend_value(row, metric)
+            if value is None:
+                continue
+            try:
+                values.append(float(value))
+                iterations.append(int(row.get("iteration", idx + 1)))
+            except (TypeError, ValueError):
+                continue
+
+        if not values:
+            ax.text(0.5, 0.5, empty_text, ha="center", va="center")
+            ax.set_axis_off()
+        else:
+            ax.plot(iterations, values, marker="o", color=self.ACCENT_DARK, linewidth=1.8, label=metric)
+            if metric == "Q_run":
+                best_so_far = []
+                running_best = 0.0
+                for value in values:
+                    running_best = max(running_best, value)
+                    best_so_far.append(running_best)
+                ax.plot(iterations, best_so_far, color="#d67b32", linewidth=1.6, label="Best so far")
+                ax.set_ylim(bottom=0.0)
+            ax.set_xlabel("BO iteration")
+            ax.set_ylabel(metric)
+            ax.set_title(f"{metric} over BO iterations")
+            ax.grid(alpha=0.25)
+            ax.legend(loc="best", fontsize=8)
+        fig.tight_layout()
+        canvas = FigureCanvasTkAgg(fig, master=parent)
+        if values:
+            canvas.mpl_connect(
+                "button_press_event",
+                lambda event, points=list(zip(iterations, values)): self._on_analysis_trend_click(event, points),
+            )
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def _on_analysis_trend_click(self, event, points):
+        if event.inaxes is None or not points:
+            return
+        try:
+            click_x, click_y = event.x, event.y
+            transformed = event.inaxes.transData.transform(points)
+            nearest_iteration = None
+            nearest_distance = None
+            for (iteration, _value), (px, py) in zip(points, transformed):
+                distance = ((px - click_x) ** 2 + (py - click_y) ** 2) ** 0.5
+                if nearest_distance is None or distance < nearest_distance:
+                    nearest_distance = distance
+                    nearest_iteration = iteration
+            if nearest_iteration is None or nearest_distance is None or nearest_distance > 18:
+                return
+            item_id = str(int(nearest_iteration))
+            if item_id not in self._history_tree.get_children():
+                return
+            self._history_tree.selection_set(item_id)
+            self._history_tree.focus(item_id)
+            self._history_tree.see(item_id)
+            self._select_history_iteration(item_id)
+        except Exception:
+            return
 
     def _render_q_trend_plot(self, parent, rows, empty_text, include_true_q=False, selected_index=None):
         for child in parent.winfo_children():
@@ -2341,6 +2559,9 @@ class BayesianOptimizationTab:
     def _render_scores(self, observation):
         for row in self._score_tree.get_children():
             self._score_tree.delete(row)
+        if hasattr(self, "_q_equation_text"):
+            config = self._bo_session.config if self._bo_session else self._config
+            self._write_text(self._q_equation_text, "\n".join(self._q_equation_lines(config)))
         components = observation["quality"].get("channel_components", {})
         channel_metrics = observation.get("channel_metrics", {})
         for ch, data in sorted(components.items(), key=lambda item: int(item[0])):
@@ -2348,6 +2569,7 @@ class BayesianOptimizationTab:
             self._score_tree.insert(
                 "",
                 "end",
+                iid=str(ch),
                 text=str(ch),
                 values=(
                     self._fmt(data.get("Q_channel")),
@@ -2366,8 +2588,13 @@ class BayesianOptimizationTab:
             self._history_tree.delete(row)
         self._history_rows = {}
         if self._bo_session is None:
+            self._selected_history_observation = None
             for row in self._score_tree.get_children():
                 self._score_tree.delete(row)
+            if hasattr(self, "_q_equation_text"):
+                self._write_text(self._q_equation_text, "\n".join(self._q_equation_lines(self._config)))
+            self._render_raw_traces(None)
+            self._render_corrected_traces(None)
             self._refresh_analysis_q_trend()
             return
         for obs in self._bo_session.observations:
@@ -2401,6 +2628,8 @@ class BayesianOptimizationTab:
         if not self._history_rows:
             for row in self._score_tree.get_children():
                 self._score_tree.delete(row)
+            self._render_raw_traces(None)
+            self._render_corrected_traces(None)
         self._refresh_analysis_q_trend()
 
     def _select_history_iteration(self, iteration=None):
@@ -2415,35 +2644,586 @@ class BayesianOptimizationTab:
         obs = self._history_rows.get(str(target))
         if obs is None:
             return
+        self._selected_history_observation = obs
         self._render_scores(obs)
+        self._render_raw_traces(obs)
+        self._render_corrected_traces(obs)
         self._status_var.set(
             f"Viewing BO iteration {obs.get('iteration')}: Q_run={float(obs.get('Q_run', 0.0)):.3f}"
         )
+        self._restore_tree_focus(self._history_tree)
+
+    def _on_score_tree_select(self):
+        self._render_raw_traces(self._selected_history_observation)
+        self._render_corrected_traces(self._selected_history_observation)
+        self._restore_tree_focus(self._score_tree)
 
     def _select_latest_history_iteration(self):
         if not self._history_rows:
             return
         latest = max(self._history_rows, key=lambda value: int(value))
         self._history_tree.selection_set(latest)
+        self._history_tree.focus(latest)
         self._history_tree.see(latest)
         self._select_history_iteration(latest)
 
+    def _move_history_selection(self, direction, event=None):
+        if self._bo_session is None:
+            return "break"
+        items = list(self._history_tree.get_children())
+        if not items:
+            return "break"
+        selection = self._history_tree.selection()
+        current = selection[0] if selection else self._history_tree.focus()
+        try:
+            idx = items.index(current)
+        except ValueError:
+            idx = 0 if direction > 0 else len(items) - 1
+        idx = max(0, min(len(items) - 1, idx + int(direction)))
+        target = items[idx]
+        self._history_tree.selection_set(target)
+        self._history_tree.focus(target)
+        self._history_tree.see(target)
+        self._select_history_iteration(target)
+        return "break"
+
+    @staticmethod
+    def _focus_tree_on_click(event):
+        try:
+            event.widget.focus_set()
+        except Exception:
+            pass
+
+    def _set_active_results_tree(self, name):
+        self._active_results_tree = name
+
+    def _restore_tree_focus(self, tree):
+        try:
+            selection = tree.selection()
+            if selection:
+                tree.focus(selection[-1])
+            def restore():
+                try:
+                    tree.focus_set()
+                    tree.focus_force()
+                except Exception:
+                    pass
+            tree.after_idle(restore)
+        except Exception:
+            pass
+
+    def _route_results_arrow(self, direction, event=None):
+        widget_class = ""
+        try:
+            widget_class = str(event.widget.winfo_class())
+        except Exception:
+            pass
+        if widget_class in ("Entry", "TEntry", "Text", "TCombobox", "Spinbox", "TSpinbox"):
+            return None
+        if self._active_results_tree == "history":
+            return self._move_history_selection(direction, event)
+        if self._active_results_tree == "score":
+            return self._move_score_selection(direction, event)
+        return None
+
+    def _move_score_selection(self, direction, event=None):
+        if self._selected_history_observation is None:
+            return "break"
+        items = list(self._score_tree.get_children())
+        if not items:
+            return "break"
+        selection = list(self._score_tree.selection())
+        current = selection[-1] if selection else self._score_tree.focus()
+        try:
+            idx = items.index(current)
+        except ValueError:
+            idx = 0 if direction > 0 else len(items) - 1
+        idx = max(0, min(len(items) - 1, idx + int(direction)))
+        target = items[idx]
+        self._score_tree.selection_set(target)
+        self._score_tree.focus(target)
+        self._score_tree.see(target)
+        self._render_raw_traces(self._selected_history_observation)
+        self._render_corrected_traces(self._selected_history_observation)
+        return "break"
+
+    def _on_history_double_click(self, event):
+        if self._history_tree.identify_region(event.x, event.y) != "heading":
+            return None
+        metric = self._history_metric_for_column(self._history_tree.identify_column(event.x))
+        if metric is None:
+            return "break"
+        self._analysis_trend_metric_var.set(metric)
+        self._refresh_analysis_q_trend()
+        if hasattr(self, "_history_tabs"):
+            self._history_tabs.select(1)
+        self._status_var.set(f"Trend plot updated: {metric}")
+        return "break"
+
+    @staticmethod
+    def _history_metric_for_column(column_id):
+        try:
+            index = int(str(column_id).lstrip("#")) - 1
+        except ValueError:
+            return None
+        labels = (
+            "Q_run",
+            "Mean",
+            "Std",
+            "Failed",
+            "Low",
+            "Peak uA",
+            "RMS uA",
+            "Begin",
+            "End",
+            "Step",
+            "Amp",
+            "Freq",
+            "Cond E",
+            "Cond t",
+        )
+        metrics = {
+            "Q_run": "Q_run",
+            "Mean": "Mean channel Q",
+            "Std": "Std channel Q",
+            "Failed": "Failed fraction",
+            "Low": "Low fraction",
+            "Peak uA": "Mean peak uA",
+            "RMS uA": "Mean RMS uA",
+            "Begin": "Begin potential",
+            "End": "End potential",
+            "Step": "Step potential",
+            "Amp": "Amplitude",
+            "Freq": "Frequency",
+            "Cond E": "Conditioning potential",
+            "Cond t": "Conditioning time",
+        }
+        if index < 0 or index >= len(labels):
+            return None
+        return metrics.get(labels[index])
+
     def _render_best(self):
-        best = self._bo_session.best_observation() if self._bo_session else None
-        if not best:
-            self._write_text(self._best_text, "No completed BO iterations yet.")
+        if self._history_rows:
             return
-        lines = [
-            f"Iteration: {best['iteration']}",
-            f"Q_run: {best['Q_run']:.4f}",
-            f"Method ID: {best['method_id']}",
-            "",
-        ]
-        lines.extend(self._q_breakdown_lines(best, config=self._bo_session.config if self._bo_session else None))
-        lines.append("")
-        for name in PARAMETER_ORDER:
-            lines.append(f"{name}: {self._fmt_raw(best['params'].get(name))}")
-        self._write_text(self._best_text, "\n".join(lines))
+        self._render_raw_traces(None)
+        self._render_corrected_traces(None)
+
+    def _render_raw_traces(self, observation):
+        if not hasattr(self, "_raw_trace_frame"):
+            return
+        for child in self._raw_trace_frame.winfo_children():
+            child.destroy()
+        if not observation:
+            ttk.Label(
+                self._raw_trace_frame,
+                text="Select a completed BO iteration in the history table to view raw SWV traces.",
+                anchor="center",
+                justify="center",
+            ).pack(fill="both", expand=True)
+            return
+
+        rows = self._raw_trace_rows_for_observation(observation)
+        selected_channels = self._selected_score_channels()
+        if selected_channels:
+            rows = [
+                row for row in rows
+                if str(row.get("channel") or "") in selected_channels
+            ]
+        if not rows:
+            if selected_channels:
+                message = (
+                    "No raw SWV CSV paths were found for the selected channel(s) "
+                    f"{', '.join(sorted(selected_channels, key=self._channel_sort_key))} in this iteration."
+                )
+            else:
+                message = (
+                    "No raw SWV CSV paths were found for this iteration.\n\n"
+                    "Expected archived_measurements in iter_XXX_quality.json, or file_path rows "
+                    "in the retained analysis results CSV."
+                )
+            ttk.Label(
+                self._raw_trace_frame,
+                text=message,
+                anchor="center",
+                justify="center",
+            ).pack(fill="both", expand=True)
+            return
+
+        try:
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+            from matplotlib.figure import Figure
+        except Exception as exc:
+            ttk.Label(self._raw_trace_frame, text=f"Matplotlib plot unavailable: {exc}").pack(fill="both", expand=True)
+            return
+
+        fig = Figure(figsize=(6.2, 3.2), dpi=100)
+        ax = fig.add_subplot(111)
+        plotted = 0
+        errors = []
+        palette = ["#155e63", "#d67b32", "#2f7d32", "#6d597a", "#5a6b84", "#b56576", "#457b9d", "#8a5a44"]
+        for idx, row in enumerate(rows):
+            path = Path(row["path"])
+            try:
+                volts, currents = load_swv_csv(str(path))
+            except Exception as exc:
+                errors.append(f"{path.name}: {exc}")
+                continue
+            if len(volts) == 0 or len(currents) == 0:
+                continue
+            channel = row.get("channel")
+            scan = row.get("scan")
+            label = f"Ch {channel}" if channel not in (None, "") else path.stem
+            if scan not in (None, ""):
+                label = f"{label} scan {scan}"
+            ax.plot(volts, currents, linewidth=1.1, alpha=0.88, color=palette[idx % len(palette)], label=label)
+            plotted += 1
+
+        if plotted == 0:
+            msg = "Raw SWV CSV paths were found, but none could be plotted."
+            if errors:
+                msg += "\n\n" + "\n".join(errors[:6])
+            ttk.Label(self._raw_trace_frame, text=msg, anchor="center", justify="left").pack(fill="both", expand=True)
+            return
+
+        channel_suffix = ""
+        if selected_channels:
+            channel_suffix = f" | Ch {', '.join(sorted(selected_channels, key=self._channel_sort_key))}"
+        ax.set_title(
+            f"Iteration {observation.get('iteration')} raw SWV traces{channel_suffix} | Q_run={self._fmt(observation.get('Q_run'))}"
+        )
+        ax.set_xlabel("Voltage (V)")
+        ax.set_ylabel("Current (uA)")
+        ax.grid(alpha=0.25)
+        if plotted <= 16:
+            ax.legend(loc="best", fontsize=7)
+        fig.tight_layout()
+        canvas = FigureCanvasTkAgg(fig, master=self._raw_trace_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+        if errors:
+            ttk.Label(
+                self._raw_trace_frame,
+                text=f"{len(errors)} trace file(s) could not be loaded.",
+                foreground="#8a5a44",
+            ).pack(fill="x")
+
+    def _render_corrected_traces(self, observation):
+        if not hasattr(self, "_corrected_trace_frame"):
+            return
+        for child in self._corrected_trace_frame.winfo_children():
+            child.destroy()
+        if not observation:
+            ttk.Label(
+                self._corrected_trace_frame,
+                text="Select a completed BO iteration to view smoothed corrected analysis traces.",
+                anchor="center",
+                justify="center",
+            ).pack(fill="both", expand=True)
+            return
+
+        rows = self._corrected_trace_rows_for_observation(observation)
+        selected_channels = self._selected_score_channels()
+        if selected_channels:
+            rows = [row for row in rows if str(row.get("channel") or "") in selected_channels]
+        if not rows:
+            message = (
+                "No smoothed corrected traces were found for this iteration.\n\n"
+                "Expected voltage and smoothed_corrected_current columns in "
+                "bo_analysis/bo_iter_XXX_results.csv."
+            )
+            if selected_channels:
+                message = (
+                    "No smoothed corrected traces were found for the selected channel(s) "
+                    f"{', '.join(sorted(selected_channels, key=self._channel_sort_key))} in this iteration."
+                )
+            ttk.Label(
+                self._corrected_trace_frame,
+                text=message,
+                anchor="center",
+                justify="center",
+            ).pack(fill="both", expand=True)
+            return
+
+        try:
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+            from matplotlib.figure import Figure
+        except Exception as exc:
+            ttk.Label(self._corrected_trace_frame, text=f"Matplotlib plot unavailable: {exc}").pack(fill="both", expand=True)
+            return
+
+        fig = Figure(figsize=(6.2, 3.2), dpi=100)
+        ax = fig.add_subplot(111)
+        palette = ["#155e63", "#d67b32", "#2f7d32", "#6d597a", "#5a6b84", "#b56576", "#457b9d", "#8a5a44"]
+        for idx, row in enumerate(rows):
+            channel = row.get("channel")
+            scan = row.get("scan")
+            label = f"Ch {channel}" if channel not in (None, "") else row.get("label", "trace")
+            if scan not in (None, ""):
+                label = f"{label} scan {scan}"
+            ax.plot(
+                row["voltage"],
+                row["current"],
+                linewidth=1.1,
+                alpha=0.88,
+                color=palette[idx % len(palette)],
+                label=label,
+            )
+
+        channel_suffix = ""
+        if selected_channels:
+            channel_suffix = f" | Ch {', '.join(sorted(selected_channels, key=self._channel_sort_key))}"
+        ax.set_title(f"Iteration {observation.get('iteration')} smoothed corrected traces{channel_suffix}")
+        ax.set_xlabel("Voltage (V)")
+        ax.set_ylabel("Corrected current (uA)")
+        ax.grid(alpha=0.25)
+        if len(rows) <= 16:
+            ax.legend(loc="best", fontsize=7)
+        fig.tight_layout()
+        canvas = FigureCanvasTkAgg(fig, master=self._corrected_trace_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def _corrected_trace_rows_for_observation(self, observation):
+        rows = []
+        seen = set()
+        for results_path in self._analysis_results_paths_for_observation(observation):
+            if not results_path.exists():
+                continue
+            try:
+                with open(results_path, "r", encoding="utf-8-sig", newline="") as fh:
+                    for record in csv.DictReader(fh):
+                        voltage = self._parse_trace_array(record.get("voltage"))
+                        current = self._parse_trace_array(record.get("smoothed_corrected_current"))
+                        if not voltage or not current:
+                            continue
+                        n = min(len(voltage), len(current))
+                        if n <= 0:
+                            continue
+                        file_path = self._resolve_observation_file_path(
+                            record.get("file_path") or record.get("file_name"),
+                            observation,
+                        )
+                        channel = record.get("channel") or self._infer_channel_from_path(file_path)
+                        scan = record.get("scan_number")
+                        key = (str(file_path), str(channel), str(scan or ""))
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        rows.append(
+                            {
+                                "voltage": voltage[:n],
+                                "current": current[:n],
+                                "channel": channel,
+                                "scan": scan,
+                                "label": record.get("file_name") or Path(file_path).stem,
+                            }
+                        )
+            except Exception:
+                continue
+        return sorted(
+            rows,
+            key=lambda row: (self._channel_sort_key(row.get("channel")), str(row.get("scan") or ""), str(row.get("label") or "")),
+        )
+
+    @staticmethod
+    def _parse_trace_array(value):
+        if value in (None, ""):
+            return []
+        try:
+            parsed = ast.literal_eval(str(value))
+        except Exception:
+            return []
+        if not isinstance(parsed, (list, tuple)):
+            return []
+        out = []
+        for item in parsed:
+            try:
+                out.append(float(item))
+            except (TypeError, ValueError):
+                continue
+        return out
+
+    def _analysis_results_paths_for_observation(self, observation):
+        paths = []
+        analysis_record_path = self._resolve_observation_file_path(observation.get("analysis_record"), observation)
+        analysis_records = []
+        if analysis_record_path.exists():
+            analysis_records.append(analysis_record_path)
+        fallback_analysis = self._fallback_bo_analysis_json(observation)
+        if fallback_analysis is not None and fallback_analysis not in analysis_records:
+            analysis_records.append(fallback_analysis)
+
+        for analysis_record in analysis_records:
+            try:
+                with open(analysis_record, "r", encoding="utf-8") as fh:
+                    payload = json.load(fh)
+                results_csv = payload.get("results_csv")
+                if results_csv:
+                    results_path = self._resolve_observation_file_path(results_csv, observation)
+                    if not results_path.exists() and not Path(str(results_csv)).is_absolute():
+                        results_path = Path(analysis_record).parent / str(results_csv)
+                    if results_path not in paths:
+                        paths.append(results_path)
+            except Exception:
+                pass
+
+        fallback_results = self._fallback_bo_analysis_results_csv(observation)
+        if fallback_results is not None and fallback_results not in paths:
+            paths.append(fallback_results)
+        return paths
+
+    def _selected_score_channels(self):
+        if not hasattr(self, "_score_tree"):
+            return set()
+        selected = set()
+        for item in self._score_tree.selection():
+            channel = str(self._score_tree.item(item, "text") or item).strip()
+            if channel:
+                selected.add(channel)
+        return selected
+
+    def _raw_trace_rows_for_observation(self, observation):
+        rows = []
+        seen = set()
+
+        def add(path, channel=None, scan=None):
+            if not path:
+                return
+            p = self._resolve_observation_file_path(path, observation)
+            key = str(p)
+            if key in seen or not p.exists() or not p.is_file():
+                return
+            seen.add(key)
+            rows.append(
+                {
+                    "path": str(p),
+                    "channel": channel if channel not in (None, "") else self._infer_channel_from_path(p),
+                    "scan": scan,
+                }
+            )
+
+        for path in observation.get("archived_measurements") or []:
+            add(path)
+
+        analysis_record_path = self._resolve_observation_file_path(observation.get("analysis_record"), observation)
+        analysis_records = []
+        if analysis_record_path.exists():
+            analysis_records.append(analysis_record_path)
+        fallback_analysis = self._fallback_bo_analysis_json(observation)
+        if fallback_analysis is not None and fallback_analysis not in analysis_records:
+            analysis_records.append(fallback_analysis)
+
+        for analysis_record in analysis_records:
+            results_paths = []
+            payload = {}
+            try:
+                with open(analysis_record, "r", encoding="utf-8") as fh:
+                    payload = json.load(fh)
+                results_csv = payload.get("results_csv")
+                if results_csv:
+                    results_path = self._resolve_observation_file_path(results_csv, observation)
+                    if not results_path.exists() and not Path(str(results_csv)).is_absolute():
+                        results_path = Path(analysis_record).parent / str(results_csv)
+                    results_paths.append(results_path)
+            except Exception:
+                pass
+            fallback_results = self._fallback_bo_analysis_results_csv(observation)
+            if fallback_results is not None and fallback_results not in results_paths:
+                results_paths.append(fallback_results)
+
+            for results_path in results_paths:
+                if not results_path.exists():
+                    continue
+                try:
+                    with open(results_path, "r", encoding="utf-8-sig", newline="") as fh:
+                        for row in csv.DictReader(fh):
+                            add(row.get("file_path") or row.get("file_name"), channel=row.get("channel"), scan=row.get("scan_number"))
+                except Exception:
+                    pass
+
+        legacy_dir = self._fallback_legacy_iteration_dir(observation)
+        if legacy_dir is not None:
+            for path in sorted(legacy_dir.glob("*.csv")):
+                add(path)
+
+        return sorted(rows, key=lambda row: (self._channel_sort_key(row.get("channel")), str(row.get("scan") or ""), Path(row["path"]).name))
+
+    def _resolve_observation_file_path(self, raw_path, observation=None):
+        if not raw_path:
+            return Path("")
+        text = str(raw_path).strip()
+        direct = Path(text)
+        if direct.exists():
+            return direct
+
+        normalized = text.replace("\\", "/")
+        as_posix = Path(normalized)
+        if as_posix.exists():
+            return as_posix
+
+        experiment_dir = getattr(self._bo_session, "experiment_dir", None) if self._bo_session is not None else None
+        if experiment_dir is not None:
+            experiment_dir = Path(experiment_dir)
+            exp_name = experiment_dir.name
+            marker = f"/{exp_name}/"
+            if marker in normalized:
+                suffix = normalized.split(marker, 1)[1]
+                candidate = experiment_dir / suffix
+                if candidate.exists():
+                    return candidate
+            if normalized.endswith(f"/{exp_name}"):
+                return experiment_dir
+
+            basename_candidate = experiment_dir / Path(normalized).name
+            if basename_candidate.exists():
+                return basename_candidate
+
+            iteration = int((observation or {}).get("iteration", 0) or 0)
+            if iteration:
+                legacy_candidate = experiment_dir / "legacy" / f"iter_{iteration:03d}" / Path(normalized).name
+                if legacy_candidate.exists():
+                    return legacy_candidate
+
+        return direct
+
+    def _fallback_legacy_iteration_dir(self, observation):
+        if self._bo_session is None or observation is None:
+            return None
+        iteration = int((observation or {}).get("iteration", 0) or 0)
+        if not iteration:
+            return None
+        path = Path(self._bo_session.experiment_dir) / "legacy" / f"iter_{iteration:03d}"
+        return path if path.is_dir() else None
+
+    def _fallback_bo_analysis_json(self, observation):
+        if self._bo_session is None or observation is None:
+            return None
+        iteration = int((observation or {}).get("iteration", 0) or 0)
+        if not iteration:
+            return None
+        path = Path(self._bo_session.experiment_dir) / "bo_analysis" / f"bo_iter_{iteration:03d}.json"
+        return path if path.is_file() else None
+
+    def _fallback_bo_analysis_results_csv(self, observation):
+        if self._bo_session is None or observation is None:
+            return None
+        iteration = int((observation or {}).get("iteration", 0) or 0)
+        if not iteration:
+            return None
+        path = Path(self._bo_session.experiment_dir) / "bo_analysis" / f"bo_iter_{iteration:03d}_results.csv"
+        return path if path.is_file() else None
+
+    @staticmethod
+    def _infer_channel_from_path(path):
+        match = re.search(r"(?:^|[_\-\s])ch(?:annel)?\s*0*(\d+)(?:\D|$)", Path(path).stem, re.IGNORECASE)
+        return match.group(1) if match else ""
+
+    @staticmethod
+    def _channel_sort_key(channel):
+        try:
+            return int(channel)
+        except (TypeError, ValueError):
+            return 9999
 
     def _q_breakdown_lines(self, observation, config=None):
         quality = dict((observation or {}).get("quality") or {})
@@ -2513,6 +3293,54 @@ class BayesianOptimizationTab:
             )
         return lines
 
+    def _q_equation_lines(self, config=None):
+        source_config = config if config is not None else (self._bo_session.config if self._bo_session else self._config or {})
+        scoring = dict((source_config or {}).get("scoring") or {})
+        mode = str(scoring.get("mode", "classic_bounded") or "classic_bounded").strip().lower()
+        channel_weights = dict(scoring.get("channel_weights") or {})
+        run_weights = dict(scoring.get("run_weights") or {})
+
+        if mode == "signal_priority_unbounded":
+            terms = [
+                ("log1p(SNR)", float(channel_weights.get("snr", 0.45))),
+                ("log1p(Peak uA)", float(channel_weights.get("peak_height", 0.35))),
+                ("Baseline", float(channel_weights.get("baseline", 0.12))),
+                ("Shape", float(channel_weights.get("peak_shape", 0.05))),
+                ("Replicate", float(channel_weights.get("replicate_consistency", 0.03))),
+                ("Success", float(channel_weights.get("success", 0.0))),
+            ]
+        else:
+            terms = [
+                ("SNR score", float(channel_weights.get("snr", 0.35))),
+                ("Peak", float(channel_weights.get("peak_height", 0.0))),
+                ("Shape", float(channel_weights.get("peak_shape", 0.20))),
+                ("Baseline", float(channel_weights.get("baseline", 0.20))),
+                ("Replicate", float(channel_weights.get("replicate_consistency", 0.15))),
+                ("Success", float(channel_weights.get("success", 0.10))),
+            ]
+        total = sum(weight for _label, weight in terms)
+        numerator = " + ".join(f"{weight:g}*{label}" for label, weight in terms if weight)
+        if not numerator:
+            numerator = "0"
+        lambda_var = float(run_weights.get("lambda_variability", 0.20))
+        lambda_failed = float(run_weights.get("lambda_failed", 0.40))
+        lambda_low = float(run_weights.get("lambda_low", 0.20))
+        threshold = float(run_weights.get("low_channel_threshold", 0.50))
+        lines = [
+            f"Q_channel = ({numerator}) / {max(total, 1e-12):g}",
+            (
+                "Q_run = mean(Q_channel) "
+                f"- {lambda_var:g}*std(Q_channel) "
+                f"- {lambda_failed:g}*failed_fraction "
+                f"- {lambda_low:g}*fraction(Q_channel < {threshold:g})"
+            ),
+        ]
+        if mode != "signal_priority_unbounded":
+            lines.append(f"SNR score = clip(raw SNR / {float(channel_weights.get('snr_saturation', 20.0)):g}, 0, 1); Q_channel and Q_run are clipped 0..1.")
+        else:
+            lines.append("Signal-priority mode uses log signal terms and does not clip Q_run.")
+        return lines
+
     def _refresh_model_artifacts(self):
         if not hasattr(self, "_model_tree"):
             return
@@ -2546,6 +3374,66 @@ class BayesianOptimizationTab:
                 folder = str(rel.parent) if str(rel.parent) != "." else "."
                 self._record_tree.insert("", "end", text=str(idx), values=(folder, rel.name))
                 idx += 1
+
+    @staticmethod
+    def _analysis_trend_metric_options():
+        return (
+            "Q_run",
+            "Mean channel Q",
+            "Std channel Q",
+            "Failed fraction",
+            "Low fraction",
+            "Mean peak uA",
+            "Mean RMS uA",
+            "Mean raw SNR",
+            "Step potential",
+            "Amplitude",
+            "Frequency",
+            "Begin potential",
+            "End potential",
+            "Conditioning potential",
+            "Conditioning time",
+        )
+
+    def _analysis_trend_value(self, observation, metric):
+        quality = dict((observation or {}).get("quality") or {})
+        params = dict((observation or {}).get("params") or {})
+        if metric == "Q_run":
+            return (observation or {}).get("Q_run")
+        if metric == "Mean channel Q":
+            return quality.get("mean_Q_channel")
+        if metric == "Std channel Q":
+            return quality.get("std_Q_channel")
+        if metric == "Failed fraction":
+            return quality.get("failed_channel_fraction")
+        if metric == "Low fraction":
+            return quality.get("low_channel_fraction")
+        if metric == "Mean peak uA":
+            peak, _rms = self._observation_peak_rms(observation)
+            return peak
+        if metric == "Mean RMS uA":
+            _peak, rms = self._observation_peak_rms(observation)
+            return rms
+        if metric == "Mean raw SNR":
+            metrics = (observation or {}).get("channel_metrics", {})
+            if not isinstance(metrics, dict):
+                return None
+            values = []
+            for data in metrics.values():
+                if isinstance(data, dict) and data.get("snr") is not None:
+                    values.append(float(data.get("snr")))
+            return sum(values) / len(values) if values else None
+        param_key_by_metric = {
+            "Step potential": "step_potential",
+            "Amplitude": "amplitude",
+            "Frequency": "frequency",
+            "Begin potential": "begin_potential",
+            "End potential": "end_potential",
+            "Conditioning potential": "conditioning_potential",
+            "Conditioning time": "conditioning_time",
+        }
+        key = param_key_by_metric.get(metric)
+        return params.get(key) if key else None
 
     @staticmethod
     def _parse_float_list(text):

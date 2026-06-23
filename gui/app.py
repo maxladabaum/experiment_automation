@@ -36,6 +36,7 @@ from gui.tab_queue   import QueueTab
 from gui.tab_pump    import PumpTab
 from gui.tab_recipe_maker import RecipeMakerTab
 from gui.tab_bayesian_optimization import BayesianOptimizationTab
+from gui.widgets import ScrollableFrame
 
 try:
     from pump_gui import PumpCtrl, HAS_COM as PUMP_HAS_COM
@@ -57,6 +58,7 @@ class ElectrochemGUI:
         self.root = root
         self.root.title(WINDOW_TITLE)
         self.root.geometry(WINDOW_GEOMETRY)
+        self.root.minsize(980, 650)
         self._ngrok_proc = None
 
         # ── Pump controller (optional) ────────────────────────────────────────
@@ -79,14 +81,30 @@ class ElectrochemGUI:
         self._content_frame.pack(side="top", fill="both", expand=True)
         self._content_frame.pack_propagate(False)
 
-        self._session_bar_frame = ttk.Frame(self._layout_root, height=170)
+        self._session_bar_min_height = 200
+        self._session_bar_collapsed_height = 30
+        self._session_bar_minimized = False
+        self._session_bar_frame = ttk.Frame(self._layout_root, height=self._session_bar_min_height)
         self._session_bar_frame.pack(side="bottom", fill="x")
         self._session_bar_frame.pack_propagate(False)
 
-        self._session_bar_resize_grip = ttk.Frame(self._session_bar_frame, height=8)
+        self._session_bar_resize_grip = ttk.Frame(self._session_bar_frame, height=self._session_bar_collapsed_height)
         self._session_bar_resize_grip.pack(side="top", fill="x")
         self._session_bar_resize_grip.configure(cursor="sb_v_double_arrow")
         self._session_bar_resize_grip.bind("<ButtonPress-1>", self._start_session_bar_resize)
+        self._session_bar_label = ttk.Label(
+            self._session_bar_resize_grip,
+            text="Session / Experiment",
+            foreground="#555",
+        )
+        self._session_bar_label.pack(side="left", padx=8)
+        self._session_bar_toggle = ttk.Button(
+            self._session_bar_resize_grip,
+            text="Hide",
+            width=7,
+            command=self._toggle_session_bar,
+        )
+        self._session_bar_toggle.pack(side="right", padx=6, pady=2)
 
         self._session_bar_body = ttk.Frame(self._session_bar_frame)
         self._session_bar_body.pack(side="top", fill="both", expand=True)
@@ -124,6 +142,10 @@ class ElectrochemGUI:
             self._session_gated_tabs.insert(0, pump_frame)
 
         # ── Instantiate tabs ──────────────────────────────────────────────────
+        method_content = self._scrollable_tab_content(method_frame, min_width=980)
+        recipe_content = self._scrollable_tab_content(recipe_frame, min_width=1080)
+        pump_content = self._scrollable_tab_content(pump_frame, min_width=980) if PUMP_AVAILABLE else pump_frame
+
         self._script_tab = ScriptTab(script_frame)
 
         self._plotter_tab = PlotterTab(
@@ -141,7 +163,7 @@ class ElectrochemGUI:
         )
 
         self._recipe_tab = RecipeMakerTab(
-            parent_frame = recipe_frame,
+            parent_frame = recipe_content,
             on_send_to_queue = self._queue_tab.add_item,
         )
         # Wire session callbacks now that queue tab (with its log widget) exists
@@ -149,7 +171,7 @@ class ElectrochemGUI:
         self._session._status = self._set_status
 
         self._method_tab = MethodTab(
-            parent_frame      = method_frame,
+            parent_frame      = method_content,
             session           = self._session,
             on_add_to_queue   = self._queue_tab.add_item,
             on_refresh_queue  = self._queue_tab.refresh,
@@ -169,7 +191,7 @@ class ElectrochemGUI:
 
         if PUMP_AVAILABLE:
             self._pump_tab = PumpTab(
-                parent_frame   = pump_frame,
+                parent_frame   = pump_content,
                 pump_ctrl      = self._pump_ctrl,
                 on_add_to_queue= self._queue_tab.add_item,
                 root           = self.root,
@@ -234,6 +256,12 @@ class ElectrochemGUI:
             )
     
     # ── Inter-tab wiring helpers ──────────────────────────────────────────────
+
+    @staticmethod
+    def _scrollable_tab_content(parent, *, min_width=980):
+        scroller = ScrollableFrame(parent, min_width=min_width)
+        scroller.pack(fill="both", expand=True)
+        return scroller.content
 
     def _log(self, msg: str):
         """Route log messages to the queue tab's log panel."""
@@ -319,6 +347,8 @@ class ElectrochemGUI:
         self._ngrok_proc = None
 
     def _start_session_bar_resize(self, event):
+        if self._session_bar_minimized:
+            self._set_session_bar_minimized(False)
         self._resize_start_y = event.y_root
         self._resize_start_h = self._session_bar_frame.winfo_height()
         self.root.bind("<B1-Motion>", self._do_session_bar_resize)
@@ -329,12 +359,26 @@ class ElectrochemGUI:
         new_h = self._resize_start_h + delta
         root_h = max(1, self.root.winfo_height())
         max_h = max(180, root_h - 24)
-        new_h = max(90, min(max_h, new_h))
+        new_h = max(self._session_bar_min_height, min(max_h, new_h))
         self._session_bar_frame.configure(height=new_h)
 
     def _stop_session_bar_resize(self, _event):
         self.root.unbind("<B1-Motion>")
         self.root.unbind("<ButtonRelease-1>")
+
+    def _toggle_session_bar(self):
+        self._set_session_bar_minimized(not self._session_bar_minimized)
+
+    def _set_session_bar_minimized(self, minimized: bool):
+        self._session_bar_minimized = bool(minimized)
+        if self._session_bar_minimized:
+            self._session_bar_body.pack_forget()
+            self._session_bar_frame.configure(height=self._session_bar_collapsed_height)
+            self._session_bar_toggle.configure(text="Show")
+        else:
+            self._session_bar_body.pack(side="top", fill="both", expand=True)
+            self._session_bar_frame.configure(height=self._session_bar_min_height)
+            self._session_bar_toggle.configure(text="Hide")
 
     # ── Immediate run dispatcher ──────────────────────────────────────────────
 
