@@ -187,7 +187,25 @@
     "local_candidate_pool_size": 120,
     "initial_point_mode": "specific",
     "use_gp": true,
-    "gp_optimizer_restarts": 2
+    "gp_optimizer_restarts": 2,
+    "gp_falloff_fractions": {
+      "begin_potential": 0.2,
+      "end_potential": 0.2,
+      "step_potential": 0.2,
+      "amplitude": 0.2,
+      "frequency": 0.2,
+      "conditioning_potential": 0.2,
+      "conditioning_time": 0.2
+    },
+    "gp_length_scales": {
+      "begin_potential": 0.2,
+      "end_potential": 0.2,
+      "step_potential": 0.2,
+      "amplitude": 0.2,
+      "frequency": 0.2,
+      "conditioning_potential": 0.2,
+      "conditioning_time": 0.2
+    }
   },
   "scoring": {
     "channel_weights": {

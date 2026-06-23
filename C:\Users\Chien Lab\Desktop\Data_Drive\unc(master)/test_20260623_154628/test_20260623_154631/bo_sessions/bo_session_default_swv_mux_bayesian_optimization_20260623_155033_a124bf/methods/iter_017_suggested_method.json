@@ -1,0 +1,15 @@
+{
+  "iteration": 17,
+  "method_id": "default_swv_mux_bayesian_optimization_20260623_155033_a124bf_iter_017",
+  "params": {
+    "begin_potential": -0.7,
+    "end_potential": -0.1,
+    "step_potential": 0.001,
+    "amplitude": 0.043,
+    "frequency": 688.0,
+    "conditioning_potential": -0.7,
+    "conditioning_time": 1.0
+  },
+  "created_at": "2026-06-23T15:50:40",
+  "status": "suggested"
+}

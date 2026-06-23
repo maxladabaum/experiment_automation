@@ -1,6 +1,0 @@
-[2026-06-23 00:05:03] Session started: C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)/test_20260623_000503
-[2026-06-23 00:05:03] Software version: 2.1.2
-[2026-06-23 00:05:03] [SIM] Connected (COM8)
-[2026-06-23 00:05:08] Experiment started: C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)/test_20260623_000503/test_20260623_000508
-[2026-06-23 00:06:32] Experiment ended: C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)/test_20260623_000503/test_20260623_000508
-[2026-06-23 00:06:32] Session ended: C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)/test_20260623_000503

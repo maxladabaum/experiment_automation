@@ -135,7 +135,6 @@ class SessionBar:
             add_timestamp_suffix=self._session_timestamp_suffix_var.get(),
         )
         if started and self._on_start_session_cb:
-            self._apply_experiment_metadata({})
             self._on_start_session_cb()
 
     def _on_end_session(self):

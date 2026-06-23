@@ -7,6 +7,7 @@ walk that landscape.
 
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass
 from datetime import datetime
 import json
@@ -15,6 +16,7 @@ from pathlib import Path
 import random
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
+from core.bo_analysis import run_request
 from core.bo_session import (
     BOIntegrationSession,
     PARAMETER_ORDER,
@@ -131,8 +133,7 @@ class SyntheticSWVSimulationEngine:
         for channel in parse_channels(self.bo_config.get("channels", [])):
             channel_metrics, trace = self._channel_measurement(params, truth, iteration, channel)
             metrics[str(channel)] = channel_metrics
-            if len(traces) < 3:
-                traces[str(channel)] = trace
+            traces[str(channel)] = trace
         return {
             "schema_version": 1,
             "created_at": datetime.now().isoformat(timespec="seconds"),
@@ -259,8 +260,8 @@ class SyntheticSWVSimulationEngine:
             return _clip01(0.68 * base + 0.32 * smooth)
         return _clip01(math.exp(-0.5 * z * z))
 
-    def _channel_measurement(self, params: dict, truth: dict, iteration: int, channel: int) -> Tuple[dict, dict]:
-        rng = random.Random(self.seed + int(iteration) * 1009 + int(channel) * 131)
+    def _channel_measurement(self, params: dict, truth: dict, iteration: int, channel: int, scan: int = 1) -> Tuple[dict, dict]:
+        rng = random.Random(self.seed + int(iteration) * 1009 + int(channel) * 131 + int(scan) * 17)
         true_q = float(truth["true_Q"])
         channel_q = _clip01(true_q + rng.gauss(0.0, self.channel_noise))
         peak_current = max(0.0, self.base_peak_uA + self.peak_gain_uA * channel_q + rng.gauss(0.0, self.measurement_noise))
@@ -317,31 +318,51 @@ def run_optimizer_simulation(
     sim_config: dict,
     output_root: str | Path,
     iterations: int,
+    analysis_output_dir: str | Path | None = None,
+    progress_callback=None,
 ) -> dict:
     cfg = normalize_bo_config(bo_config)
     engine = SyntheticSWVSimulationEngine(cfg, sim_config)
     output_root = Path(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
+    analysis_output = Path(analysis_output_dir) if analysis_output_dir else output_root / "bo_analysis"
+    analysis_output.mkdir(parents=True, exist_ok=True)
     session = BOIntegrationSession(
         cfg,
         output_root,
         config_path=None,
-        analysis_output_dir=output_root / "analysis_outputs",
+        analysis_output_dir=analysis_output,
     )
     rows = []
-    for _idx in range(max(1, int(iterations))):
+    total_iterations = max(1, int(iterations))
+    for _idx in range(total_iterations):
         suggestion = session.ask_next()
-        payload = engine.analysis_payload(suggestion.params, suggestion.iteration)
-        path = session.analysis_dir / f"iter_{suggestion.iteration:03d}_simulation_engine.json"
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(payload, fh, indent=2)
+        if progress_callback:
+            progress_callback(_idx, total_iterations, f"Analyzing simulated iteration {suggestion.iteration}")
+        raw_dir, simulation_payload = _write_simulated_raw_measurements(
+            engine,
+            output_root,
+            suggestion.params,
+            suggestion.iteration,
+        )
+        summary = run_request(
+            {
+                "folders": [str(raw_dir)],
+                "output_dir": str(analysis_output),
+                "output_stem": f"bo_iter_{suggestion.iteration:03d}",
+                "analysis": dict(cfg.get("analysis") or {}),
+            }
+        )
+        path = _augment_analysis_summary(Path(summary["summary_path"]), simulation_payload)
         obs = session.import_analysis(path, notes="Simulation engine")
-        obs["simulation_truth"] = payload["simulation_truth"]
-        obs["swv_trace_preview"] = payload.get("swv_traces", {})
+        obs["simulation_truth"] = simulation_payload["simulation_truth"]
+        obs["swv_trace_preview"] = simulation_payload.get("swv_traces", {})
         session.observations[-1] = obs
         session._write_json(session.analysis_dir / f"iter_{suggestion.iteration:03d}_quality.json", obs)
         session.save_state()
         rows.append(_row_from_observation(obs))
+        if progress_callback:
+            progress_callback(_idx + 1, total_iterations, f"Completed simulated iteration {suggestion.iteration}")
     return {
         "session": session,
         "engine": engine,
@@ -349,6 +370,64 @@ def run_optimizer_simulation(
         "landscape": engine.sample_landscape(int(sim_config.get("grid_size", 25))),
         "distributions": engine.dimension_distributions(),
     }
+
+
+def _write_simulated_raw_measurements(
+    engine: SyntheticSWVSimulationEngine,
+    experiment_dir: Path,
+    params: dict,
+    iteration: int,
+) -> Tuple[Path, dict]:
+    """Write measurement-like CSVs; headless analysis computes all derived outputs."""
+    legacy_dir = experiment_dir / "legacy" / f"iter_{int(iteration):03d}"
+    legacy_dir.mkdir(parents=True, exist_ok=True)
+    truth = engine.evaluate_truth(params)
+    traces = {}
+    synthetic_metrics = {}
+    scan_count = 1
+    for channel in parse_channels(engine.bo_config.get("channels", [])):
+        for scan in range(1, scan_count + 1):
+            metrics, trace = engine._channel_measurement(params, truth, iteration, channel, scan=scan)
+            if scan == 1:
+                traces[str(channel)] = trace
+                synthetic_metrics[str(channel)] = metrics
+            voltage = [float(value) for value in trace.get("voltage_v") or []]
+            current = [float(value) for value in trace.get("current_uA") or []]
+            raw_path = legacy_dir / f"ch{int(channel):03d}_meas_{scan:03d}_simulated_swv.csv"
+            _write_raw_swv_csv(raw_path, voltage, current)
+    payload = {
+        "schema_version": 1,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "simulation_engine": {
+            "version": 2,
+            "analysis_mode": "headless_from_raw_csv",
+            "iteration": int(iteration),
+            "parameters": dict(params),
+            "dimensions": [dim.__dict__ for dim in engine.dimensions],
+            "scan_count_per_channel": scan_count,
+        },
+        "simulation_truth": truth,
+        "synthetic_channel_metrics_preview": synthetic_metrics,
+        "swv_traces": traces,
+    }
+    return legacy_dir, payload
+
+
+def _augment_analysis_summary(summary_path: Path, simulation_payload: dict) -> Path:
+    with open(summary_path, "r", encoding="utf-8") as fh:
+        summary = json.load(fh)
+    summary.update(simulation_payload)
+    summary["headless_analysis_from_simulated_raw"] = True
+    with open(summary_path, "w", encoding="utf-8") as fh:
+        json.dump(summary, fh, indent=2)
+    return summary_path
+
+
+def _write_raw_swv_csv(path: Path, voltage: List[float], current: List[float]) -> None:
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["Potential (V)", "Current (uA)"])
+        writer.writerows(zip(voltage, current))
 
 
 def _row_from_observation(obs: dict) -> dict:

@@ -1,0 +1,25 @@
+{
+  "backend": "gaussian_process",
+  "observation_count": 18,
+  "candidate_count": 569,
+  "active_parameters": [
+    "step_potential",
+    "amplitude",
+    "frequency"
+  ],
+  "best_Q_run": 2.0116783630086332,
+  "exploration": 0.0,
+  "created_at": "2026-06-23T15:48:23",
+  "gp_kernel": "1**2 * Matern(length_scale=[0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2], nu=2.5) + WhiteKernel(noise_level=0.0172)",
+  "gp_matern_nu": 2.5,
+  "gp_length_scales": {
+    "begin_potential": 0.2,
+    "end_potential": 0.2,
+    "step_potential": 0.2,
+    "amplitude": 0.2,
+    "frequency": 0.2,
+    "conditioning_potential": 0.2,
+    "conditioning_time": 0.2
+  },
+  "gp_noise_level": 0.017188760140351828
+}

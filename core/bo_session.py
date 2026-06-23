@@ -154,6 +154,9 @@ def normalize_bo_config(config: dict) -> dict:
     cfg["acquisition"].setdefault("initial_point_mode", "specific")
     cfg["acquisition"].setdefault("use_gp", True)
     cfg["acquisition"].setdefault("gp_optimizer_restarts", 2)
+    default_gp_falloff = {name: 0.2 for name in PARAMETER_ORDER}
+    cfg["acquisition"].setdefault("gp_length_scales", dict(default_gp_falloff))
+    cfg["acquisition"].setdefault("gp_falloff_fractions", cfg["acquisition"].get("gp_length_scales", dict(default_gp_falloff)))
     cfg.setdefault("scoring", {})
     cfg["scoring"].setdefault("mode", "classic_bounded")
     cfg["scoring"].setdefault(
@@ -1012,16 +1015,24 @@ class BOIntegrationSession:
         x_train = np.asarray([encode_candidate(obs["params"], self.config) for obs in self.observations], dtype=float)
         y_train = np.asarray([float(obs["Q_run"]) for obs in self.observations], dtype=float)
         try:
+            acquisition = dict(self.config.get("acquisition", {}) or {})
+            fixed_length_scales = _fixed_gp_length_scales(acquisition)
+            if fixed_length_scales is None:
+                matern = Matern(length_scale=np.ones(x_train.shape[1]), nu=2.5)
+                gp_optimizer_restarts = max(0, int(acquisition.get("gp_optimizer_restarts", 2)))
+            else:
+                matern = Matern(length_scale=fixed_length_scales, length_scale_bounds="fixed", nu=2.5)
+                gp_optimizer_restarts = 0
             kernel = (
                 ConstantKernel(1.0, constant_value_bounds="fixed")
-                * Matern(length_scale=np.ones(x_train.shape[1]), nu=2.5)
+                * matern
                 + WhiteKernel(noise_level=1e-4, noise_level_bounds=(1e-8, 1e-1))
             )
             gp = GaussianProcessRegressor(
                 kernel=kernel,
                 normalize_y=True,
                 random_state=int(self.config.get("random_seed", 42)),
-                n_restarts_optimizer=max(0, int(self.config.get("acquisition", {}).get("gp_optimizer_restarts", 2))),
+                n_restarts_optimizer=gp_optimizer_restarts,
             )
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", ConvergenceWarning)
@@ -1171,6 +1182,8 @@ class BOIntegrationSession:
             "exploration": _clip01(self.config.get("acquisition", {}).get("exploration", 0.35)),
             "created_at": datetime.now().isoformat(timespec="seconds"),
         }
+        if gp is not None:
+            metadata.update(_gp_kernel_metadata(gp))
 
         if gp is not None and train is not None:
             try:
@@ -1556,6 +1569,23 @@ def _acquisition_score(mean: float, std: float, best_score: float, exploration: 
     return (1.0 - exploration) * exploit + exploration * explore
 
 
+def _fixed_gp_length_scales(acquisition: dict) -> Optional[List[float]]:
+    raw = acquisition.get("gp_falloff_fractions") or acquisition.get("gp_length_scales") or {}
+    if not isinstance(raw, dict):
+        return None
+    if not raw:
+        return None
+    values = []
+    for name in OPTIMIZER_ORDER:
+        if name not in raw:
+            return None
+        value = float(raw[name])
+        if value <= 0:
+            return None
+        values.append(value)
+    return values
+
+
 def candidate_key(candidate: dict) -> Tuple[float, ...]:
     return tuple(round(float(candidate[name]), 9) for name in PARAMETER_ORDER)
 
@@ -1608,6 +1638,53 @@ def _expected_improvement(mean: float, std: float, best_score: float, xi: float 
     improvement = mean - best_score - xi
     z = improvement / std
     return improvement * _normal_cdf(z) + std * _normal_pdf(z)
+
+
+def _gp_kernel_metadata(gp: Any) -> dict:
+    kernel = getattr(gp, "kernel_", None)
+    metadata = {"gp_kernel": str(kernel)}
+    matern = _find_kernel_by_class_name(kernel, "Matern")
+    if matern is not None:
+        raw = getattr(matern, "length_scale", None)
+        try:
+            values = [float(value) for value in raw]
+        except Exception:
+            try:
+                values = [float(raw)]
+            except Exception:
+                values = []
+        if len(values) == 1:
+            values = values * len(OPTIMIZER_ORDER)
+        order = list(OPTIMIZER_ORDER)
+        if len(values) != len(order):
+            # Current sessions encode all optimizer parameters; keep this branch for
+            # compatibility if a future GP is trained on active parameters only.
+            order = order[: len(values)]
+        metadata["gp_matern_nu"] = getattr(matern, "nu", None)
+        metadata["gp_length_scales"] = {
+            name: values[idx]
+            for idx, name in enumerate(order)
+            if idx < len(values)
+        }
+    white = _find_kernel_by_class_name(kernel, "WhiteKernel")
+    if white is not None:
+        try:
+            metadata["gp_noise_level"] = float(white.noise_level)
+        except Exception:
+            pass
+    return metadata
+
+
+def _find_kernel_by_class_name(kernel: Any, class_name: str) -> Any:
+    if kernel is None:
+        return None
+    if kernel.__class__.__name__ == class_name:
+        return kernel
+    for attr in ("k1", "k2"):
+        found = _find_kernel_by_class_name(getattr(kernel, attr, None), class_name)
+        if found is not None:
+            return found
+    return None
 
 
 def _normal_pdf(x: float) -> float:

@@ -1,3 +1,0 @@
-[2026-06-22 23:59:19] Session started: C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)/test_20260622_235919
-[2026-06-22 23:59:19] Software version: 2.1.2
-[2026-06-22 23:59:19] [SIM] Connected (COM8)

@@ -1,0 +1,96 @@
+{
+  "initial_parameters": {
+    "begin_potential": -0.7,
+    "end_potential": -0.1,
+    "step_potential": 0.002,
+    "amplitude": 0.036,
+    "frequency": 200.0,
+    "conditioning_potential": -0.7,
+    "conditioning_time": 1.0
+  },
+  "initial_point_mode": "specific",
+  "start_candidate": {
+    "begin_potential": -0.7,
+    "end_potential": -0.1,
+    "step_potential": 0.002,
+    "amplitude": 0.036,
+    "frequency": 200.0,
+    "conditioning_potential": -0.7,
+    "conditioning_time": 1.0
+  },
+  "candidate_count": 569,
+  "initial_candidates": [
+    {
+      "begin_potential": -0.7,
+      "end_potential": -0.1,
+      "step_potential": 0.002,
+      "amplitude": 0.036,
+      "frequency": 200.0,
+      "conditioning_potential": -0.7,
+      "conditioning_time": 1.0
+    },
+    {
+      "begin_potential": -0.7,
+      "end_potential": -0.1,
+      "step_potential": 0.001,
+      "amplitude": 0.025,
+      "frequency": 518.0,
+      "conditioning_potential": -0.7,
+      "conditioning_time": 1.0
+    },
+    {
+      "begin_potential": -0.7,
+      "end_potential": -0.1,
+      "step_potential": 0.001,
+      "amplitude": 0.024,
+      "frequency": 659.0,
+      "conditioning_potential": -0.7,
+      "conditioning_time": 1.0
+    },
+    {
+      "begin_potential": -0.7,
+      "end_potential": -0.1,
+      "step_potential": 0.006,
+      "amplitude": 0.059,
+      "frequency": 70.0,
+      "conditioning_potential": -0.7,
+      "conditioning_time": 1.0
+    },
+    {
+      "begin_potential": -0.7,
+      "end_potential": -0.1,
+      "step_potential": 0.003,
+      "amplitude": 0.03,
+      "frequency": 103.0,
+      "conditioning_potential": -0.7,
+      "conditioning_time": 1.0
+    },
+    {
+      "begin_potential": -0.7,
+      "end_potential": -0.1,
+      "step_potential": 0.003,
+      "amplitude": 0.017,
+      "frequency": 296.0,
+      "conditioning_potential": -0.7,
+      "conditioning_time": 1.0
+    },
+    {
+      "begin_potential": -0.7,
+      "end_potential": -0.1,
+      "step_potential": 0.003,
+      "amplitude": 0.012,
+      "frequency": 333.0,
+      "conditioning_potential": -0.7,
+      "conditioning_time": 1.0
+    },
+    {
+      "begin_potential": -0.7,
+      "end_potential": -0.1,
+      "step_potential": 0.006,
+      "amplitude": 0.016,
+      "frequency": 71.0,
+      "conditioning_potential": -0.7,
+      "conditioning_time": 1.0
+    }
+  ]
+}

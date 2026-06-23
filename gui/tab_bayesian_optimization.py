@@ -11,6 +11,8 @@ from __future__ import annotations
 import ast
 import csv
 import json
+import math
+import pickle
 import re
 import time
 from pathlib import Path
@@ -26,9 +28,11 @@ from config import (
 )
 from core.bo_session import (
     BOIntegrationSession,
+    OPTIMIZER_ORDER,
     PARAMETER_ORDER,
     active_parameters,
     build_swv_script,
+    encode_candidate,
     load_bo_config,
     normalize_bo_config,
     parse_channels,
@@ -87,6 +91,8 @@ class BayesianOptimizationTab:
         self._candidate_pool_var = tk.StringVar(value="600")
         self._local_pool_var = tk.StringVar(value="120")
         self._initial_point_mode_var = tk.StringVar(value="specific")
+        self._gp_length_scale_vars = {name: tk.StringVar(value="0.2") for name in PARAMETER_ORDER}
+        self._gp_falloff_summary_var = tk.StringVar(value="GP falloff: fixed fractions of search range (0.2 each)")
         self._score_mode_var = tk.StringVar(value="classic_bounded")
         self._score_snr_weight_var = tk.StringVar(value="0.35")
         self._score_peak_height_weight_var = tk.StringVar(value="0.00")
@@ -104,6 +110,14 @@ class BayesianOptimizationTab:
         self._record_dir_var = tk.StringVar(value="Record folder: (not started)")
         self._auto_target_var = tk.StringVar(value="5")
         self._analysis_trend_metric_var = tk.StringVar(value="Q_run")
+        self._surrogate_iteration_var = tk.StringVar(value="")
+        self._surrogate_value_var = tk.StringVar(value="predicted_mean_Q")
+        self._surrogate_view_var = tk.StringVar(value="1D slice")
+        self._surrogate_x_var = tk.StringVar(value="")
+        self._surrogate_y_var = tk.StringVar(value="")
+        self._surrogate_z_var = tk.StringVar(value="")
+        self._surrogate_color_min_var = tk.StringVar(value="")
+        self._surrogate_color_max_var = tk.StringVar(value="")
         self._engine_iterations_var = tk.StringVar(value="20")
         self._engine_grid_var = tk.StringVar(value="25")
         self._engine_seed_var = tk.StringVar(value="42")
@@ -115,6 +129,8 @@ class BayesianOptimizationTab:
         self._engine_base_noise_var = tk.StringVar(value="0.08")
         self._engine_noise_gain_var = tk.StringVar(value="0.45")
         self._engine_status_var = tk.StringVar(value="Simulation engine idle.")
+        self._engine_progress_var = tk.DoubleVar(value=0.0)
+        self._engine_progress_text_var = tk.StringVar(value="")
         self._auto_status_var = tk.StringVar(value="Auto loop idle.")
         self._style = ttk.Style(self._frame)
 
@@ -139,6 +155,7 @@ class BayesianOptimizationTab:
         self._engine_page_index = 0
         self._engine_pages = []
         self._history_rows = {}
+        self._surrogate_plot_canvas = None
         self._selected_history_observation = None
         self._active_results_tree = None
         self._results_trace_panes_balanced = False
@@ -201,12 +218,48 @@ class BayesianOptimizationTab:
             foreground=[("selected", "white")],
         )
 
+    def _visible_paned_window(self, parent, orient):
+        return tk.PanedWindow(
+            parent,
+            orient=orient,
+            sashwidth=8,
+            sashpad=2,
+            showhandle=True,
+            handlesize=10,
+            handlepad=8,
+            opaqueresize=True,
+            bd=0,
+            relief=tk.FLAT,
+            bg="#c4cbd3",
+        )
+
+    @staticmethod
+    def _set_paned_sash_position(pane, index, position):
+        try:
+            if hasattr(pane, "sashpos"):
+                pane.sashpos(index, position)
+            elif str(pane.cget("orient")) == str(tk.HORIZONTAL):
+                pane.sash_place(index, int(position), 0)
+            else:
+                pane.sash_place(index, 0, int(position))
+        except Exception:
+            pass
+
+    @staticmethod
+    def _fit_embedded_figure(fig, top=0.86, bottom=0.20, left=0.16, right=0.95):
+        try:
+            fig.set_layout_engine(None)
+            fig.subplots_adjust(top=top, bottom=bottom, left=left, right=right)
+        except Exception:
+            pass
+
     def _balance_results_trace_panes(self):
         if getattr(self, "_results_trace_panes_balanced", False):
             return
         panes = (
             getattr(self, "_results_top_pane", None),
             getattr(self, "_results_middle_pane", None),
+            getattr(self, "_results_bottom_pane", None),
         )
         if any(pane is None for pane in panes):
             return
@@ -214,6 +267,7 @@ class BayesianOptimizationTab:
         for pane in (
             getattr(self, "_results_top_pane", None),
             getattr(self, "_results_middle_pane", None),
+            getattr(self, "_results_bottom_pane", None),
         ):
             try:
                 pane.update_idletasks()
@@ -224,10 +278,17 @@ class BayesianOptimizationTab:
             except Exception:
                 return
         for pane, width in zip(panes, widths):
+            self._set_paned_sash_position(pane, 0, width // 2)
+        main_pane = getattr(self, "_results_main_pane", None)
+        if main_pane is not None:
             try:
-                pane.sashpos(0, width // 2)
+                main_pane.update_idletasks()
+                height = main_pane.winfo_height()
+                if height > 60:
+                    self._set_paned_sash_position(main_pane, 0, height // 3)
+                    self._set_paned_sash_position(main_pane, 1, 2 * height // 3)
             except Exception:
-                return
+                pass
         self._results_trace_panes_balanced = True
 
     def _build_setup_tab(self, parent):
@@ -314,6 +375,7 @@ class BayesianOptimizationTab:
         )
         start_mode.grid(row=2, column=1, sticky="w", padx=6, pady=2)
         start_mode.bind("<<ComboboxSelected>>", lambda _e: self._sync_algorithm_config(show_error=False))
+        ttk.Button(algo_box, text="Edit GP Falloff", command=self._edit_gp_length_scales).grid(row=2, column=2, sticky="e", padx=(6, 0), pady=2)
         ttk.Label(
             algo_box,
             text="`specific` uses Initial Parameters. `random` chooses one valid candidate as the first BO point.",
@@ -598,6 +660,8 @@ class BayesianOptimizationTab:
             ("Iterations", self._engine_iterations_var),
             ("Grid", self._engine_grid_var),
             ("Seed", self._engine_seed_var),
+            ("Global pool", self._candidate_pool_var),
+            ("Local pool", self._local_pool_var),
             ("Meas noise", self._engine_measurement_noise_var),
             ("Channel noise", self._engine_channel_noise_var),
             ("Peak emphasis", self._engine_peak_emphasis_var),
@@ -611,18 +675,55 @@ class BayesianOptimizationTab:
             col = (idx % 2) * 2
             ttk.Label(model_grid, text=f"{label}:").grid(row=row, column=col, sticky="w", pady=2)
             ttk.Entry(model_grid, textvariable=var, width=10).grid(row=row, column=col + 1, sticky="w", padx=(4, 12), pady=2)
+        gp_box = ttk.LabelFrame(model_box, text="GP Falloff Fractions", padding=6)
+        gp_box.pack(fill="x", pady=(8, 0))
+        for idx, name in enumerate(PARAMETER_ORDER):
+            row = idx // 2
+            col = (idx % 2) * 2
+            ttk.Label(gp_box, text=f"{name.replace('_', ' ').title()}:").grid(row=row, column=col, sticky="w", pady=2)
+            entry = ttk.Entry(gp_box, textvariable=self._gp_length_scale_vars[name], width=10)
+            entry.grid(row=row, column=col + 1, sticky="w", padx=(4, 12), pady=2)
+            entry.bind("<FocusOut>", lambda _e: self._sync_algorithm_config(show_error=False))
+            entry.bind("<Return>", lambda _e: self._sync_algorithm_config(show_error=False))
         run_bar = ttk.Frame(model_box)
         run_bar.pack(fill="x", pady=(8, 0))
         ttk.Button(run_bar, text="Draw Landscape", command=self._engine_draw_landscape).pack(side="left", padx=2)
         ttk.Button(run_bar, text="Run Optimizer Simulation", command=self._engine_run_optimizer).pack(side="left", padx=2)
         ttk.Button(run_bar, text="Next: Results", command=self._engine_next_page).pack(side="right", padx=2)
+        progress_row = ttk.Frame(model_box)
+        progress_row.pack(fill="x", pady=(8, 0))
+        self._engine_progress_bar = ttk.Progressbar(
+            progress_row,
+            orient=tk.HORIZONTAL,
+            mode="determinate",
+            variable=self._engine_progress_var,
+            maximum=100.0,
+        )
+        self._engine_progress_bar.pack(side="left", fill="x", expand=True)
+        ttk.Label(progress_row, textvariable=self._engine_progress_text_var, width=28, anchor="e").pack(side="left", padx=(8, 0))
+        ttk.Label(
+            model_box,
+            textvariable=self._gp_falloff_summary_var,
+            foreground=self.ACCENT,
+            wraplength=760,
+            justify="left",
+        ).pack(fill="x", pady=(8, 0))
         ttk.Label(
             model_box,
             text=(
-                "Peak emphasis controls how strongly the synthetic system rewards signal height relative "
-                "to low noise and shape. Synthetic success is separate from Q and is driven mostly by peak "
-                "height, then low noise. Think of the landscape as a topographic map over parameter space: "
-                "high regions are good operating zones, and the optimizer is trying to climb into them."
+                "Iterations is the number of BO rounds to simulate; it must be at least 1 and larger values produce longer optimizer histories.\n"
+                "Grid is the number of sampled points per simulated dimension used when drawing the landscape; it is clamped to 5-45, so 25 means 25 points in 1D, 25x25 in 2D, or 25x25x25 in 3D.\n"
+                "Seed is any integer used to make the random landscape and noise reproducible; using the same seed repeats the same synthetic system.\n"
+                "Global pool is the minimum number of broad BO candidates sampled from the full search space; it is clamped to at least 50 and larger values give the surrogate more candidate points to rank.\n"
+                "Local pool is the number of extra BO candidates sampled near promising regions; 0 disables local candidates and larger values bias the candidate set toward local refinement.\n"
+                "Meas noise is a nonnegative current-noise scale applied to simulated peak/background measurements; 0 means no measurement jitter, about 0.03 is mild, about 0.1 is noticeable, and there is no hard maximum although values near 1 uA can dominate the default signal model.\n"
+                "Channel noise is a unitless Gaussian variation added to each channel's underlying quality before clipping to 0-1; 0 means identical channels, about 0.025 is mild, about 0.2 is large, and 1 is effectively the maximum useful range because channel quality is clipped.\n"
+                "Peak emphasis is usually 0-1 and controls how much Q rewards signal height relative to noise and shape; higher values make the optimizer chase taller peaks more aggressively.\n"
+                "Base peak uA is the minimum simulated peak current.\n"
+                "Peak gain uA is the extra peak current available near good parameter regions.\n"
+                "Base noise uA is the minimum background RMS noise.\n"
+                "Noise gain uA is the extra background noise added when parameters are far from the synthetic optimum.\n"
+                "GP Falloff is a positive unitless fraction of each parameter's search range; 0.2 means points about 20% of that range apart are still meaningfully correlated, larger values make smoother GP predictions, and blank values let the GP learn the falloff."
             ),
             foreground=self.ACCENT,
             wraplength=760,
@@ -644,6 +745,15 @@ class BayesianOptimizationTab:
         ttk.Button(result_toolbar, text="< Iter", command=lambda: self._engine_step_window(-1)).pack(side="left", padx=2)
         ttk.Button(result_toolbar, text="Iter >", command=lambda: self._engine_step_window(1)).pack(side="left", padx=2)
         ttk.Button(result_toolbar, text="Show All", command=self._engine_show_all).pack(side="left", padx=2)
+        ttk.Progressbar(
+            result_toolbar,
+            orient=tk.HORIZONTAL,
+            mode="determinate",
+            variable=self._engine_progress_var,
+            maximum=100.0,
+            length=160,
+        ).pack(side="left", padx=(10, 4))
+        ttk.Label(result_toolbar, textvariable=self._engine_progress_text_var, width=8).pack(side="left")
         engine_output_tabs = ttk.Notebook(plot_box)
         engine_output_tabs.pack(fill="both", expand=True)
         movement_tab = ttk.Frame(engine_output_tabs)
@@ -678,23 +788,26 @@ class BayesianOptimizationTab:
         self._engine_go_page(0)
 
     def _build_results_tab(self, parent):
-        pane = ttk.PanedWindow(parent, orient=tk.VERTICAL)
+        pane = self._visible_paned_window(parent, orient=tk.VERTICAL)
         pane.pack(fill="both", expand=True, padx=4, pady=4)
-        top = ttk.PanedWindow(pane, orient=tk.HORIZONTAL)
-        middle = ttk.PanedWindow(pane, orient=tk.HORIZONTAL)
+        top = self._visible_paned_window(pane, orient=tk.HORIZONTAL)
+        middle = self._visible_paned_window(pane, orient=tk.HORIZONTAL)
+        self._results_main_pane = pane
         self._results_top_pane = top
         self._results_middle_pane = middle
+        bottom = self._visible_paned_window(pane, orient=tk.HORIZONTAL)
+        self._results_bottom_pane = bottom
         top.bind("<Configure>", lambda _e: self._balance_results_trace_panes(), add="+")
         middle.bind("<Configure>", lambda _e: self._balance_results_trace_panes(), add="+")
-        bottom = ttk.PanedWindow(pane, orient=tk.HORIZONTAL)
-        pane.add(top, weight=1)
-        pane.add(middle, weight=1)
-        pane.add(bottom, weight=1)
+        bottom.bind("<Configure>", lambda _e: self._balance_results_trace_panes(), add="+")
+        pane.add(top, minsize=160, stretch="always")
+        pane.add(middle, minsize=180, stretch="always")
+        pane.add(bottom, minsize=120, stretch="always")
 
         score_box = ttk.LabelFrame(top, text="Per-Channel Scores", padding=6)
         best_box = ttk.LabelFrame(top, text="Raw SWV Traces for Selected Iteration", padding=6)
-        top.add(score_box, weight=1)
-        top.add(best_box, weight=1)
+        top.add(score_box, minsize=260, stretch="always")
+        top.add(best_box, minsize=260, stretch="always")
 
         score_cols = ("Q", "Peak uA", "Raw SNR", "SNR Score", "Shape", "Baseline", "Replicate", "Success")
         self._score_tree = ttk.Treeview(score_box, columns=score_cols, show="tree headings", height=10, selectmode="extended")
@@ -724,10 +837,10 @@ class BayesianOptimizationTab:
         self._raw_trace_frame = ttk.Frame(best_box)
         self._raw_trace_frame.pack(fill="both", expand=True)
 
-        history_host = ttk.Frame(middle)
+        history_host = ttk.LabelFrame(middle, text="History and Trend", padding=6)
         corrected_box = ttk.LabelFrame(middle, text="Smoothed Corrected Traces for Selected Iteration", padding=6)
-        middle.add(history_host, weight=1)
-        middle.add(corrected_box, weight=1)
+        middle.add(history_host, minsize=260, stretch="always")
+        middle.add(corrected_box, minsize=260, stretch="always")
 
         self._history_tabs = ttk.Notebook(history_host)
         self._history_tabs.pack(fill="both", expand=True)
@@ -780,7 +893,7 @@ class BayesianOptimizationTab:
         history_x.pack(fill="x")
 
         cols = ("Type", "File")
-        bottom.add(model_box, weight=1)
+        bottom.add(model_box, minsize=260, stretch="always")
         model_toolbar = ttk.Frame(model_box)
         model_toolbar.pack(fill="x", pady=(0, 4))
         ttk.Button(model_toolbar, text="Refresh", command=self._refresh_model_artifacts).pack(side="left", padx=2)
@@ -793,22 +906,72 @@ class BayesianOptimizationTab:
         self._model_tree.column("File", width=420)
         self._model_tree.pack(fill="both", expand=True)
 
-        record_box = ttk.LabelFrame(bottom, text="BO Session Records", padding=6)
-        bottom.add(record_box, weight=1)
-        record_toolbar = ttk.Frame(record_box)
-        record_toolbar.pack(fill="x", pady=(0, 4))
-        ttk.Label(record_toolbar, textvariable=self._record_dir_var, foreground=self.ACCENT).pack(side="left", padx=2)
-        ttk.Button(record_toolbar, text="Refresh", command=self._refresh_record_files).pack(side="right", padx=2)
-        cols = ("Folder", "File")
-        self._record_tree = ttk.Treeview(record_box, columns=cols, show="tree headings", height=8)
-        self._record_tree.heading("#0", text="#")
-        self._record_tree.heading("Folder", text="Folder")
-        self._record_tree.heading("File", text="File")
-        self._record_tree.column("#0", width=45, anchor="center")
-        self._record_tree.column("Folder", width=150)
-        self._record_tree.column("File", width=430)
-        self._record_tree.pack(fill="both", expand=True)
+        surrogate_box = ttk.LabelFrame(bottom, text="Surrogate View", padding=6)
+        bottom.add(surrogate_box, minsize=260, stretch="always")
+        self._build_surrogate_view(surrogate_box)
         parent.after_idle(self._balance_results_trace_panes)
+
+    def _build_surrogate_view(self, parent):
+        surrogate_toolbar = FlowFrame(parent)
+        surrogate_toolbar.pack(fill="x", pady=(0, 4))
+        surrogate_toolbar.add(ttk.Label(surrogate_toolbar, text="Artifact iter:"))
+        self._surrogate_iteration_combo = ttk.Combobox(
+            surrogate_toolbar,
+            textvariable=self._surrogate_iteration_var,
+            state="readonly",
+            width=8,
+        )
+        surrogate_toolbar.add(self._surrogate_iteration_combo)
+        self._surrogate_iteration_combo.bind("<<ComboboxSelected>>", lambda _e: self._refresh_surrogate_view())
+        surrogate_toolbar.add(ttk.Label(surrogate_toolbar, text="Value:"))
+        self._surrogate_value_combo = ttk.Combobox(
+            surrogate_toolbar,
+            textvariable=self._surrogate_value_var,
+            values=("predicted_mean_Q", "predicted_std_Q", "acquisition_value"),
+            state="readonly",
+            width=18,
+        )
+        surrogate_toolbar.add(self._surrogate_value_combo)
+        self._surrogate_value_combo.bind("<<ComboboxSelected>>", lambda _e: self._refresh_surrogate_view())
+        surrogate_toolbar.add(ttk.Label(surrogate_toolbar, text="View:"))
+        self._surrogate_view_combo = ttk.Combobox(
+            surrogate_toolbar,
+            textvariable=self._surrogate_view_var,
+            values=("1D slice", "2D map", "3D tensor", "Correlation falloff"),
+            state="readonly",
+            width=18,
+        )
+        surrogate_toolbar.add(self._surrogate_view_combo)
+        self._surrogate_view_combo.bind("<<ComboboxSelected>>", lambda _e: self._refresh_surrogate_view())
+        surrogate_toolbar.add(ttk.Label(surrogate_toolbar, text="X:"))
+        self._surrogate_x_combo = ttk.Combobox(surrogate_toolbar, textvariable=self._surrogate_x_var, state="readonly", width=18)
+        surrogate_toolbar.add(self._surrogate_x_combo)
+        self._surrogate_x_combo.bind("<<ComboboxSelected>>", lambda _e: self._refresh_surrogate_view())
+        surrogate_toolbar.add(ttk.Label(surrogate_toolbar, text="Y:"))
+        self._surrogate_y_combo = ttk.Combobox(surrogate_toolbar, textvariable=self._surrogate_y_var, state="readonly", width=18)
+        surrogate_toolbar.add(self._surrogate_y_combo)
+        self._surrogate_y_combo.bind("<<ComboboxSelected>>", lambda _e: self._refresh_surrogate_view())
+        surrogate_toolbar.add(ttk.Label(surrogate_toolbar, text="Z:"))
+        self._surrogate_z_combo = ttk.Combobox(surrogate_toolbar, textvariable=self._surrogate_z_var, state="readonly", width=18)
+        surrogate_toolbar.add(self._surrogate_z_combo)
+        self._surrogate_z_combo.bind("<<ComboboxSelected>>", lambda _e: self._refresh_surrogate_view())
+        surrogate_toolbar.add(ttk.Label(surrogate_toolbar, text="Color min:"))
+        color_min_entry = ttk.Entry(surrogate_toolbar, textvariable=self._surrogate_color_min_var, width=8)
+        surrogate_toolbar.add(color_min_entry)
+        color_min_entry.bind("<Return>", lambda _e: self._refresh_surrogate_view())
+        surrogate_toolbar.add(ttk.Label(surrogate_toolbar, text="max:"))
+        color_max_entry = ttk.Entry(surrogate_toolbar, textvariable=self._surrogate_color_max_var, width=8)
+        surrogate_toolbar.add(color_max_entry)
+        color_max_entry.bind("<Return>", lambda _e: self._refresh_surrogate_view())
+        surrogate_toolbar.add(ttk.Button(surrogate_toolbar, text="Auto Color", command=self._clear_surrogate_color_range))
+        surrogate_toolbar.add(ttk.Button(surrogate_toolbar, text="Refresh", command=self._refresh_surrogate_view))
+        self._surrogate_plot_frame = ttk.Frame(parent)
+        self._surrogate_plot_frame.pack(fill="both", expand=True)
+
+    def _clear_surrogate_color_range(self):
+        self._surrogate_color_min_var.set("")
+        self._surrogate_color_max_var.set("")
+        self._refresh_surrogate_view()
 
     # Config and path actions
     def _browse_config(self):
@@ -917,6 +1080,12 @@ class BayesianOptimizationTab:
         self._candidate_pool_var.set(str(acquisition.get("candidate_pool_size", 600)))
         self._local_pool_var.set(str(acquisition.get("local_candidate_pool_size", 120)))
         self._initial_point_mode_var.set(str(acquisition.get("initial_point_mode", "specific")))
+        length_scales = dict(acquisition.get("gp_falloff_fractions") or acquisition.get("gp_length_scales") or {})
+        if not length_scales:
+            length_scales = {name: 0.2 for name in PARAMETER_ORDER}
+        for name, var in self._gp_length_scale_vars.items():
+            var.set(str(length_scales.get(name, 0.2)))
+        self._refresh_gp_falloff_summary()
 
     def _sync_algorithm_config(self, show_error=True):
         if self._config is None:
@@ -929,9 +1098,97 @@ class BayesianOptimizationTab:
             acquisition["local_candidate_pool_size"] = max(0, int(self._local_pool_var.get() or 120))
             mode = str(self._initial_point_mode_var.get() or "specific").strip().lower()
             acquisition["initial_point_mode"] = "random" if mode == "random" else "specific"
+            falloff_fractions = self._gp_length_scales_from_vars()
+            acquisition["gp_falloff_fractions"] = falloff_fractions
+            acquisition["gp_length_scales"] = falloff_fractions
+            self._refresh_gp_falloff_summary()
         except Exception as exc:
             if show_error:
                 messagebox.showerror("Optimizer Behavior", str(exc))
+
+    def _gp_length_scales_from_vars(self):
+        raw = {name: (var.get() or "").strip() for name, var in self._gp_length_scale_vars.items()}
+        filled = {name: text for name, text in raw.items() if text}
+        if not filled:
+            return {}
+        missing = [name for name in PARAMETER_ORDER if not raw.get(name)]
+        if missing:
+            raise ValueError(
+                "Fill every GP falloff fraction, or clear every field to let the GP learn them. "
+                f"Missing: {', '.join(missing)}"
+            )
+        parsed = {}
+        for name, text in raw.items():
+            value = float(text)
+            if value <= 0:
+                raise ValueError(f"{name} GP falloff fraction must be > 0")
+            parsed[name] = value
+        return parsed
+
+    def _edit_gp_length_scales(self):
+        win = tk.Toplevel(self._frame)
+        win.title("GP Correlation Falloff")
+        win.transient(self._frame.winfo_toplevel())
+        box = ttk.Frame(win, padding=12)
+        box.pack(fill="both", expand=True)
+        ttk.Label(
+            box,
+            text=(
+                "Set fixed GP correlation falloff as a fraction of each parameter's search range. "
+                "Example: 0.2 means about 20% of the search range, so a 500 Hz frequency range gives "
+                "roughly a 100 Hz falloff. Larger values make the GP smoother; smaller values make "
+                "correlation fall off faster. Clear all fields to let the GP learn them."
+            ),
+            foreground=self.ACCENT,
+            wraplength=560,
+            justify="left",
+        ).grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 8))
+        local_vars = {name: tk.StringVar(value=self._gp_length_scale_vars[name].get()) for name in PARAMETER_ORDER}
+        for row, name in enumerate(PARAMETER_ORDER, start=1):
+            ttk.Label(box, text=name.replace("_", " ").title() + ":").grid(row=row, column=0, sticky="w", pady=3)
+            ttk.Entry(box, textvariable=local_vars[name], width=12).grid(row=row, column=1, sticky="w", padx=(8, 4), pady=3)
+            ttk.Label(box, text="fraction of range; blank = learned", foreground="#666666").grid(row=row, column=2, sticky="w", pady=3)
+        buttons = ttk.Frame(box)
+        buttons.grid(row=len(PARAMETER_ORDER) + 1, column=0, columnspan=3, pady=(10, 0))
+
+        def clear_all():
+            for var in local_vars.values():
+                var.set("")
+
+        def save():
+            old_values = {name: var.get() for name, var in self._gp_length_scale_vars.items()}
+            try:
+                for name, var in local_vars.items():
+                    self._gp_length_scale_vars[name].set(var.get().strip())
+                if self._config is not None:
+                    self._sync_algorithm_config(show_error=False)
+                self._refresh_gp_falloff_summary()
+                win.destroy()
+            except Exception as exc:
+                for name, value in old_values.items():
+                    self._gp_length_scale_vars[name].set(value)
+                messagebox.showerror("GP Correlation Falloff", str(exc), parent=win)
+
+        ttk.Button(buttons, text="Clear All", command=clear_all).pack(side="left", padx=4)
+        ttk.Button(buttons, text="Save", command=save).pack(side="left", padx=4)
+        ttk.Button(buttons, text="Cancel", command=win.destroy).pack(side="left", padx=4)
+        win.grab_set()
+        win.focus_force()
+
+    def _refresh_gp_falloff_summary(self):
+        if not hasattr(self, "_gp_falloff_summary_var"):
+            return
+        values = {name: (var.get() or "").strip() for name, var in self._gp_length_scale_vars.items()}
+        filled = {name: value for name, value in values.items() if value}
+        if not filled:
+            self._gp_falloff_summary_var.set("GP falloff: learned by GP")
+            return
+        missing = [name for name in PARAMETER_ORDER if not values.get(name)]
+        if missing:
+            self._gp_falloff_summary_var.set(f"GP falloff: incomplete fixed values; missing {', '.join(missing)}")
+            return
+        summary = ", ".join(f"{name}={value}" for name, value in filled.items())
+        self._gp_falloff_summary_var.set(f"GP falloff: fixed fractions of search range ({summary})")
 
     @staticmethod
     def _q_reference_text():
@@ -1089,6 +1346,7 @@ class BayesianOptimizationTab:
             self._render_best()
             self._refresh_model_artifacts()
             self._refresh_record_files()
+            self._refresh_surrogate_view()
             self._tabs.select(1)
         except Exception as exc:
             messagebox.showerror("Start BO Session", str(exc))
@@ -1126,6 +1384,7 @@ class BayesianOptimizationTab:
             self._refresh_model_artifacts()
             self._refresh_record_files()
             self._select_latest_history_iteration()
+            self._refresh_surrogate_view()
             self._tabs.select(3)
             self._status_var.set(
                 f"Loaded BO session: {loaded.session_id} "
@@ -1461,14 +1720,43 @@ class BayesianOptimizationTab:
             self._sync_algorithm_config(show_error=False)
             self._sync_scoring_config(show_error=False)
             sim_cfg = self._engine_sim_config()
-            output_root = Path("optimizer") / "bo_simulations"
+            session_mgr = getattr(self._session, "session_manager", None)
+            exp_path = session_mgr.require_experiment() if session_mgr is not None else None
+            if exp_path is None:
+                return
+            output_root = Path(exp_path)
+            analysis_dir = output_root / "bo_analysis"
+            self._analysis_dir_var.set(str(analysis_dir))
+            self._engine_progress_var.set(0.0)
+            self._engine_progress_text_var.set("Starting...")
+            self._engine_status_var.set("Running optimizer simulation...")
+            self._frame.update_idletasks()
+
+            def progress(done, total, message):
+                total = max(1, int(total))
+                self._engine_progress_var.set(100.0 * float(done) / float(total))
+                self._engine_progress_text_var.set(f"{int(done)}/{int(total)}")
+                self._engine_status_var.set(message)
+                self._frame.update_idletasks()
+
             result = run_optimizer_simulation(
                 self._config,
                 sim_cfg,
                 output_root=output_root,
                 iterations=sim_cfg["iterations"],
+                analysis_output_dir=analysis_dir,
+                progress_callback=progress,
             )
             self._simulation_result = result
+            self._bo_session = result.get("session")
+            if self._bo_session is not None:
+                self._record_dir_var.set(f"Record folder: {self._bo_session.record_dir}")
+                self._refresh_history()
+                self._render_best()
+                self._refresh_model_artifacts()
+                self._refresh_record_files()
+                self._select_latest_history_iteration()
+                self._refresh_surrogate_view()
             self._engine_selected_index = max(0, len(result.get("rows", [])) - 1)
             self._engine_refresh_results()
             self._engine_refresh_landscape_inspector()
@@ -1477,13 +1765,17 @@ class BayesianOptimizationTab:
             self._engine_go_page(2)
             best = min((row for row in result["rows"]), key=lambda r: r.get("distance", 1.0), default=None)
             if best:
+                self._engine_progress_var.set(100.0)
+                self._engine_progress_text_var.set(f"{len(result['rows'])}/{sim_cfg['iterations']}")
                 self._engine_status_var.set(
                     f"Completed {len(result['rows'])} simulated BO iteration(s). "
                     f"Closest distance={best['distance']:.3f}, computed Q={best['Q_run']:.3f}, true Q={best['true_Q']:.3f}."
                 )
             else:
+                self._engine_progress_text_var.set("")
                 self._engine_status_var.set("Simulation completed without optimizer rows.")
         except Exception as exc:
+            self._engine_progress_text_var.set("Error")
             messagebox.showerror("Simulation Engine", str(exc))
 
     def _engine_refresh_results(self):
@@ -2596,6 +2888,7 @@ class BayesianOptimizationTab:
             self._render_raw_traces(None)
             self._render_corrected_traces(None)
             self._refresh_analysis_q_trend()
+            self._refresh_surrogate_view()
             return
         for obs in self._bo_session.observations:
             q = obs.get("quality", {})
@@ -2631,6 +2924,7 @@ class BayesianOptimizationTab:
             self._render_raw_traces(None)
             self._render_corrected_traces(None)
         self._refresh_analysis_q_trend()
+        self._refresh_surrogate_controls()
 
     def _select_history_iteration(self, iteration=None):
         if self._bo_session is None:
@@ -2648,6 +2942,14 @@ class BayesianOptimizationTab:
         self._render_scores(obs)
         self._render_raw_traces(obs)
         self._render_corrected_traces(obs)
+        artifact_iterations = self._surrogate_artifact_iterations()
+        try:
+            selected_iteration = int(obs.get("iteration"))
+        except Exception:
+            selected_iteration = None
+        if selected_iteration in artifact_iterations:
+            self._surrogate_iteration_var.set(str(selected_iteration))
+            self._refresh_surrogate_view()
         self._status_var.set(
             f"Viewing BO iteration {obs.get('iteration')}: Q_run={float(obs.get('Q_run', 0.0)):.3f}"
         )
@@ -2972,13 +3274,14 @@ class BayesianOptimizationTab:
         channel_suffix = ""
         if selected_channels:
             channel_suffix = f" | Ch {', '.join(sorted(selected_channels, key=self._channel_sort_key))}"
-        ax.set_title(f"Iteration {observation.get('iteration')} smoothed corrected traces{channel_suffix}")
-        ax.set_xlabel("Voltage (V)")
-        ax.set_ylabel("Corrected current (uA)")
+        ax.set_title(f"Iteration {observation.get('iteration')} smoothed corrected traces{channel_suffix}", fontsize=9, pad=8, wrap=True)
+        ax.set_xlabel("Voltage (V)", fontsize=9, labelpad=4)
+        ax.set_ylabel("Corrected current (uA)", fontsize=9, labelpad=4)
+        ax.tick_params(labelsize=8)
         ax.grid(alpha=0.25)
         if len(rows) <= 16:
             ax.legend(loc="best", fontsize=7)
-        fig.tight_layout()
+        self._fit_embedded_figure(fig, top=0.84, bottom=0.22, left=0.17, right=0.96)
         canvas = FigureCanvasTkAgg(fig, master=self._corrected_trace_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
@@ -3359,6 +3662,7 @@ class BayesianOptimizationTab:
                 if path.is_file():
                     self._model_tree.insert("", "end", text=str(idx), values=(kind, path.name))
                     idx += 1
+        self._refresh_surrogate_controls()
 
     def _refresh_record_files(self):
         if not hasattr(self, "_record_tree"):
@@ -3374,6 +3678,641 @@ class BayesianOptimizationTab:
                 folder = str(rel.parent) if str(rel.parent) != "." else "."
                 self._record_tree.insert("", "end", text=str(idx), values=(folder, rel.name))
                 idx += 1
+
+    def _refresh_surrogate_controls(self):
+        if not hasattr(self, "_surrogate_iteration_combo"):
+            return
+        iterations = self._surrogate_artifact_iterations()
+        values = [str(iteration) for iteration in iterations]
+        self._surrogate_iteration_combo.configure(values=values)
+        dims = self._surrogate_dimension_options()
+        for combo in (
+            getattr(self, "_surrogate_x_combo", None),
+            getattr(self, "_surrogate_y_combo", None),
+            getattr(self, "_surrogate_z_combo", None),
+        ):
+            if combo is not None:
+                combo.configure(values=dims)
+        if dims:
+            if self._surrogate_x_var.get() not in dims:
+                self._surrogate_x_var.set(dims[0])
+            if self._surrogate_y_var.get() not in dims:
+                self._surrogate_y_var.set(dims[1] if len(dims) > 1 else dims[0])
+            if self._surrogate_z_var.get() not in dims:
+                self._surrogate_z_var.set(dims[2] if len(dims) > 2 else dims[-1])
+        else:
+            self._surrogate_x_var.set("")
+            self._surrogate_y_var.set("")
+            self._surrogate_z_var.set("")
+        if values and self._surrogate_iteration_var.get() not in values:
+            selected = None
+            obs = self._selected_history_observation or {}
+            try:
+                selected = int(obs.get("iteration"))
+            except Exception:
+                selected = None
+            self._surrogate_iteration_var.set(str(selected) if selected in iterations else values[-1])
+        elif not values:
+            self._surrogate_iteration_var.set("")
+
+    def _surrogate_artifact_iterations(self):
+        if self._bo_session is None:
+            return []
+        iterations = set()
+        for folder in (self._bo_session.surrogate_dir, self._bo_session.acquisition_dir):
+            for path in Path(folder).glob("iter_*_*values.csv"):
+                match = re.search(r"iter_(\d+)_", path.name)
+                if match:
+                    iterations.add(int(match.group(1)))
+            for path in Path(folder).glob("iter_*_candidate_predictions.csv"):
+                match = re.search(r"iter_(\d+)_", path.name)
+                if match:
+                    iterations.add(int(match.group(1)))
+        return sorted(iterations)
+
+    def _surrogate_dimension_options(self):
+        cfg = self._bo_session.config if self._bo_session is not None else self._config
+        dims = []
+        if cfg:
+            try:
+                dims = list(active_parameters(cfg))
+            except Exception:
+                dims = []
+            if not dims:
+                params = dict((cfg or {}).get("parameters") or {})
+                dims = [
+                    name for name in PARAMETER_ORDER
+                    if str((params.get(name) or {}).get("mode", "")).lower() == "active"
+                ]
+        if not dims:
+            rows = self._read_surrogate_rows()
+            if rows:
+                dims = [name for name in PARAMETER_ORDER if name in rows[0]]
+        return [name for name in PARAMETER_ORDER if name in dims]
+
+    def _surrogate_artifact_path(self, iteration=None):
+        if self._bo_session is None:
+            return None
+        if iteration is None:
+            raw = self._surrogate_iteration_var.get()
+            if not raw:
+                return None
+            iteration = int(raw)
+        candidates = (
+            self._bo_session.surrogate_dir / f"iter_{int(iteration):03d}_candidate_predictions.csv",
+            self._bo_session.acquisition_dir / f"iter_{int(iteration):03d}_acquisition_values.csv",
+        )
+        for path in candidates:
+            if path.exists():
+                return path
+        return None
+
+    def _read_surrogate_rows(self, iteration=None):
+        path = self._surrogate_artifact_path(iteration)
+        if path is None:
+            return []
+        rows = []
+        with open(path, "r", newline="", encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                parsed = {}
+                for key, value in row.items():
+                    if value in (None, ""):
+                        parsed[key] = None
+                        continue
+                    text = str(value)
+                    if text.lower() in ("true", "false"):
+                        parsed[key] = text.lower() == "true"
+                        continue
+                    try:
+                        parsed[key] = float(text)
+                    except ValueError:
+                        parsed[key] = value
+                rows.append(parsed)
+        return rows
+
+    def _refresh_surrogate_view(self):
+        if not hasattr(self, "_surrogate_plot_frame"):
+            return
+        self._refresh_surrogate_controls()
+        for child in self._surrogate_plot_frame.winfo_children():
+            child.destroy()
+        rows = self._read_surrogate_rows()
+        if not rows:
+            ttk.Label(
+                self._surrogate_plot_frame,
+                text="No surrogate/acquisition CSV artifacts found for the selected iteration.",
+            ).pack(fill="both", expand=True)
+            return
+        value_key = self._surrogate_value_var.get() or "predicted_mean_Q"
+        x_name = self._surrogate_x_var.get()
+        y_name = self._surrogate_y_var.get()
+        z_name = self._surrogate_z_var.get()
+        if not x_name or value_key not in rows[0]:
+            ttk.Label(self._surrogate_plot_frame, text="Choose a valid value and X parameter.").pack(fill="both", expand=True)
+            return
+        try:
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+            from matplotlib.figure import Figure
+        except Exception as exc:
+            ttk.Label(self._surrogate_plot_frame, text=f"Matplotlib plot unavailable: {exc}").pack(fill="both", expand=True)
+            return
+        fig = Figure(figsize=(7.2, 4.0), dpi=100)
+        view = self._surrogate_view_var.get() or "1D slice"
+        color_limits = self._surrogate_manual_color_range()
+        if view == "Correlation falloff":
+            self._plot_surrogate_correlation_falloff(fig, rows, x_name)
+        elif view == "3D tensor" and y_name and z_name:
+            self._plot_surrogate_3d(fig, rows, value_key, x_name, y_name, z_name, color_limits)
+        elif view == "2D map" and y_name:
+            self._plot_surrogate_2d(fig, rows, value_key, x_name, y_name, color_limits)
+        else:
+            self._plot_surrogate_1d(fig, rows, value_key, x_name)
+        if view == "3D tensor":
+            self._fit_embedded_figure(fig, top=0.84, bottom=0.14, left=0.06, right=0.86)
+        else:
+            self._fit_embedded_figure(fig, top=0.84, bottom=0.20, left=0.16, right=0.93)
+        canvas = FigureCanvasTkAgg(fig, master=self._surrogate_plot_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+        self._surrogate_plot_canvas = canvas
+
+    def _surrogate_gp_model_path(self, iteration=None):
+        if self._bo_session is None:
+            return None
+        if iteration is None:
+            raw = self._surrogate_iteration_var.get()
+            if not raw:
+                return None
+            iteration = int(raw)
+        path = self._bo_session.surrogate_dir / f"iter_{int(iteration):03d}_gp_model.pkl"
+        return path if path.exists() else None
+
+    def _load_surrogate_gp_model(self):
+        path = self._surrogate_gp_model_path()
+        if path is None:
+            return None
+        try:
+            with open(path, "rb") as fh:
+                return pickle.load(fh)
+        except Exception:
+            return None
+
+    def _extract_matern_kernel(self, kernel):
+        if kernel is None:
+            return None
+        if kernel.__class__.__name__ == "Matern":
+            return kernel
+        for attr in ("k1", "k2"):
+            child = getattr(kernel, attr, None)
+            found = self._extract_matern_kernel(child)
+            if found is not None:
+                return found
+        return None
+
+    def _extract_white_noise_level(self, kernel):
+        if kernel is None:
+            return None
+        if kernel.__class__.__name__ == "WhiteKernel":
+            try:
+                return float(kernel.noise_level)
+            except Exception:
+                return None
+        for attr in ("k1", "k2"):
+            child = getattr(kernel, attr, None)
+            found = self._extract_white_noise_level(child)
+            if found is not None:
+                return found
+        return None
+
+    def _gp_length_scale_by_parameter(self, gp):
+        matern = self._extract_matern_kernel(getattr(gp, "kernel_", None))
+        if matern is None:
+            return {}, None
+        raw = getattr(matern, "length_scale", None)
+        try:
+            import numpy as np
+            values = np.asarray(raw, dtype=float).ravel().tolist()
+        except Exception:
+            try:
+                values = [float(raw)]
+            except Exception:
+                return {}, matern
+        if len(values) == 1:
+            values = values * len(OPTIMIZER_ORDER)
+        order = list(OPTIMIZER_ORDER)
+        if len(values) != len(order):
+            try:
+                active = active_parameters(self._bo_session.config if self._bo_session is not None else self._config)
+            except Exception:
+                active = []
+            if len(values) == len(active):
+                order = active
+        return {
+            name: values[idx]
+            for idx, name in enumerate(order)
+            if idx < len(values)
+        }, matern
+
+    def _plot_surrogate_correlation_falloff(self, fig, rows, x_name):
+        ax = fig.add_subplot(111)
+        gp = self._load_surrogate_gp_model()
+        if gp is None:
+            ax.text(
+                0.5,
+                0.5,
+                "No saved GP model for this artifact iteration.\n"
+                "Correlation falloff is available only when iter_###_gp_model.pkl exists.",
+                ha="center",
+                va="center",
+            )
+            ax.set_axis_off()
+            return
+        length_scales, matern = self._gp_length_scale_by_parameter(gp)
+        length_scale = length_scales.get(x_name)
+        if length_scale is None or length_scale <= 0:
+            ax.text(0.5, 0.5, f"No GP length scale found for {x_name}.", ha="center", va="center")
+            ax.set_axis_off()
+            return
+        center = self._selected_surrogate_observation() or self._selected_history_observation
+        if center is None and self._bo_session is not None:
+            center = self._bo_session.best_observation()
+        center_params = dict((center or {}).get("params") or {})
+        if x_name not in center_params and rows:
+            values = [float(row[x_name]) for row in rows if row.get(x_name) is not None]
+            if values:
+                center_params[x_name] = sum(values) / len(values)
+        if not center_params or x_name not in center_params:
+            ax.text(0.5, 0.5, "No center point available for falloff plot.", ha="center", va="center")
+            ax.set_axis_off()
+            return
+        base = dict(center_params)
+        cfg = self._bo_session.config if self._bo_session is not None else self._config
+        for name in PARAMETER_ORDER:
+            if name not in base:
+                try:
+                    base[name] = float((cfg or {}).get("initial_parameters", {}).get(name, 0.0))
+                except Exception:
+                    base[name] = 0.0
+        bounds = self._parameter_plot_bounds(cfg, x_name)
+        if bounds is None:
+            ax.text(0.5, 0.5, f"No valid bounds found for {x_name}.", ha="center", va="center")
+            ax.set_axis_off()
+            return
+        x_min, x_max, is_log = bounds
+        base_encoded = encode_candidate(base, cfg)
+        x_index = OPTIMIZER_ORDER.index(x_name)
+        center_encoded = max(0.0, min(1.0, float(base_encoded[x_index])))
+        full_half_width = 0.5
+        local_half_width = max(0.01, min(full_half_width, 4.0 * float(length_scale)))
+        zoomed = local_half_width < 0.20
+        if zoomed:
+            enc_min = max(0.0, center_encoded - local_half_width)
+            enc_max = min(1.0, center_encoded + local_half_width)
+            if enc_max <= enc_min:
+                enc_min, enc_max = 0.0, 1.0
+        else:
+            enc_min, enc_max = 0.0, 1.0
+        sample_count = 240
+        encoded_values = [enc_min + (enc_max - enc_min) * idx / (sample_count - 1) for idx in range(sample_count)]
+        x_values = [self._raw_from_encoded_parameter(value, x_min, x_max, is_log) for value in encoded_values]
+        correlations = []
+        for value, encoded_value in zip(x_values, encoded_values):
+            candidate = dict(base)
+            candidate[x_name] = value
+            try:
+                distance = abs(float(encoded_value) - center_encoded) / max(float(length_scale), 1e-12)
+            except Exception:
+                distance = 0.0
+            correlations.append(self._matern_correlation(distance, getattr(matern, "nu", 2.5)))
+        ax.plot(x_values, correlations, color=self.ACCENT_DARK, linewidth=2.0)
+        ax.axvline(float(base[x_name]), color="#d67b32", linestyle="--", linewidth=1.4, label="center")
+        for frac, label in ((0.5, "50%"), (0.1, "10%")):
+            crossing = self._falloff_crossing(x_values, correlations, frac, float(base[x_name]))
+            if crossing is not None:
+                ax.axvline(crossing, color="#5a6b84", linestyle=":", linewidth=1.0)
+                ax.text(crossing, frac, label, fontsize=8, ha="left", va="bottom")
+        noise = self._extract_white_noise_level(getattr(gp, "kernel_", None))
+        noise_text = f", noise {noise:.3g}" if noise is not None else ""
+        zoom_text = " | local zoom" if zoomed else ""
+        ax.set_title(
+            f"GP correlation falloff | {x_name} | length scale {length_scale:.3g}{noise_text}{zoom_text}",
+            fontsize=9,
+            pad=8,
+            wrap=True,
+        )
+        ax.set_xlabel(x_name, fontsize=9, labelpad=4)
+        ax.set_ylabel("Correlation to center", fontsize=9, labelpad=4)
+        if is_log and x_min > 0:
+            ax.set_xscale("log")
+        ax.set_ylim(-0.02, 1.02)
+        ax.grid(alpha=0.25)
+        ax.legend(loc="best", fontsize=8)
+        ax.tick_params(labelsize=8)
+
+    def _parameter_plot_bounds(self, config, name):
+        try:
+            cfg = normalize_bo_config(config or {})
+            p_cfg = dict(cfg["parameters"].get(name) or {})
+            lo = float(p_cfg.get("min"))
+            hi = float(p_cfg.get("max"))
+            is_log = str(p_cfg.get("scale", "")).lower() in ("log", "log10")
+        except Exception:
+            values = []
+            for row in self._read_surrogate_rows():
+                try:
+                    values.append(float(row.get(name)))
+                except Exception:
+                    pass
+            if not values:
+                return None
+            lo, hi = min(values), max(values)
+            is_log = False
+        if hi < lo:
+            lo, hi = hi, lo
+        if hi <= lo:
+            pad = max(abs(lo) * 0.1, 1.0)
+            lo -= pad
+            hi += pad
+        if is_log:
+            lo = max(lo, 1e-12)
+            hi = max(hi, lo * 1.0001)
+        return lo, hi, is_log
+
+    @staticmethod
+    def _raw_from_encoded_parameter(encoded_value, lo, hi, is_log):
+        encoded_value = max(0.0, min(1.0, float(encoded_value)))
+        if is_log:
+            log_lo = math.log10(max(float(lo), 1e-12))
+            log_hi = math.log10(max(float(hi), 1e-12))
+            return 10 ** (log_lo + encoded_value * (log_hi - log_lo))
+        return float(lo) + encoded_value * (float(hi) - float(lo))
+
+    @staticmethod
+    def _matern_correlation(distance, nu):
+        d = max(0.0, float(distance))
+        if abs(float(nu) - 0.5) < 1e-9:
+            return math.exp(-d)
+        if abs(float(nu) - 1.5) < 1e-9:
+            r = math.sqrt(3.0) * d
+            return (1.0 + r) * math.exp(-r)
+        if abs(float(nu) - 2.5) < 1e-9:
+            r = math.sqrt(5.0) * d
+            return (1.0 + r + (r * r) / 3.0) * math.exp(-r)
+        return math.exp(-0.5 * d * d)
+
+    @staticmethod
+    def _falloff_crossing(x_values, correlations, threshold, center):
+        candidates = []
+        for idx in range(1, len(x_values)):
+            y0 = correlations[idx - 1]
+            y1 = correlations[idx]
+            if (y0 - threshold) == 0:
+                candidates.append(x_values[idx - 1])
+            elif (y0 - threshold) * (y1 - threshold) < 0:
+                t = (threshold - y0) / max(y1 - y0, 1e-12)
+                candidates.append(x_values[idx - 1] + t * (x_values[idx] - x_values[idx - 1]))
+        if not candidates:
+            return None
+        return min(candidates, key=lambda value: abs(value - center))
+
+    def _surrogate_manual_color_range(self):
+        min_text = (self._surrogate_color_min_var.get() or "").strip()
+        max_text = (self._surrogate_color_max_var.get() or "").strip()
+        if not min_text and not max_text:
+            return None
+        try:
+            vmin = float(min_text)
+            vmax = float(max_text)
+        except Exception:
+            self._status_var.set("Surrogate color range ignored: enter numeric min and max, or clear both for auto color.")
+            return None
+        if vmax <= vmin:
+            self._status_var.set("Surrogate color range ignored: max must be greater than min.")
+            return None
+        return vmin, vmax
+
+    def _plot_surrogate_1d(self, fig, rows, value_key, x_name):
+        ax = fig.add_subplot(111)
+        all_rows = [row for row in rows if row.get(x_name) is not None and row.get(value_key) is not None]
+        if not all_rows:
+            ax.text(0.5, 0.5, "No plottable surrogate rows", ha="center", va="center")
+            ax.set_axis_off()
+            return
+        x_all = [float(row[x_name]) for row in all_rows]
+        y_all = [float(row[value_key]) for row in all_rows]
+        ax.scatter(x_all, y_all, color=self.ACCENT_DARK, s=12, alpha=0.35, label="all candidate predictions")
+        grouped = {}
+        for x_value, y_value in zip(x_all, y_all):
+            grouped.setdefault(x_value, []).append(y_value)
+        if 1 < len(grouped) < len(x_all):
+            trend_x = []
+            trend_y = []
+            for x_value in sorted(grouped):
+                values = sorted(grouped[x_value])
+                mid = len(values) // 2
+                median = values[mid] if len(values) % 2 else (values[mid - 1] + values[mid]) / 2.0
+                trend_x.append(x_value)
+                trend_y.append(median)
+            ax.plot(trend_x, trend_y, color="#d67b32", linewidth=1.4, alpha=0.85, label="median at X")
+        self._overlay_observed_points(ax, x_name, None)
+        ax.set_xlabel(x_name, fontsize=9, labelpad=4)
+        ax.set_ylabel(value_key, fontsize=9, labelpad=4)
+        ax.set_title(self._surrogate_plot_title(value_key, "1D all-candidate view"), fontsize=9, pad=8, wrap=True)
+        ax.tick_params(labelsize=8)
+        ax.grid(alpha=0.25)
+        ax.legend(loc="best", fontsize=8)
+
+    def _plot_surrogate_2d(self, fig, rows, value_key, x_name, y_name, color_limits=None):
+        ax = fig.add_subplot(111)
+        points = [
+            row for row in rows
+            if row.get(x_name) is not None and row.get(y_name) is not None and row.get(value_key) is not None
+        ]
+        if not points:
+            ax.text(0.5, 0.5, "No plottable surrogate rows", ha="center", va="center")
+            ax.set_axis_off()
+            return
+        x = [float(row[x_name]) for row in points]
+        y = [float(row[y_name]) for row in points]
+        z = [float(row[value_key]) for row in points]
+        color_kwargs = {}
+        if color_limits is not None:
+            color_kwargs = {"vmin": color_limits[0], "vmax": color_limits[1]}
+        if len(set(x)) >= 2 and len(set(y)) >= 2 and len(points) >= 4:
+            try:
+                if color_limits is not None:
+                    import numpy as np
+                    levels = np.linspace(color_limits[0], color_limits[1], 15)
+                else:
+                    levels = 14
+                mesh = ax.tricontourf(x, y, z, levels=levels, cmap="viridis", **color_kwargs)
+                ax.tricontour(x, y, z, levels=levels, colors="white", linewidths=0.35, alpha=0.55)
+            except Exception:
+                mesh = ax.scatter(x, y, c=z, cmap="viridis", s=14, alpha=0.8, **color_kwargs)
+        else:
+            mesh = ax.scatter(x, y, c=z, cmap="viridis", s=14, alpha=0.8, **color_kwargs)
+        cbar = fig.colorbar(mesh, ax=ax, label=value_key)
+        cbar.ax.tick_params(labelsize=8)
+        cbar.set_label(value_key, fontsize=8)
+        self._overlay_observed_points(ax, x_name, y_name)
+        ax.set_xlabel(x_name, fontsize=9, labelpad=4)
+        ax.set_ylabel(y_name, fontsize=9, labelpad=4)
+        ax.set_title(self._surrogate_plot_title(value_key, "2D surrogate map"), fontsize=9, pad=8, wrap=True)
+        ax.tick_params(labelsize=8)
+        ax.grid(alpha=0.2)
+
+    def _plot_surrogate_3d(self, fig, rows, value_key, x_name, y_name, z_name, color_limits=None):
+        ax = fig.add_subplot(111, projection="3d")
+        points = [
+            row for row in rows
+            if row.get(x_name) is not None
+            and row.get(y_name) is not None
+            and row.get(z_name) is not None
+            and row.get(value_key) is not None
+        ]
+        if not points:
+            ax.text2D(0.5, 0.5, "No plottable surrogate rows", ha="center", va="center", transform=ax.transAxes)
+            return
+        scatter = ax.scatter(
+            [float(row[x_name]) for row in points],
+            [float(row[y_name]) for row in points],
+            [float(row[z_name]) for row in points],
+            c=[float(row[value_key]) for row in points],
+            cmap="viridis",
+            s=7,
+            alpha=0.35,
+            vmin=color_limits[0] if color_limits is not None else None,
+            vmax=color_limits[1] if color_limits is not None else None,
+        )
+        observations = self._surrogate_observations_so_far()
+        path = [
+            obs for obs in observations
+            if all((obs.get("params") or {}).get(name) is not None for name in (x_name, y_name, z_name))
+        ]
+        if path:
+            xs = [float(obs["params"][x_name]) for obs in path]
+            ys = [float(obs["params"][y_name]) for obs in path]
+            zs = [float(obs["params"][z_name]) for obs in path]
+            ax.plot(xs, ys, zs, color="#d67b32", linewidth=1.4, label="observed path")
+            ax.scatter(xs, ys, zs, color="#d67b32", s=18, depthshade=False)
+            selected = self._selected_surrogate_observation()
+            if selected is not None and all((selected.get("params") or {}).get(name) is not None for name in (x_name, y_name, z_name)):
+                params = selected["params"]
+                ax.scatter(
+                    [float(params[x_name])],
+                    [float(params[y_name])],
+                    [float(params[z_name])],
+                    color="#ffd166",
+                    edgecolors="black",
+                    linewidths=0.8,
+                    s=90,
+                    depthshade=False,
+                )
+        cbar = fig.colorbar(scatter, ax=ax, label=value_key, shrink=0.75, pad=0.08)
+        cbar.ax.tick_params(labelsize=8)
+        cbar.set_label(value_key, fontsize=8)
+        ax.set_xlabel(x_name, fontsize=8, labelpad=3)
+        ax.set_ylabel(y_name, fontsize=8, labelpad=3)
+        ax.set_zlabel(z_name, fontsize=8, labelpad=3)
+        ax.set_title(self._surrogate_plot_title(value_key, "3D surrogate tensor"), fontsize=9, pad=8, wrap=True)
+        ax.tick_params(labelsize=7)
+        if path:
+            ax.legend(loc="best", fontsize=8)
+
+    def _surrogate_iteration_limit(self):
+        try:
+            return int(self._surrogate_iteration_var.get())
+        except Exception:
+            return None
+
+    def _surrogate_observations_so_far(self):
+        if self._bo_session is None:
+            return []
+        limit = self._surrogate_iteration_limit()
+        observations = []
+        for obs in self._bo_session.observations:
+            try:
+                iteration = int(obs.get("iteration"))
+            except Exception:
+                continue
+            if limit is None or iteration <= limit:
+                observations.append(obs)
+        return observations
+
+    def _selected_surrogate_observation(self):
+        selected = self._selected_history_observation
+        if selected is None:
+            return None
+        limit = self._surrogate_iteration_limit()
+        try:
+            iteration = int(selected.get("iteration"))
+        except Exception:
+            return None
+        if limit is not None and iteration > limit:
+            return None
+        return selected
+
+    def _overlay_observed_points(self, ax, x_name, y_name=None):
+        observations = self._surrogate_observations_so_far()
+        points = []
+        for obs in observations:
+            params = obs.get("params") or {}
+            if params.get(x_name) is None:
+                continue
+            if y_name and params.get(y_name) is None:
+                continue
+            points.append(obs)
+        if not points:
+            return
+        if y_name:
+            xs = [float(obs["params"][x_name]) for obs in points]
+            ys = [float(obs["params"][y_name]) for obs in points]
+            ax.plot(xs, ys, color="#d67b32", linewidth=1.4, alpha=0.95, label="observed path")
+            ax.scatter(xs, ys, color="#d67b32", s=18, zorder=4)
+            selected = self._selected_surrogate_observation()
+            if selected is not None:
+                params = selected.get("params") or {}
+                if params.get(x_name) is not None and params.get(y_name) is not None:
+                    ax.scatter(
+                        [float(params[x_name])],
+                        [float(params[y_name])],
+                        color="#ffd166",
+                        edgecolors="black",
+                        linewidths=1.0,
+                        s=85,
+                        zorder=5,
+                        label="selected iteration",
+                    )
+        else:
+            xs = [float(obs["params"][x_name]) for obs in points]
+            ys = [float(obs.get("Q_run", 0.0)) for obs in points]
+            ax.scatter(xs, ys, color="#d67b32", s=24, zorder=4, label="observed Q_run")
+            selected = self._selected_surrogate_observation()
+            if selected is not None and (selected.get("params") or {}).get(x_name) is not None:
+                ax.scatter(
+                    [float(selected["params"][x_name])],
+                    [float(selected.get("Q_run", 0.0))],
+                    color="#ffd166",
+                    edgecolors="black",
+                    linewidths=1.0,
+                    s=85,
+                    zorder=5,
+                    label="selected iteration",
+                )
+
+    def _surrogate_plot_title(self, value_key, prefix):
+        iteration = self._surrogate_iteration_var.get() or "?"
+        backend = ""
+        if self._bo_session is not None:
+            metadata = self._bo_session.surrogate_dir / f"iter_{int(iteration):03d}_surrogate_metadata.json" if str(iteration).isdigit() else None
+            if metadata is not None and metadata.exists():
+                try:
+                    with open(metadata, "r", encoding="utf-8") as fh:
+                        backend = str((json.load(fh) or {}).get("backend") or "")
+                except Exception:
+                    backend = ""
+        suffix = f" ({backend})" if backend else ""
+        return f"{prefix} | {value_key} | iter {iteration}{suffix}"
 
     @staticmethod
     def _analysis_trend_metric_options():
