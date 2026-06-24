@@ -41,7 +41,9 @@ from core.bo_session import (
     validate_bo_config,
 )
 from core.bo_simulation import LANDSCAPE_TYPES, default_dimensions, run_optimizer_simulation
+from core.analysis import analyze_swv_arrays, partial_traces_for_failure_arrays
 from core.analysis_io import load_swv_csv
+from core.swv_method import EMSTAT_PICO_HIGH_SPEED_BA_RANGES, normalize_swv_ba_range_options, range_labels
 from gui.widgets import FlowFrame, ScrollableFrame
 
 
@@ -71,23 +73,32 @@ class BayesianOptimizationTab:
         self._config_path_var = tk.StringVar(value=str(BO_DEFAULT_CONFIG_PATH))
         self._analysis_dir_var = tk.StringVar(value=str(BO_ANALYSIS_OUTPUT_DIR))
         self._analysis_glob_var = tk.StringVar(value=str(BO_ANALYSIS_FILE_GLOB))
-        self._analysis_crop_min_var = tk.StringVar(value="-0.6")
-        self._analysis_crop_max_var = tk.StringVar(value="-0.1")
+        self._analysis_crop_min_var = tk.StringVar(value="-0.61")
+        self._analysis_crop_max_var = tk.StringVar(value="-0.30")
         self._analysis_smooth_window_var = tk.StringVar(value="15")
         self._analysis_smooth_polyorder_var = tk.StringVar(value="2")
         self._analysis_minima_window_var = tk.StringVar(value="0.30")
-        self._analysis_min_peak_height_var = tk.StringVar(value="")
-        self._analysis_min_start_voltage_var = tk.StringVar(value="-0.6")
+        self._analysis_min_peak_height_var = tk.StringVar(value="0.001")
+        self._analysis_peak_voltage_min_var = tk.StringVar(value="")
+        self._analysis_peak_voltage_max_var = tk.StringVar(value="")
+        self._analysis_min_start_voltage_var = tk.StringVar(value="-0.70")
         self._analysis_scan_windows_var = tk.StringVar(value="")
         self._analysis_use_prominent_var = tk.BooleanVar(value=False)
-        self._analysis_double_correction_var = tk.BooleanVar(value=True)
-        self._analysis_compute_skew_var = tk.BooleanVar(value=False)
-        self._analysis_compute_wavelet_energy_var = tk.BooleanVar(value=False)
+        self._analysis_require_minima_var = tk.BooleanVar(value=False)
+        self._analysis_double_correction_var = tk.BooleanVar(value=False)
+        self._analysis_compute_skew_var = tk.BooleanVar(value=True)
+        self._analysis_compute_wavelet_energy_var = tk.BooleanVar(value=True)
         self._analysis_wavelet_trace_var = tk.BooleanVar(value=False)
         self._analysis_wavelet_correction_var = tk.BooleanVar(value=False)
         self._channels_var = tk.StringVar(value="")
+        self._bo_bandwidth_var = tk.StringVar(value="4k")
+        self._bo_ba_range_mode_var = tk.StringVar(value="fixed")
+        self._bo_ba_fixed_range_var = tk.StringVar(value="100 nA")
+        self._bo_ba_auto_min_var = tk.StringVar(value="100 nA")
+        self._bo_ba_auto_max_var = tk.StringVar(value="100 nA")
         self._exploration_var = tk.DoubleVar(value=0.35)
         self._exploration_text_var = tk.StringVar(value="0.35")
+        self._gp_warmup_iterations_var = tk.StringVar(value="8")
         self._candidate_pool_var = tk.StringVar(value="600")
         self._local_pool_var = tk.StringVar(value="120")
         self._initial_point_mode_var = tk.StringVar(value="specific")
@@ -348,6 +359,80 @@ class BayesianOptimizationTab:
             justify="left",
         ).pack(fill="x")
 
+        method_box = ttk.LabelFrame(left, text="Method Settings", padding=8)
+        method_box.pack(fill="x", pady=(0, 8))
+        method_box.columnconfigure(1, weight=1)
+        ttk.Label(method_box, text="Bandwidth:").grid(row=0, column=0, sticky="w", pady=2)
+        bandwidth_combo = ttk.Combobox(
+            method_box,
+            textvariable=self._bo_bandwidth_var,
+            values=("4k", "8k"),
+            state="readonly",
+            width=10,
+        )
+        bandwidth_combo.grid(row=0, column=1, sticky="w", padx=4, pady=2)
+        bandwidth_combo.bind("<<ComboboxSelected>>", lambda _e: self._sync_method_options_config(show_error=False))
+
+        ttk.Label(method_box, text="BA range:").grid(row=1, column=0, sticky="w", pady=(6, 2))
+        range_mode_frame = ttk.Frame(method_box)
+        range_mode_frame.grid(row=1, column=1, sticky="w", padx=4, pady=(6, 2))
+        ttk.Radiobutton(
+            range_mode_frame,
+            text="Fixed",
+            variable=self._bo_ba_range_mode_var,
+            value="fixed",
+            command=self._sync_bo_ba_range_controls,
+        ).pack(side="left")
+        ttk.Radiobutton(
+            range_mode_frame,
+            text="Autorange",
+            variable=self._bo_ba_range_mode_var,
+            value="auto",
+            command=self._sync_bo_ba_range_controls,
+        ).pack(side="left", padx=(8, 0))
+
+        ba_labels = range_labels(EMSTAT_PICO_HIGH_SPEED_BA_RANGES)
+        ttk.Label(method_box, text="Fixed range:").grid(row=2, column=0, sticky="w", pady=2)
+        self._bo_ba_fixed_combo = ttk.Combobox(
+            method_box,
+            textvariable=self._bo_ba_fixed_range_var,
+            values=ba_labels,
+            state="readonly",
+            width=14,
+        )
+        self._bo_ba_fixed_combo.grid(row=2, column=1, sticky="w", padx=4, pady=2)
+        self._bo_ba_fixed_combo.bind("<<ComboboxSelected>>", lambda _e: self._sync_method_options_config(show_error=False))
+
+        ttk.Label(method_box, text="Autorange min:").grid(row=3, column=0, sticky="w", pady=2)
+        self._bo_ba_auto_min_combo = ttk.Combobox(
+            method_box,
+            textvariable=self._bo_ba_auto_min_var,
+            values=ba_labels,
+            state="readonly",
+            width=14,
+        )
+        self._bo_ba_auto_min_combo.grid(row=3, column=1, sticky="w", padx=4, pady=2)
+        self._bo_ba_auto_min_combo.bind("<<ComboboxSelected>>", lambda _e: self._sync_method_options_config(show_error=False))
+
+        ttk.Label(method_box, text="Autorange max:").grid(row=4, column=0, sticky="w", pady=2)
+        self._bo_ba_auto_max_combo = ttk.Combobox(
+            method_box,
+            textvariable=self._bo_ba_auto_max_var,
+            values=ba_labels,
+            state="readonly",
+            width=14,
+        )
+        self._bo_ba_auto_max_combo.grid(row=4, column=1, sticky="w", padx=4, pady=2)
+        self._bo_ba_auto_max_combo.bind("<<ComboboxSelected>>", lambda _e: self._sync_method_options_config(show_error=False))
+        ttk.Label(
+            method_box,
+            text="These SWV settings are saved into BO config method_options and used for queued BO methods.",
+            foreground=self.ACCENT,
+            wraplength=460,
+            justify="left",
+        ).grid(row=5, column=0, columnspan=2, sticky="w", pady=(4, 0))
+        self._sync_bo_ba_range_controls()
+
         algo_box = ttk.LabelFrame(left, text="Optimizer Behavior", padding=8)
         algo_box.pack(fill="x", pady=(0, 8))
         algo_box.columnconfigure(1, weight=1)
@@ -365,7 +450,15 @@ class BayesianOptimizationTab:
         ttk.Entry(algo_box, textvariable=self._candidate_pool_var, width=8).grid(row=1, column=1, sticky="w", padx=6)
         ttk.Label(algo_box, text="Local pool:").grid(row=1, column=2, sticky="w", pady=2)
         ttk.Entry(algo_box, textvariable=self._local_pool_var, width=8).grid(row=1, column=2, sticky="e", padx=(6, 0))
-        ttk.Label(algo_box, text="Start point:").grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Label(algo_box, text="GP warmup iters:").grid(row=2, column=0, sticky="w", pady=2)
+        warmup_entry = ttk.Entry(algo_box, textvariable=self._gp_warmup_iterations_var, width=8)
+        warmup_entry.grid(row=2, column=1, sticky="w", padx=6, pady=2)
+        warmup_entry.bind("<FocusOut>", lambda _e: self._sync_algorithm_config(show_error=False))
+        warmup_entry.bind("<Return>", lambda _e: self._sync_algorithm_config(show_error=False))
+        ttk.Label(algo_box, text="completed BO iterations before GP starts", foreground=self.ACCENT).grid(
+            row=2, column=2, sticky="e", padx=(6, 0), pady=2
+        )
+        ttk.Label(algo_box, text="Start point:").grid(row=3, column=0, sticky="w", pady=2)
         start_mode = ttk.Combobox(
             algo_box,
             textvariable=self._initial_point_mode_var,
@@ -373,14 +466,14 @@ class BayesianOptimizationTab:
             state="readonly",
             width=12,
         )
-        start_mode.grid(row=2, column=1, sticky="w", padx=6, pady=2)
+        start_mode.grid(row=3, column=1, sticky="w", padx=6, pady=2)
         start_mode.bind("<<ComboboxSelected>>", lambda _e: self._sync_algorithm_config(show_error=False))
-        ttk.Button(algo_box, text="Edit GP Falloff", command=self._edit_gp_length_scales).grid(row=2, column=2, sticky="e", padx=(6, 0), pady=2)
+        ttk.Button(algo_box, text="Edit GP Falloff", command=self._edit_gp_length_scales).grid(row=3, column=2, sticky="e", padx=(6, 0), pady=2)
         ttk.Label(
             algo_box,
-            text="`specific` uses Initial Parameters. `random` chooses one valid candidate as the first BO point.",
+            text="`specific` uses Initial Parameters. `random` chooses one valid candidate as the first BO point. GP warmup iters controls when the Gaussian surrogate is first allowed.",
             foreground=self.ACCENT,
-        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(2, 0))
+        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(2, 0))
 
         init_box = ttk.LabelFrame(left, text="Initial Parameters", padding=8)
         init_box.pack(fill="both", expand=True)
@@ -517,21 +610,25 @@ class BayesianOptimizationTab:
         ttk.Entry(analysis_box, textvariable=self._analysis_minima_window_var, width=10).grid(row=1, column=1, sticky="w", padx=4)
         ttk.Label(analysis_box, text="Min peak height (uA):").grid(row=1, column=2, sticky="w", pady=2)
         ttk.Entry(analysis_box, textvariable=self._analysis_min_peak_height_var, width=10).grid(row=1, column=3, sticky="w", padx=4)
-        ttk.Label(analysis_box, text="Min start V:").grid(row=2, column=0, sticky="w", pady=2)
-        ttk.Entry(analysis_box, textvariable=self._analysis_min_start_voltage_var, width=10).grid(row=2, column=1, sticky="w", padx=4)
-        ttk.Label(analysis_box, text="Scan windows:").grid(row=2, column=2, sticky="w", pady=2)
-        ttk.Entry(analysis_box, textvariable=self._analysis_scan_windows_var).grid(row=2, column=3, sticky="ew", padx=4)
-        ttk.Checkbutton(analysis_box, text="Prominent minima", variable=self._analysis_use_prominent_var).grid(row=3, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Double correction", variable=self._analysis_double_correction_var).grid(row=3, column=1, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Compute skew", variable=self._analysis_compute_skew_var).grid(row=3, column=2, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Wavelet energy", variable=self._analysis_compute_wavelet_energy_var).grid(row=3, column=3, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Wavelet trace", variable=self._analysis_wavelet_trace_var).grid(row=4, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Wavelet correction", variable=self._analysis_wavelet_correction_var).grid(row=4, column=1, sticky="w", pady=2)
+        ttk.Label(analysis_box, text="Peak V min/max:").grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=self._analysis_peak_voltage_min_var, width=8).grid(row=2, column=1, sticky="w", padx=(4, 2))
+        ttk.Entry(analysis_box, textvariable=self._analysis_peak_voltage_max_var, width=8).grid(row=2, column=1, sticky="e", padx=(2, 4))
+        ttk.Label(analysis_box, text="Min start V:").grid(row=2, column=2, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=self._analysis_min_start_voltage_var, width=10).grid(row=2, column=3, sticky="w", padx=4)
+        ttk.Label(analysis_box, text="Scan windows:").grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=self._analysis_scan_windows_var).grid(row=3, column=1, columnspan=3, sticky="ew", padx=4)
+        ttk.Checkbutton(analysis_box, text="Prominent minima", variable=self._analysis_use_prominent_var).grid(row=4, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Require minima both sides", variable=self._analysis_require_minima_var).grid(row=4, column=1, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Double correction", variable=self._analysis_double_correction_var).grid(row=4, column=2, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Compute skew", variable=self._analysis_compute_skew_var).grid(row=4, column=3, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet energy", variable=self._analysis_compute_wavelet_energy_var).grid(row=5, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet trace", variable=self._analysis_wavelet_trace_var).grid(row=5, column=1, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet correction", variable=self._analysis_wavelet_correction_var).grid(row=5, column=2, sticky="w", pady=2)
         ttk.Label(
             analysis_box,
             text="These settings are used by the in-repo BO analysis runner.",
             foreground=self.ACCENT,
-        ).grid(row=5, column=0, columnspan=4, sticky="w", pady=(4, 0))
+        ).grid(row=6, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
     def _build_run_tab(self, parent):
         scroller = ScrollableFrame(parent, min_width=1020)
@@ -865,7 +962,11 @@ class BayesianOptimizationTab:
         self._corrected_trace_frame = ttk.Frame(corrected_box)
         self._corrected_trace_frame.pack(fill="both", expand=True)
         model_box = ttk.LabelFrame(bottom, text="Surrogate and Acquisition Artifacts", padding=6)
-        hist_cols = ("Q_run", "Mean", "Std", "Failed", "Low", "Peak uA", "RMS uA", "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t")
+        hist_cols = (
+            "Q_run", "Mean", "Std", "Failed", "Low",
+            "Peak uA", "Raw SNR", "SNR Score", "Shape", "Baseline", "Replicate", "Success",
+            "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t",
+        )
         self._history_tree = ttk.Treeview(hist_box, columns=hist_cols, show="tree headings", height=10)
         self._history_tree.heading("#0", text="Iter")
         self._history_tree.column("#0", width=55, anchor="center")
@@ -1009,6 +1110,7 @@ class BayesianOptimizationTab:
             if analysis_cfg.get("file_glob"):
                 self._analysis_glob_var.set(str(analysis_cfg.get("file_glob")))
             self._set_analysis_vars_from_config(analysis_cfg)
+            self._set_method_option_vars_from_config(self._config)
             self._set_algorithm_vars_from_config(self._config)
             self._set_scoring_vars_from_config(self._config)
             self._engine_seed_var.set(str(self._config.get("random_seed", 42)))
@@ -1032,6 +1134,7 @@ class BayesianOptimizationTab:
         analysis_cfg = self._config.setdefault("analysis", {})
         analysis_cfg["file_glob"] = self._analysis_glob_var.get().strip() or "*.json"
         self._update_analysis_config_from_vars(analysis_cfg)
+        self._sync_method_options_config(show_error=False)
         self._sync_algorithm_config(show_error=False)
         self._sync_scoring_config(show_error=False)
         try:
@@ -1047,9 +1150,12 @@ class BayesianOptimizationTab:
         self._analysis_smooth_polyorder_var.set(str(analysis_cfg.get("smooth_polyorder", 2)))
         self._analysis_minima_window_var.set(str(analysis_cfg.get("minima_search_window_v", 0.30)))
         self._analysis_min_peak_height_var.set("" if analysis_cfg.get("min_peak_height_ua") in (None, "") else str(analysis_cfg.get("min_peak_height_ua")))
+        self._analysis_peak_voltage_min_var.set("" if analysis_cfg.get("peak_voltage_min_v") in (None, "") else str(analysis_cfg.get("peak_voltage_min_v")))
+        self._analysis_peak_voltage_max_var.set("" if analysis_cfg.get("peak_voltage_max_v") in (None, "") else str(analysis_cfg.get("peak_voltage_max_v")))
         self._analysis_min_start_voltage_var.set(str(analysis_cfg.get("min_start_voltage_v", -0.6)))
         self._analysis_scan_windows_var.set(str(analysis_cfg.get("scan_windows", "")))
         self._analysis_use_prominent_var.set(bool(analysis_cfg.get("use_prominent_minima", False)))
+        self._analysis_require_minima_var.set(bool(analysis_cfg.get("require_local_minima_on_both_sides", False)))
         self._analysis_double_correction_var.set(bool(analysis_cfg.get("use_double_correction", True)))
         self._analysis_compute_skew_var.set(bool(analysis_cfg.get("compute_skew", False)))
         self._analysis_compute_wavelet_energy_var.set(bool(analysis_cfg.get("compute_wavelet_energy", False)))
@@ -1064,19 +1170,85 @@ class BayesianOptimizationTab:
         analysis_cfg["minima_search_window_v"] = float(self._analysis_minima_window_var.get())
         peak_height_text = (self._analysis_min_peak_height_var.get() or "").strip()
         analysis_cfg["min_peak_height_ua"] = None if not peak_height_text else float(peak_height_text)
+        peak_voltage_min_text = (self._analysis_peak_voltage_min_var.get() or "").strip()
+        peak_voltage_max_text = (self._analysis_peak_voltage_max_var.get() or "").strip()
+        analysis_cfg["peak_voltage_min_v"] = None if not peak_voltage_min_text else float(peak_voltage_min_text)
+        analysis_cfg["peak_voltage_max_v"] = None if not peak_voltage_max_text else float(peak_voltage_max_text)
+        if (
+            analysis_cfg["peak_voltage_min_v"] is not None
+            and analysis_cfg["peak_voltage_max_v"] is not None
+            and analysis_cfg["peak_voltage_min_v"] > analysis_cfg["peak_voltage_max_v"]
+        ):
+            raise ValueError("Peak V min must be less than or equal to Peak V max.")
         analysis_cfg["min_start_voltage_v"] = float(self._analysis_min_start_voltage_var.get())
         analysis_cfg["scan_windows"] = (self._analysis_scan_windows_var.get() or "").strip()
         analysis_cfg["use_prominent_minima"] = bool(self._analysis_use_prominent_var.get())
+        analysis_cfg["require_local_minima_on_both_sides"] = bool(self._analysis_require_minima_var.get())
         analysis_cfg["use_double_correction"] = bool(self._analysis_double_correction_var.get())
         analysis_cfg["compute_skew"] = bool(self._analysis_compute_skew_var.get())
         analysis_cfg["compute_wavelet_energy"] = bool(self._analysis_compute_wavelet_energy_var.get())
         analysis_cfg["compute_wavelet_denoised_trace"] = bool(self._analysis_wavelet_trace_var.get())
         analysis_cfg["use_wavelet_for_correction"] = bool(self._analysis_wavelet_correction_var.get())
 
+    def _set_method_option_vars_from_config(self, cfg: dict):
+        method_options = dict((cfg or {}).get("method_options") or {})
+        normalized = normalize_swv_ba_range_options(method_options)
+        bandwidth = str(method_options.get("bandwidth", "4k")).strip().lower() or "4k"
+        self._bo_bandwidth_var.set(bandwidth if bandwidth in ("4k", "8k") else "4k")
+        self._bo_ba_range_mode_var.set(normalized["mode"])
+        self._bo_ba_fixed_range_var.set(normalized["fixed_label"])
+        self._bo_ba_auto_min_var.set(normalized["auto_min_label"])
+        self._bo_ba_auto_max_var.set(normalized["auto_max_label"])
+        self._sync_bo_ba_range_controls(save=False)
+
+    def _sync_bo_ba_range_controls(self, save=True):
+        mode = (self._bo_ba_range_mode_var.get() or "fixed").strip().lower()
+        fixed_state = "readonly" if mode == "fixed" else "disabled"
+        auto_state = "readonly" if mode == "auto" else "disabled"
+        self._bo_ba_fixed_combo.configure(state=fixed_state)
+        self._bo_ba_auto_min_combo.configure(state=auto_state)
+        self._bo_ba_auto_max_combo.configure(state=auto_state)
+        if save:
+            self._sync_method_options_config(show_error=False)
+
+    def _sync_method_options_config(self, show_error=True):
+        if self._config is None:
+            return
+        try:
+            method_options = self._config.setdefault("method_options", {})
+            bandwidth = (self._bo_bandwidth_var.get() or "4k").strip().lower()
+            if bandwidth not in ("4k", "8k"):
+                raise ValueError(f"Unsupported SWV bandwidth: {bandwidth}")
+            normalized = normalize_swv_ba_range_options(
+                {
+                    "ba_range": {
+                        "mode": self._bo_ba_range_mode_var.get(),
+                        "fixed": self._bo_ba_fixed_range_var.get(),
+                        "auto_min": self._bo_ba_auto_min_var.get(),
+                        "auto_max": self._bo_ba_auto_max_var.get(),
+                    }
+                }
+            )
+            method_options["bandwidth"] = bandwidth
+            method_options["ba_range"] = {
+                "mode": normalized["mode"],
+                "fixed": normalized["fixed_label"],
+                "auto_min": normalized["auto_min_label"],
+                "auto_max": normalized["auto_max_label"],
+            }
+            self._bo_ba_range_mode_var.set(normalized["mode"])
+            self._bo_ba_fixed_range_var.set(normalized["fixed_label"])
+            self._bo_ba_auto_min_var.set(normalized["auto_min_label"])
+            self._bo_ba_auto_max_var.set(normalized["auto_max_label"])
+        except Exception as exc:
+            if show_error:
+                messagebox.showerror("Method Settings", str(exc))
+
     def _set_algorithm_vars_from_config(self, cfg: dict):
         acquisition = dict((cfg or {}).get("acquisition") or {})
         self._exploration_var.set(float(acquisition.get("exploration", 0.35)))
         self._exploration_text_var.set(f"{float(acquisition.get('exploration', 0.35)):.2f}")
+        self._gp_warmup_iterations_var.set(str(int((cfg or {}).get("n_initial_points", 8))))
         self._candidate_pool_var.set(str(acquisition.get("candidate_pool_size", 600)))
         self._local_pool_var.set(str(acquisition.get("local_candidate_pool_size", 120)))
         self._initial_point_mode_var.set(str(acquisition.get("initial_point_mode", "specific")))
@@ -1094,6 +1266,8 @@ class BayesianOptimizationTab:
             acquisition = self._config.setdefault("acquisition", {})
             acquisition["exploration"] = max(0.0, min(1.0, float(self._exploration_var.get())))
             self._exploration_text_var.set(f"{float(acquisition['exploration']):.2f}")
+            self._config["n_initial_points"] = max(0, int(self._gp_warmup_iterations_var.get() or 8))
+            self._gp_warmup_iterations_var.set(str(self._config["n_initial_points"]))
             acquisition["candidate_pool_size"] = max(50, int(self._candidate_pool_var.get() or 600))
             acquisition["local_candidate_pool_size"] = max(0, int(self._local_pool_var.get() or 120))
             mode = str(self._initial_point_mode_var.get() or "specific").strip().lower()
@@ -1372,6 +1546,7 @@ class BayesianOptimizationTab:
                 self._config_path_var.set(str(loaded.config_path))
             self._analysis_dir_var.set(str(loaded.analysis_output_dir))
             self._set_analysis_vars_from_config(self._config.get("analysis", {}))
+            self._set_method_option_vars_from_config(self._config)
             self._set_algorithm_vars_from_config(self._config)
             self._set_scoring_vars_from_config(self._config)
             self._channels_var.set(", ".join(str(ch) for ch in self._config.get("channels", [])))
@@ -2467,16 +2642,29 @@ class BayesianOptimizationTab:
         try:
             obs = self._bo_session.import_analysis(path, notes=notes or "")
             self._suggestion = None
-            self._render_scores(obs)
-            self._refresh_history()
-            self._select_history_iteration(str(obs.get("iteration")))
-            self._render_best()
-            self._refresh_model_artifacts()
-            self._refresh_record_files()
+            refresh_errors = []
+            for label, action in (
+                ("score table", lambda: self._render_scores(obs)),
+                ("history refresh", self._refresh_history),
+                ("history selection", lambda: self._select_history_iteration(str(obs.get("iteration")))),
+                ("best summary", self._render_best),
+                ("model artifacts", self._refresh_model_artifacts),
+                ("record files", self._refresh_record_files),
+            ):
+                try:
+                    action()
+                except Exception as exc:
+                    refresh_errors.append(f"{label}: {exc}")
             self._clear_text(self._suggestion_text)
-            self._status_var.set(
-                f"Imported analysis for iteration {obs['iteration']}. Q_run={obs['Q_run']:.3f}"
-            )
+            status = f"Imported analysis for iteration {obs['iteration']}. Q_run={obs['Q_run']:.3f}"
+            if refresh_errors:
+                status += f" | UI refresh warnings: {len(refresh_errors)}"
+                self._status_var.set(status)
+                message = "Analysis imported, but some BO plots/tables could not refresh:\n\n" + "\n".join(refresh_errors[:8])
+                if prompt:
+                    messagebox.showwarning("Import BO Analysis", message)
+            else:
+                self._status_var.set(status)
             return obs
         except Exception as exc:
             if not prompt:
@@ -2879,10 +3067,10 @@ class BayesianOptimizationTab:
         for row in self._history_tree.get_children():
             self._history_tree.delete(row)
         self._history_rows = {}
+        self._selected_history_observation = None
+        for row in self._score_tree.get_children():
+            self._score_tree.delete(row)
         if self._bo_session is None:
-            self._selected_history_observation = None
-            for row in self._score_tree.get_children():
-                self._score_tree.delete(row)
             if hasattr(self, "_q_equation_text"):
                 self._write_text(self._q_equation_text, "\n".join(self._q_equation_lines(self._config)))
             self._render_raw_traces(None)
@@ -2895,6 +3083,12 @@ class BayesianOptimizationTab:
             params = obs.get("params", {})
             iteration = str(obs.get("iteration"))
             peak_uA, rms_uA = self._observation_peak_rms(obs)
+            snr_raw = self._observation_component_mean(obs, "snr_raw")
+            snr_score = self._observation_component_mean(obs, "normalized_SNR")
+            shape_score = self._observation_component_mean(obs, "peak_shape_score")
+            baseline_score = self._observation_component_mean(obs, "baseline_stability_score")
+            replicate_score = self._observation_component_mean(obs, "replicate_consistency_score")
+            success_score = self._observation_component_mean(obs, "success_score")
             self._history_rows[iteration] = obs
             self._history_tree.insert(
                 "",
@@ -2908,7 +3102,12 @@ class BayesianOptimizationTab:
                     self._fmt(q.get("failed_channel_fraction")),
                     self._fmt(q.get("low_channel_fraction")),
                     self._fmt(peak_uA),
-                    self._fmt(rms_uA),
+                    self._fmt(snr_raw),
+                    self._fmt(snr_score),
+                    self._fmt(shape_score),
+                    self._fmt(baseline_score),
+                    self._fmt(replicate_score),
+                    self._fmt(success_score),
                     self._fmt_raw(params.get("begin_potential")),
                     self._fmt_raw(params.get("end_potential")),
                     self._fmt_raw(params.get("step_potential")),
@@ -2919,8 +3118,8 @@ class BayesianOptimizationTab:
                 ),
             )
         if not self._history_rows:
-            for row in self._score_tree.get_children():
-                self._score_tree.delete(row)
+            if hasattr(self, "_q_equation_text"):
+                self._write_text(self._q_equation_text, "\n".join(self._q_equation_lines(self._bo_session.config)))
             self._render_raw_traces(None)
             self._render_corrected_traces(None)
         self._refresh_analysis_q_trend()
@@ -3075,7 +3274,12 @@ class BayesianOptimizationTab:
             "Failed",
             "Low",
             "Peak uA",
-            "RMS uA",
+            "Raw SNR",
+            "SNR Score",
+            "Shape",
+            "Baseline",
+            "Replicate",
+            "Success",
             "Begin",
             "End",
             "Step",
@@ -3091,7 +3295,12 @@ class BayesianOptimizationTab:
             "Failed": "Failed fraction",
             "Low": "Low fraction",
             "Peak uA": "Mean peak uA",
-            "RMS uA": "Mean RMS uA",
+            "Raw SNR": "Mean raw SNR",
+            "SNR Score": "Mean SNR score",
+            "Shape": "Mean shape score",
+            "Baseline": "Mean baseline score",
+            "Replicate": "Mean replicate score",
+            "Success": "Mean success score",
             "Begin": "Begin potential",
             "End": "End potential",
             "Step": "Step potential",
@@ -3170,8 +3379,18 @@ class BayesianOptimizationTab:
             except Exception as exc:
                 errors.append(f"{path.name}: {exc}")
                 continue
-            if len(volts) == 0 or len(currents) == 0:
+            volts = self._to_float_list(volts)
+            currents = self._to_float_list(currents)
+            n = min(len(volts), len(currents))
+            if n <= 0:
                 continue
+            if len(volts) != len(currents):
+                errors.append(
+                    f"{path.name}: trimmed mismatched raw trace lengths from "
+                    f"({len(volts)}, {len(currents)}) to ({n}, {n})"
+                )
+            volts = volts[:n]
+            currents = currents[:n]
             channel = row.get("channel")
             scan = row.get("scan")
             label = f"Ch {channel}" if channel not in (None, "") else path.stem
@@ -3205,8 +3424,10 @@ class BayesianOptimizationTab:
         if errors:
             ttk.Label(
                 self._raw_trace_frame,
-                text=f"{len(errors)} trace file(s) could not be loaded.",
+                text="\n".join(errors[:8]),
                 foreground="#8a5a44",
+                justify="left",
+                anchor="w",
             ).pack(fill="x")
 
     def _render_corrected_traces(self, observation):
@@ -3223,26 +3444,30 @@ class BayesianOptimizationTab:
             ).pack(fill="both", expand=True)
             return
 
-        rows = self._corrected_trace_rows_for_observation(observation)
+        rows, diagnostics = self._corrected_trace_rows_for_observation(observation)
         selected_channels = self._selected_score_channels()
         if selected_channels:
             rows = [row for row in rows if str(row.get("channel") or "") in selected_channels]
+            diagnostics = [d for d in diagnostics if str(d.get("channel") or "") in selected_channels]
         if not rows:
             message = (
-                "No smoothed corrected traces were found for this iteration.\n\n"
-                "Expected voltage and smoothed_corrected_current columns in "
-                "bo_analysis/bo_iter_XXX_results.csv."
+                "No corrected traces could be recomputed for this iteration.\n\n"
+                "The corrected-trace panel now recomputes from archived raw SWV files "
+                "using the current Setup-tab analysis settings."
             )
             if selected_channels:
                 message = (
-                    "No smoothed corrected traces were found for the selected channel(s) "
+                    "No corrected traces could be recomputed for the selected channel(s) "
                     f"{', '.join(sorted(selected_channels, key=self._channel_sort_key))} in this iteration."
                 )
+            detail_lines = self._corrected_trace_diagnostic_lines(diagnostics)
+            if detail_lines:
+                message += "\n\nWhy recomputation failed:\n" + "\n".join(detail_lines[:12])
             ttk.Label(
                 self._corrected_trace_frame,
                 text=message,
                 anchor="center",
-                justify="center",
+                justify="left",
             ).pack(fill="both", expand=True)
             return
 
@@ -3270,6 +3495,40 @@ class BayesianOptimizationTab:
                 color=palette[idx % len(palette)],
                 label=label,
             )
+            marker_color = palette[idx % len(palette)]
+            for key in ("left_min_idx", "right_min_idx"):
+                point_idx = row.get(key)
+                if point_idx is None:
+                    continue
+                try:
+                    point_idx = int(point_idx)
+                except (TypeError, ValueError):
+                    continue
+                if 0 <= point_idx < len(row["voltage"]) and 0 <= point_idx < len(row["current"]):
+                    ax.scatter(
+                        [row["voltage"][point_idx]],
+                        [row["current"][point_idx]],
+                        color=marker_color,
+                        edgecolors="black",
+                        linewidths=0.6,
+                        s=34,
+                        zorder=5,
+                    )
+            peak_idx = row.get("peak_idx_corr")
+            try:
+                peak_idx = int(peak_idx) if peak_idx is not None else None
+            except (TypeError, ValueError):
+                peak_idx = None
+            if peak_idx is not None and 0 <= peak_idx < len(row["voltage"]) and 0 <= peak_idx < len(row["current"]):
+                ax.scatter(
+                    [row["voltage"][peak_idx]],
+                    [row["current"][peak_idx]],
+                    marker="x",
+                    color="#c1121f",
+                    linewidths=1.4,
+                    s=52,
+                    zorder=6,
+                )
 
         channel_suffix = ""
         if selected_channels:
@@ -3285,48 +3544,224 @@ class BayesianOptimizationTab:
         canvas = FigureCanvasTkAgg(fig, master=self._corrected_trace_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
+        detail_lines = self._corrected_trace_diagnostic_lines(diagnostics)
+        if detail_lines:
+            ttk.Label(
+                self._corrected_trace_frame,
+                text="Some traces could not be fully recomputed:\n" + "\n".join(detail_lines[:8]),
+                anchor="w",
+                justify="left",
+                foreground="#8a5a44",
+            ).pack(fill="x", pady=(4, 0))
 
     def _corrected_trace_rows_for_observation(self, observation):
         rows = []
+        diagnostics = []
         seen = set()
-        for results_path in self._analysis_results_paths_for_observation(observation):
-            if not results_path.exists():
+        analysis_cfg = self._current_analysis_settings()
+        for raw_row in self._raw_trace_rows_for_observation(observation):
+            file_path = self._resolve_observation_file_path(raw_row.get("path"), observation)
+            if not file_path.exists():
+                diagnostics.append(
+                    {
+                        "label": Path(raw_row.get("path") or "").name or "unknown trace",
+                        "channel": raw_row.get("channel"),
+                        "reason": "Raw SWV file could not be found.",
+                    }
+                )
                 continue
             try:
-                with open(results_path, "r", encoding="utf-8-sig", newline="") as fh:
-                    for record in csv.DictReader(fh):
-                        voltage = self._parse_trace_array(record.get("voltage"))
-                        current = self._parse_trace_array(record.get("smoothed_corrected_current"))
-                        if not voltage or not current:
-                            continue
-                        n = min(len(voltage), len(current))
-                        if n <= 0:
-                            continue
-                        file_path = self._resolve_observation_file_path(
-                            record.get("file_path") or record.get("file_name"),
-                            observation,
-                        )
-                        channel = record.get("channel") or self._infer_channel_from_path(file_path)
-                        scan = record.get("scan_number")
-                        key = (str(file_path), str(channel), str(scan or ""))
-                        if key in seen:
-                            continue
-                        seen.add(key)
-                        rows.append(
-                            {
-                                "voltage": voltage[:n],
-                                "current": current[:n],
-                                "channel": channel,
-                                "scan": scan,
-                                "label": record.get("file_name") or Path(file_path).stem,
-                            }
-                        )
-            except Exception:
+                v_raw, i_raw = load_swv_csv(str(file_path))
+            except Exception as exc:
+                diagnostics.append(
+                    {
+                        "label": Path(file_path).name,
+                        "channel": raw_row.get("channel"),
+                        "reason": f"Raw SWV file could not be loaded: {exc}",
+                    }
+                )
                 continue
+            channel = raw_row.get("channel") or self._infer_channel_from_path(file_path)
+            scan = raw_row.get("scan")
+            key = (str(file_path), str(channel), str(scan or ""))
+            if key in seen:
+                continue
+            seen.add(key)
+            result = self._recompute_corrected_trace(v_raw, i_raw, analysis_cfg)
+            voltage = self._to_float_list(result.get("voltage"))
+            current = self._to_float_list(result.get("smoothed_corrected_current"))
+            stage = "smoothed corrected"
+            if not current:
+                current = self._to_float_list(result.get("corrected_current"))
+                if current:
+                    stage = "corrected"
+            if not current:
+                current = self._to_float_list(result.get("smoothed_current"))
+                if current:
+                    stage = "smoothed raw"
+            if not voltage or not current:
+                diagnostics.append(
+                    {
+                        "label": Path(file_path).name,
+                        "channel": channel,
+                        "scan": scan,
+                        "reason": result.get("partial_error") or "No plottable arrays were produced.",
+                    }
+                )
+                continue
+            n = min(len(voltage), len(current))
+            if n <= 0:
+                diagnostics.append(
+                    {
+                        "label": Path(file_path).name,
+                        "channel": channel,
+                        "scan": scan,
+                        "reason": "Voltage/current arrays were empty after recomputation.",
+                    }
+                )
+                continue
+            partial_error = result.get("partial_error")
+            if partial_error:
+                diagnostics.append(
+                    {
+                        "label": Path(file_path).name,
+                        "channel": channel,
+                        "scan": scan,
+                        "reason": partial_error,
+                    }
+                )
+            rows.append(
+                {
+                    "voltage": voltage[:n],
+                    "current": current[:n],
+                    "channel": channel,
+                    "scan": scan,
+                    "label": Path(file_path).stem,
+                    "trace_stage": stage,
+                    "left_min_idx": result.get("left_min_idx"),
+                    "right_min_idx": result.get("right_min_idx"),
+                    "peak_idx_corr": result.get("peak_idx_corr"),
+                }
+            )
         return sorted(
             rows,
             key=lambda row: (self._channel_sort_key(row.get("channel")), str(row.get("scan") or ""), str(row.get("label") or "")),
+        ), sorted(
+            diagnostics,
+            key=lambda row: (self._channel_sort_key(row.get("channel")), str(row.get("scan") or ""), str(row.get("label") or "")),
         )
+
+    def _current_analysis_settings(self):
+        analysis_cfg = {}
+        self._update_analysis_config_from_vars(analysis_cfg)
+        return analysis_cfg
+
+    def _recompute_corrected_trace(self, v_raw, i_raw, analysis_cfg):
+        kwargs = dict(
+            v_raw=v_raw,
+            i_raw=i_raw,
+            crop_range=(
+                float(analysis_cfg.get("crop_min_v", -0.61)),
+                float(analysis_cfg.get("crop_max_v", -0.30)),
+            ),
+            smooth_window=int(analysis_cfg.get("smooth_window", 15)),
+            smooth_polyorder=int(analysis_cfg.get("smooth_polyorder", 2)),
+            minima_search_window_V=float(analysis_cfg.get("minima_search_window_v", 0.30)),
+            use_prominent_minima=bool(analysis_cfg.get("use_prominent_minima", False)),
+            require_local_minima_on_both_sides=bool(analysis_cfg.get("require_local_minima_on_both_sides", False)),
+            use_double_correction=bool(analysis_cfg.get("use_double_correction", False)),
+            min_peak_height_uA=analysis_cfg.get("min_peak_height_ua"),
+            peak_voltage_min_V=analysis_cfg.get("peak_voltage_min_v"),
+            peak_voltage_max_V=analysis_cfg.get("peak_voltage_max_v"),
+            compute_skew=bool(analysis_cfg.get("compute_skew", True)),
+            compute_wavelet_energy=bool(analysis_cfg.get("compute_wavelet_energy", True)),
+            compute_wavelet_denoised_trace=bool(analysis_cfg.get("compute_wavelet_denoised_trace", False)),
+            use_wavelet_for_correction=bool(analysis_cfg.get("use_wavelet_for_correction", False)),
+        )
+        try:
+            result = analyze_swv_arrays(**kwargs)
+        except Exception:
+            result = partial_traces_for_failure_arrays(
+                v_raw=v_raw,
+                i_raw=i_raw,
+                crop_range=kwargs["crop_range"],
+                smooth_window=kwargs["smooth_window"],
+                smooth_polyorder=kwargs["smooth_polyorder"],
+                minima_search_window_V=kwargs["minima_search_window_V"],
+                use_prominent_minima=kwargs["use_prominent_minima"],
+                require_local_minima_on_both_sides=kwargs["require_local_minima_on_both_sides"],
+                use_double_correction=kwargs["use_double_correction"],
+                compute_wavelet_denoised_trace=kwargs["compute_wavelet_denoised_trace"],
+                use_wavelet_for_correction=kwargs["use_wavelet_for_correction"],
+            )
+        self._normalize_trace_result_lengths(result)
+        return result
+
+    @staticmethod
+    def _to_float_list(values):
+        if values is None:
+            return []
+        out = []
+        try:
+            iterable = list(values)
+        except Exception:
+            return []
+        for value in iterable:
+            try:
+                out.append(float(value))
+            except (TypeError, ValueError):
+                continue
+        return out
+
+    @staticmethod
+    def _corrected_trace_diagnostic_lines(diagnostics):
+        lines = []
+        for item in diagnostics or []:
+            label = str(item.get("label") or "trace")
+            channel = item.get("channel")
+            scan = item.get("scan")
+            prefix = label
+            if channel not in (None, ""):
+                prefix = f"Ch {channel} | {prefix}"
+            if scan not in (None, ""):
+                prefix = f"{prefix} | scan {scan}"
+            reason = str(item.get("reason") or "Unknown error")
+            lines.append(f"- {prefix}: {reason}")
+        return lines
+
+    @staticmethod
+    def _normalize_trace_result_lengths(result):
+        if not isinstance(result, dict):
+            return
+        voltage = BayesianOptimizationTab._to_float_list(result.get("voltage"))
+        if not voltage:
+            return
+        result["voltage"] = voltage
+        for key in (
+            "raw_current",
+            "smoothed_current",
+            "wavelet_denoised_current",
+            "corrected_current",
+            "smoothed_corrected_current",
+            "local_baseline",
+            "first_pass_corrected_current",
+            "first_pass_smoothed_corrected_current",
+            "first_pass_local_baseline",
+            "second_pass_corrected_current",
+            "second_pass_smoothed_corrected_current",
+            "second_pass_local_baseline",
+        ):
+            values = BayesianOptimizationTab._to_float_list(result.get(key))
+            if not values:
+                continue
+            n = min(len(voltage), len(values))
+            if n <= 0:
+                result[key] = []
+                continue
+            if n != len(voltage):
+                result["voltage"] = voltage[:n]
+                voltage = result["voltage"]
+            result[key] = values[:n]
 
     @staticmethod
     def _parse_trace_array(value):
@@ -3352,9 +3787,6 @@ class BayesianOptimizationTab:
         analysis_records = []
         if analysis_record_path.exists():
             analysis_records.append(analysis_record_path)
-        fallback_analysis = self._fallback_bo_analysis_json(observation)
-        if fallback_analysis is not None and fallback_analysis not in analysis_records:
-            analysis_records.append(fallback_analysis)
 
         for analysis_record in analysis_records:
             try:
@@ -3369,10 +3801,6 @@ class BayesianOptimizationTab:
                         paths.append(results_path)
             except Exception:
                 pass
-
-        fallback_results = self._fallback_bo_analysis_results_csv(observation)
-        if fallback_results is not None and fallback_results not in paths:
-            paths.append(fallback_results)
         return paths
 
     def _selected_score_channels(self):
@@ -3412,9 +3840,6 @@ class BayesianOptimizationTab:
         analysis_records = []
         if analysis_record_path.exists():
             analysis_records.append(analysis_record_path)
-        fallback_analysis = self._fallback_bo_analysis_json(observation)
-        if fallback_analysis is not None and fallback_analysis not in analysis_records:
-            analysis_records.append(fallback_analysis)
 
         for analysis_record in analysis_records:
             results_paths = []
@@ -3430,9 +3855,6 @@ class BayesianOptimizationTab:
                     results_paths.append(results_path)
             except Exception:
                 pass
-            fallback_results = self._fallback_bo_analysis_results_csv(observation)
-            if fallback_results is not None and fallback_results not in results_paths:
-                results_paths.append(fallback_results)
 
             for results_path in results_paths:
                 if not results_path.exists():
@@ -3443,11 +3865,6 @@ class BayesianOptimizationTab:
                             add(row.get("file_path") or row.get("file_name"), channel=row.get("channel"), scan=row.get("scan_number"))
                 except Exception:
                     pass
-
-        legacy_dir = self._fallback_legacy_iteration_dir(observation)
-        if legacy_dir is not None:
-            for path in sorted(legacy_dir.glob("*.csv")):
-                add(path)
 
         return sorted(rows, key=lambda row: (self._channel_sort_key(row.get("channel")), str(row.get("scan") or ""), Path(row["path"]).name))
 
@@ -3477,6 +3894,13 @@ class BayesianOptimizationTab:
             if normalized.endswith(f"/{exp_name}"):
                 return experiment_dir
 
+            basename = Path(normalized).name
+            if basename:
+                for archived_path in (observation or {}).get("archived_measurements") or []:
+                    candidate = Path(str(archived_path))
+                    if candidate.name == basename and candidate.exists():
+                        return candidate
+
             basename_candidate = experiment_dir / Path(normalized).name
             if basename_candidate.exists():
                 return basename_candidate
@@ -3497,24 +3921,6 @@ class BayesianOptimizationTab:
             return None
         path = Path(self._bo_session.experiment_dir) / "legacy" / f"iter_{iteration:03d}"
         return path if path.is_dir() else None
-
-    def _fallback_bo_analysis_json(self, observation):
-        if self._bo_session is None or observation is None:
-            return None
-        iteration = int((observation or {}).get("iteration", 0) or 0)
-        if not iteration:
-            return None
-        path = Path(self._bo_session.experiment_dir) / "bo_analysis" / f"bo_iter_{iteration:03d}.json"
-        return path if path.is_file() else None
-
-    def _fallback_bo_analysis_results_csv(self, observation):
-        if self._bo_session is None or observation is None:
-            return None
-        iteration = int((observation or {}).get("iteration", 0) or 0)
-        if not iteration:
-            return None
-        path = Path(self._bo_session.experiment_dir) / "bo_analysis" / f"bo_iter_{iteration:03d}_results.csv"
-        return path if path.is_file() else None
 
     @staticmethod
     def _infer_channel_from_path(path):
@@ -4323,8 +4729,13 @@ class BayesianOptimizationTab:
             "Failed fraction",
             "Low fraction",
             "Mean peak uA",
-            "Mean RMS uA",
             "Mean raw SNR",
+            "Mean SNR score",
+            "Mean shape score",
+            "Mean baseline score",
+            "Mean replicate score",
+            "Mean success score",
+            "Mean RMS uA",
             "Step potential",
             "Amplitude",
             "Frequency",
@@ -4354,14 +4765,17 @@ class BayesianOptimizationTab:
             _peak, rms = self._observation_peak_rms(observation)
             return rms
         if metric == "Mean raw SNR":
-            metrics = (observation or {}).get("channel_metrics", {})
-            if not isinstance(metrics, dict):
-                return None
-            values = []
-            for data in metrics.values():
-                if isinstance(data, dict) and data.get("snr") is not None:
-                    values.append(float(data.get("snr")))
-            return sum(values) / len(values) if values else None
+            return self._observation_component_mean(observation, "snr_raw")
+        if metric == "Mean SNR score":
+            return self._observation_component_mean(observation, "normalized_SNR")
+        if metric == "Mean shape score":
+            return self._observation_component_mean(observation, "peak_shape_score")
+        if metric == "Mean baseline score":
+            return self._observation_component_mean(observation, "baseline_stability_score")
+        if metric == "Mean replicate score":
+            return self._observation_component_mean(observation, "replicate_consistency_score")
+        if metric == "Mean success score":
+            return self._observation_component_mean(observation, "success_score")
         param_key_by_metric = {
             "Step potential": "step_potential",
             "Amplitude": "amplitude",
@@ -4419,16 +4833,66 @@ class BayesianOptimizationTab:
                 return value
         return None
 
-    @classmethod
-    def _observation_peak_rms(cls, observation):
+    @staticmethod
+    def _observation_component_mean(observation, key):
+        components = dict(((observation or {}).get("quality") or {}).get("channel_components") or {})
+        if not components:
+            return None
+        values = []
+        for data in components.values():
+            if not isinstance(data, dict):
+                continue
+            value = data.get(key)
+            if value is None:
+                continue
+            try:
+                values.append(float(value))
+            except (TypeError, ValueError):
+                continue
+        return sum(values) / len(values) if values else None
+
+    def _observation_peak_rms(self, observation):
+        row_peaks = []
+        row_rms_values = []
+        try:
+            analysis_result_paths = self._analysis_results_paths_for_observation(observation)
+        except Exception:
+            analysis_result_paths = []
+        for results_path in analysis_result_paths:
+            if not results_path.exists():
+                continue
+            try:
+                with open(results_path, "r", encoding="utf-8-sig", newline="") as fh:
+                    for row in csv.DictReader(fh):
+                        if str(row.get("status", "")).upper() != "OK":
+                            continue
+                        peak_text = row.get("peak_current")
+                        rms_text = row.get("background_current_rms")
+                        try:
+                            if peak_text not in (None, ""):
+                                row_peaks.append(float(peak_text))
+                        except (TypeError, ValueError):
+                            pass
+                        try:
+                            if rms_text not in (None, ""):
+                                row_rms_values.append(float(rms_text))
+                        except (TypeError, ValueError):
+                            pass
+            except Exception:
+                continue
+        if row_peaks or row_rms_values:
+            peak_avg = sum(row_peaks) / len(row_peaks) if row_peaks else None
+            rms_avg = sum(row_rms_values) / len(row_rms_values) if row_rms_values else None
+            return peak_avg, rms_avg
+
         metrics = (observation or {}).get("channel_metrics", {})
         if not isinstance(metrics, dict) or not metrics:
             return None, None
         peaks = []
         rms_values = []
         for data in metrics.values():
-            peak = cls._channel_peak_height(data)
-            rms = cls._channel_background_rms(data)
+            peak = self._channel_peak_height(data)
+            rms = self._channel_background_rms(data)
             if peak is not None:
                 peaks.append(float(peak))
             if rms is not None:

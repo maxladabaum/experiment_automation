@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from config import BO_ANALYSIS_FILE_GLOB, BO_DEFAULT_CONFIG_PATH
-from core.mscript_parser import to_si_string
+from core.swv_method import build_swv_methodscript
 
 
 PARAMETER_ORDER = (
@@ -183,18 +183,21 @@ def normalize_bo_config(config: dict) -> dict:
     cfg.setdefault("analysis", {})
     cfg["analysis"].setdefault("file_glob", BO_ANALYSIS_FILE_GLOB)
     cfg["analysis"].setdefault("copy_outputs_into_record", True)
-    cfg["analysis"].setdefault("crop_min_v", -0.6)
-    cfg["analysis"].setdefault("crop_max_v", -0.1)
+    cfg["analysis"].setdefault("crop_min_v", -0.61)
+    cfg["analysis"].setdefault("crop_max_v", -0.30)
     cfg["analysis"].setdefault("smooth_window", 15)
     cfg["analysis"].setdefault("smooth_polyorder", 2)
     cfg["analysis"].setdefault("minima_search_window_v", 0.30)
     cfg["analysis"].setdefault("use_prominent_minima", False)
-    cfg["analysis"].setdefault("use_double_correction", True)
-    cfg["analysis"].setdefault("min_peak_height_ua", None)
-    cfg["analysis"].setdefault("min_start_voltage_v", -0.6)
+    cfg["analysis"].setdefault("require_local_minima_on_both_sides", False)
+    cfg["analysis"].setdefault("use_double_correction", False)
+    cfg["analysis"].setdefault("min_peak_height_ua", 0.001)
+    cfg["analysis"].setdefault("peak_voltage_min_v", None)
+    cfg["analysis"].setdefault("peak_voltage_max_v", None)
+    cfg["analysis"].setdefault("min_start_voltage_v", -0.70)
     cfg["analysis"].setdefault("scan_windows", "")
-    cfg["analysis"].setdefault("compute_skew", False)
-    cfg["analysis"].setdefault("compute_wavelet_energy", False)
+    cfg["analysis"].setdefault("compute_skew", True)
+    cfg["analysis"].setdefault("compute_wavelet_energy", True)
     cfg["analysis"].setdefault("compute_wavelet_denoised_trace", False)
     cfg["analysis"].setdefault("use_wavelet_for_correction", False)
     cfg.setdefault("records", {})
@@ -668,7 +671,7 @@ class BOIntegrationSession:
 
     def build_queue_items(self, registry, suggestion: BOSuggestion) -> List[dict]:
         channels = parse_channels(self.config.get("channels", []))
-        base_script = build_swv_script(suggestion.params, self.config.get("method_options", {}))
+        base_script = build_swv_methodscript(suggestion.params, self.config.get("method_options", {}))
         items = []
         params_for_hash = self._params_for_method_ref(suggestion.params)
         for channel in channels:
@@ -1360,93 +1363,7 @@ class BOIntegrationSession:
 
 
 def build_swv_script(params: dict, method_options: Optional[dict] = None) -> str:
-    options = method_options or {}
-    begin_v = float(params["begin_potential"])
-    end_v = float(params["end_potential"])
-    amp_v = float(params["amplitude"])
-    cond_time_s = float(params["conditioning_time"])
-    freq_hz = float(params["frequency"])
-
-    begin = to_si_string(str(params["begin_potential"]), "V")
-    end = to_si_string(str(params["end_potential"]), "V")
-    step = to_si_string(str(params["step_potential"]), "V")
-    amplitude = to_si_string(str(params["amplitude"]), "V")
-    frequency = to_si_string(str(params["frequency"]), "Hz")
-    cond_pot = to_si_string(str(params["conditioning_potential"]), "V")
-    cond_time = str(params["conditioning_time"])
-    bandwidth = str(options.get("bandwidth", "4k")).strip().lower()
-    if bandwidth not in ("4k", "8k"):
-        bandwidth = "4k"
-
-    min_mv = int((min(begin_v, end_v) - amp_v) * 1000)
-    max_mv = int((max(begin_v, end_v) + amp_v) * 1000)
-    use_equilibrium_check = cond_time_s > 0
-    eq_interval_s = min(0.2, cond_time_s) if use_equilibrium_check else 0.0
-    swv_time_step = to_si_string(str(1.0 / freq_hz), "s") if freq_hz > 0 else "0"
-    eq_duration = to_si_string(cond_time, "s") if use_equilibrium_check else "0"
-    eq_interval = to_si_string(str(eq_interval_s), "s") if use_equilibrium_check else "0"
-    ba = dict(options.get("ba_range") or {})
-    ba_mode = str(ba.get("mode", "fixed")).lower()
-    fixed_range = str(ba.get("fixed", "100n"))
-    auto_min = str(ba.get("auto_min", fixed_range))
-    auto_max = str(ba.get("auto_max", fixed_range))
-
-    parts = [
-        "e", "var c", "var p", "var f", "var r",
-        "set_pgstat_chan 1",
-        "set_pgstat_mode 0",
-        "set_pgstat_chan 0",
-        "set_pgstat_mode 3",
-        f"set_max_bandwidth {bandwidth}",
-        f"set_range_minmax da {min_mv}m {max_mv}m",
-    ]
-    if use_equilibrium_check:
-        parts.insert(5, "var t")
-    if ba_mode == "auto":
-        parts += [f"set_range ba {auto_max}", f"set_autoranging ba {auto_min} {auto_max}"]
-    else:
-        parts += [f"set_range ba {fixed_range}", f"set_autoranging ba {fixed_range} {fixed_range}"]
-    parts += [f"set_e {cond_pot if use_equilibrium_check else begin}", "cell_on"]
-    if use_equilibrium_check:
-        parts += [
-            f"# Equilibrium check at {cond_pot} for {cond_time}s",
-            "store_var t 0 eb",
-            f"meas_loop_ca p c {cond_pot} {eq_interval} {eq_duration}",
-            "\tpck_start",
-            "\t\tpck_add t",
-            "\t\tpck_add p",
-            "\t\tpck_add c",
-            "\tpck_end",
-            f"\tadd_var t {eq_interval}",
-            "endloop",
-            "store_var t 0 eb",
-            f"set_e {begin}",
-        ]
-    else:
-        parts += [f"set_e {begin}"]
-    parts += [f"meas_loop_swv p c f r {begin} {end} {step} {amplitude} {frequency}"]
-    if use_equilibrium_check:
-        parts += [
-            "\tpck_start",
-            "\t\tpck_add p",
-            "\t\tpck_add c",
-            "\t\tpck_add f",
-            "\t\tpck_add r",
-            "\t\tpck_add t",
-            "\tpck_end",
-            f"\tadd_var t {swv_time_step}",
-        ]
-    else:
-        parts += [
-            "\tpck_start",
-            "\t\tpck_add p",
-            "\t\tpck_add c",
-            "\t\tpck_add f",
-            "\t\tpck_add r",
-            "\tpck_end",
-        ]
-    parts += ["endloop", "on_finished:", "cell_off"]
-    return "\n".join(parts)
+    return build_swv_methodscript(params, method_options)
 
 
 def mux_channel_address(channel: int) -> int:

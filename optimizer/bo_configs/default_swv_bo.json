@@ -2,31 +2,28 @@
   "schema_version": 1,
   "name": "Default SWV mux Bayesian optimization",
   "description": "Editable default search space for closed-loop SWV method optimization across a mux batch.",
-  "n_initial_points": 8,
+  "n_initial_points": 10,
   "random_seed": 42,
   "channels": [
-    1,
-    3,
-    7,
-    8
+    1
   ],
   "method_options": {
     "bandwidth": "4k",
     "ba_range": {
-      "mode": "fixed",
-      "fixed": "100n",
-      "auto_min": "100n",
-      "auto_max": "100n"
+      "mode": "auto",
+      "fixed": "100 nA",
+      "auto_min": "100 nA",
+      "auto_max": "50 uA"
     }
   },
   "initial_parameters": {
-    "begin_potential": -0.7,
-    "end_potential": -0.1,
+    "begin_potential": -0.5,
+    "end_potential": 0.0,
     "step_potential": 0.002,
-    "amplitude": 0.036,
-    "frequency": 200.0,
-    "conditioning_potential": -0.7,
-    "conditioning_time": 1.0
+    "amplitude": 0.02,
+    "frequency": 60.0,
+    "conditioning_potential": -0.5,
+    "conditioning_time": 0.1
   },
   "parameters": {
     "begin_potential": {
@@ -47,7 +44,7 @@
         -0.6,
         -0.5
       ],
-      "value": -0.7,
+      "value": -0.5,
       "tie_to": "begin_potential"
     },
     "end_potential": {
@@ -68,7 +65,7 @@
         -0.1,
         0.0
       ],
-      "value": -0.1,
+      "value": 0.0,
       "tie_to": "begin_potential"
     },
     "step_potential": {
@@ -114,9 +111,9 @@
       "unit": "Hz",
       "mode": "active",
       "space": "continuous",
-      "min": 25.0,
+      "min": 20.0,
       "max": 1000.0,
-      "scale": "log",
+      "scale": "linear",
       "step": 1.0,
       "proposal_sigma": 0.25,
       "values": [
@@ -169,7 +166,7 @@
         4.0,
         5.0
       ],
-      "value": 1.0,
+      "value": 0.1,
       "tie_to": "begin_potential"
     }
   },
@@ -228,20 +225,23 @@
   "analysis": {
     "file_glob": "*.json",
     "copy_outputs_into_record": true,
-    "crop_min_v": -0.6,
+    "crop_min_v": -0.45,
     "crop_max_v": 0.0,
-    "smooth_window": 15,
+    "smooth_window": 3,
     "smooth_polyorder": 2,
     "minima_search_window_v": 0.3,
     "use_prominent_minima": false,
     "use_double_correction": true,
     "min_peak_height_ua": null,
-    "min_start_voltage_v": -0.7,
+    "min_start_voltage_v": -0.6,
     "scan_windows": "",
     "compute_skew": false,
     "compute_wavelet_energy": false,
     "compute_wavelet_denoised_trace": false,
-    "use_wavelet_for_correction": false
+    "use_wavelet_for_correction": false,
+    "require_local_minima_on_both_sides": false,
+    "peak_voltage_min_v": -0.4,
+    "peak_voltage_max_v": -0.2
   },
   "records": {
     "folder_prefix": "bo_session"

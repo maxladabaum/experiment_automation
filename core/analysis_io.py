@@ -69,42 +69,71 @@ def load_swv_csv(
     voltage_col: str = "Potential (V)",
     current_col: Optional[str] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    with open(filepath, "r", encoding="utf-8-sig", errors="replace", newline="") as fh:
-        reader = csv.reader(fh)
-        rows = [row for row in reader if any(str(cell).strip() for cell in row)]
-    if not rows:
-        raise ValueError(f"CSV is empty: {filepath}")
+    try:
+        import pandas as pd
 
-    header = [str(cell).strip() for cell in rows[0]]
-    data_rows = rows[1:]
-    voltage_idx = _find_column(header, [voltage_col, "Potential (V)", "potential", "Ewe/V"])
-    current_candidates = (
-        [current_col]
-        if current_col
-        else [
-            "Current (uA)",
-            "Current (µA)",
-            "Current (ÂµA)",
-            "current",
-            "Current Diff (uA)",
-            "current_diff",
-        ]
-    )
-    current_idx = _find_column(header, current_candidates)
-    if voltage_idx is None or current_idx is None:
-        raise ValueError(f"CSV lacks potential/current columns: {filepath}")
+        df = pd.read_csv(filepath)
+        if voltage_col not in df.columns:
+            raise ValueError(
+                f"Voltage column '{voltage_col}' not found. Columns: {list(df.columns)}"
+            )
+        if current_col is None:
+            if "Current Diff (uA)" in df.columns:
+                current_col = "Current Diff (uA)"
+            elif "Current (uA)" in df.columns:
+                current_col = "Current (uA)"
+            else:
+                raise ValueError(
+                    "Cannot auto-pick current column. Need 'Current Diff (uA)' or 'Current (uA)'. "
+                    f"Columns: {list(df.columns)}"
+                )
+        elif current_col not in df.columns:
+            raise ValueError(
+                f"Current column '{current_col}' not found. Columns: {list(df.columns)}"
+            )
+        return (
+            df[voltage_col].to_numpy(dtype=float),
+            df[current_col].to_numpy(dtype=float),
+        )
+    except Exception:
+        with open(filepath, "r", encoding="utf-8-sig", errors="replace", newline="") as fh:
+            reader = csv.reader(fh)
+            rows = [row for row in reader if any(str(cell).strip() for cell in row)]
+        if not rows:
+            raise ValueError(f"CSV is empty: {filepath}")
 
-    voltage = []
-    current = []
-    for row in data_rows:
-        if max(voltage_idx, current_idx) >= len(row):
-            continue
-        try:
-            voltage.append(float(str(row[voltage_idx]).strip()))
-            current.append(float(str(row[current_idx]).strip()))
-        except ValueError:
-            continue
-    return np.asarray(voltage, dtype=float), np.asarray(current, dtype=float)
+        header = [str(cell).strip() for cell in rows[0]]
+        data_rows = rows[1:]
+        voltage_idx = _find_column(header, [voltage_col, "Potential (V)", "potential", "Ewe/V"])
+        current_candidates = (
+            [current_col]
+            if current_col
+            else [
+                "Current Diff (uA)",
+                "current_diff",
+                "Current (uA)",
+                "Current (ÂµA)",
+                "Current (Ã‚ÂµA)",
+                "current",
+            ]
+        )
+        current_idx = _find_column(header, current_candidates)
+        if voltage_idx is None or current_idx is None:
+            raise ValueError(f"CSV lacks potential/current columns: {filepath}")
+
+        voltage = []
+        current = []
+        for row in data_rows:
+            if max(voltage_idx, current_idx) >= len(row):
+                continue
+            try:
+                v_value = float(str(row[voltage_idx]).strip())
+                i_value = float(str(row[current_idx]).strip())
+            except ValueError:
+                continue
+            voltage.append(v_value)
+            current.append(i_value)
+        return np.asarray(voltage, dtype=float), np.asarray(current, dtype=float)
 
 
 def _find_column(header: List[str], candidates: List[Optional[str]]) -> Optional[int]:
@@ -125,7 +154,7 @@ def _find_column(header: List[str], candidates: List[Optional[str]]) -> Optional
 
 
 def _normalize_name(value: str) -> str:
-    value = str(value).replace("Âµ", "u").replace("µ", "u")
+    value = str(value).replace("Ã‚Âµ", "u").replace("Âµ", "u")
     return "".join(ch.lower() for ch in value if ch.isalnum())
 
 

@@ -154,8 +154,8 @@ def _normalize_scan_windows(raw: str) -> Optional[Tuple[Tuple[int, int], ...]]:
 
 def _analysis_args_from_request(payload: dict) -> dict:
     analysis = dict(payload.get("analysis") or {})
-    crop_min = float(analysis.get("crop_min_v", -0.6))
-    crop_max = float(analysis.get("crop_max_v", -0.1))
+    crop_min = float(analysis.get("crop_min_v", -0.61))
+    crop_max = float(analysis.get("crop_max_v", -0.30))
     return {
         "folders": [str(Path(p)) for p in payload.get("folders", [])],
         "crop_range": (crop_min, crop_max),
@@ -165,14 +165,23 @@ def _analysis_args_from_request(payload: dict) -> dict:
         "use_prominent_minima": bool(analysis.get("use_prominent_minima", False)),
         "use_double_correction": bool(analysis.get("use_double_correction", False)),
         "min_peak_height_uA": (
-            None if analysis.get("min_peak_height_ua") in (None, "", "none")
+            0.001 if analysis.get("min_peak_height_ua") in (None, "", "none")
             else float(analysis.get("min_peak_height_ua"))
         ),
-        "min_start_voltage": float(analysis.get("min_start_voltage_v", crop_min)),
+        "require_local_minima_on_both_sides": bool(analysis.get("require_local_minima_on_both_sides", False)),
+        "peak_voltage_min_V": (
+            None if analysis.get("peak_voltage_min_v") in (None, "", "none")
+            else float(analysis.get("peak_voltage_min_v"))
+        ),
+        "peak_voltage_max_V": (
+            None if analysis.get("peak_voltage_max_v") in (None, "", "none")
+            else float(analysis.get("peak_voltage_max_v"))
+        ),
+        "min_start_voltage": float(analysis.get("min_start_voltage_v", -0.70)),
         "scan_windows": _normalize_scan_windows(str(analysis.get("scan_windows", ""))),
         "scan_range": None,
-        "compute_skew": bool(analysis.get("compute_skew", False)),
-        "compute_wavelet_energy": bool(analysis.get("compute_wavelet_energy", False)),
+        "compute_skew": bool(analysis.get("compute_skew", True)),
+        "compute_wavelet_energy": bool(analysis.get("compute_wavelet_energy", True)),
         "compute_wavelet_denoised_trace": bool(analysis.get("compute_wavelet_denoised_trace", False)),
         "use_wavelet_for_correction": bool(analysis.get("use_wavelet_for_correction", False)),
     }
