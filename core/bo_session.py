@@ -441,10 +441,23 @@ def compute_channel_quality(metrics: dict, scoring: dict) -> dict:
             or 0.0
         )
     )
+    noise_raw = abs(
+        float(
+            metrics.get(
+                "mean_background_rms_uA",
+                metrics.get(
+                    "median_background_rms_uA",
+                    metrics.get("background_current_rms", metrics.get("baseline_noise", 0.0)),
+                ),
+            )
+            or 0.0
+        )
+    )
 
     component_scores = {
         "normalized_SNR": _clip01(snr_raw / max(snr_saturation, 1e-12)),
         "peak_height_raw": peak_height_raw,
+        "noise_raw": noise_raw,
         "log_snr": math.log1p(max(0.0, snr_raw)),
         "log_peak_height": math.log1p(max(0.0, peak_height_raw)),
         "peak_shape_score": _clip01(metrics.get("peak_shape_score", 0.0)),
@@ -472,20 +485,15 @@ def compute_channel_quality(metrics: dict, scoring: dict) -> dict:
         component_scores["Q_channel"] = weighted / max(total_weight, 1e-12)
     else:
         weighted = (
-            float(weights.get("snr", 0.35)) * component_scores["normalized_SNR"]
+            float(weights.get("snr", 0.35)) * snr_raw
+            + float(weights.get("peak_height", 0.0)) * peak_height_raw
             + float(weights.get("peak_shape", 0.20)) * component_scores["peak_shape_score"]
             + float(weights.get("baseline", 0.20)) * component_scores["baseline_stability_score"]
             + float(weights.get("replicate_consistency", 0.15)) * component_scores["replicate_consistency_score"]
             + float(weights.get("success", 0.10)) * component_scores["success_score"]
+            - float(weights.get("noise_penalty", 0.0)) * noise_raw
         )
-        total_weight = (
-            float(weights.get("snr", 0.35))
-            + float(weights.get("peak_shape", 0.20))
-            + float(weights.get("baseline", 0.20))
-            + float(weights.get("replicate_consistency", 0.15))
-            + float(weights.get("success", 0.10))
-        )
-        component_scores["Q_channel"] = _clip01(weighted / max(total_weight, 1e-12))
+        component_scores["Q_channel"] = max(0.0, weighted)
     component_scores["snr_raw"] = snr_raw
     return component_scores
 
@@ -515,7 +523,7 @@ def compute_run_quality(channel_metrics: dict, scoring: dict) -> dict:
         - float(run_weights.get("lambda_failed", 0.40)) * failed_fraction
         - float(run_weights.get("lambda_low", 0.20)) * low_fraction
     )
-    final_q = q_run if mode == "signal_priority_unbounded" else _clip01(q_run)
+    final_q = q_run if mode == "signal_priority_unbounded" else max(0.0, q_run)
     return {
         "Q_run": final_q,
         "mean_Q_channel": mean_q,

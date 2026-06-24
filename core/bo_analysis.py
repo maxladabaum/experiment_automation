@@ -76,8 +76,25 @@ def _score_from_cv(values: Iterable[Any]) -> float:
     return _clip01(1.0 / (1.0 + _cv(values)))
 
 
+def _float_or_none(value: Any) -> Optional[float]:
+    try:
+        f = float(value)
+    except Exception:
+        return None
+    return f if f == f else None
+
+
+def _abs_finite(values: Iterable[Any]) -> List[float]:
+    out = []
+    for value in values:
+        f = _float_or_none(value)
+        if f is not None:
+            out.append(abs(f))
+    return out
+
+
 def _mean(values: Iterable[Any], default: float = 0.0) -> float:
-    vals = [float(v) for v in values if v is not None]
+    vals = _finite(values)
     if not vals:
         return default
     return sum(vals) / len(vals)
@@ -109,22 +126,39 @@ def _build_channel_metrics(results: List[dict]) -> Dict[str, dict]:
             }
             continue
 
-        peak_currents = [abs(r.get("peak_current", 0.0)) for r in ok_rows]
-        background_rms = [abs(r.get("background_current_rms", 0.0)) for r in ok_rows]
-        offset_scores = [max(0.0, 1.0 - abs(float(r.get("peak_offset_norm", 0.0)))) for r in ok_rows]
+        peak_currents = _abs_finite(r.get("peak_current", 0.0) for r in ok_rows)
+        background_rms = _abs_finite(r.get("background_current_rms", 0.0) for r in ok_rows)
+        bracket_point_counts = [
+            max(1.0, _float_or_none(r.get("bracket_point_count")) or 1.0)
+            for r in ok_rows
+        ]
+        crop_point_counts = [
+            max(1.0, _float_or_none(r.get("crop_point_count")) or 1.0)
+            for r in ok_rows
+        ]
+        offset_scores = [
+            max(0.0, 1.0 - abs(_float_or_none(r.get("peak_offset_norm")) or 0.0))
+            for r in ok_rows
+        ]
         width_scores = _score_from_cv(r.get("bracket_width_V", 0.0) for r in ok_rows)
         baseline_scores = _score_from_cv(background_rms)
         replicate_scores = _score_from_cv(peak_currents)
         mean_peak_current = _mean(peak_currents, 0.0)
         mean_background_rms = _mean(background_rms, 0.0)
+        mean_bracket_point_count = _mean(bracket_point_counts, 1.0)
+        mean_crop_point_count = _mean(crop_point_counts, 1.0)
+        snr_unadjusted = mean_peak_current / max(mean_background_rms, 1e-12)
         metrics[channel] = {
-            "snr": mean_peak_current / max(mean_background_rms, 1e-12),
+            "snr": snr_unadjusted,
+            "snr_unadjusted": snr_unadjusted,
             "peak_shape_score": _clip01(0.5 * _median(offset_scores, 0.0) + 0.5 * width_scores),
             "baseline_stability_score": _clip01(baseline_scores),
             "replicate_consistency_score": _clip01(replicate_scores),
             "success_score": _clip01(success_score),
             "ok_scan_count": len(ok_rows),
             "total_scan_count": total,
+            "mean_bracket_point_count": mean_bracket_point_count,
+            "mean_crop_point_count": mean_crop_point_count,
             "median_peak_current_uA": _median(peak_currents, 0.0),
             "mean_peak_current_uA": mean_peak_current,
             "median_background_rms_uA": _median(background_rms, 0.0),

@@ -32,6 +32,7 @@ from core.bo_session import (
     PARAMETER_ORDER,
     active_parameters,
     build_swv_script,
+    compute_run_quality,
     encode_candidate,
     load_bo_config,
     normalize_bo_config,
@@ -40,6 +41,7 @@ from core.bo_session import (
     save_bo_config,
     validate_bo_config,
 )
+from core.bo_analysis import _build_channel_metrics
 from core.bo_simulation import LANDSCAPE_TYPES, default_dimensions, run_optimizer_simulation
 from core.analysis import analyze_swv_arrays, partial_traces_for_failure_arrays
 from core.analysis_io import load_swv_csv
@@ -111,12 +113,28 @@ class BayesianOptimizationTab:
         self._score_baseline_weight_var = tk.StringVar(value="0.20")
         self._score_replicate_weight_var = tk.StringVar(value="0.15")
         self._score_success_weight_var = tk.StringVar(value="0.10")
+        self._score_noise_penalty_var = tk.StringVar(value="0.00")
         self._score_snr_saturation_var = tk.StringVar(value="20.0")
         self._score_variability_penalty_var = tk.StringVar(value="0.20")
         self._score_failed_penalty_var = tk.StringVar(value="0.40")
         self._score_low_penalty_var = tk.StringVar(value="0.20")
         self._score_low_threshold_var = tk.StringVar(value="0.50")
         self._score_formula_var = tk.StringVar(value="")
+        self._rescore_mode_var = tk.StringVar(value="classic_bounded")
+        self._rescore_snr_weight_var = tk.StringVar(value="0.35")
+        self._rescore_peak_height_weight_var = tk.StringVar(value="0.00")
+        self._rescore_shape_weight_var = tk.StringVar(value="0.20")
+        self._rescore_baseline_weight_var = tk.StringVar(value="0.20")
+        self._rescore_replicate_weight_var = tk.StringVar(value="0.15")
+        self._rescore_success_weight_var = tk.StringVar(value="0.10")
+        self._rescore_noise_penalty_var = tk.StringVar(value="0.00")
+        self._rescore_snr_saturation_var = tk.StringVar(value="20.0")
+        self._rescore_variability_penalty_var = tk.StringVar(value="0.20")
+        self._rescore_failed_penalty_var = tk.StringVar(value="0.40")
+        self._rescore_low_penalty_var = tk.StringVar(value="0.20")
+        self._rescore_low_threshold_var = tk.StringVar(value="0.50")
+        self._rescore_formula_var = tk.StringVar(value="")
+        self._rescore_status_var = tk.StringVar(value="Load a BO session to rescore recorded data.")
         self._status_var = tk.StringVar(value="Load a BO config to begin.")
         self._record_dir_var = tk.StringVar(value="Record folder: (not started)")
         self._auto_target_var = tk.StringVar(value="5")
@@ -166,6 +184,7 @@ class BayesianOptimizationTab:
         self._engine_page_index = 0
         self._engine_pages = []
         self._history_rows = {}
+        self._loaded_original_config = None
         self._surrogate_plot_canvas = None
         self._selected_history_observation = None
         self._active_results_tree = None
@@ -542,58 +561,12 @@ class BayesianOptimizationTab:
 
         scoring_box = ttk.LabelFrame(scoring_tab, text="Q Score Decomposition", padding=8)
         scoring_box.pack(fill="both", expand=True, pady=(0, 8), padx=2)
-        for idx in range(6):
-            scoring_box.columnconfigure(idx, weight=1 if idx in (1, 3, 5) else 0)
-        ttk.Label(scoring_box, text="Score mode:").grid(row=0, column=0, sticky="w", pady=2)
-        mode_combo = ttk.Combobox(
+        self._build_q_scoring_controls(
             scoring_box,
-            textvariable=self._score_mode_var,
-            values=("classic_bounded", "signal_priority_unbounded"),
-            state="readonly",
-            width=26,
-        )
-        mode_combo.grid(row=0, column=1, columnspan=2, sticky="w", padx=(4, 10), pady=2)
-        mode_combo.bind("<<ComboboxSelected>>", lambda _e: self._sync_scoring_config(show_error=False))
-        ttk.Button(scoring_box, text="Signal Preset", command=self._apply_signal_priority_preset).grid(row=0, column=3, sticky="w", pady=2)
-        entries = [
-            ("SNR w:", self._score_snr_weight_var),
-            ("Peak w:", self._score_peak_height_weight_var),
-            ("Shape w:", self._score_shape_weight_var),
-            ("Baseline w:", self._score_baseline_weight_var),
-            ("Replicate w:", self._score_replicate_weight_var),
-            ("Success w:", self._score_success_weight_var),
-            ("SNR sat:", self._score_snr_saturation_var),
-            ("Var penalty:", self._score_variability_penalty_var),
-            ("Failed penalty:", self._score_failed_penalty_var),
-            ("Low penalty:", self._score_low_penalty_var),
-            ("Low threshold:", self._score_low_threshold_var),
-        ]
-        for idx, (label, var) in enumerate(entries):
-            row = 1 + idx // 2
-            base_col = (idx % 2) * 3
-            ttk.Label(scoring_box, text=label).grid(row=row, column=base_col, sticky="w", pady=2)
-            entry = ttk.Entry(scoring_box, textvariable=var, width=9)
-            entry.grid(row=row, column=base_col + 1, sticky="w", padx=(4, 10), pady=2)
-            entry.bind("<FocusOut>", lambda _e: self._sync_scoring_config(show_error=False))
-            entry.bind("<Return>", lambda _e: self._sync_scoring_config(show_error=False))
-        ttk.Label(scoring_box, textvariable=self._score_formula_var, foreground=self.ACCENT, wraplength=460, justify="left").grid(
-            row=7,
-            column=0,
-            columnspan=6,
-            sticky="w",
-            pady=(4, 0),
-        )
-        ttk.Label(
-            scoring_box,
-            text=self._q_reference_text(),
-            wraplength=460,
-            justify="left",
-        ).grid(
-            row=8,
-            column=0,
-            columnspan=6,
-            sticky="w",
-            pady=(6, 0),
+            self._setup_scoring_vars(),
+            self._score_formula_var,
+            lambda: self._sync_scoring_config(show_error=False),
+            preset_command=self._apply_signal_priority_preset,
         )
 
         analysis_box = ttk.LabelFrame(analysis_tab, text="Headless Analysis Settings", padding=8)
@@ -961,10 +934,9 @@ class BayesianOptimizationTab:
         self._analysis_q_plot_frame.pack(fill="both", expand=True, padx=6, pady=6)
         self._corrected_trace_frame = ttk.Frame(corrected_box)
         self._corrected_trace_frame.pack(fill="both", expand=True)
-        model_box = ttk.LabelFrame(bottom, text="Surrogate and Acquisition Artifacts", padding=6)
         hist_cols = (
             "Q_run", "Mean", "Std", "Failed", "Low",
-            "Peak uA", "Raw SNR", "SNR Score", "Shape", "Baseline", "Replicate", "Success",
+            "Peak uA", "Noise uA", "Raw SNR", "SNR Score", "Shape", "Baseline", "Replicate", "Success",
             "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t",
         )
         self._history_tree = ttk.Treeview(hist_box, columns=hist_cols, show="tree headings", height=10)
@@ -993,19 +965,34 @@ class BayesianOptimizationTab:
         self._history_tree.configure(xscrollcommand=history_x.set)
         history_x.pack(fill="x")
 
-        cols = ("Type", "File")
-        bottom.add(model_box, minsize=260, stretch="always")
-        model_toolbar = ttk.Frame(model_box)
-        model_toolbar.pack(fill="x", pady=(0, 4))
-        ttk.Button(model_toolbar, text="Refresh", command=self._refresh_model_artifacts).pack(side="left", padx=2)
-        self._model_tree = ttk.Treeview(model_box, columns=cols, show="tree headings", height=8)
-        self._model_tree.heading("#0", text="#")
-        self._model_tree.heading("Type", text="Type")
-        self._model_tree.heading("File", text="File")
-        self._model_tree.column("#0", width=45, anchor="center")
-        self._model_tree.column("Type", width=115)
-        self._model_tree.column("File", width=420)
-        self._model_tree.pack(fill="both", expand=True)
+        q_rescore_left = ttk.Frame(bottom)
+        bottom.add(q_rescore_left, minsize=420, stretch="always")
+
+        current_equation_box = ttk.LabelFrame(q_rescore_left, text="Current Q Equation", padding=6)
+        current_equation_box.pack(fill="both", expand=True, pady=(0, 6))
+        self._current_q_equation_text = scrolledtext.ScrolledText(current_equation_box, height=8, wrap=tk.WORD)
+        self._current_q_equation_text.pack(fill="both", expand=True)
+        self._current_q_equation_text.config(state="disabled")
+
+        rescore_box = ttk.LabelFrame(q_rescore_left, text="Rescore Recorded Data", padding=8)
+        rescore_box.pack(fill="both", expand=True)
+        button_bar = ttk.Frame(rescore_box)
+        button_bar.grid(row=0, column=0, columnspan=6, sticky="ew", pady=(0, 4))
+        ttk.Button(button_bar, text="Apply Rescore", command=self._apply_rescore_to_loaded_session).pack(side="left", padx=2)
+        ttk.Button(button_bar, text="Reset Original", command=self._reset_rescore_to_original).pack(side="left", padx=2)
+        ttk.Button(button_bar, text="Save Rescored Session", command=self._save_rescored_session).pack(side="left", padx=2)
+        ttk.Label(button_bar, textvariable=self._rescore_status_var, foreground=self.ACCENT, wraplength=430, justify="left").pack(side="left", padx=(8, 2))
+        controls = ttk.Frame(rescore_box)
+        controls.grid(row=1, column=0, columnspan=6, sticky="nsew")
+        rescore_box.rowconfigure(1, weight=1)
+        rescore_box.columnconfigure(0, weight=1)
+        self._build_q_scoring_controls(
+            controls,
+            self._rescore_scoring_vars(),
+            self._rescore_formula_var,
+            self._preview_rescore_equation,
+            preset_command=self._apply_rescore_signal_priority_preset,
+        )
 
         surrogate_box = ttk.LabelFrame(bottom, text="Surrogate View", padding=6)
         bottom.add(surrogate_box, minsize=260, stretch="always")
@@ -1113,6 +1100,9 @@ class BayesianOptimizationTab:
             self._set_method_option_vars_from_config(self._config)
             self._set_algorithm_vars_from_config(self._config)
             self._set_scoring_vars_from_config(self._config)
+            if self._bo_session is None:
+                self._loaded_original_config = None
+                self._set_rescore_vars_from_config(self._config)
             self._engine_seed_var.set(str(self._config.get("random_seed", 42)))
             self._channels_var.set(", ".join(str(ch) for ch in self._config.get("channels", [])))
             self._refresh_parameter_table()
@@ -1367,13 +1357,106 @@ class BayesianOptimizationTab:
     @staticmethod
     def _q_reference_text():
         return (
-            "Q terms: Peak uA is the measured signal height. Raw SNR is peak height / background RMS. "
-            "SNR Score is Raw SNR / SNR sat, clipped 0-1. Shape rewards a centered, stable peak. "
+            "Q terms: Peak uA is the measured signal height. Raw SNR is peak height / RMS noise between the peak-bracketing minima. "
+            "RMS noise is estimated from neighboring-point current differences divided by sqrt(2). "
+            "Classic mode weights Raw SNR directly; SNR Score is Raw SNR / SNR sat for display. Shape rewards a centered, stable peak. "
             "Baseline rewards low/stable background. Replicate rewards consistent peak heights across scans. "
             "Success is a separate outcome measure, not the same thing as Q; in simulation it is peak-first "
             "with noise as a secondary factor, while real analysis still uses OK scans / total scans. "
-            "Classic mode bounds SNR and Q. Signal-priority mode removes the SNR ceiling and uses log1p(SNR) "
-            "+ log1p(peak height) so stronger peaks keep separating instead of flattening."
+            "Classic mode uses a direct weighted sum of Raw SNR, Peak uA, bounded component scores, and the noise penalty; "
+            "it does not normalize by summed weights and only floors Q at 0. Signal-priority mode uses log1p(SNR) "
+            "+ log1p(peak height) with weight normalization."
+        )
+
+    def _setup_scoring_vars(self):
+        return {
+            "mode": self._score_mode_var,
+            "snr": self._score_snr_weight_var,
+            "peak_height": self._score_peak_height_weight_var,
+            "peak_shape": self._score_shape_weight_var,
+            "baseline": self._score_baseline_weight_var,
+            "replicate_consistency": self._score_replicate_weight_var,
+            "success": self._score_success_weight_var,
+            "noise_penalty": self._score_noise_penalty_var,
+            "snr_saturation": self._score_snr_saturation_var,
+            "lambda_variability": self._score_variability_penalty_var,
+            "lambda_failed": self._score_failed_penalty_var,
+            "lambda_low": self._score_low_penalty_var,
+            "low_channel_threshold": self._score_low_threshold_var,
+        }
+
+    def _rescore_scoring_vars(self):
+        return {
+            "mode": self._rescore_mode_var,
+            "snr": self._rescore_snr_weight_var,
+            "peak_height": self._rescore_peak_height_weight_var,
+            "peak_shape": self._rescore_shape_weight_var,
+            "baseline": self._rescore_baseline_weight_var,
+            "replicate_consistency": self._rescore_replicate_weight_var,
+            "success": self._rescore_success_weight_var,
+            "noise_penalty": self._rescore_noise_penalty_var,
+            "snr_saturation": self._rescore_snr_saturation_var,
+            "lambda_variability": self._rescore_variability_penalty_var,
+            "lambda_failed": self._rescore_failed_penalty_var,
+            "lambda_low": self._rescore_low_penalty_var,
+            "low_channel_threshold": self._rescore_low_threshold_var,
+        }
+
+    def _build_q_scoring_controls(self, scoring_box, vars_by_name, formula_var, on_change, preset_command=None):
+        for idx in range(6):
+            scoring_box.columnconfigure(idx, weight=1 if idx in (1, 3, 5) else 0)
+        ttk.Label(scoring_box, text="Score mode:").grid(row=0, column=0, sticky="w", pady=2)
+        mode_combo = ttk.Combobox(
+            scoring_box,
+            textvariable=vars_by_name["mode"],
+            values=("classic_bounded", "signal_priority_unbounded"),
+            state="readonly",
+            width=26,
+        )
+        mode_combo.grid(row=0, column=1, columnspan=2, sticky="w", padx=(4, 10), pady=2)
+        mode_combo.bind("<<ComboboxSelected>>", lambda _e: on_change())
+        if preset_command is not None:
+            ttk.Button(scoring_box, text="Signal Preset", command=preset_command).grid(row=0, column=3, sticky="w", pady=2)
+        entries = [
+            ("Channel SNR weight:", vars_by_name["snr"]),
+            ("Channel peak weight:", vars_by_name["peak_height"]),
+            ("Channel shape weight:", vars_by_name["peak_shape"]),
+            ("Channel baseline weight:", vars_by_name["baseline"]),
+            ("Channel replicate weight:", vars_by_name["replicate_consistency"]),
+            ("Channel success weight:", vars_by_name["success"]),
+            ("Channel noise penalty:", vars_by_name["noise_penalty"]),
+            ("SNR saturation:", vars_by_name["snr_saturation"]),
+            ("Run std penalty:", vars_by_name["lambda_variability"]),
+            ("Run failed penalty:", vars_by_name["lambda_failed"]),
+            ("Run low-Q penalty:", vars_by_name["lambda_low"]),
+            ("Low-Q threshold:", vars_by_name["low_channel_threshold"]),
+        ]
+        for idx, (label, var) in enumerate(entries):
+            row = 1 + idx // 2
+            base_col = (idx % 2) * 3
+            ttk.Label(scoring_box, text=label).grid(row=row, column=base_col, sticky="w", pady=2)
+            entry = ttk.Entry(scoring_box, textvariable=var, width=9)
+            entry.grid(row=row, column=base_col + 1, sticky="w", padx=(4, 10), pady=2)
+            entry.bind("<FocusOut>", lambda _e: on_change())
+            entry.bind("<Return>", lambda _e: on_change())
+        ttk.Label(scoring_box, textvariable=formula_var, foreground=self.ACCENT, wraplength=460, justify="left").grid(
+            row=7,
+            column=0,
+            columnspan=6,
+            sticky="w",
+            pady=(4, 0),
+        )
+        ttk.Label(
+            scoring_box,
+            text=self._q_reference_text(),
+            wraplength=460,
+            justify="left",
+        ).grid(
+            row=8,
+            column=0,
+            columnspan=6,
+            sticky="w",
+            pady=(6, 0),
         )
 
     def _set_scoring_vars_from_config(self, cfg: dict):
@@ -1387,6 +1470,7 @@ class BayesianOptimizationTab:
         self._score_baseline_weight_var.set(str(channel.get("baseline", 0.20)))
         self._score_replicate_weight_var.set(str(channel.get("replicate_consistency", 0.15)))
         self._score_success_weight_var.set(str(channel.get("success", 0.10)))
+        self._score_noise_penalty_var.set(str(channel.get("noise_penalty", 0.0)))
         self._score_snr_saturation_var.set(str(channel.get("snr_saturation", 20.0)))
         self._score_variability_penalty_var.set(str(run.get("lambda_variability", 0.20)))
         self._score_failed_penalty_var.set(str(run.get("lambda_failed", 0.40)))
@@ -1398,51 +1482,69 @@ class BayesianOptimizationTab:
         if self._config is None:
             return
         try:
-            scoring = self._config.setdefault("scoring", {})
-            mode = str(self._score_mode_var.get() or "classic_bounded").strip().lower()
-            scoring["mode"] = "signal_priority_unbounded" if mode == "signal_priority_unbounded" else "classic_bounded"
-            channel = scoring.setdefault("channel_weights", {})
-            channel["snr"] = max(0.0, float(self._score_snr_weight_var.get() or 0.0))
-            channel["peak_height"] = max(0.0, float(self._score_peak_height_weight_var.get() or 0.0))
-            channel["peak_shape"] = max(0.0, float(self._score_shape_weight_var.get() or 0.0))
-            channel["baseline"] = max(0.0, float(self._score_baseline_weight_var.get() or 0.0))
-            channel["replicate_consistency"] = max(0.0, float(self._score_replicate_weight_var.get() or 0.0))
-            channel["success"] = max(0.0, float(self._score_success_weight_var.get() or 0.0))
-            channel["snr_saturation"] = max(1e-12, float(self._score_snr_saturation_var.get() or 20.0))
-            run = scoring.setdefault("run_weights", {})
-            run["lambda_variability"] = max(0.0, float(self._score_variability_penalty_var.get() or 0.0))
-            run["lambda_failed"] = max(0.0, float(self._score_failed_penalty_var.get() or 0.0))
-            run["lambda_low"] = max(0.0, float(self._score_low_penalty_var.get() or 0.0))
-            run["low_channel_threshold"] = max(0.0, min(1.0, float(self._score_low_threshold_var.get() or 0.5)))
+            self._config["scoring"] = self._scoring_from_vars(self._setup_scoring_vars())
             self._refresh_score_formula()
+            self._refresh_current_q_equation(self._config)
         except Exception as exc:
             if show_error:
                 messagebox.showerror("Q Score Decomposition", str(exc))
 
     def _refresh_score_formula(self):
+        self._refresh_formula_from_vars(self._setup_scoring_vars(), self._score_formula_var)
+
+    def _scoring_from_vars(self, vars_by_name):
+        mode = str(vars_by_name["mode"].get() or "classic_bounded").strip().lower()
+        return {
+            "mode": "signal_priority_unbounded" if mode == "signal_priority_unbounded" else "classic_bounded",
+            "channel_weights": {
+                "snr": max(0.0, float(vars_by_name["snr"].get() or 0.0)),
+                "peak_height": max(0.0, float(vars_by_name["peak_height"].get() or 0.0)),
+                "peak_shape": max(0.0, float(vars_by_name["peak_shape"].get() or 0.0)),
+                "baseline": max(0.0, float(vars_by_name["baseline"].get() or 0.0)),
+                "replicate_consistency": max(0.0, float(vars_by_name["replicate_consistency"].get() or 0.0)),
+                "success": max(0.0, float(vars_by_name["success"].get() or 0.0)),
+                "noise_penalty": max(0.0, float(vars_by_name["noise_penalty"].get() or 0.0)),
+                "snr_saturation": max(1e-12, float(vars_by_name["snr_saturation"].get() or 20.0)),
+            },
+            "run_weights": {
+                "lambda_variability": max(0.0, float(vars_by_name["lambda_variability"].get() or 0.0)),
+                "lambda_failed": max(0.0, float(vars_by_name["lambda_failed"].get() or 0.0)),
+                "lambda_low": max(0.0, float(vars_by_name["lambda_low"].get() or 0.0)),
+                "low_channel_threshold": max(0.0, min(1.0, float(vars_by_name["low_channel_threshold"].get() or 0.5))),
+            },
+        }
+
+    def _refresh_formula_from_vars(self, vars_by_name, formula_var):
         try:
-            mode = str(self._score_mode_var.get() or "classic_bounded").strip().lower()
-            total = (
-                float(self._score_snr_weight_var.get() or 0.0)
-                + float(self._score_peak_height_weight_var.get() or 0.0)
-                + float(self._score_shape_weight_var.get() or 0.0)
-                + float(self._score_baseline_weight_var.get() or 0.0)
-                + float(self._score_replicate_weight_var.get() or 0.0)
-                + float(self._score_success_weight_var.get() or 0.0)
-            )
+            mode = str(vars_by_name["mode"].get() or "classic_bounded").strip().lower()
+            snr_weight = float(vars_by_name["snr"].get() or 0.0)
+            peak_weight = float(vars_by_name["peak_height"].get() or 0.0)
+            shape_weight = float(vars_by_name["peak_shape"].get() or 0.0)
+            baseline_weight = float(vars_by_name["baseline"].get() or 0.0)
+            replicate_weight = float(vars_by_name["replicate_consistency"].get() or 0.0)
+            success_weight = float(vars_by_name["success"].get() or 0.0)
+            noise_penalty = float(vars_by_name["noise_penalty"].get() or 0.0)
+            if mode == "signal_priority_unbounded":
+                total = snr_weight + peak_weight + shape_weight + baseline_weight + replicate_weight + success_weight
+            else:
+                total = snr_weight + peak_weight + shape_weight + baseline_weight + replicate_weight + success_weight
         except Exception:
-            self._score_formula_var.set("Q_channel = weighted component score. Enter numeric weights.")
+            formula_var.set("Q_channel = weighted component score. Enter numeric weights.")
             return
         if mode == "signal_priority_unbounded":
-            self._score_formula_var.set(
-                "Q_channel = (w_snr*log1p(SNR) + w_peak*log1p(Peak uA) + w_base*baseline + "
-                f"w_shape*shape + w_rep*replicate + w_success*success) / {total:.3g}; "
-                "Q_run = mean channels - variability/failed/low penalties. No SNR cap, no Q clipping."
+            formula_var.set(
+                "Q_channel = (Channel SNR weight*log1p(Raw SNR) + Channel peak weight*log1p(Peak uA) + "
+                "Channel baseline weight*Baseline + Channel shape weight*Shape + "
+                "Channel replicate weight*Replicate + Channel success weight*Success) / "
+                f"{total:.3g}; "
+                "Q_run = mean channels - Run std/failed/low-Q penalties. No SNR cap, no Q clipping."
             )
         else:
-            self._score_formula_var.set(
-                "Q_channel = (SNR + shape + baseline + replicate + success weighted scores) / "
-                f"{total:.3g}; Q_run = mean channels - variability/failed/low penalties."
+            formula_var.set(
+                "Q_channel = (Channel SNR weight*Raw SNR + Channel peak weight*Peak uA + "
+                "Channel shape weight*Shape + Channel baseline weight*Baseline + Channel replicate weight*Replicate + "
+                f"Channel success weight*Success - Channel noise penalty({noise_penalty:.3g})*Noise uA); "
+                "Q_run = mean channels - Run std/failed/low-Q penalties. Q_channel and Q_run are floored at 0, not capped at 1."
             )
 
     def _apply_signal_priority_preset(self):
@@ -1453,12 +1555,146 @@ class BayesianOptimizationTab:
         self._score_baseline_weight_var.set("0.12")
         self._score_replicate_weight_var.set("0.03")
         self._score_success_weight_var.set("0.00")
+        self._score_noise_penalty_var.set("0.00")
         self._score_snr_saturation_var.set("20.0")
         self._score_variability_penalty_var.set("0.10")
         self._score_failed_penalty_var.set("0.10")
         self._score_low_penalty_var.set("0.05")
         self._score_low_threshold_var.set("1.50")
         self._sync_scoring_config(show_error=False)
+
+    def _set_scoring_vars(self, cfg, vars_by_name, formula_var):
+        scoring = dict((cfg or {}).get("scoring") or {})
+        channel = dict(scoring.get("channel_weights") or {})
+        run = dict(scoring.get("run_weights") or {})
+        vars_by_name["mode"].set(str(scoring.get("mode", "classic_bounded")))
+        vars_by_name["snr"].set(str(channel.get("snr", 0.35)))
+        vars_by_name["peak_height"].set(str(channel.get("peak_height", 0.0)))
+        vars_by_name["peak_shape"].set(str(channel.get("peak_shape", 0.20)))
+        vars_by_name["baseline"].set(str(channel.get("baseline", 0.20)))
+        vars_by_name["replicate_consistency"].set(str(channel.get("replicate_consistency", 0.15)))
+        vars_by_name["success"].set(str(channel.get("success", 0.10)))
+        vars_by_name["noise_penalty"].set(str(channel.get("noise_penalty", 0.0)))
+        vars_by_name["snr_saturation"].set(str(channel.get("snr_saturation", 20.0)))
+        vars_by_name["lambda_variability"].set(str(run.get("lambda_variability", 0.20)))
+        vars_by_name["lambda_failed"].set(str(run.get("lambda_failed", 0.40)))
+        vars_by_name["lambda_low"].set(str(run.get("lambda_low", 0.20)))
+        vars_by_name["low_channel_threshold"].set(str(run.get("low_channel_threshold", 0.50)))
+        self._refresh_formula_from_vars(vars_by_name, formula_var)
+
+    def _set_rescore_vars_from_config(self, cfg):
+        self._set_scoring_vars(cfg, self._rescore_scoring_vars(), self._rescore_formula_var)
+        self._refresh_current_q_equation(cfg)
+
+    def _preview_rescore_equation(self):
+        try:
+            scoring = self._scoring_from_vars(self._rescore_scoring_vars())
+            self._refresh_formula_from_vars(self._rescore_scoring_vars(), self._rescore_formula_var)
+            self._refresh_current_q_equation(self._config_with_scoring(scoring))
+            if self._bo_session is not None:
+                self._rescore_status_var.set("Edited scoring values. Click Apply Rescore to update recorded data.")
+        except Exception as exc:
+            self._rescore_status_var.set(f"Q equation preview failed: {exc}")
+
+    def _apply_rescore_signal_priority_preset(self):
+        self._rescore_mode_var.set("signal_priority_unbounded")
+        self._rescore_snr_weight_var.set("0.45")
+        self._rescore_peak_height_weight_var.set("0.35")
+        self._rescore_shape_weight_var.set("0.05")
+        self._rescore_baseline_weight_var.set("0.12")
+        self._rescore_replicate_weight_var.set("0.03")
+        self._rescore_success_weight_var.set("0.00")
+        self._rescore_noise_penalty_var.set("0.00")
+        self._rescore_snr_saturation_var.set("20.0")
+        self._rescore_variability_penalty_var.set("0.10")
+        self._rescore_failed_penalty_var.set("0.10")
+        self._rescore_low_penalty_var.set("0.05")
+        self._rescore_low_threshold_var.set("1.50")
+        self._preview_rescore_equation()
+
+    def _apply_rescore_to_loaded_session(self, show_error=True):
+        try:
+            scoring = self._scoring_from_vars(self._rescore_scoring_vars())
+            self._refresh_formula_from_vars(self._rescore_scoring_vars(), self._rescore_formula_var)
+            self._refresh_current_q_equation(self._config_with_scoring(scoring))
+            if self._bo_session is None:
+                self._rescore_status_var.set("Load a BO session to rescore recorded data.")
+                return
+            self._bo_session.config["scoring"] = scoring
+            if self._config is not None:
+                self._config["scoring"] = dict(scoring)
+            rescored = 0
+            rebuilt_metrics = 0
+            for obs in self._bo_session.observations:
+                channel_metrics = self._rebuilt_channel_metrics_for_observation(obs)
+                if isinstance(channel_metrics, dict):
+                    obs["channel_metrics"] = channel_metrics
+                    rebuilt_metrics += 1
+                else:
+                    channel_metrics = obs.get("channel_metrics")
+                if not isinstance(channel_metrics, dict):
+                    continue
+                quality = compute_run_quality(channel_metrics, scoring)
+                obs["quality"] = quality
+                obs["Q_run"] = quality["Q_run"]
+                for record in self._bo_session.suggestions:
+                    if record.get("method_id") == obs.get("method_id"):
+                        record["Q_run"] = obs["Q_run"]
+                rescored += 1
+            selected = None
+            if hasattr(self, "_history_tree"):
+                selection = self._history_tree.selection()
+                selected = selection[0] if selection else None
+            self._refresh_history()
+            if selected in self._history_rows:
+                self._history_tree.selection_set(selected)
+                self._history_tree.focus(selected)
+                self._select_history_iteration(selected)
+            else:
+                self._select_latest_history_iteration()
+            self._render_best()
+            self._rescore_status_var.set(
+                f"Preview rescored {rescored} completed iteration(s); rebuilt metrics for {rebuilt_metrics}. "
+                "Use Save Rescored Session to persist."
+            )
+        except Exception as exc:
+            self._rescore_status_var.set(f"Rescore failed: {exc}")
+            if show_error:
+                messagebox.showerror("Rescore Q Scores", str(exc))
+
+    def _reset_rescore_to_original(self):
+        source = self._loaded_original_config or self._bo_session.config if self._bo_session else self._config
+        self._set_rescore_vars_from_config(source or {})
+        self._preview_rescore_equation()
+
+    def _save_rescored_session(self):
+        if self._bo_session is None:
+            messagebox.showwarning("Save Rescored Session", "Load a BO session first.")
+            return
+        try:
+            for obs in self._bo_session.observations:
+                iteration = int(obs.get("iteration", 0) or 0)
+                if iteration > 0:
+                    self._bo_session._write_json(self._bo_session.analysis_dir / f"iter_{iteration:03d}_quality.json", obs)
+            self._bo_session._write_json(self._bo_session.record_dir / "bo_config_snapshot.json", self._bo_session.config)
+            self._bo_session._write_history_csv()
+            self._bo_session.save_state()
+            self._rescore_status_var.set(f"Saved rescored Q values to {self._bo_session.STATE_FILE}.")
+            self._status_var.set("Saved rescored BO session state.")
+        except Exception as exc:
+            messagebox.showerror("Save Rescored Session", str(exc))
+
+    def _config_with_scoring(self, scoring):
+        source = self._bo_session.config if self._bo_session else self._config
+        cfg = dict(source or {})
+        cfg["scoring"] = scoring
+        return cfg
+
+    def _refresh_current_q_equation(self, config=None):
+        if not hasattr(self, "_current_q_equation_text"):
+            return
+        source = config if config is not None else (self._bo_session.config if self._bo_session else self._config)
+        self._write_text(self._current_q_equation_text, "\n".join(self._q_equation_lines(source)))
 
     def _sync_channels_from_entry(self, show_error=True):
         if self._config is None:
@@ -1513,6 +1749,8 @@ class BayesianOptimizationTab:
                 exp_path,
                 analysis_output_dir=analysis_dir,
             )
+            self._loaded_original_config = json.loads(json.dumps(self._bo_session.config))
+            self._set_rescore_vars_from_config(self._bo_session.config)
             self._suggestion = None
             self._record_dir_var.set(f"Record folder: {self._bo_session.record_dir}")
             self._status_var.set(f"BO session started with {len(self._bo_session.candidates)} valid candidates.")
@@ -1541,6 +1779,7 @@ class BayesianOptimizationTab:
             path = self._resolve_bo_session_load_path(path)
             loaded = BOIntegrationSession.load(path)
             self._bo_session = loaded
+            self._loaded_original_config = json.loads(json.dumps(loaded.config))
             self._config = dict(loaded.config)
             if loaded.config_path is not None:
                 self._config_path_var.set(str(loaded.config_path))
@@ -1549,6 +1788,7 @@ class BayesianOptimizationTab:
             self._set_method_option_vars_from_config(self._config)
             self._set_algorithm_vars_from_config(self._config)
             self._set_scoring_vars_from_config(self._config)
+            self._set_rescore_vars_from_config(self._config)
             self._channels_var.set(", ".join(str(ch) for ch in self._config.get("channels", [])))
             self._refresh_parameter_table()
             self._refresh_initial_parameters_table()
@@ -1925,6 +2165,8 @@ class BayesianOptimizationTab:
             self._simulation_result = result
             self._bo_session = result.get("session")
             if self._bo_session is not None:
+                self._loaded_original_config = json.loads(json.dumps(self._bo_session.config))
+                self._set_rescore_vars_from_config(self._bo_session.config)
                 self._record_dir_var.set(f"Record folder: {self._bo_session.record_dir}")
                 self._refresh_history()
                 self._render_best()
@@ -3064,6 +3306,7 @@ class BayesianOptimizationTab:
             )
 
     def _refresh_history(self):
+        self._refresh_current_q_equation()
         for row in self._history_tree.get_children():
             self._history_tree.delete(row)
         self._history_rows = {}
@@ -3102,6 +3345,7 @@ class BayesianOptimizationTab:
                     self._fmt(q.get("failed_channel_fraction")),
                     self._fmt(q.get("low_channel_fraction")),
                     self._fmt(peak_uA),
+                    self._fmt(rms_uA),
                     self._fmt(snr_raw),
                     self._fmt(snr_score),
                     self._fmt(shape_score),
@@ -3781,6 +4025,50 @@ class BayesianOptimizationTab:
                 continue
         return out
 
+    @staticmethod
+    def _minima_bracket_rms_noise_from_row(row):
+        raw_current = BayesianOptimizationTab._parse_trace_array(row.get("raw_current"))
+        if len(raw_current) < 2:
+            return None, None, None
+        try:
+            left = int(float(row.get("left_min_idx")))
+            right = int(float(row.get("right_min_idx")))
+        except (TypeError, ValueError):
+            return None, None, len(raw_current)
+        if left < 0 or right < 0:
+            return None, None, len(raw_current)
+        lo = max(0, min(left, right))
+        hi = min(len(raw_current) - 1, max(left, right))
+        segment = raw_current[lo:hi + 1]
+        if len(segment) < 2:
+            return None, len(segment), len(raw_current)
+        diffs = [segment[idx + 1] - segment[idx] for idx in range(len(segment) - 1)]
+        noise = math.sqrt(sum(diff * diff for diff in diffs) / len(diffs)) / math.sqrt(2.0)
+        return noise, len(segment), len(raw_current)
+
+    def _rebuilt_channel_metrics_for_observation(self, observation):
+        rows = []
+        for path in self._analysis_results_paths_for_observation(observation):
+            if not path.exists():
+                continue
+            try:
+                with open(path, "r", encoding="utf-8-sig", newline="") as fh:
+                    for row in csv.DictReader(fh):
+                        row = dict(row)
+                        noise, bracket_count, crop_count = self._minima_bracket_rms_noise_from_row(row)
+                        if noise is not None:
+                            row["background_current_rms"] = noise
+                        if bracket_count is not None:
+                            row["bracket_point_count"] = bracket_count
+                        if crop_count is not None:
+                            row["crop_point_count"] = crop_count
+                        rows.append(row)
+            except Exception:
+                continue
+        if not rows:
+            return None
+        return _build_channel_metrics(rows)
+
     def _analysis_results_paths_for_observation(self, observation):
         paths = []
         analysis_record_path = self._resolve_observation_file_path(observation.get("analysis_record"), observation)
@@ -3950,6 +4238,7 @@ class BayesianOptimizationTab:
         lambda_failed = float(run_weights.get("lambda_failed", 0.40))
         lambda_low = float(run_weights.get("lambda_low", 0.20))
         threshold = float(run_weights.get("low_channel_threshold", 0.50))
+        noise_penalty = float(channel_weights.get("noise_penalty", 0.0))
         total = sum(
             float(channel_weights.get(key, default))
             for key, default in (
@@ -3964,9 +4253,9 @@ class BayesianOptimizationTab:
         lines = [
             "Q_run breakdown:",
             f"  mean channel Q: {mean_q:.4f}",
-            f"  variability penalty: {lambda_var:g} x std {std_q:.4f} = {lambda_var * std_q:.4f}",
-            f"  failed-channel penalty: {lambda_failed:g} x fraction {failed:.4f} = {lambda_failed * failed:.4f}",
-            f"  low-channel penalty: {lambda_low:g} x fraction {low:.4f} = {lambda_low * low:.4f} (low < {threshold:g})",
+            f"  Run std penalty: {lambda_var:g} x std(Q_channel) {std_q:.4f} = {lambda_var * std_q:.4f}",
+            f"  Run failed penalty: {lambda_failed:g} x failed_fraction {failed:.4f} = {lambda_failed * failed:.4f}",
+            f"  Run low-Q penalty: {lambda_low:g} x low_q_fraction {low:.4f} = {lambda_low * low:.4f} (Q_channel < Low-Q threshold {threshold:g})",
             f"  final Q_run: {q_run:.4f}",
             "",
         ]
@@ -3976,12 +4265,12 @@ class BayesianOptimizationTab:
                     "Q_channel terms:",
                     (
                         "  "
-                        f"log1p(SNR) {float(channel_weights.get('snr', 0.45)):g}, "
-                        f"log1p(Peak) {float(channel_weights.get('peak_height', 0.35)):g}, "
-                        f"Baseline {float(channel_weights.get('baseline', 0.12)):g}, "
-                        f"Shape {float(channel_weights.get('peak_shape', 0.05)):g}, "
-                        f"Replicate {float(channel_weights.get('replicate_consistency', 0.03)):g}, "
-                        f"Success {float(channel_weights.get('success', 0.0)):g}; total {total:g}"
+                        f"Channel SNR weight {float(channel_weights.get('snr', 0.45)):g}, "
+                        f"Channel peak weight {float(channel_weights.get('peak_height', 0.35)):g}, "
+                        f"Channel baseline weight {float(channel_weights.get('baseline', 0.12)):g}, "
+                        f"Channel shape weight {float(channel_weights.get('peak_shape', 0.05)):g}, "
+                        f"Channel replicate weight {float(channel_weights.get('replicate_consistency', 0.03)):g}, "
+                        f"Channel success weight {float(channel_weights.get('success', 0.0)):g}; total {total:g}"
                     ),
                 ]
             )
@@ -3991,12 +4280,13 @@ class BayesianOptimizationTab:
                     "Q_channel weights:",
                     (
                         "  "
-                        f"SNR {float(channel_weights.get('snr', 0.35)):g}, "
-                        f"Peak {float(channel_weights.get('peak_height', 0.0)):g}, "
-                        f"Shape {float(channel_weights.get('peak_shape', 0.20)):g}, "
-                        f"Baseline {float(channel_weights.get('baseline', 0.20)):g}, "
-                        f"Replicate {float(channel_weights.get('replicate_consistency', 0.15)):g}, "
-                        f"Success {float(channel_weights.get('success', 0.10)):g}; total {total:g}"
+                        f"Channel SNR weight {float(channel_weights.get('snr', 0.35)):g}, "
+                        f"Channel peak weight {float(channel_weights.get('peak_height', 0.0)):g}, "
+                        f"Channel shape weight {float(channel_weights.get('peak_shape', 0.20)):g}, "
+                        f"Channel baseline weight {float(channel_weights.get('baseline', 0.20)):g}, "
+                        f"Channel replicate weight {float(channel_weights.get('replicate_consistency', 0.15)):g}, "
+                        f"Channel success weight {float(channel_weights.get('success', 0.10)):g}; "
+                        f"Channel noise penalty {noise_penalty:g}; no weight normalization"
                     ),
                 ]
             )
@@ -4011,41 +4301,50 @@ class BayesianOptimizationTab:
 
         if mode == "signal_priority_unbounded":
             terms = [
-                ("log1p(SNR)", float(channel_weights.get("snr", 0.45))),
-                ("log1p(Peak uA)", float(channel_weights.get("peak_height", 0.35))),
-                ("Baseline", float(channel_weights.get("baseline", 0.12))),
-                ("Shape", float(channel_weights.get("peak_shape", 0.05))),
-                ("Replicate", float(channel_weights.get("replicate_consistency", 0.03))),
-                ("Success", float(channel_weights.get("success", 0.0))),
+                ("Channel SNR weight", "log1p(Raw SNR)", float(channel_weights.get("snr", 0.45))),
+                ("Channel peak weight", "log1p(Peak uA)", float(channel_weights.get("peak_height", 0.35))),
+                ("Channel baseline weight", "Baseline", float(channel_weights.get("baseline", 0.12))),
+                ("Channel shape weight", "Shape", float(channel_weights.get("peak_shape", 0.05))),
+                ("Channel replicate weight", "Replicate", float(channel_weights.get("replicate_consistency", 0.03))),
+                ("Channel success weight", "Success", float(channel_weights.get("success", 0.0))),
             ]
+            noise_penalty = 0.0
         else:
             terms = [
-                ("SNR score", float(channel_weights.get("snr", 0.35))),
-                ("Peak", float(channel_weights.get("peak_height", 0.0))),
-                ("Shape", float(channel_weights.get("peak_shape", 0.20))),
-                ("Baseline", float(channel_weights.get("baseline", 0.20))),
-                ("Replicate", float(channel_weights.get("replicate_consistency", 0.15))),
-                ("Success", float(channel_weights.get("success", 0.10))),
+                ("Channel SNR weight", "Raw SNR", float(channel_weights.get("snr", 0.35))),
+                ("Channel peak weight", "Peak uA", float(channel_weights.get("peak_height", 0.0))),
+                ("Channel shape weight", "Shape", float(channel_weights.get("peak_shape", 0.20))),
+                ("Channel baseline weight", "Baseline", float(channel_weights.get("baseline", 0.20))),
+                ("Channel replicate weight", "Replicate", float(channel_weights.get("replicate_consistency", 0.15))),
+                ("Channel success weight", "Success", float(channel_weights.get("success", 0.10))),
             ]
-        total = sum(weight for _label, weight in terms)
-        numerator = " + ".join(f"{weight:g}*{label}" for label, weight in terms if weight)
+            noise_penalty = float(channel_weights.get("noise_penalty", 0.0))
+        total = sum(weight for _weight_label, _metric_label, weight in terms)
+        numerator = " + ".join(
+            f"{weight_label}({weight:g})*{metric_label}"
+            for weight_label, metric_label, weight in terms
+            if weight
+        )
         if not numerator:
             numerator = "0"
+        if mode != "signal_priority_unbounded":
+            numerator = f"{numerator} - Channel noise penalty({noise_penalty:g})*Noise uA"
         lambda_var = float(run_weights.get("lambda_variability", 0.20))
         lambda_failed = float(run_weights.get("lambda_failed", 0.40))
         lambda_low = float(run_weights.get("lambda_low", 0.20))
         threshold = float(run_weights.get("low_channel_threshold", 0.50))
         lines = [
-            f"Q_channel = ({numerator}) / {max(total, 1e-12):g}",
+            f"Q_channel = ({numerator}) / {max(total, 1e-12):g}" if mode == "signal_priority_unbounded" else f"Q_channel = {numerator}",
             (
                 "Q_run = mean(Q_channel) "
-                f"- {lambda_var:g}*std(Q_channel) "
-                f"- {lambda_failed:g}*failed_fraction "
-                f"- {lambda_low:g}*fraction(Q_channel < {threshold:g})"
+                f"- Run std penalty({lambda_var:g})*std(Q_channel) "
+                f"- Run failed penalty({lambda_failed:g})*failed_fraction "
+                f"- Run low-Q penalty({lambda_low:g})*fraction(Q_channel < Low-Q threshold {threshold:g})"
             ),
         ]
         if mode != "signal_priority_unbounded":
-            lines.append(f"SNR score = clip(raw SNR / {float(channel_weights.get('snr_saturation', 20.0)):g}, 0, 1); Q_channel and Q_run are clipped 0..1.")
+            lines.append(f"SNR Score display = clip(raw SNR / {float(channel_weights.get('snr_saturation', 20.0)):g}, 0, 1); classic Q_channel uses Raw SNR directly.")
+            lines.append("Classic Q_channel and Q_run are floored at 0, not capped at 1.")
         else:
             lines.append("Signal-priority mode uses log signal terms and does not clip Q_run.")
         return lines
@@ -4735,7 +5034,7 @@ class BayesianOptimizationTab:
             "Mean baseline score",
             "Mean replicate score",
             "Mean success score",
-            "Mean RMS uA",
+            "Mean noise uA",
             "Step potential",
             "Amplitude",
             "Frequency",
@@ -4761,7 +5060,7 @@ class BayesianOptimizationTab:
         if metric == "Mean peak uA":
             peak, _rms = self._observation_peak_rms(observation)
             return peak
-        if metric == "Mean RMS uA":
+        if metric == "Mean noise uA":
             _peak, rms = self._observation_peak_rms(observation)
             return rms
         if metric == "Mean raw SNR":
@@ -4867,7 +5166,8 @@ class BayesianOptimizationTab:
                         if str(row.get("status", "")).upper() != "OK":
                             continue
                         peak_text = row.get("peak_current")
-                        rms_text = row.get("background_current_rms")
+                        noise, _bracket_count, _crop_count = self._minima_bracket_rms_noise_from_row(row)
+                        rms_text = noise if noise is not None else row.get("background_current_rms")
                         try:
                             if peak_text not in (None, ""):
                                 row_peaks.append(float(peak_text))

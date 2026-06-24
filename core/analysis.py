@@ -254,12 +254,31 @@ def _wavelet_denoise_trace(y: np.ndarray) -> np.ndarray:
     return trimmed
 
 
-def _compute_outside_crop_rms(i_raw: np.ndarray, crop_mask: np.ndarray) -> float:
-    signal = np.asarray(i_raw, dtype=float)
-    outside = signal[~np.asarray(crop_mask, dtype=bool)]
-    if outside.size == 0:
+def _compute_minima_bracket_rms_noise(current: np.ndarray, left_idx: int, right_idx: int) -> float:
+    if left_idx is None or right_idx is None:
         return np.nan
-    return float(np.sqrt(np.mean(outside ** 2)))
+    signal = np.asarray(current, dtype=float)
+    if signal.size == 0:
+        return np.nan
+    try:
+        left = int(left_idx)
+        right = int(right_idx)
+    except (TypeError, ValueError):
+        return np.nan
+    if left < 0 or right < 0:
+        return np.nan
+    lo = max(0, min(left, right))
+    hi = min(signal.size - 1, max(left, right))
+    if hi < lo:
+        return np.nan
+    segment = signal[lo:hi + 1]
+    segment = segment[np.isfinite(segment)]
+    if segment.size < 2:
+        return np.nan
+    differences = np.diff(segment)
+    if differences.size == 0:
+        return np.nan
+    return float(np.sqrt(np.mean(differences ** 2)) / np.sqrt(2.0))
 
 
 def _compute_outside_crop_median(i_raw: np.ndarray, crop_mask: np.ndarray) -> float:
@@ -354,7 +373,6 @@ def analyze_swv_arrays(
     v_raw = np.asarray(v_raw, dtype=float)
     i_raw = np.asarray(i_raw, dtype=float)
     mask = (v_raw >= crop_range[0]) & (v_raw <= crop_range[1])
-    background_rms = _compute_outside_crop_rms(i_raw, mask)
     background_median = _compute_outside_crop_median(i_raw, mask)
 
     result = reference_analysis.analyze_swv_arrays(
@@ -386,13 +404,17 @@ def analyze_swv_arrays(
     left_idx = int(result["left_min_idx"])
     right_idx = int(result["right_min_idx"])
     v = np.asarray(result["voltage"], dtype=float)
+    background_rms = _compute_minima_bracket_rms_noise(result["raw_current"], left_idx, right_idx)
     v_left = float(v[left_idx])
     v_right = float(v[right_idx])
     bracket_width_V = float(v_right - v_left)
+    bracket_point_count = max(0, right_idx - left_idx + 1)
 
     result.update(
         background_current_rms=background_rms,
         background_current_median=background_median,
+        crop_point_count=int(v.size),
+        bracket_point_count=int(bracket_point_count),
         wavelet_denoised_current=wavelet_denoised_current,
         bracket_width_V=bracket_width_V,
         wavelet_correction_applied=False,
@@ -427,7 +449,20 @@ def partial_traces_for_failure_arrays(
         use_prominent_minima=use_prominent_minima,
         use_double_correction=use_double_correction,
     )
-    base["background_current_rms"] = _compute_outside_crop_rms(i_raw, mask)
+    base["background_current_rms"] = _compute_minima_bracket_rms_noise(
+        base.get("raw_current", []),
+        base.get("left_min_idx"),
+        base.get("right_min_idx"),
+    )
+    raw_current = np.asarray(base.get("raw_current", []), dtype=float)
+    left_idx = base.get("left_min_idx")
+    right_idx = base.get("right_min_idx")
+    try:
+        bracket_point_count = max(0, int(right_idx) - int(left_idx) + 1)
+    except (TypeError, ValueError):
+        bracket_point_count = 0
+    base["crop_point_count"] = int(raw_current.size)
+    base["bracket_point_count"] = int(bracket_point_count)
     base["background_current_median"] = _compute_outside_crop_median(i_raw, mask)
     base["wavelet_denoised_current"] = (
         _wavelet_denoise_trace(np.asarray(base["raw_current"], dtype=float))
@@ -646,6 +681,7 @@ def run_batch(
                 "error": processed["error"],
                 **{k: partial.get(k) for k in (
                     "background_current_rms", "background_current_median",
+                    "crop_point_count", "bracket_point_count",
                     "voltage", "raw_current", "smoothed_current",
                     "wavelet_denoised_current",
                     "corrected_current", "smoothed_corrected_current",
