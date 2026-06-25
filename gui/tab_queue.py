@@ -305,7 +305,10 @@ class QueueTab:
                 count += 1
             elif item_type == "BO_AUTO_LOOP":
                 try:
-                    target = int(((item or {}).get("bo_block") or {}).get("target_iterations", 0) or 0)
+                    block = ((item or {}).get("bo_block") or {})
+                    target = int(block.get("target_iterations", 0) or 0)
+                    if str(block.get("objective") or "").strip().lower() == "paired_response":
+                        target *= max(1, int(block.get("batch_size", 1) or 1)) * 2
                 except Exception:
                     target = 0
                 count += max(0, target)
@@ -1467,6 +1470,12 @@ class QueueTab:
         target = int(block.get("target_iterations", 1) or 1)
         channels = (block.get("channels_override") or "").strip() or "config channels"
         config_name = Path(str(block.get("bo_config_path") or "BO config")).name
+        if str(block.get("objective") or "").lower() == "paired_response":
+            batch = max(1, int(block.get("batch_size", 1) or 1))
+            target_eq = max(0.0, float(block.get("target_equilibration_seconds", 0.0) or 0.0))
+            buffer_eq = max(0.0, float(block.get("buffer_equilibration_seconds", 0.0) or 0.0))
+            eq_text = f" | eq target {target_eq:g}s, buffer {buffer_eq:g}s" if (target_eq or buffer_eq) else ""
+            return f"{config_name} | paired {target} cycles x {batch} methods{eq_text} | {channels}"
         return f"{config_name} | {target} iter | {channels}"
 
     def _execute_measurement_item(self, item: dict):
@@ -1502,7 +1511,7 @@ class QueueTab:
             self._session.current_runner = None
             self._root.after(0, self._plotter.stop_live)
 
-    def _run_bo_analysis(self, bo_session: BOIntegrationSession, block: dict) -> Path:
+    def _run_bo_analysis(self, bo_session: BOIntegrationSession, block: dict, suggestion=None, phase: str | None = None) -> Path:
         session_mgr = getattr(self._session, "session_manager", None)
         exp_path = session_mgr.require_experiment() if session_mgr is not None else None
         if exp_path is None:
@@ -1512,7 +1521,113 @@ class QueueTab:
             folders=[exp_path],
             output_dir=output_dir,
             analysis=dict(block.get("analysis") or {}),
+            suggestion=suggestion,
+            phase=phase,
         )
+
+    def _run_bo_queue_items(self, queue_items: list, label: str):
+        completed = 0
+        failed = 0
+        stopped = 0
+        recorded_items = []
+        for sub_item in queue_items:
+            if not self._session.is_running:
+                stopped += 1
+                sub_item["status"] = "stopped"
+                recorded_items.append(dict(sub_item))
+                break
+            self._session.update_queue_status(
+                state="running",
+                current_label=f"{label}: {sub_item.get('details', sub_item.get('type'))}",
+                active_step_type=sub_item.get("type"),
+                active_step_details=sub_item.get("details"),
+                active_step_started_at=datetime.now().isoformat(timespec="seconds"),
+                active_step_estimated_seconds=estimate_item_seconds(sub_item),
+            )
+            ok, csv_path = self._execute_measurement_item(sub_item)
+            if ok:
+                completed += 1
+                sub_item["status"] = "completed"
+                sub_item["completed_at"] = datetime.now().isoformat(timespec="seconds")
+                if csv_path:
+                    sub_item["csv_path"] = str(csv_path)
+                    self._root.after(0, self._plotter.plot_data, csv_path, self._session.last_live_plot_color, None, True, False)
+            else:
+                if not self._session.is_running:
+                    stopped += 1
+                    sub_item["status"] = "stopped"
+                else:
+                    failed += 1
+                    sub_item["status"] = "failed"
+                    sub_item["failed_at"] = datetime.now().isoformat(timespec="seconds")
+                recorded_items.append(dict(sub_item))
+                break
+            recorded_items.append(dict(sub_item))
+        return completed, failed, stopped, recorded_items
+
+    def _execute_bo_operational_items(self, items: list, label: str) -> bool:
+        for sub_item in items:
+            if not self._session.is_running:
+                return False
+            t = str(sub_item.get("type") or "").upper()
+            self._session.update_queue_status(
+                state="running",
+                current_label=f"{label}: {sub_item.get('details', t)}",
+                active_step_type=t,
+                active_step_details=sub_item.get("details"),
+                active_step_started_at=datetime.now().isoformat(timespec="seconds"),
+                active_step_estimated_seconds=estimate_item_seconds(sub_item),
+            )
+            if t == "PAUSE":
+                ok = self._exec_pause(float(sub_item.get("pause_seconds", 0.0) or 0.0))
+            elif t == "ALERT":
+                ok = self._exec_alert(str(sub_item.get("alert_message") or "Fluid exchange checkpoint"))
+            elif t.startswith("PUMP_"):
+                ok = self._exec_pump(sub_item)
+            else:
+                raise RuntimeError(f"Fluid exchange block contains unsupported item type: {t}")
+            if not ok:
+                return False
+        return True
+
+    def _execute_bo_equilibration_pause(self, seconds: float, label: str) -> bool:
+        seconds = max(0.0, float(seconds or 0.0))
+        if seconds <= 0.0:
+            return True
+        self.log(f"{label}: equilibrating for {seconds:g} sec before measurement")
+        self._session.update_queue_status(
+            state="running",
+            current_label=label,
+            active_step_type="PAUSE",
+            active_step_details=f"Equilibration pause for {seconds:g} sec",
+            active_step_started_at=datetime.now().isoformat(timespec="seconds"),
+            active_step_estimated_seconds=seconds,
+        )
+        return self._exec_pause(seconds)
+
+    @staticmethod
+    def _load_bo_exchange_items(block: dict, key: str, label: str) -> list:
+        path_text = str(block.get(key) or "").strip()
+        if not path_text:
+            return []
+        path = Path(path_text)
+        if not path.exists():
+            raise FileNotFoundError(f"{label} block not found: {path}")
+        with open(path, "r", encoding="utf-8-sig") as fh:
+            payload = json.load(fh)
+        items = payload.get("items") if isinstance(payload, dict) else payload
+        if not isinstance(items, list):
+            raise ValueError(f"{label} block must contain an items list")
+        allowed = []
+        for raw in items:
+            item = dict(raw)
+            t = str(item.get("type") or "").upper()
+            if t.startswith("PUMP_") or t in ("PAUSE", "ALERT"):
+                item.setdefault("status", "pending")
+                allowed.append(item)
+            else:
+                raise ValueError(f"{label} block item is not a pump/pause/alert step: {t}")
+        return allowed
 
     def _exec_bo_auto_loop(self, item: dict) -> bool:
         block = dict(item.get("bo_block") or {})
@@ -1522,11 +1637,35 @@ class QueueTab:
         config = load_bo_config(config_path)
         if str(block.get("channels_override") or "").strip():
             config["channels"] = parse_channels(block.get("channels_override"))
+        if str(block.get("objective") or "").strip():
+            config["objective"] = str(block.get("objective")).strip()
+        if isinstance(block.get("config_overrides"), dict):
+            for key, value in dict(block.get("config_overrides") or {}).items():
+                config[key] = value
+        paired_mode = str(block.get("objective") or "").strip().lower() == "paired_response"
+        if paired_mode:
+            batch_size_for_warmup = max(1, int(block.get("batch_size", 1) or 1))
+            if block.get("paired_warmup_cycles") is not None:
+                warmup_cycles = max(0, int(block.get("paired_warmup_cycles") or 0))
+                config["paired_warmup_cycles"] = warmup_cycles
+                config["paired_batch_size"] = batch_size_for_warmup
+                config["n_initial_points"] = warmup_cycles * batch_size_for_warmup
         analysis_cfg = dict((config.get("analysis") or {}))
         analysis_cfg.update(dict(block.get("analysis") or {}))
         if block.get("analysis_file_glob"):
             analysis_cfg["file_glob"] = str(block.get("analysis_file_glob"))
         config["analysis"] = analysis_cfg
+        scoring_override = block.get("scoring")
+        if isinstance(scoring_override, dict):
+            scoring_cfg = dict(config.get("scoring") or {})
+            for key, value in scoring_override.items():
+                if isinstance(value, dict) and isinstance(scoring_cfg.get(key), dict):
+                    merged = dict(scoring_cfg.get(key) or {})
+                    merged.update(value)
+                    scoring_cfg[key] = merged
+                else:
+                    scoring_cfg[key] = value
+            config["scoring"] = scoring_cfg
         config = normalize_bo_config(config)
         errors = validate_bo_config(config)
         if errors:
@@ -1548,6 +1687,135 @@ class QueueTab:
         self.log(f"BO block started: {item.get('details', '')}")
         halfway_iteration = max(1, int(math.ceil(target_iterations / 2.0)))
         halfway_notified = False
+
+        if paired_mode:
+            batch_size = max(1, int(block.get("batch_size", 1) or 1))
+            target_cycles = target_iterations
+            target_observations = target_cycles * batch_size
+            halfway_cycle = max(1, int(math.ceil(target_cycles / 2.0)))
+            completed_cycles = 0
+            target_equilibration_seconds = max(0.0, float(block.get("target_equilibration_seconds", 0.0) or 0.0))
+            buffer_equilibration_seconds = max(0.0, float(block.get("buffer_equilibration_seconds", 0.0) or 0.0))
+            target_exchange_items = self._load_bo_exchange_items(
+                block,
+                "target_exchange_block_path",
+                "Target exchange",
+            )
+            buffer_exchange_items = self._load_bo_exchange_items(
+                block,
+                "buffer_exchange_block_path",
+                "Return-to-buffer exchange",
+            )
+            while self._session.is_running and completed_cycles < target_cycles:
+                cycle_index = completed_cycles + 1
+                suggestions = bo_session.ask_batch(batch_size)
+                self.log(
+                    f"BO paired cycle {cycle_index}/{target_cycles}: {len(suggestions)} suggestion(s), "
+                    f"iterations {suggestions[0].iteration}-{suggestions[-1].iteration}"
+                )
+
+                buffer_items = []
+                target_items = []
+                for suggestion in suggestions:
+                    buffer = bo_session.build_queue_items(self._session.registry, suggestion, phase="buffer")
+                    target = bo_session.build_queue_items(self._session.registry, suggestion, phase="target")
+                    bo_session.record_queued(suggestion, buffer + target)
+                    buffer_items.extend(buffer)
+                    target_items.extend(target)
+
+                b_completed, b_failed, b_stopped, b_recorded = self._run_bo_queue_items(buffer_items, "BO buffer batch")
+                bo_session.record_queue_completion({
+                    "start_index": None,
+                    "total": len(b_recorded),
+                    "completed": b_completed,
+                    "failed": b_failed,
+                    "stopped": b_stopped,
+                    "items": b_recorded,
+                })
+                if b_failed or b_stopped or not self._session.is_running:
+                    return False
+
+                if target_exchange_items:
+                    self.log(f"BO paired batch: running buffer-to-target exchange block ({len(target_exchange_items)} step(s))")
+                    if not self._execute_bo_operational_items([copy.deepcopy(x) for x in target_exchange_items], "BO buffer-to-target exchange"):
+                        return False
+                else:
+                    self.log("BO paired batch: no buffer-to-target exchange block configured; continuing to target measurements")
+
+                if not self._execute_bo_equilibration_pause(
+                    target_equilibration_seconds,
+                    f"BO paired cycle {cycle_index}/{target_cycles}: target equilibration",
+                ):
+                    return False
+
+                t_completed, t_failed, t_stopped, t_recorded = self._run_bo_queue_items(target_items, "BO target batch")
+                bo_session.record_queue_completion({
+                    "start_index": None,
+                    "total": len(t_recorded),
+                    "completed": t_completed,
+                    "failed": t_failed,
+                    "stopped": t_stopped,
+                    "items": t_recorded,
+                })
+                if t_failed or t_stopped or not self._session.is_running:
+                    return False
+
+                if buffer_exchange_items:
+                    self.log(f"BO paired batch: running target-to-buffer exchange block ({len(buffer_exchange_items)} step(s))")
+                    if not self._execute_bo_operational_items([copy.deepcopy(x) for x in buffer_exchange_items], "BO target-to-buffer exchange"):
+                        return False
+                else:
+                    self.log("BO paired batch: no target-to-buffer exchange block configured; next cycle will start in current fluid")
+
+                if completed_cycles + 1 < target_cycles:
+                    if not self._execute_bo_equilibration_pause(
+                        buffer_equilibration_seconds,
+                        f"BO paired cycle {cycle_index}/{target_cycles}: buffer equilibration",
+                    ):
+                        return False
+
+                for suggestion in suggestions:
+                    buffer_summary = self._run_bo_analysis(bo_session, block, suggestion=suggestion, phase="buffer")
+                    target_summary = self._run_bo_analysis(bo_session, block, suggestion=suggestion, phase="target")
+                    obs = bo_session.import_paired_analysis(
+                        suggestion,
+                        buffer_summary,
+                        target_summary,
+                        notes="Imported from recipe paired-response BO block",
+                    )
+                    self.log(
+                        f"BO iteration {obs['iteration']} paired complete: "
+                        f"Q_run={obs['Q_run']:.3f}, "
+                        f"mean delta={float(obs['quality'].get('mean_delta_peak_height_uA', 0.0)):.4g} uA"
+                    )
+                completed_cycles += 1
+                if session_mgr is not None and not halfway_notified and completed_cycles >= halfway_cycle:
+                    halfway_notified = True
+                    session_mgr.notify_slack(
+                        f"BO paired-response progress: cycle {completed_cycles}/{target_cycles} complete "
+                        f"(halfway). {len(bo_session.observations)}/{target_observations} hyperparameter sets observed. "
+                        f"Session={bo_session.session_id}; Experiment={Path(exp_path).name}."
+                    )
+
+            completed_iterations = len(bo_session.observations)
+            item["details"] = (
+                f"{self._format_bo_block_details(block)} | done "
+                f"{completed_cycles}/{target_cycles} cycles, {completed_iterations}/{target_observations} methods"
+            )
+            best = bo_session.best_observation()
+            if best is not None:
+                item["bo_best_q"] = float(best.get("Q_run", 0.0))
+                self.log(f"BO block best Q_run={item['bo_best_q']:.3f}")
+            if session_mgr is not None and completed_cycles >= target_cycles:
+                best_text = ""
+                if best is not None:
+                    best_text = f" Best Q_run={float(best.get('Q_run', 0.0)):.3f} at iter {int(best.get('iteration', 0) or 0)}."
+                session_mgr.notify_slack(
+                    f"BO paired-response session completed: {completed_cycles}/{target_cycles} cycles, "
+                    f"{completed_iterations}/{target_observations} hyperparameter sets. "
+                    f"Session={bo_session.session_id}; Experiment={Path(exp_path).name}.{best_text}"
+                )
+            return self._session.is_running and completed_cycles >= target_cycles
 
         while self._session.is_running and len(bo_session.observations) < target_iterations:
             suggestion = bo_session.ask_next()

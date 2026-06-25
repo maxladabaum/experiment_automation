@@ -65,6 +65,7 @@ class RecipeMakerTab:
 
         ctrl.add(ttk.Button(ctrl, text="Add Pump Step", command=self._add_pump_step))
         ctrl.add(ttk.Button(ctrl, text="Add Method Step", command=self._add_method_step))
+        ctrl.add(ttk.Button(ctrl, text="Add BO Loop", command=self._add_bo_loop_step))
         ctrl.separator()
         ctrl.add(ttk.Button(ctrl, text="Move Up", command=lambda: self._move_selected(-1)))
         ctrl.add(ttk.Button(ctrl, text="Move Down", command=lambda: self._move_selected(1)))
@@ -233,15 +234,126 @@ class RecipeMakerTab:
             "analysis_output_dir": str(BO_ANALYSIS_OUTPUT_DIR),
             "analysis_file_glob": str(BO_ANALYSIS_FILE_GLOB),
             "target_iterations": 3,
+            "objective": "quality",
+            "batch_size": 1,
+            "target_exchange_block_path": "",
+            "buffer_exchange_block_path": "",
+            "target_equilibration_seconds": 0.0,
+            "buffer_equilibration_seconds": 0.0,
             "channels_override": "",
+            "scoring": {
+                **self._default_normal_scoring(),
+                "paired_response_weights": self._default_paired_response_weights(),
+            },
             "analysis": analysis_cfg,
         }
         return block
+
+    @staticmethod
+    def _default_normal_scoring() -> dict:
+        return {
+            "mode": "signal_priority_unbounded",
+            "channel_weights": {
+                "snr": 0.35,
+                "peak_height": 0.0,
+                "peak_shape": 0.20,
+                "baseline": 0.20,
+                "replicate_consistency": 0.15,
+                "success": 0.10,
+                "noise_penalty": 0.0,
+                "snr_saturation": 20.0,
+            },
+            "run_weights": {
+                "lambda_variability": 0.20,
+                "lambda_failed": 0.40,
+                "lambda_low": 0.20,
+                "low_channel_threshold": 0.50,
+            },
+        }
+
+    @staticmethod
+    def _normal_q_equation_text(scoring: dict) -> str:
+        mode = str(scoring.get("mode", "classic") or "classic").strip().lower()
+        channel = dict(scoring.get("channel_weights") or {})
+        run = dict(scoring.get("run_weights") or {})
+        if mode == "signal_priority_unbounded":
+            total = (
+                float(channel.get("snr", 0.45))
+                + float(channel.get("peak_height", 0.35))
+                + float(channel.get("baseline", 0.12))
+                + float(channel.get("peak_shape", 0.05))
+                + float(channel.get("replicate_consistency", 0.03))
+                + float(channel.get("success", 0.0))
+            )
+            q_text = (
+                "Q_channel = (w_snr*log1p(raw_snr) + w_peak*log1p(peak_uA) + "
+                "w_baseline*baseline + w_shape*shape + w_replicate*replicate + "
+                f"w_success*success) / {max(total, 1e-12):.4g}."
+            )
+        else:
+            q_text = (
+                "Q_channel = w_snr*raw_snr + w_peak*peak_uA + w_shape*shape + "
+                "w_baseline*baseline + w_replicate*replicate + w_success*success "
+                f"- noise_penalty({float(channel.get('noise_penalty', 0.0)):g})*noise_uA; floored at 0."
+            )
+        return (
+            f"{q_text} Q_run = mean(Q_channel) "
+            f"- {float(run.get('lambda_variability', 0.20)):g}*std(Q_channel) "
+            f"- {float(run.get('lambda_failed', 0.40)):g}*failed_fraction "
+            f"- {float(run.get('lambda_low', 0.20)):g}*fraction(Q_channel < {float(run.get('low_channel_threshold', 0.50)):g})."
+        )
+
+    @staticmethod
+    def _default_paired_response_weights() -> dict:
+        return {
+            "buffer_classic_Q": 0.25,
+            "target_classic_Q": 0.25,
+            "delta_peak": 1.0,
+            "delta_scale_uA": 1.0,
+        }
+
+    @staticmethod
+    def _display_score_mode(mode) -> str:
+        mode_text = str(mode or "classic").strip().lower()
+        return "signal_priority_unbounded" if mode_text == "signal_priority_unbounded" else "classic"
+
+    @staticmethod
+    def _paired_response_equation_text(weights: dict) -> str:
+        if "standard_quality" in weights and "buffer_classic_Q" not in weights and "target_classic_Q" not in weights:
+            legacy_quality_weight = max(0.0, float(weights.get("standard_quality", 0.0) or 0.0))
+            weights = dict(weights)
+            weights["buffer_classic_Q"] = legacy_quality_weight / 2.0
+            weights["target_classic_Q"] = legacy_quality_weight / 2.0
+        buffer_q_w = float(weights.get("buffer_classic_Q", 0.25))
+        target_q_w = float(weights.get("target_classic_Q", 0.25))
+        delta_w = float(weights.get("delta_peak", 1.0))
+        delta_scale = float(weights.get("delta_scale_uA", 1.0))
+        total = (
+            buffer_q_w
+            + target_q_w
+            + delta_w
+        )
+        return (
+            "delta_peak = target_peak_height_uA - buffer_peak_height_uA; "
+            f"delta_peak_score = log1p(abs(delta_peak)/{delta_scale:g}); "
+            "Q_channel = paired_Q_channel = ("
+            f"{buffer_q_w:g}*buffer_classic_Q + "
+            f"{target_q_w:g}*target_classic_Q + "
+            f"{delta_w:g}*delta_peak_score) / "
+            f"{max(total, 1e-12):.4g}. "
+            "Q_run = mean(Q_channel) - run variability/failed/low-channel penalties."
+        )
 
     def _bo_details(self, block: dict) -> str:
         target = int(block.get("target_iterations", 1) or 1)
         channels = (block.get("channels_override") or "").strip() or "config channels"
         config_name = Path(str(block.get("bo_config_path") or "BO config")).name
+        if str(block.get("objective") or "").lower() == "paired_response":
+            batch = max(1, int(block.get("batch_size", 1) or 1))
+            target_eq = max(0.0, float(block.get("target_equilibration_seconds", 0.0) or 0.0))
+            buffer_eq = max(0.0, float(block.get("buffer_equilibration_seconds", 0.0) or 0.0))
+            eq_text = f" | eq target {target_eq:g}s, buffer {buffer_eq:g}s" if (target_eq or buffer_eq) else ""
+            return f"{config_name} | paired {target} cycles x {batch} methods{eq_text} | {channels}"
         return f"{config_name} | {target} iter | {channels}"
 
     def _add_bo_loop_step(self):
@@ -1161,38 +1273,245 @@ class RecipeMakerTab:
         ttk.Label(win, text="Target iterations:").grid(row=2, column=0, **pad, sticky="e")
         target_var = tk.IntVar(value=int(block.get("target_iterations", 3) or 3))
         ttk.Entry(win, width=8, textvariable=target_var).grid(row=2, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Channels override:").grid(row=3, column=0, **pad, sticky="e")
+        ttk.Label(win, text="Objective:").grid(row=2, column=2, **pad, sticky="e")
+        objective_var = tk.StringVar(value=str(block.get("objective") or "quality"))
+        ttk.Combobox(
+            win,
+            textvariable=objective_var,
+            values=["quality", "paired_response"],
+            state="readonly",
+            width=18,
+        ).grid(row=2, column=3, **pad, sticky="w")
+
+        ttk.Label(win, text="Batch size:").grid(row=3, column=0, **pad, sticky="e")
+        batch_var = tk.IntVar(value=max(1, int(block.get("batch_size", 1) or 1)))
+        ttk.Entry(win, width=8, textvariable=batch_var).grid(row=3, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Channels override:").grid(row=3, column=2, **pad, sticky="e")
         channels_var = tk.StringVar(value=str(block.get("channels_override") or ""))
-        ttk.Entry(win, width=24, textvariable=channels_var).grid(row=3, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Glob:").grid(row=3, column=2, **pad, sticky="e")
+        ttk.Entry(win, width=24, textvariable=channels_var).grid(row=3, column=3, **pad, sticky="w")
+        ttk.Label(win, text="Glob:").grid(row=4, column=0, **pad, sticky="e")
         glob_var = tk.StringVar(value=str(block.get("analysis_file_glob") or BO_ANALYSIS_FILE_GLOB))
-        ttk.Entry(win, width=18, textvariable=glob_var).grid(row=3, column=3, **pad, sticky="w")
+        ttk.Entry(win, width=18, textvariable=glob_var).grid(row=4, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Buffer -> target block:").grid(row=4, column=2, **pad, sticky="e")
+        target_exchange_var = tk.StringVar(value=str(block.get("target_exchange_block_path") or ""))
+        ttk.Entry(win, width=34, textvariable=target_exchange_var).grid(row=4, column=3, **pad, sticky="we")
+        ttk.Button(
+            win,
+            text="Browse",
+            command=lambda: self._set_string_from_dialog(
+                target_exchange_var,
+                filedialog.askopenfilename(
+                    title="Choose buffer-to-target exchange block",
+                    filetypes=[("JSON", "*.json"), ("All files", "*.*")],
+                    initialdir=str(self._custom_blocks_dir),
+                ),
+            ),
+        ).grid(row=4, column=4, **pad, sticky="w")
+
+        ttk.Label(win, text="Target -> buffer block:").grid(row=5, column=2, **pad, sticky="e")
+        buffer_exchange_var = tk.StringVar(value=str(block.get("buffer_exchange_block_path") or ""))
+        ttk.Entry(win, width=34, textvariable=buffer_exchange_var).grid(row=5, column=3, **pad, sticky="we")
+        ttk.Button(
+            win,
+            text="Browse",
+            command=lambda: self._set_string_from_dialog(
+                buffer_exchange_var,
+                filedialog.askopenfilename(
+                    title="Choose target-to-buffer exchange block",
+                    filetypes=[("JSON", "*.json"), ("All files", "*.*")],
+                    initialdir=str(self._custom_blocks_dir),
+                ),
+            ),
+        ).grid(row=5, column=4, **pad, sticky="w")
+
+        ttk.Label(win, text="Target equilibration (s):").grid(row=6, column=0, **pad, sticky="e")
+        target_equilibration_var = tk.StringVar(value=str(block.get("target_equilibration_seconds", 0.0) or 0.0))
+        ttk.Entry(win, width=10, textvariable=target_equilibration_var).grid(row=6, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Buffer equilibration (s):").grid(row=6, column=2, **pad, sticky="e")
+        buffer_equilibration_var = tk.StringVar(value=str(block.get("buffer_equilibration_seconds", 0.0) or 0.0))
+        ttk.Entry(win, width=10, textvariable=buffer_equilibration_var).grid(row=6, column=3, **pad, sticky="w")
+
+        scoring = block.get("scoring") if isinstance(block.get("scoring"), dict) else {}
+        normal_scoring = self._default_normal_scoring()
+        if scoring:
+            normal_scoring["mode"] = str(scoring.get("mode", normal_scoring["mode"]))
+            channel_weights = dict(normal_scoring.get("channel_weights") or {})
+            channel_weights.update(dict(scoring.get("channel_weights") or {}))
+            normal_scoring["channel_weights"] = channel_weights
+            run_weights = dict(normal_scoring.get("run_weights") or {})
+            run_weights.update(dict(scoring.get("run_weights") or {}))
+            normal_scoring["run_weights"] = run_weights
+        normal_box = ttk.LabelFrame(win, text="Normal Q Weights", padding=6)
+        normal_box.grid(row=7, column=0, columnspan=5, padx=6, pady=(6, 4), sticky="we")
+        for col in range(6):
+            normal_box.columnconfigure(col, weight=1 if col in (1, 3, 5) else 0)
+        normal_channel = dict(normal_scoring.get("channel_weights") or {})
+        normal_run = dict(normal_scoring.get("run_weights") or {})
+        normal_vars = {
+            "mode": tk.StringVar(value=self._display_score_mode(normal_scoring.get("mode", "classic"))),
+            "snr": tk.StringVar(value=str(normal_channel.get("snr", 0.35))),
+            "peak_height": tk.StringVar(value=str(normal_channel.get("peak_height", 0.0))),
+            "peak_shape": tk.StringVar(value=str(normal_channel.get("peak_shape", 0.20))),
+            "baseline": tk.StringVar(value=str(normal_channel.get("baseline", 0.20))),
+            "replicate_consistency": tk.StringVar(value=str(normal_channel.get("replicate_consistency", 0.15))),
+            "success": tk.StringVar(value=str(normal_channel.get("success", 0.10))),
+            "noise_penalty": tk.StringVar(value=str(normal_channel.get("noise_penalty", 0.0))),
+            "snr_saturation": tk.StringVar(value=str(normal_channel.get("snr_saturation", 20.0))),
+            "lambda_variability": tk.StringVar(value=str(normal_run.get("lambda_variability", 0.20))),
+            "lambda_failed": tk.StringVar(value=str(normal_run.get("lambda_failed", 0.40))),
+            "lambda_low": tk.StringVar(value=str(normal_run.get("lambda_low", 0.20))),
+            "low_channel_threshold": tk.StringVar(value=str(normal_run.get("low_channel_threshold", 0.50))),
+        }
+        normal_formula_var = tk.StringVar(value=self._normal_q_equation_text(normal_scoring))
+
+        def _normal_scoring_from_vars():
+            mode = str(normal_vars["mode"].get() or "classic").strip().lower()
+            return {
+                "mode": "signal_priority_unbounded" if mode == "signal_priority_unbounded" else "classic",
+                "channel_weights": {
+                    "snr": max(0.0, float(normal_vars["snr"].get() or 0.0)),
+                    "peak_height": max(0.0, float(normal_vars["peak_height"].get() or 0.0)),
+                    "peak_shape": max(0.0, float(normal_vars["peak_shape"].get() or 0.0)),
+                    "baseline": max(0.0, float(normal_vars["baseline"].get() or 0.0)),
+                    "replicate_consistency": max(0.0, float(normal_vars["replicate_consistency"].get() or 0.0)),
+                    "success": max(0.0, float(normal_vars["success"].get() or 0.0)),
+                    "noise_penalty": max(0.0, float(normal_vars["noise_penalty"].get() or 0.0)),
+                    "snr_saturation": max(1e-12, float(normal_vars["snr_saturation"].get() or 20.0)),
+                },
+                "run_weights": {
+                    "lambda_variability": max(0.0, float(normal_vars["lambda_variability"].get() or 0.0)),
+                    "lambda_failed": max(0.0, float(normal_vars["lambda_failed"].get() or 0.0)),
+                    "lambda_low": max(0.0, float(normal_vars["lambda_low"].get() or 0.0)),
+                    "low_channel_threshold": max(0.0, min(1.0, float(normal_vars["low_channel_threshold"].get() or 0.5))),
+                },
+            }
+
+        def _refresh_normal_formula(_event=None):
+            try:
+                normal_formula_var.set(self._normal_q_equation_text(_normal_scoring_from_vars()))
+            except Exception:
+                normal_formula_var.set("Q_channel = normal weighted quality score. Enter numeric weights.")
+
+        ttk.Label(normal_box, text="Score mode:").grid(row=0, column=0, sticky="w", pady=2)
+        normal_mode = ttk.Combobox(
+            normal_box,
+            textvariable=normal_vars["mode"],
+            values=("classic", "signal_priority_unbounded"),
+            state="readonly",
+            width=26,
+        )
+        normal_mode.grid(row=0, column=1, columnspan=2, sticky="w", padx=(4, 10), pady=2)
+        normal_mode.bind("<<ComboboxSelected>>", _refresh_normal_formula)
+        normal_entries = [
+            ("SNR weight:", "snr"),
+            ("Peak weight:", "peak_height"),
+            ("Shape weight:", "peak_shape"),
+            ("Baseline weight:", "baseline"),
+            ("Replicate weight:", "replicate_consistency"),
+            ("Success weight:", "success"),
+            ("Noise penalty:", "noise_penalty"),
+            ("SNR saturation:", "snr_saturation"),
+            ("Run std penalty:", "lambda_variability"),
+            ("Run failed penalty:", "lambda_failed"),
+            ("Run low-Q penalty:", "lambda_low"),
+            ("Low-Q threshold:", "low_channel_threshold"),
+        ]
+        for idx, (label, key) in enumerate(normal_entries):
+            row = 1 + idx // 2
+            base_col = (idx % 2) * 3
+            ttk.Label(normal_box, text=label).grid(row=row, column=base_col, sticky="w", pady=2)
+            entry = ttk.Entry(normal_box, width=9, textvariable=normal_vars[key])
+            entry.grid(row=row, column=base_col + 1, sticky="w", padx=(4, 10), pady=2)
+            entry.bind("<FocusOut>", _refresh_normal_formula)
+            entry.bind("<Return>", _refresh_normal_formula)
+        ttk.Label(
+            normal_box,
+            textvariable=normal_formula_var,
+            foreground="#155e63",
+            wraplength=760,
+            justify="left",
+        ).grid(row=7, column=0, columnspan=6, sticky="w", pady=(6, 0))
+
+        paired_weights = self._default_paired_response_weights()
+        saved_paired_weights = dict(scoring.get("paired_response_weights") or {})
+        if "standard_quality" in saved_paired_weights and "buffer_classic_Q" not in saved_paired_weights and "target_classic_Q" not in saved_paired_weights:
+            legacy_quality_weight = max(0.0, float(saved_paired_weights.get("standard_quality", 0.0) or 0.0))
+            saved_paired_weights["buffer_classic_Q"] = legacy_quality_weight / 2.0
+            saved_paired_weights["target_classic_Q"] = legacy_quality_weight / 2.0
+        paired_weights.update(saved_paired_weights)
+        weight_box = ttk.LabelFrame(win, text="Paired Response Q Weights", padding=6)
+        weight_box.grid(row=8, column=0, columnspan=5, padx=6, pady=(6, 4), sticky="we")
+        for col in range(6):
+            weight_box.columnconfigure(col, weight=1 if col in (1, 3, 5) else 0)
+        paired_weight_vars = {
+            "buffer_classic_Q": tk.StringVar(value=str(paired_weights.get("buffer_classic_Q", 0.25))),
+            "target_classic_Q": tk.StringVar(value=str(paired_weights.get("target_classic_Q", 0.25))),
+            "delta_peak": tk.StringVar(value=str(paired_weights.get("delta_peak", 1.0))),
+            "delta_scale_uA": tk.StringVar(value=str(paired_weights.get("delta_scale_uA", 1.0))),
+        }
+        paired_formula_var = tk.StringVar(value=self._paired_response_equation_text(paired_weights))
+
+        def _paired_weights_from_vars():
+            return {
+                "buffer_classic_Q": max(0.0, float(paired_weight_vars["buffer_classic_Q"].get() or 0.0)),
+                "target_classic_Q": max(0.0, float(paired_weight_vars["target_classic_Q"].get() or 0.0)),
+                "delta_peak": max(0.0, float(paired_weight_vars["delta_peak"].get() or 0.0)),
+                "delta_scale_uA": max(1e-12, float(paired_weight_vars["delta_scale_uA"].get() or 1.0)),
+            }
+
+        def _refresh_paired_formula(_event=None):
+            try:
+                paired_formula_var.set(self._paired_response_equation_text(_paired_weights_from_vars()))
+            except Exception:
+                paired_formula_var.set("Q_channel = paired response weighted score. Enter numeric weights.")
+
+        paired_entries = [
+            ("Buffer classic Q weight:", "buffer_classic_Q"),
+            ("Target classic Q weight:", "target_classic_Q"),
+            ("Delta peak weight:", "delta_peak"),
+            ("Delta scale (uA):", "delta_scale_uA"),
+        ]
+        for idx, (label, key) in enumerate(paired_entries):
+            row = idx // 2
+            base_col = (idx % 2) * 3
+            ttk.Label(weight_box, text=label).grid(row=row, column=base_col, sticky="w", pady=2)
+            entry = ttk.Entry(weight_box, width=9, textvariable=paired_weight_vars[key])
+            entry.grid(row=row, column=base_col + 1, sticky="w", padx=(4, 10), pady=2)
+            entry.bind("<FocusOut>", _refresh_paired_formula)
+            entry.bind("<Return>", _refresh_paired_formula)
+        ttk.Label(
+            weight_box,
+            textvariable=paired_formula_var,
+            foreground="#155e63",
+            wraplength=760,
+            justify="left",
+        ).grid(row=5, column=0, columnspan=6, sticky="w", pady=(6, 0))
 
         analysis = block.get("analysis") or {}
-        ttk.Label(win, text="Crop min/max (V):").grid(row=4, column=0, **pad, sticky="e")
+        ttk.Label(win, text="Crop min/max (V):").grid(row=9, column=0, **pad, sticky="e")
         crop_min_var = tk.StringVar(value=str(analysis.get("crop_min_v", -0.6)))
         crop_max_var = tk.StringVar(value=str(analysis.get("crop_max_v", -0.1)))
-        ttk.Entry(win, width=8, textvariable=crop_min_var).grid(row=4, column=1, **pad, sticky="w")
-        ttk.Entry(win, width=8, textvariable=crop_max_var).grid(row=4, column=1, padx=(76, 6), pady=4, sticky="w")
-        ttk.Label(win, text="Smooth win/poly:").grid(row=4, column=2, **pad, sticky="e")
+        ttk.Entry(win, width=8, textvariable=crop_min_var).grid(row=9, column=1, **pad, sticky="w")
+        ttk.Entry(win, width=8, textvariable=crop_max_var).grid(row=9, column=1, padx=(76, 6), pady=4, sticky="w")
+        ttk.Label(win, text="Smooth win/poly:").grid(row=9, column=2, **pad, sticky="e")
         smooth_win_var = tk.StringVar(value=str(analysis.get("smooth_window", 15)))
         smooth_poly_var = tk.StringVar(value=str(analysis.get("smooth_polyorder", 2)))
-        ttk.Entry(win, width=8, textvariable=smooth_win_var).grid(row=4, column=3, **pad, sticky="w")
-        ttk.Entry(win, width=8, textvariable=smooth_poly_var).grid(row=4, column=3, padx=(76, 6), pady=4, sticky="w")
+        ttk.Entry(win, width=8, textvariable=smooth_win_var).grid(row=9, column=3, **pad, sticky="w")
+        ttk.Entry(win, width=8, textvariable=smooth_poly_var).grid(row=9, column=3, padx=(76, 6), pady=4, sticky="w")
 
-        ttk.Label(win, text="Minima window (V):").grid(row=5, column=0, **pad, sticky="e")
+        ttk.Label(win, text="Minima window (V):").grid(row=10, column=0, **pad, sticky="e")
         minima_var = tk.StringVar(value=str(analysis.get("minima_search_window_v", 0.30)))
-        ttk.Entry(win, width=10, textvariable=minima_var).grid(row=5, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Min peak height (uA):").grid(row=5, column=2, **pad, sticky="e")
+        ttk.Entry(win, width=10, textvariable=minima_var).grid(row=10, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Min peak height (uA):").grid(row=10, column=2, **pad, sticky="e")
         min_peak_var = tk.StringVar(value="" if analysis.get("min_peak_height_ua") in (None, "") else str(analysis.get("min_peak_height_ua")))
-        ttk.Entry(win, width=10, textvariable=min_peak_var).grid(row=5, column=3, **pad, sticky="w")
+        ttk.Entry(win, width=10, textvariable=min_peak_var).grid(row=10, column=3, **pad, sticky="w")
 
-        ttk.Label(win, text="Min start V:").grid(row=6, column=0, **pad, sticky="e")
+        ttk.Label(win, text="Min start V:").grid(row=11, column=0, **pad, sticky="e")
         min_start_var = tk.StringVar(value=str(analysis.get("min_start_voltage_v", -0.6)))
-        ttk.Entry(win, width=10, textvariable=min_start_var).grid(row=6, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Scan windows:").grid(row=6, column=2, **pad, sticky="e")
+        ttk.Entry(win, width=10, textvariable=min_start_var).grid(row=11, column=1, **pad, sticky="w")
+        ttk.Label(win, text="Scan windows:").grid(row=11, column=2, **pad, sticky="e")
         scan_windows_var = tk.StringVar(value=str(analysis.get("scan_windows", "")))
-        ttk.Entry(win, width=24, textvariable=scan_windows_var).grid(row=6, column=3, **pad, sticky="w")
+        ttk.Entry(win, width=24, textvariable=scan_windows_var).grid(row=11, column=3, **pad, sticky="w")
 
         prominent_var = tk.BooleanVar(value=bool(analysis.get("use_prominent_minima", False)))
         double_corr_var = tk.BooleanVar(value=bool(analysis.get("use_double_correction", True)))
@@ -1200,15 +1519,15 @@ class RecipeMakerTab:
         wavelet_energy_var = tk.BooleanVar(value=bool(analysis.get("compute_wavelet_energy", False)))
         wavelet_trace_var = tk.BooleanVar(value=bool(analysis.get("compute_wavelet_denoised_trace", False)))
         wavelet_corr_var = tk.BooleanVar(value=bool(analysis.get("use_wavelet_for_correction", False)))
-        ttk.Checkbutton(win, text="Prominent minima", variable=prominent_var).grid(row=7, column=0, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Double correction", variable=double_corr_var).grid(row=7, column=2, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Compute skew", variable=skew_var).grid(row=8, column=0, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Wavelet energy", variable=wavelet_energy_var).grid(row=8, column=2, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Wavelet trace", variable=wavelet_trace_var).grid(row=9, column=0, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Wavelet correction", variable=wavelet_corr_var).grid(row=9, column=2, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Prominent minima", variable=prominent_var).grid(row=12, column=0, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Double correction", variable=double_corr_var).grid(row=12, column=2, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Compute skew", variable=skew_var).grid(row=13, column=0, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Wavelet energy", variable=wavelet_energy_var).grid(row=13, column=2, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Wavelet trace", variable=wavelet_trace_var).grid(row=14, column=0, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(win, text="Wavelet correction", variable=wavelet_corr_var).grid(row=14, column=2, columnspan=2, **pad, sticky="w")
 
         btns = ttk.Frame(win)
-        btns.grid(row=10, column=0, columnspan=5, pady=(8, 10))
+        btns.grid(row=15, column=0, columnspan=5, pady=(8, 10))
 
         def _apply():
             try:
@@ -1233,13 +1552,25 @@ class RecipeMakerTab:
                     "analysis_output_dir": out_var.get().strip(),
                     "analysis_file_glob": glob_var.get().strip() or "*.json",
                     "target_iterations": int(target_var.get()),
+                    "objective": objective_var.get().strip() or "quality",
+                    "batch_size": int(batch_var.get()),
+                    "target_exchange_block_path": target_exchange_var.get().strip(),
+                    "buffer_exchange_block_path": buffer_exchange_var.get().strip(),
+                    "target_equilibration_seconds": max(0.0, float(target_equilibration_var.get() or 0.0)),
+                    "buffer_equilibration_seconds": max(0.0, float(buffer_equilibration_var.get() or 0.0)),
                     "channels_override": channels_var.get().strip(),
+                    "scoring": {
+                        **_normal_scoring_from_vars(),
+                        "paired_response_weights": _paired_weights_from_vars(),
+                    },
                     "analysis": new_analysis,
                 }
                 if not new_block["bo_config_path"]:
                     raise ValueError("BO config path is required.")
                 if new_block["target_iterations"] < 1:
                     raise ValueError("Target iterations must be at least 1.")
+                if new_block["batch_size"] < 1:
+                    raise ValueError("Batch size must be at least 1.")
             except Exception as exc:
                 messagebox.showerror("Invalid BO step", str(exc))
                 return

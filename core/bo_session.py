@@ -158,7 +158,9 @@ def normalize_bo_config(config: dict) -> dict:
     cfg["acquisition"].setdefault("gp_length_scales", dict(default_gp_falloff))
     cfg["acquisition"].setdefault("gp_falloff_fractions", cfg["acquisition"].get("gp_length_scales", dict(default_gp_falloff)))
     cfg.setdefault("scoring", {})
-    cfg["scoring"].setdefault("mode", "classic_bounded")
+    cfg["scoring"].setdefault("mode", "classic")
+    if str(cfg["scoring"].get("mode", "")).strip().lower() == "classic_bounded":
+        cfg["scoring"]["mode"] = "classic"
     cfg["scoring"].setdefault(
         "channel_weights",
         {
@@ -178,6 +180,15 @@ def normalize_bo_config(config: dict) -> dict:
             "lambda_failed": 0.40,
             "lambda_low": 0.20,
             "low_channel_threshold": 0.50,
+        },
+    )
+    cfg["scoring"].setdefault(
+        "paired_response_weights",
+        {
+            "buffer_classic_Q": 0.25,
+            "target_classic_Q": 0.25,
+            "delta_peak": 1.0,
+            "delta_scale_uA": 1.0,
         },
     )
     cfg.setdefault("analysis", {})
@@ -423,7 +434,7 @@ def validate_candidate(candidate: Dict[str, float], config: dict) -> List[str]:
 
 
 def compute_channel_quality(metrics: dict, scoring: dict) -> dict:
-    mode = str(scoring.get("mode", "classic_bounded") or "classic_bounded").strip().lower()
+    mode = str(scoring.get("mode", "classic") or "classic").strip().lower()
     weights = scoring.get("channel_weights", {})
     snr_saturation = float(weights.get("snr_saturation", 20.0))
     if "snr" in metrics:
@@ -499,7 +510,7 @@ def compute_channel_quality(metrics: dict, scoring: dict) -> dict:
 
 
 def compute_run_quality(channel_metrics: dict, scoring: dict) -> dict:
-    mode = str(scoring.get("mode", "classic_bounded") or "classic_bounded").strip().lower()
+    mode = str(scoring.get("mode", "classic") or "classic").strip().lower()
     per_channel = {}
     q_values = []
     for channel, metrics in _channel_items(channel_metrics):
@@ -530,6 +541,135 @@ def compute_run_quality(channel_metrics: dict, scoring: dict) -> dict:
         "std_Q_channel": std_q,
         "failed_channel_fraction": failed_fraction,
         "low_channel_fraction": low_fraction,
+        "Q_channels": {ch: data["Q_channel"] for ch, data in per_channel.items()},
+        "channel_components": per_channel,
+    }
+
+
+def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, scoring: dict) -> dict:
+    weights = dict(scoring.get("paired_response_weights") or {})
+    if "standard_quality" in weights and "buffer_classic_Q" not in weights and "target_classic_Q" not in weights:
+        legacy_quality_weight = max(0.0, float(weights.get("standard_quality", 0.0) or 0.0))
+        weights["buffer_classic_Q"] = legacy_quality_weight / 2.0
+        weights["target_classic_Q"] = legacy_quality_weight / 2.0
+    buffer_q_weight = max(0.0, float(weights.get("buffer_classic_Q", 0.25)))
+    target_q_weight = max(0.0, float(weights.get("target_classic_Q", 0.25)))
+    delta_peak_weight = max(0.0, float(weights.get("delta_peak", 1.0)))
+    delta_scale = max(1e-12, float(weights.get("delta_scale_uA", 1.0)))
+    paired_weight_total = max(buffer_q_weight + target_q_weight + delta_peak_weight, 1e-12)
+    channels = sorted(
+        {str(ch) for ch, _ in _channel_items(buffer_metrics)}
+        & {str(ch) for ch, _ in _channel_items(target_metrics)},
+        key=lambda ch: int(ch) if str(ch).isdigit() else str(ch),
+    )
+    per_channel = {}
+    q_values = []
+    for channel in channels:
+        buffer_raw = dict(buffer_metrics.get(channel) or buffer_metrics.get(int(channel), {}) or {})
+        target_raw = dict(target_metrics.get(channel) or target_metrics.get(int(channel), {}) or {})
+        buffer_q = compute_channel_quality(buffer_raw, scoring)
+        target_q = compute_channel_quality(target_raw, scoring)
+        buffer_peak = float(buffer_q.get("peak_height_raw", 0.0) or 0.0)
+        target_peak = float(target_q.get("peak_height_raw", 0.0) or 0.0)
+        delta_peak = target_peak - buffer_peak
+        abs_delta_peak = abs(delta_peak)
+        fractional_delta = abs_delta_peak / max(abs(buffer_peak), 1e-12)
+        success = min(float(buffer_q.get("success_score", 1.0) or 0.0), float(target_q.get("success_score", 1.0) or 0.0))
+        delta_score = math.log1p(abs_delta_peak / delta_scale)
+        fractional_score = math.log1p(max(0.0, fractional_delta))
+        snr_saturation = max(1e-12, float(scoring.get("channel_weights", {}).get("snr_saturation", 20.0)))
+        target_snr_score = _clip01(float(target_q.get("snr_raw", 0.0) or 0.0) / snr_saturation)
+        buffer_snr_score = _clip01(float(buffer_q.get("snr_raw", 0.0) or 0.0) / snr_saturation)
+        target_shape_score = _clip01(target_q.get("peak_shape_score", 0.0))
+        buffer_classic_q = float(buffer_q.get("Q_channel", 0.0) or 0.0)
+        target_classic_q = float(target_q.get("Q_channel", 0.0) or 0.0)
+        standard_quality_score = 0.5 * (buffer_classic_q + target_classic_q)
+        weighted = (
+            buffer_q_weight * buffer_classic_q
+            + target_q_weight * target_classic_q
+            + delta_peak_weight * delta_score
+        )
+        q_channel = weighted / paired_weight_total
+        per_channel[channel] = {
+            "Q_channel": q_channel,
+            "paired_Q_channel": q_channel,
+            "buffer_classic_Q": buffer_classic_q,
+            "target_classic_Q": target_classic_q,
+            "classic_pair_Q": standard_quality_score,
+            "buffer_classic_Q_weight": buffer_q_weight,
+            "target_classic_Q_weight": target_q_weight,
+            "delta_peak_weight": delta_peak_weight,
+            "paired_weight_total": paired_weight_total,
+            "buffer_peak_height_raw": buffer_peak,
+            "target_peak_height_raw": target_peak,
+            "delta_peak_height_uA": delta_peak,
+            "abs_delta_peak_height_uA": abs_delta_peak,
+            "fractional_delta_peak": fractional_delta,
+            "delta_peak_score": delta_score,
+            "fractional_delta_peak_score": fractional_score,
+            "buffer_snr_raw": buffer_q.get("snr_raw", 0.0),
+            "target_snr_raw": target_q.get("snr_raw", 0.0),
+            "target_snr_score": target_snr_score,
+            "buffer_snr_score": buffer_snr_score,
+            "target_shape_score": target_shape_score,
+            "standard_quality_score": standard_quality_score,
+            "classic_pair_Q_score": standard_quality_score,
+            "success_score": success,
+        }
+        q_values.append(q_channel)
+
+    run_weights = scoring.get("run_weights", {})
+    if not q_values:
+        q_values = [0.0]
+    mean_q = sum(q_values) / len(q_values)
+    std_q = _std(q_values)
+    threshold = float(run_weights.get("low_channel_threshold", 0.5))
+    failed_fraction = (
+        sum(1 for data in per_channel.values() if float(data.get("success_score", 1.0) or 0.0) <= 0.0)
+        / max(len(per_channel), 1)
+    )
+    low_fraction = sum(1 for q in q_values if q < threshold) / len(q_values)
+    q_run = (
+        mean_q
+        - float(run_weights.get("lambda_variability", 0.20)) * std_q
+        - float(run_weights.get("lambda_failed", 0.40)) * failed_fraction
+        - float(run_weights.get("lambda_low", 0.20)) * low_fraction
+    )
+    mean_delta = (
+        sum(float(data.get("delta_peak_height_uA", 0.0) or 0.0) for data in per_channel.values()) / len(per_channel)
+        if per_channel else 0.0
+    )
+    mean_abs_delta = (
+        sum(float(data.get("abs_delta_peak_height_uA", 0.0) or 0.0) for data in per_channel.values()) / len(per_channel)
+        if per_channel else 0.0
+    )
+    def _mean_component(key: str) -> float:
+        return (
+            sum(float(data.get(key, 0.0) or 0.0) for data in per_channel.values()) / len(per_channel)
+            if per_channel else 0.0
+        )
+    return {
+        "Q_run": max(0.0, q_run),
+        "objective": "paired_response",
+        "mean_Q_channel": mean_q,
+        "mean_paired_Q_channel": mean_q,
+        "std_Q_channel": std_q,
+        "failed_channel_fraction": failed_fraction,
+        "low_channel_fraction": low_fraction,
+        "mean_buffer_classic_Q": _mean_component("buffer_classic_Q"),
+        "mean_target_classic_Q": _mean_component("target_classic_Q"),
+        "mean_classic_pair_Q": _mean_component("classic_pair_Q"),
+        "mean_delta_peak_height_uA": mean_delta,
+        "mean_abs_delta_peak_height_uA": mean_abs_delta,
+        "mean_fractional_delta_peak": _mean_component("fractional_delta_peak"),
+        "mean_delta_peak_score": _mean_component("delta_peak_score"),
+        "mean_fractional_delta_peak_score": _mean_component("fractional_delta_peak_score"),
+        "mean_buffer_snr_raw": _mean_component("buffer_snr_raw"),
+        "mean_target_snr_raw": _mean_component("target_snr_raw"),
+        "mean_buffer_snr_score": _mean_component("buffer_snr_score"),
+        "mean_target_snr_score": _mean_component("target_snr_score"),
+        "mean_target_shape_score": _mean_component("target_shape_score"),
+        "mean_success_score": _mean_component("success_score"),
         "Q_channels": {ch: data["Q_channel"] for ch, data in per_channel.items()},
         "channel_components": per_channel,
     }
@@ -583,6 +723,7 @@ class BOIntegrationSession:
         self.observations: List[dict] = []
         self.suggestions: List[dict] = []
         self.pending: Optional[dict] = None
+        self.pending_batch: List[dict] = []
         self._rng = random.Random(int(self.config.get("random_seed", 42)))
         self._start_candidate = self._resolve_start_candidate()
         self._write_session_start_files()
@@ -638,6 +779,7 @@ class BOIntegrationSession:
         session.observations = list(state.get("observations") or [])
         session.suggestions = list(state.get("suggestions") or [])
         session.pending = dict(state["pending"]) if isinstance(state.get("pending"), dict) else None
+        session.pending_batch = list(state.get("pending_batch") or [])
         session._rng = random.Random(int(session.config.get("random_seed", 42)))
         session._start_candidate = session._resolve_start_candidate()
         return session
@@ -665,6 +807,40 @@ class BOIntegrationSession:
         self.save_state()
         return BOSuggestion(**suggestion)
 
+    def ask_batch(self, count: int) -> List[BOSuggestion]:
+        if self.pending is not None:
+            raise RuntimeError("A single pending BO suggestion is already waiting for analysis")
+        if self.pending_batch:
+            return [BOSuggestion(**record) for record in self.pending_batch]
+        count = max(1, int(count))
+        tried = {candidate_key(obs["params"]) for obs in self.observations}
+        pending_params: List[dict] = []
+        suggestions: List[dict] = []
+        for offset in range(count):
+            available = self._available_candidates(tried)
+            if not available:
+                break
+            iteration = len(self.observations) + offset + 1
+            params = self._choose_candidate(available, pending_params=pending_params)
+            method_id = f"{self.session_id}_iter_{iteration:03d}"
+            suggestion = {
+                "iteration": iteration,
+                "method_id": method_id,
+                "params": params,
+                "created_at": datetime.now().isoformat(timespec="seconds"),
+                "status": "suggested",
+            }
+            suggestions.append(suggestion)
+            pending_params.append(dict(params))
+            tried.add(candidate_key(params))
+            self.suggestions.append(dict(suggestion))
+            self._write_json(self.methods_dir / f"iter_{iteration:03d}_suggested_method.json", suggestion)
+        if not suggestions:
+            raise RuntimeError("All valid candidates have been evaluated")
+        self.pending_batch = suggestions
+        self.save_state()
+        return [BOSuggestion(**record) for record in suggestions]
+
     def _available_candidates(self, tried: set) -> List[Dict[str, float]]:
         available = [c for c in self.candidates if candidate_key(c) not in tried]
         dynamic = self._local_continuous_candidates(tried)
@@ -677,14 +853,17 @@ class BOIntegrationSession:
                     existing.add(key)
         return available
 
-    def build_queue_items(self, registry, suggestion: BOSuggestion) -> List[dict]:
+    def build_queue_items(self, registry, suggestion: BOSuggestion, phase: Optional[str] = None) -> List[dict]:
         channels = parse_channels(self.config.get("channels", []))
         base_script = build_swv_methodscript(suggestion.params, self.config.get("method_options", {}))
         items = []
         params_for_hash = self._params_for_method_ref(suggestion.params)
+        phase_label = str(phase or "").strip().lower()
         for channel in channels:
             script = wrap_mux(base_script, channel)
             note = f"BO {suggestion.method_id} | MUX ch {channel}"
+            if phase_label:
+                note = f"{note} | {phase_label}"
             saved_path, saved_name = registry.save_script(
                 "SWV",
                 script,
@@ -701,7 +880,8 @@ class BOIntegrationSession:
                 "type": "SWV",
                 "script_path": str(saved_path),
                 "status": "pending",
-                "details": f"BO iter {suggestion.iteration:03d} | {saved_name} (MUX ch {channel})",
+                "details": f"BO iter {suggestion.iteration:03d} | {saved_name} (MUX ch {channel})"
+                + (f" | {phase_label}" if phase_label else ""),
                 "method_ref": {
                     "hash_key": hash_key,
                     "technique": "SWV",
@@ -715,6 +895,8 @@ class BOIntegrationSession:
                     "record_dir": str(self.record_dir),
                 },
             }
+            if phase_label:
+                item["bo_ref"]["phase"] = phase_label
             items.append(item)
         self._write_json(
             self.methods_dir / f"iter_{suggestion.iteration:03d}_queue_items.json",
@@ -775,6 +957,79 @@ class BOIntegrationSession:
         self.save_state()
         return observation
 
+    def import_paired_analysis(
+        self,
+        suggestion: BOSuggestion | dict,
+        buffer_path: str | Path,
+        target_path: str | Path,
+        notes: str = "",
+    ) -> dict:
+        suggestion_data = suggestion if isinstance(suggestion, dict) else suggestion.__dict__
+        iteration = int(suggestion_data["iteration"])
+        method_id = str(suggestion_data["method_id"])
+        buffer_payload = self._load_json_file(buffer_path)
+        target_payload = self._load_json_file(target_path)
+        buffer_metrics = extract_channel_metrics(buffer_payload)
+        target_metrics = extract_channel_metrics(target_payload)
+        quality = compute_paired_response_quality(buffer_metrics, target_metrics, self.config.get("scoring", {}))
+        retained_buffer = self._retain_analysis_file(Path(buffer_path), iteration, suffix="buffer")
+        retained_target = self._retain_analysis_file(Path(target_path), iteration, suffix="target")
+        observation = {
+            "iteration": iteration,
+            "method_id": method_id,
+            "params": dict(suggestion_data["params"]),
+            "objective": "paired_response",
+            "analysis_source": str(target_path),
+            "analysis_record": str(retained_target),
+            "buffer_analysis_source": str(buffer_path),
+            "buffer_analysis_record": str(retained_buffer),
+            "target_analysis_source": str(target_path),
+            "target_analysis_record": str(retained_target),
+            "buffer_channel_metrics": buffer_metrics,
+            "target_channel_metrics": target_metrics,
+            "channel_metrics": target_metrics,
+            "quality": quality,
+            "Q_run": quality["Q_run"],
+            "notes": notes,
+            "completed_at": datetime.now().isoformat(timespec="seconds"),
+        }
+        archived_buffer = self._archive_iteration_measurements(iteration, method_id, phase="buffer")
+        archived_target = self._archive_iteration_measurements(iteration, method_id, phase="target")
+        archived_measurements = archived_buffer + archived_target
+        if archived_measurements:
+            observation["archived_measurements"] = archived_measurements
+        self.observations.append(observation)
+        for record in self.suggestions:
+            if record.get("method_id") == method_id:
+                record["status"] = "completed"
+                record["completed_at"] = observation["completed_at"]
+                record["Q_run"] = observation["Q_run"]
+                record["objective"] = "paired_response"
+                if archived_measurements:
+                    record["archived_measurements"] = list(archived_measurements)
+        self.pending_batch = [
+            record for record in getattr(self, "pending_batch", [])
+            if str(record.get("method_id") or "") != method_id
+        ]
+        self._write_json(self.analysis_dir / f"iter_{iteration:03d}_paired_quality.json", observation)
+        self._write_paired_components_csv(iteration, quality)
+        self._write_history_csv()
+        self._write_surrogate_and_acquisition_artifacts(iteration)
+        self._write_plots(observation)
+        self.save_state()
+        return observation
+
+    def _write_paired_components_csv(self, iteration: int, quality: dict) -> None:
+        rows = []
+        for channel, data in sorted(
+            dict(quality.get("channel_components") or {}).items(),
+            key=lambda item: int(item[0]) if str(item[0]).isdigit() else str(item[0]),
+        ):
+            row = {"channel": channel}
+            row.update(dict(data or {}))
+            rows.append(row)
+        self._write_csv(self.analysis_dir / f"iter_{int(iteration):03d}_paired_components.csv", rows)
+
     def record_queue_completion(self, summary: dict) -> Optional[Path]:
         """Retain queue completion details for BO-owned queue items."""
         if not isinstance(summary, dict):
@@ -813,16 +1068,21 @@ class BOIntegrationSession:
                 if record.get("method_id") == method_id:
                     record["queue_completed_at"] = payload["recorded_at"]
                     record["queue_completion_record"] = str(path)
+                    records = list(record.get("queue_completion_records") or [])
+                    if str(path) not in records:
+                        records.append(str(path))
+                    record["queue_completion_records"] = records
                     record["completed_queue_items"] = payload["queue_summary"].get("completed")
                     record["failed_queue_items"] = payload["queue_summary"].get("failed")
         self.save_state()
         return path
 
-    def _archive_iteration_measurements(self, iteration: int, method_id: str) -> List[str]:
-        csv_paths = self._iteration_csv_paths(iteration, method_id)
+    def _archive_iteration_measurements(self, iteration: int, method_id: str, phase: Optional[str] = None) -> List[str]:
+        csv_paths = self._iteration_csv_paths(iteration, method_id, phase=phase)
         if not csv_paths:
             return []
-        archive_dir = self.experiment_dir / "legacy" / f"iter_{iteration:03d}"
+        phase_part = f"_{str(phase).strip().lower()}" if phase else ""
+        archive_dir = self.experiment_dir / "legacy" / f"iter_{iteration:03d}{phase_part}"
         archive_dir.mkdir(parents=True, exist_ok=True)
         archived: List[str] = []
         for csv_path in csv_paths:
@@ -848,30 +1108,40 @@ class BOIntegrationSession:
             archived.append(str(target))
         return archived
 
-    def _iteration_csv_paths(self, iteration: int, method_id: str) -> List[Path]:
+    def _iteration_csv_paths(self, iteration: int, method_id: str, phase: Optional[str] = None) -> List[Path]:
+        phase_label = str(phase or "").strip().lower()
         for record in self.suggestions:
             if record.get("method_id") != method_id:
                 continue
-            queue_record = record.get("queue_completion_record")
-            if not queue_record:
-                return []
-            try:
-                with open(queue_record, "r", encoding="utf-8") as fh:
-                    payload = json.load(fh)
-            except Exception:
+            queue_records = list(record.get("queue_completion_records") or [])
+            if record.get("queue_completion_record"):
+                queue_records.append(record.get("queue_completion_record"))
+            if not queue_records:
                 return []
             paths: List[Path] = []
-            for item in payload.get("items", []):
-                ref = item.get("bo_ref") if isinstance(item, dict) else None
-                if not isinstance(ref, dict):
+            seen_records = set()
+            for queue_record in queue_records:
+                if queue_record in seen_records:
                     continue
-                if int(ref.get("iteration", 0) or 0) != iteration:
+                seen_records.add(queue_record)
+                try:
+                    with open(queue_record, "r", encoding="utf-8") as fh:
+                        payload = json.load(fh)
+                except Exception:
                     continue
-                if str(ref.get("method_id") or "") != method_id:
-                    continue
-                csv_path = str(item.get("csv_path") or "").strip()
-                if csv_path:
-                    paths.append(Path(csv_path))
+                for item in payload.get("items", []):
+                    ref = item.get("bo_ref") if isinstance(item, dict) else None
+                    if not isinstance(ref, dict):
+                        continue
+                    if int(ref.get("iteration", 0) or 0) != iteration:
+                        continue
+                    if str(ref.get("method_id") or "") != method_id:
+                        continue
+                    if phase_label and str(ref.get("phase") or "").strip().lower() != phase_label:
+                        continue
+                    csv_path = str(item.get("csv_path") or "").strip()
+                    if csv_path:
+                        paths.append(Path(csv_path))
             seen = set()
             unique_paths: List[Path] = []
             for path in paths:
@@ -898,22 +1168,29 @@ class BOIntegrationSession:
         folders: Optional[List[str | Path]] = None,
         output_dir: Optional[str | Path] = None,
         analysis: Optional[dict] = None,
+        suggestion: Optional[BOSuggestion | dict] = None,
+        phase: Optional[str] = None,
     ) -> Path:
-        if self.pending is None:
+        if suggestion is None and self.pending is None:
             raise RuntimeError("No pending BO suggestion is waiting for analysis")
         from core.bo_analysis import run_request
 
-        iteration = int(self.pending["iteration"])
+        suggestion_data = suggestion if isinstance(suggestion, dict) else (suggestion.__dict__ if suggestion is not None else self.pending)
+        iteration = int(suggestion_data["iteration"])
+        method_id = str(suggestion_data["method_id"])
+        phase_label = str(phase or "").strip().lower()
         output = Path(output_dir) if output_dir else (self.experiment_dir / "bo_analysis")
-        csv_paths = self._iteration_csv_paths(iteration, self.pending["method_id"])
+        csv_paths = self._iteration_csv_paths(iteration, method_id, phase=phase_label or None)
         input_paths = csv_paths if csv_paths else [Path(folder) for folder in (folders or [self.experiment_dir])]
+        output_stem = f"bo_iter_{iteration:03d}" + (f"_{phase_label}" if phase_label else "")
         request = {
             "folders": [str(Path(folder)) for folder in input_paths],
             "output_dir": str(output),
-            "output_stem": f"bo_iter_{iteration:03d}",
+            "output_stem": output_stem,
             "analysis": dict(analysis if analysis is not None else self.config.get("analysis") or {}),
         }
-        self._write_json(self.analysis_dir / f"iter_{iteration:03d}_analysis_request.json", request)
+        request_name = f"iter_{iteration:03d}" + (f"_{phase_label}" if phase_label else "") + "_analysis_request.json"
+        self._write_json(self.analysis_dir / request_name, request)
         summary = run_request(request)
         path = Path(summary["summary_path"])
         if not path.exists():
@@ -937,6 +1214,7 @@ class BOIntegrationSession:
             "candidate_count": len(self.candidates),
             "active_parameters": active_parameters(self.config),
             "pending": self.pending,
+            "pending_batch": getattr(self, "pending_batch", []),
             "suggestions": self.suggestions,
             "observations": self.observations,
             "best_observation": self.best_observation(),
@@ -946,7 +1224,12 @@ class BOIntegrationSession:
         self._write_json(path, payload)
         return path
 
-    def _choose_candidate(self, available: List[Dict[str, float]]) -> Dict[str, float]:
+    def _choose_candidate(
+        self,
+        available: List[Dict[str, float]],
+        pending_params: Optional[List[dict]] = None,
+    ) -> Dict[str, float]:
+        pending_params = pending_params or []
         tried = {candidate_key(obs["params"]) for obs in self.observations}
         available_keys = {candidate_key(c) for c in available}
         initial = dict(self._start_candidate)
@@ -954,15 +1237,20 @@ class BOIntegrationSession:
         if key not in tried and key in available_keys:
             return initial
         if len(self.observations) < int(self.config.get("n_initial_points", 8)):
-            return self._maximin_candidate(available)
+            return self._maximin_candidate(available, extra_anchors=pending_params)
         if bool(self.config.get("acquisition", {}).get("use_gp", True)):
             gp_choice = self._gp_expected_improvement_candidate(available)
             if gp_choice is not None:
                 return gp_choice
         return self._distance_surrogate_candidate(available)
 
-    def _maximin_candidate(self, available: List[Dict[str, float]]) -> Dict[str, float]:
+    def _maximin_candidate(
+        self,
+        available: List[Dict[str, float]],
+        extra_anchors: Optional[List[dict]] = None,
+    ) -> Dict[str, float]:
         anchors = [dict(self._start_candidate)] + [obs["params"] for obs in self.observations]
+        anchors.extend(dict(params) for params in (extra_anchors or []))
         if not anchors:
             return self._rng.choice(available)
         encoded_anchors = [encode_candidate(a, self.config) for a in anchors]
@@ -1099,8 +1387,9 @@ class BOIntegrationSession:
         result["bo_session_id"] = self.session_id
         return result
 
-    def _retain_analysis_file(self, source: Path, iteration: int) -> Path:
-        target = self.analysis_dir / f"iter_{iteration:03d}_{source.name}"
+    def _retain_analysis_file(self, source: Path, iteration: int, suffix: Optional[str] = None) -> Path:
+        suffix_part = f"_{str(suffix).strip()}" if suffix else ""
+        target = self.analysis_dir / f"iter_{iteration:03d}{suffix_part}_{source.name}"
         if source.resolve() == target.resolve():
             return target
         if self.config.get("analysis", {}).get("copy_outputs_into_record", True):
@@ -1138,13 +1427,59 @@ class BOIntegrationSession:
             row = {
                 "iteration": obs["iteration"],
                 "method_id": obs["method_id"],
+                "objective": obs.get("objective", ""),
+                "paired_cycle": obs.get("paired_cycle", ""),
+                "paired_batch_index": obs.get("paired_batch_index", ""),
+                "buffer_trace_number": obs.get("buffer_trace_number", ""),
+                "target_trace_number": obs.get("target_trace_number", ""),
                 "Q_run": obs["Q_run"],
                 "completed_at": obs["completed_at"],
                 "analysis_record": obs["analysis_record"],
             }
+            quality = dict(obs.get("quality") or {})
+            truth = dict(obs.get("simulation_truth") or {})
+            if str(obs.get("objective") or "").lower() == "paired_response":
+                row["paired_Q_score"] = truth.get("paired_Q_score", "")
+                row["delta_peak_uA"] = quality.get("mean_abs_delta_peak_height_uA", truth.get("expected_delta_peak_uA", ""))
+                row["normalized_distance"] = truth.get("normalized_distance", "")
+                row["mean_paired_Q_channel"] = quality.get("mean_paired_Q_channel", quality.get("mean_Q_channel", ""))
+                row["mean_buffer_classic_Q"] = quality.get("mean_buffer_classic_Q", "")
+                row["mean_target_classic_Q"] = quality.get("mean_target_classic_Q", "")
+                row["mean_classic_pair_Q"] = quality.get("mean_classic_pair_Q", "")
+                row["mean_delta_peak_height_uA"] = quality.get("mean_delta_peak_height_uA", "")
+                row["mean_abs_delta_peak_height_uA"] = quality.get("mean_abs_delta_peak_height_uA", "")
+                row["mean_fractional_delta_peak"] = quality.get("mean_fractional_delta_peak", "")
+                row["mean_delta_peak_score"] = quality.get("mean_delta_peak_score", "")
+                row["mean_fractional_delta_peak_score"] = quality.get("mean_fractional_delta_peak_score", "")
+                row["mean_buffer_snr_raw"] = quality.get("mean_buffer_snr_raw", "")
+                row["mean_target_snr_raw"] = quality.get("mean_target_snr_raw", "")
+                row["mean_buffer_snr_score"] = quality.get("mean_buffer_snr_score", "")
+                row["mean_target_snr_score"] = quality.get("mean_target_snr_score", "")
+                row["mean_target_shape_score"] = quality.get("mean_target_shape_score", "")
+                row["mean_success_score"] = quality.get("mean_success_score", "")
             row.update({name: obs["params"].get(name) for name in PARAMETER_ORDER})
             for ch, q in obs["quality"].get("Q_channels", {}).items():
                 row[f"Q_ch{ch}"] = q
+            if str(obs.get("objective") or "").lower() == "paired_response":
+                for ch, data in dict(quality.get("channel_components") or {}).items():
+                    prefix = f"ch{ch}"
+                    for key in (
+                        "buffer_classic_Q",
+                        "target_classic_Q",
+                        "classic_pair_Q",
+                        "delta_peak_height_uA",
+                        "abs_delta_peak_height_uA",
+                        "fractional_delta_peak",
+                        "delta_peak_score",
+                        "fractional_delta_peak_score",
+                        "buffer_snr_raw",
+                        "target_snr_raw",
+                        "buffer_snr_score",
+                        "target_snr_score",
+                        "target_shape_score",
+                        "success_score",
+                    ):
+                        row[f"{prefix}_{key}"] = data.get(key, "")
             rows.append(row)
         fieldnames = []
         for row in rows:
@@ -1368,6 +1703,11 @@ class BOIntegrationSession:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(payload, fh, indent=2)
+
+    @staticmethod
+    def _load_json_file(path: str | Path) -> Any:
+        with open(path, "r", encoding="utf-8") as fh:
+            return json.load(fh)
 
 
 def build_swv_script(params: dict, method_options: Optional[dict] = None) -> str:
