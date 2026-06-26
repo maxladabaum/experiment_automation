@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -244,8 +245,12 @@ def run_request(payload: dict) -> dict:
         "results_csv": str(results_csv),
     }
     summary_path = output_dir / f"{stem}.json"
-    with open(summary_path, "w", encoding="utf-8") as fh:
+    tmp_summary_path = summary_path.with_name(f".{summary_path.name}.tmp")
+    with open(tmp_summary_path, "w", encoding="utf-8") as fh:
         json.dump(summary, fh, indent=2)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp_summary_path, summary_path)
     summary["summary_path"] = str(summary_path)
     return summary
 
@@ -258,11 +263,15 @@ def _write_results_csv(path: Path, rows: List[dict]) -> None:
         for key in row:
             if key not in fieldnames:
                 fieldnames.append(key)
-    with open(path, "w", encoding="utf-8", newline="") as fh:
+    tmp_path = path.with_name(f".{path.name}.tmp")
+    with open(tmp_path, "w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=fieldnames or ["empty"])
         writer.writeheader()
         for row in rows:
             writer.writerow({key: _csv_value(row.get(key)) for key in fieldnames})
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp_path, path)
 
 
 def _csv_value(value: Any) -> Any:

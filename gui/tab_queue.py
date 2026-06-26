@@ -193,7 +193,22 @@ class QueueTab:
                 "", "end", iid=str(i), text=str(i + 1),
                 values=(item["type"], item["status"].upper(), item.get("details", "")),
                 tags=(tag,),
+                open=(str(item.get("type") or "").upper() == "BO_AUTO_LOOP"),
             )
+            if str(item.get("type") or "").upper() == "BO_AUTO_LOOP":
+                for j, progress in enumerate(item.get("bo_progress") or []):
+                    self._tree.insert(
+                        str(i),
+                        "end",
+                        iid=f"{i}:bo:{j}",
+                        text=f"{i + 1}.{j + 1}",
+                        values=(
+                            progress.get("type", "BO_STEP"),
+                            str(progress.get("status", "")).upper(),
+                            progress.get("details", ""),
+                        ),
+                        tags=("bo",),
+                    )
 
     @staticmethod
     def _row_tag_for_item(item: dict) -> str:
@@ -208,6 +223,36 @@ class QueueTab:
 
     def set_status(self, msg: str):
         self._status.config(text=f"Status: {msg}")
+
+    def _set_bo_live_details(self, item: dict, details: str):
+        item["details"] = details
+        self._root.after(0, self.refresh)
+        self._root.after(0, self.set_status, f"Running: {details}")
+
+    def _append_bo_progress(self, item: dict | None, step_type: str, status: str, details: str) -> Optional[dict]:
+        if item is None:
+            return None
+        progress = item.setdefault("bo_progress", [])
+        record = {
+            "type": step_type,
+            "status": status,
+            "details": details,
+            "updated_at": datetime.now().isoformat(timespec="seconds"),
+        }
+        progress.append(record)
+        if len(progress) > 300:
+            del progress[:-300]
+        self._root.after(0, self.refresh)
+        return record
+
+    def _update_bo_progress(self, record: Optional[dict], status: str, details: Optional[str] = None):
+        if record is None:
+            return
+        record["status"] = status
+        if details is not None:
+            record["details"] = details
+        record["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        self._root.after(0, self.refresh)
 
     def log(self, msg: str):
         session_mgr = getattr(self._session, "session_manager", None)
@@ -280,14 +325,37 @@ class QueueTab:
     def get_slack_eta_text(self) -> str:
         queue = self._session.measurement_queue
         if not queue:
-            return "Queue is empty."
+            return self._with_slackbot_loves_baris("Queue is empty.")
         if self._session.is_running:
-            return self._build_slack_remaining_text()
-        return f"Remaining measurements: {self._count_measurement_items(queue, start_index=0)}"
+            return self._with_slackbot_loves_baris(self._build_slack_remaining_text())
+        return self._with_slackbot_loves_baris(
+            f"Remaining measurements: {self._count_measurement_items(queue, start_index=0)}"
+        )
+
+    @staticmethod
+    def _with_slackbot_loves_baris(text: str) -> str:
+        return f"{text}\nslackbot loves baris"
 
     def _build_slack_remaining_text(self) -> str:
         queue = self._session.measurement_queue
         status = self._session.get_queue_status()
+        if str(status.get("bo_mode") or "").strip().lower() == "paired_response":
+            completed = self._coerce_int(status.get("bo_completed_measurements")) or 0
+            total_measurements = self._coerce_int(status.get("bo_total_measurements"))
+            cycle = self._coerce_int(status.get("bo_cycle_current"))
+            total_cycles = self._coerce_int(status.get("bo_cycle_total"))
+            observed = self._coerce_int(status.get("bo_observed_sets")) or 0
+            total_sets = self._coerce_int(status.get("bo_total_sets"))
+            remaining = (
+                max(0, total_measurements - completed)
+                if total_measurements is not None
+                else self._count_measurement_items(queue, start_index=0)
+            )
+            phase = str(status.get("bo_phase") or status.get("active_step_details") or "").strip()
+            cycle_text = f"cycle {cycle}/{total_cycles}" if cycle is not None and total_cycles is not None else "cycle ?"
+            set_text = f" | observed sets: {observed}/{total_sets}" if total_sets is not None else ""
+            phase_text = f" | phase: {phase}" if phase else ""
+            return f"Paired BO status: {cycle_text}{phase_text} | remaining measurements: {remaining}{set_text}"
         active_index = self._coerce_int(status.get("active_queue_index"))
         current_index = self._coerce_int(status.get("current_index"))
         total = self._coerce_int(status.get("total"))
@@ -929,6 +997,14 @@ class QueueTab:
             active_step_estimated_seconds=None,
             active_step_type=None,
             active_step_details=None,
+            bo_mode=None,
+            bo_cycle_current=None,
+            bo_cycle_total=None,
+            bo_phase=None,
+            bo_completed_measurements=None,
+            bo_total_measurements=None,
+            bo_observed_sets=None,
+            bo_total_sets=None,
         )
         self.clear_log()
         self.log("Queue start requested.")
@@ -969,6 +1045,14 @@ class QueueTab:
             active_step_estimated_seconds=None,
             active_step_type=None,
             active_step_details=None,
+            bo_mode=None,
+            bo_cycle_current=None,
+            bo_cycle_total=None,
+            bo_phase=None,
+            bo_completed_measurements=None,
+            bo_total_measurements=None,
+            bo_observed_sets=None,
+            bo_total_sets=None,
         )
         self.clear_log()
         self.log("Queue start from selected requested.")
@@ -1525,17 +1609,42 @@ class QueueTab:
             phase=phase,
         )
 
-    def _run_bo_queue_items(self, queue_items: list, label: str):
+    def _run_bo_queue_items(self, queue_items: list, label: str, progress: dict | None = None):
         completed = 0
         failed = 0
         stopped = 0
         recorded_items = []
-        for sub_item in queue_items:
+        progress = dict(progress or {})
+        bo_parent_item = progress.get("bo_parent_item")
+        phase_label = str(progress.get("bo_phase") or label)
+        cycle_current = progress.get("bo_cycle_current")
+        cycle_total = progress.get("bo_cycle_total")
+        cycle_text = f"Cycle {cycle_current}/{cycle_total}" if cycle_current and cycle_total else "BO"
+        total_items = len(queue_items)
+        for idx, sub_item in enumerate(queue_items):
             if not self._session.is_running:
                 stopped += 1
                 sub_item["status"] = "stopped"
                 recorded_items.append(dict(sub_item))
                 break
+            if bo_parent_item is not None:
+                self._set_bo_live_details(
+                    bo_parent_item,
+                    f"{cycle_text} | {phase_label} | {idx + 1}/{total_items}: {sub_item.get('details', sub_item.get('type'))}",
+                )
+            status_update = {}
+            if progress:
+                completed_before = int(progress.get("completed_before", 0) or 0)
+                status_update = {
+                    "bo_mode": progress.get("bo_mode"),
+                    "bo_cycle_current": progress.get("bo_cycle_current"),
+                    "bo_cycle_total": progress.get("bo_cycle_total"),
+                    "bo_phase": progress.get("bo_phase"),
+                    "bo_completed_measurements": completed_before + idx,
+                    "bo_total_measurements": progress.get("bo_total_measurements"),
+                    "bo_observed_sets": progress.get("bo_observed_sets"),
+                    "bo_total_sets": progress.get("bo_total_sets"),
+                }
             self._session.update_queue_status(
                 state="running",
                 current_label=f"{label}: {sub_item.get('details', sub_item.get('type'))}",
@@ -1543,6 +1652,7 @@ class QueueTab:
                 active_step_details=sub_item.get("details"),
                 active_step_started_at=datetime.now().isoformat(timespec="seconds"),
                 active_step_estimated_seconds=estimate_item_seconds(sub_item),
+                **status_update,
             )
             ok, csv_path = self._execute_measurement_item(sub_item)
             if ok:
@@ -1563,18 +1673,36 @@ class QueueTab:
                 recorded_items.append(dict(sub_item))
                 break
             recorded_items.append(dict(sub_item))
+        if bo_parent_item is not None:
+            summary_status = "completed" if failed == 0 and stopped == 0 else ("stopped" if stopped else "failed")
+            self._append_bo_progress(
+                bo_parent_item,
+                "BO_MEASURE",
+                summary_status,
+                f"{cycle_text} | {phase_label}: completed {completed}/{total_items}",
+            )
         return completed, failed, stopped, recorded_items
 
-    def _execute_bo_operational_items(self, items: list, label: str) -> bool:
-        for sub_item in items:
+    def _execute_bo_operational_items(self, items: list, label: str, bo_parent_item: Optional[dict] = None) -> bool:
+        total_items = len(items)
+        for idx, sub_item in enumerate(items):
             if not self._session.is_running:
                 return False
             t = str(sub_item.get("type") or "").upper()
+            details = str(sub_item.get("details") or t)
+            if bo_parent_item is not None:
+                self._set_bo_live_details(bo_parent_item, f"{label}: step {idx + 1}/{total_items} | {details}")
+            progress_record = self._append_bo_progress(
+                bo_parent_item,
+                t,
+                "running",
+                f"{label}: step {idx + 1}/{total_items} | {details}",
+            )
             self._session.update_queue_status(
                 state="running",
-                current_label=f"{label}: {sub_item.get('details', t)}",
+                current_label=f"{label}: {details}",
                 active_step_type=t,
-                active_step_details=sub_item.get("details"),
+                active_step_details=details,
                 active_step_started_at=datetime.now().isoformat(timespec="seconds"),
                 active_step_estimated_seconds=estimate_item_seconds(sub_item),
             )
@@ -1587,14 +1715,19 @@ class QueueTab:
             else:
                 raise RuntimeError(f"Fluid exchange block contains unsupported item type: {t}")
             if not ok:
+                self._update_bo_progress(progress_record, "failed")
                 return False
+            self._update_bo_progress(progress_record, "completed")
         return True
 
-    def _execute_bo_equilibration_pause(self, seconds: float, label: str) -> bool:
+    def _execute_bo_equilibration_pause(self, seconds: float, label: str, bo_parent_item: Optional[dict] = None) -> bool:
         seconds = max(0.0, float(seconds or 0.0))
         if seconds <= 0.0:
             return True
         self.log(f"{label}: equilibrating for {seconds:g} sec before measurement")
+        if bo_parent_item is not None:
+            self._set_bo_live_details(bo_parent_item, f"{label}: pause {seconds:g} sec")
+        progress_record = self._append_bo_progress(bo_parent_item, "PAUSE", "running", f"{label}: pause {seconds:g} sec")
         self._session.update_queue_status(
             state="running",
             current_label=label,
@@ -1603,7 +1736,9 @@ class QueueTab:
             active_step_started_at=datetime.now().isoformat(timespec="seconds"),
             active_step_estimated_seconds=seconds,
         )
-        return self._exec_pause(seconds)
+        ok = self._exec_pause(seconds)
+        self._update_bo_progress(progress_record, "completed" if ok else "stopped")
+        return ok
 
     @staticmethod
     def _load_bo_exchange_items(block: dict, key: str, label: str) -> list:
@@ -1684,7 +1819,9 @@ class QueueTab:
         bo_session = BOIntegrationSession(config, exp_path, config_path=config_path, analysis_output_dir=analysis_output_dir)
         item["bo_session_id"] = bo_session.session_id
         item["bo_record_dir"] = str(bo_session.record_dir)
+        item["bo_progress"] = []
         self.log(f"BO block started: {item.get('details', '')}")
+        self._append_bo_progress(item, "BO_START", "running", f"BO session started: {bo_session.session_id}")
         halfway_iteration = max(1, int(math.ceil(target_iterations / 2.0)))
         halfway_notified = False
 
@@ -1709,6 +1846,16 @@ class QueueTab:
             while self._session.is_running and completed_cycles < target_cycles:
                 cycle_index = completed_cycles + 1
                 suggestions = bo_session.ask_batch(batch_size)
+                self._set_bo_live_details(
+                    item,
+                    f"Cycle {cycle_index}/{target_cycles} | preparing suggestions | iterations {suggestions[0].iteration}-{suggestions[-1].iteration}",
+                )
+                cycle_progress_record = self._append_bo_progress(
+                    item,
+                    "BO_CYCLE",
+                    "running",
+                    f"Cycle {cycle_index}/{target_cycles}: iterations {suggestions[0].iteration}-{suggestions[-1].iteration}",
+                )
                 self.log(
                     f"BO paired cycle {cycle_index}/{target_cycles}: {len(suggestions)} suggestion(s), "
                     f"iterations {suggestions[0].iteration}-{suggestions[-1].iteration}"
@@ -1716,12 +1863,22 @@ class QueueTab:
 
                 buffer_items = []
                 target_items = []
-                for suggestion in suggestions:
+                suggestion_metadata = {}
+                for batch_index, suggestion in enumerate(suggestions, start=1):
                     buffer = bo_session.build_queue_items(self._session.registry, suggestion, phase="buffer")
                     target = bo_session.build_queue_items(self._session.registry, suggestion, phase="target")
                     bo_session.record_queued(suggestion, buffer + target)
+                    suggestion_metadata[int(suggestion.iteration)] = {
+                        "paired_cycle": cycle_index,
+                        "paired_batch_index": batch_index,
+                        "buffer_trace_number": len(buffer_items) + 1,
+                        "target_trace_number": len(target_items) + 1,
+                    }
                     buffer_items.extend(buffer)
                     target_items.extend(target)
+                measurements_per_cycle = len(buffer_items) + len(target_items)
+                total_measurements = target_cycles * measurements_per_cycle
+                completed_measurements = completed_cycles * measurements_per_cycle
                 live_refresh = getattr(self._session, "_bo_live_refresh_callback", None)
                 if callable(live_refresh):
                     self._root.after(
@@ -1734,7 +1891,21 @@ class QueueTab:
                         }: cb(dict(data)),
                     )
 
-                b_completed, b_failed, b_stopped, b_recorded = self._run_bo_queue_items(buffer_items, "BO buffer batch")
+                b_completed, b_failed, b_stopped, b_recorded = self._run_bo_queue_items(
+                    buffer_items,
+                    "BO buffer batch",
+                    progress={
+                        "bo_mode": "paired_response",
+                        "bo_parent_item": item,
+                        "bo_cycle_current": cycle_index,
+                        "bo_cycle_total": target_cycles,
+                        "bo_phase": "buffer measurements",
+                        "completed_before": completed_measurements,
+                        "bo_total_measurements": total_measurements,
+                        "bo_observed_sets": len(bo_session.observations),
+                        "bo_total_sets": target_observations,
+                    },
+                )
                 bo_session.record_queue_completion({
                     "start_index": None,
                     "total": len(b_recorded),
@@ -1745,21 +1916,61 @@ class QueueTab:
                 })
                 if b_failed or b_stopped or not self._session.is_running:
                     return False
+                completed_measurements += len(buffer_items)
 
                 if target_exchange_items:
+                    self._session.update_queue_status(
+                        bo_mode="paired_response",
+                        bo_cycle_current=cycle_index,
+                        bo_cycle_total=target_cycles,
+                        bo_phase="buffer-to-target exchange",
+                        bo_completed_measurements=completed_measurements,
+                        bo_total_measurements=total_measurements,
+                        bo_observed_sets=len(bo_session.observations),
+                        bo_total_sets=target_observations,
+                    )
                     self.log(f"BO paired batch: running buffer-to-target exchange block ({len(target_exchange_items)} step(s))")
-                    if not self._execute_bo_operational_items([copy.deepcopy(x) for x in target_exchange_items], "BO buffer-to-target exchange"):
+                    if not self._execute_bo_operational_items(
+                        [copy.deepcopy(x) for x in target_exchange_items],
+                        f"Cycle {cycle_index}/{target_cycles} buffer-to-target exchange",
+                        bo_parent_item=item,
+                    ):
                         return False
                 else:
                     self.log("BO paired batch: no buffer-to-target exchange block configured; continuing to target measurements")
 
+                self._session.update_queue_status(
+                    bo_mode="paired_response",
+                    bo_cycle_current=cycle_index,
+                    bo_cycle_total=target_cycles,
+                    bo_phase="target equilibration",
+                    bo_completed_measurements=completed_measurements,
+                    bo_total_measurements=total_measurements,
+                    bo_observed_sets=len(bo_session.observations),
+                    bo_total_sets=target_observations,
+                )
                 if not self._execute_bo_equilibration_pause(
                     target_equilibration_seconds,
                     f"BO paired cycle {cycle_index}/{target_cycles}: target equilibration",
+                    bo_parent_item=item,
                 ):
                     return False
 
-                t_completed, t_failed, t_stopped, t_recorded = self._run_bo_queue_items(target_items, "BO target batch")
+                t_completed, t_failed, t_stopped, t_recorded = self._run_bo_queue_items(
+                    target_items,
+                    "BO target batch",
+                    progress={
+                        "bo_mode": "paired_response",
+                        "bo_parent_item": item,
+                        "bo_cycle_current": cycle_index,
+                        "bo_cycle_total": target_cycles,
+                        "bo_phase": "target measurements",
+                        "completed_before": completed_measurements,
+                        "bo_total_measurements": total_measurements,
+                        "bo_observed_sets": len(bo_session.observations),
+                        "bo_total_sets": target_observations,
+                    },
+                )
                 bo_session.record_queue_completion({
                     "start_index": None,
                     "total": len(t_recorded),
@@ -1770,22 +1981,68 @@ class QueueTab:
                 })
                 if t_failed or t_stopped or not self._session.is_running:
                     return False
+                completed_measurements += len(target_items)
 
                 if buffer_exchange_items:
+                    self._session.update_queue_status(
+                        bo_mode="paired_response",
+                        bo_cycle_current=cycle_index,
+                        bo_cycle_total=target_cycles,
+                        bo_phase="target-to-buffer exchange",
+                        bo_completed_measurements=completed_measurements,
+                        bo_total_measurements=total_measurements,
+                        bo_observed_sets=len(bo_session.observations),
+                        bo_total_sets=target_observations,
+                    )
                     self.log(f"BO paired batch: running target-to-buffer exchange block ({len(buffer_exchange_items)} step(s))")
-                    if not self._execute_bo_operational_items([copy.deepcopy(x) for x in buffer_exchange_items], "BO target-to-buffer exchange"):
+                    if not self._execute_bo_operational_items(
+                        [copy.deepcopy(x) for x in buffer_exchange_items],
+                        f"Cycle {cycle_index}/{target_cycles} target-to-buffer exchange",
+                        bo_parent_item=item,
+                    ):
                         return False
                 else:
                     self.log("BO paired batch: no target-to-buffer exchange block configured; next cycle will start in current fluid")
 
                 if completed_cycles + 1 < target_cycles:
+                    self._session.update_queue_status(
+                        bo_mode="paired_response",
+                        bo_cycle_current=cycle_index,
+                        bo_cycle_total=target_cycles,
+                        bo_phase="buffer equilibration",
+                        bo_completed_measurements=completed_measurements,
+                        bo_total_measurements=total_measurements,
+                        bo_observed_sets=len(bo_session.observations),
+                        bo_total_sets=target_observations,
+                    )
                     if not self._execute_bo_equilibration_pause(
                         buffer_equilibration_seconds,
                         f"BO paired cycle {cycle_index}/{target_cycles}: buffer equilibration",
+                        bo_parent_item=item,
                     ):
                         return False
 
+                self._set_bo_live_details(
+                    item,
+                    f"Cycle {cycle_index}/{target_cycles} | analysis | importing iterations {suggestions[0].iteration}-{suggestions[-1].iteration}",
+                )
+                self._session.update_queue_status(
+                    bo_mode="paired_response",
+                    bo_cycle_current=cycle_index,
+                    bo_cycle_total=target_cycles,
+                    bo_phase="analysis",
+                    bo_completed_measurements=completed_measurements,
+                    bo_total_measurements=total_measurements,
+                    bo_observed_sets=len(bo_session.observations),
+                    bo_total_sets=target_observations,
+                )
                 for suggestion in suggestions:
+                    self._set_bo_live_details(
+                        item,
+                        f"Cycle {cycle_index}/{target_cycles} | analysis | importing iteration {suggestion.iteration}",
+                    )
+                    metadata = dict(suggestion_metadata.get(int(suggestion.iteration), {}))
+                    metadata["target_trace_number"] = len(buffer_items) + int(metadata.get("target_trace_number", 0) or 0)
                     buffer_summary = self._run_bo_analysis(bo_session, block, suggestion=suggestion, phase="buffer")
                     target_summary = self._run_bo_analysis(bo_session, block, suggestion=suggestion, phase="target")
                     obs = bo_session.import_paired_analysis(
@@ -1793,6 +2050,7 @@ class QueueTab:
                         buffer_summary,
                         target_summary,
                         notes="Imported from recipe paired-response BO block",
+                        **metadata,
                     )
                     self.log(
                         f"BO iteration {obs['iteration']} paired complete: "
@@ -1810,6 +2068,25 @@ class QueueTab:
                             }: cb(dict(data)),
                         )
                 completed_cycles += 1
+                self._update_bo_progress(
+                    cycle_progress_record,
+                    "completed",
+                    f"Cycle {cycle_index}/{target_cycles}: iterations {suggestions[0].iteration}-{suggestions[-1].iteration} complete",
+                )
+                self._set_bo_live_details(
+                    item,
+                    f"Cycle {cycle_index}/{target_cycles} complete | {len(bo_session.observations)}/{target_observations} parameter sets observed",
+                )
+                self._session.update_queue_status(
+                    bo_mode="paired_response",
+                    bo_cycle_current=cycle_index,
+                    bo_cycle_total=target_cycles,
+                    bo_phase="cycle complete",
+                    bo_completed_measurements=completed_measurements,
+                    bo_total_measurements=total_measurements,
+                    bo_observed_sets=len(bo_session.observations),
+                    bo_total_sets=target_observations,
+                )
                 if session_mgr is not None and not halfway_notified and completed_cycles >= halfway_cycle:
                     halfway_notified = True
                     session_mgr.notify_slack(
@@ -1823,6 +2100,13 @@ class QueueTab:
                 f"{self._format_bo_block_details(block)} | done "
                 f"{completed_cycles}/{target_cycles} cycles, {completed_iterations}/{target_observations} methods"
             )
+            self._append_bo_progress(
+                item,
+                "BO_DONE",
+                "completed" if completed_cycles >= target_cycles else "stopped",
+                f"Paired BO done: {completed_cycles}/{target_cycles} cycles, {completed_iterations}/{target_observations} parameter sets",
+            )
+            self._root.after(0, self.refresh)
             best = bo_session.best_observation()
             if best is not None:
                 item["bo_best_q"] = float(best.get("Q_run", 0.0))
@@ -2019,6 +2303,16 @@ class QueueTab:
                     break
 
         self._session.is_running = False
+        self._session.update_queue_status(
+            bo_mode=None,
+            bo_cycle_current=None,
+            bo_cycle_total=None,
+            bo_phase=None,
+            bo_completed_measurements=None,
+            bo_total_measurements=None,
+            bo_observed_sets=None,
+            bo_total_sets=None,
+        )
         self.log("Queue completed.")
         self._root.after(0, self.set_status, "Queue Complete")
         self._announce_queue_end(start_index=start_index)

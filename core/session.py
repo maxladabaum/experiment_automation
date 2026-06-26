@@ -62,6 +62,14 @@ class SessionState:
             "active_step_estimated_seconds": None,
             "active_step_type": None,
             "active_step_details": None,
+            "bo_mode": None,
+            "bo_cycle_current": None,
+            "bo_cycle_total": None,
+            "bo_phase": None,
+            "bo_completed_measurements": None,
+            "bo_total_measurements": None,
+            "bo_observed_sets": None,
+            "bo_total_sets": None,
         }
 
         # ── Measurement tagging ───────────────────────────────────────────────

@@ -583,19 +583,38 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
         target_shape_score = _clip01(target_q.get("peak_shape_score", 0.0))
         buffer_classic_q = float(buffer_q.get("Q_channel", 0.0) or 0.0)
         target_classic_q = float(target_q.get("Q_channel", 0.0) or 0.0)
+        valid_classic_pair = buffer_classic_q > 0.0 and target_classic_q > 0.0
+        if not valid_classic_pair:
+            success = 0.0
         standard_quality_score = 0.5 * (buffer_classic_q + target_classic_q)
         weighted = (
             buffer_q_weight * buffer_classic_q
             + target_q_weight * target_classic_q
             + delta_peak_weight * delta_score
         )
-        q_channel = weighted / paired_weight_total
+        if valid_classic_pair:
+            buffer_q_contribution = buffer_q_weight * buffer_classic_q / paired_weight_total
+            target_q_contribution = target_q_weight * target_classic_q / paired_weight_total
+            delta_peak_contribution = delta_peak_weight * delta_score / paired_weight_total
+        else:
+            buffer_q_contribution = 0.0
+            target_q_contribution = 0.0
+            delta_peak_contribution = 0.0
+        q_channel = (
+            buffer_q_contribution
+            + target_q_contribution
+            + delta_peak_contribution
+        )
         per_channel[channel] = {
             "Q_channel": q_channel,
             "paired_Q_channel": q_channel,
+            "valid_classic_pair": valid_classic_pair,
             "buffer_classic_Q": buffer_classic_q,
             "target_classic_Q": target_classic_q,
             "classic_pair_Q": standard_quality_score,
+            "buffer_classic_Q_contribution": buffer_q_contribution,
+            "target_classic_Q_contribution": target_q_contribution,
+            "delta_peak_contribution": delta_peak_contribution,
             "buffer_classic_Q_weight": buffer_q_weight,
             "target_classic_Q_weight": target_q_weight,
             "delta_peak_weight": delta_peak_weight,
@@ -659,6 +678,9 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
         "mean_buffer_classic_Q": _mean_component("buffer_classic_Q"),
         "mean_target_classic_Q": _mean_component("target_classic_Q"),
         "mean_classic_pair_Q": _mean_component("classic_pair_Q"),
+        "mean_buffer_classic_Q_contribution": _mean_component("buffer_classic_Q_contribution"),
+        "mean_target_classic_Q_contribution": _mean_component("target_classic_Q_contribution"),
+        "mean_delta_peak_contribution": _mean_component("delta_peak_contribution"),
         "mean_delta_peak_height_uA": mean_delta,
         "mean_abs_delta_peak_height_uA": mean_abs_delta,
         "mean_fractional_delta_peak": _mean_component("fractional_delta_peak"),
@@ -952,8 +974,8 @@ class BOIntegrationSession:
         self.pending = None
         self._write_json(self.analysis_dir / f"iter_{iteration:03d}_quality.json", observation)
         self._write_history_csv()
-        self._write_surrogate_and_acquisition_artifacts(iteration)
-        self._write_plots(observation)
+        self.save_state()
+        self._write_optional_iteration_artifacts(iteration, observation)
         self.save_state()
         return observation
 
@@ -963,6 +985,10 @@ class BOIntegrationSession:
         buffer_path: str | Path,
         target_path: str | Path,
         notes: str = "",
+        paired_cycle: Optional[int] = None,
+        paired_batch_index: Optional[int] = None,
+        buffer_trace_number: Optional[int] = None,
+        target_trace_number: Optional[int] = None,
     ) -> dict:
         suggestion_data = suggestion if isinstance(suggestion, dict) else suggestion.__dict__
         iteration = int(suggestion_data["iteration"])
@@ -976,25 +1002,29 @@ class BOIntegrationSession:
         retained_target = self._retain_analysis_file(Path(target_path), iteration, suffix="target")
         buffer_truth = dict(buffer_payload.get("simulation_truth") or {})
         target_truth = dict(target_payload.get("simulation_truth") or {})
-        paired_cycle = (
-            target_payload.get("paired_cycle")
-            if target_payload.get("paired_cycle") is not None
-            else buffer_payload.get("paired_cycle")
+        paired_cycle = self._first_present(
+            paired_cycle,
+            target_payload.get("paired_cycle"),
+            buffer_payload.get("paired_cycle"),
+            target_truth.get("paired_cycle"),
+            buffer_truth.get("paired_cycle"),
         )
-        paired_batch_index = (
-            target_payload.get("paired_batch_index")
-            if target_payload.get("paired_batch_index") is not None
-            else buffer_payload.get("paired_batch_index")
+        paired_batch_index = self._first_present(
+            paired_batch_index,
+            target_payload.get("paired_batch_index"),
+            buffer_payload.get("paired_batch_index"),
+            target_truth.get("paired_batch_index"),
+            buffer_truth.get("paired_batch_index"),
         )
-        buffer_trace_number = (
-            buffer_payload.get("trace_number")
-            if buffer_payload.get("trace_number") is not None
-            else buffer_truth.get("trace_number")
+        buffer_trace_number = self._first_present(
+            buffer_trace_number,
+            buffer_payload.get("trace_number"),
+            buffer_truth.get("trace_number"),
         )
-        target_trace_number = (
-            target_payload.get("trace_number")
-            if target_payload.get("trace_number") is not None
-            else target_truth.get("trace_number")
+        target_trace_number = self._first_present(
+            target_trace_number,
+            target_payload.get("trace_number"),
+            target_truth.get("trace_number"),
         )
         observation = {
             "iteration": iteration,
@@ -1040,10 +1070,27 @@ class BOIntegrationSession:
         self._write_json(self.analysis_dir / f"iter_{iteration:03d}_paired_quality.json", observation)
         self._write_paired_components_csv(iteration, quality)
         self._write_history_csv()
-        self._write_surrogate_and_acquisition_artifacts(iteration)
-        self._write_plots(observation)
+        self.save_state()
+        self._write_optional_iteration_artifacts(iteration, observation)
         self.save_state()
         return observation
+
+    def _write_optional_iteration_artifacts(self, iteration: int, observation: dict) -> None:
+        try:
+            self._write_surrogate_and_acquisition_artifacts(iteration)
+        except Exception as exc:
+            warnings.warn(f"BO surrogate/acquisition artifact write failed for iter {iteration}: {exc}")
+        try:
+            self._write_plots(observation)
+        except Exception as exc:
+            warnings.warn(f"BO plot write failed for iter {iteration}: {exc}")
+
+    @staticmethod
+    def _first_present(*values):
+        for value in values:
+            if value is not None and value != "":
+                return value
+        return None
 
     def _write_paired_components_csv(self, iteration: int, quality: dict) -> None:
         rows = []
@@ -1458,12 +1505,17 @@ class BOIntegrationSession:
         path = self.record_dir / "history.csv"
         rows = []
         for obs in self.observations:
+            paired_cycle = obs.get("paired_cycle", "")
+            paired_batch_index = obs.get("paired_batch_index", "")
+            if str(obs.get("objective") or "").lower() == "paired_response":
+                paired_cycle = self._paired_cycle_for_observation(obs)
+                paired_batch_index = self._paired_batch_index_for_observation(obs)
             row = {
                 "iteration": obs["iteration"],
                 "method_id": obs["method_id"],
                 "objective": obs.get("objective", ""),
-                "paired_cycle": obs.get("paired_cycle", ""),
-                "paired_batch_index": obs.get("paired_batch_index", ""),
+                "paired_cycle": "" if paired_cycle is None else paired_cycle,
+                "paired_batch_index": "" if paired_batch_index is None else paired_batch_index,
                 "buffer_trace_number": obs.get("buffer_trace_number", ""),
                 "target_trace_number": obs.get("target_trace_number", ""),
                 "Q_run": obs["Q_run"],
@@ -1480,6 +1532,9 @@ class BOIntegrationSession:
                 row["mean_buffer_classic_Q"] = quality.get("mean_buffer_classic_Q", "")
                 row["mean_target_classic_Q"] = quality.get("mean_target_classic_Q", "")
                 row["mean_classic_pair_Q"] = quality.get("mean_classic_pair_Q", "")
+                row["mean_buffer_classic_Q_contribution"] = quality.get("mean_buffer_classic_Q_contribution", "")
+                row["mean_target_classic_Q_contribution"] = quality.get("mean_target_classic_Q_contribution", "")
+                row["mean_delta_peak_contribution"] = quality.get("mean_delta_peak_contribution", "")
                 row["mean_delta_peak_height_uA"] = quality.get("mean_delta_peak_height_uA", "")
                 row["mean_abs_delta_peak_height_uA"] = quality.get("mean_abs_delta_peak_height_uA", "")
                 row["mean_fractional_delta_peak"] = quality.get("mean_fractional_delta_peak", "")
@@ -1501,6 +1556,9 @@ class BOIntegrationSession:
                         "buffer_classic_Q",
                         "target_classic_Q",
                         "classic_pair_Q",
+                        "buffer_classic_Q_contribution",
+                        "target_classic_Q_contribution",
+                        "delta_peak_contribution",
                         "delta_peak_height_uA",
                         "abs_delta_peak_height_uA",
                         "fractional_delta_peak",
@@ -1520,10 +1578,42 @@ class BOIntegrationSession:
             for key in row:
                 if key not in fieldnames:
                     fieldnames.append(key)
-        with open(path, "w", encoding="utf-8", newline="") as fh:
+        tmp_path = path.with_name(f".{path.name}.tmp")
+        with open(tmp_path, "w", encoding="utf-8", newline="") as fh:
             writer = csv.DictWriter(fh, fieldnames=fieldnames or ["iteration"])
             writer.writeheader()
             writer.writerows(rows)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_path, path)
+
+    def _paired_cycle_for_observation(self, obs: dict):
+        value = obs.get("paired_cycle")
+        if value is not None and value != "":
+            try:
+                return int(value)
+            except Exception:
+                return value
+        try:
+            iteration = int(obs.get("iteration") or 0)
+            batch_size = max(1, int(self.config.get("paired_batch_size", 1) or 1))
+        except Exception:
+            return None
+        return ((iteration - 1) // batch_size) + 1 if iteration > 0 else None
+
+    def _paired_batch_index_for_observation(self, obs: dict):
+        value = obs.get("paired_batch_index")
+        if value is not None and value != "":
+            try:
+                return int(value)
+            except Exception:
+                return value
+        try:
+            iteration = int(obs.get("iteration") or 0)
+            batch_size = max(1, int(self.config.get("paired_batch_size", 1) or 1))
+        except Exception:
+            return None
+        return ((iteration - 1) % batch_size) + 1 if iteration > 0 else None
 
     def _write_surrogate_and_acquisition_artifacts(self, iteration: int) -> None:
         rows, metadata, gp = self._candidate_prediction_rows()
@@ -1667,10 +1757,14 @@ class BOIntegrationSession:
             for key in row:
                 if key not in fieldnames:
                     fieldnames.append(key)
-        with open(path, "w", encoding="utf-8", newline="") as fh:
+        tmp_path = path.with_name(f".{path.name}.tmp")
+        with open(tmp_path, "w", encoding="utf-8", newline="") as fh:
             writer = csv.DictWriter(fh, fieldnames=fieldnames or ["empty"])
             writer.writeheader()
             writer.writerows(rows)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_path, path)
 
     def _write_plots(self, observation: dict) -> None:
         try:
@@ -1735,8 +1829,12 @@ class BOIntegrationSession:
     @staticmethod
     def _write_json(path: Path, payload: Any) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as fh:
+        tmp_path = path.with_name(f".{path.name}.tmp")
+        with open(tmp_path, "w", encoding="utf-8") as fh:
             json.dump(payload, fh, indent=2)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_path, path)
 
     @staticmethod
     def _load_json_file(path: str | Path) -> Any:

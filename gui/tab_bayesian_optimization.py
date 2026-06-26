@@ -206,6 +206,7 @@ class BayesianOptimizationTab:
         self._selected_history_observation = None
         self._active_results_tree = None
         self._results_trace_panes_balanced = False
+        self._results_render_deferred = False
 
         self._build()
         self._load_config(initial=True)
@@ -3217,6 +3218,11 @@ class BayesianOptimizationTab:
     def _refresh_analysis_q_trend(self):
         if not hasattr(self, "_analysis_q_plot_frame"):
             return
+        if self._defer_results_render(
+            self._analysis_q_plot_frame,
+            "Trend plot rendering is paused while a measurement is collecting data.\nAcquisition has priority.",
+        ):
+            return
         rows = list(self._bo_session.observations) if self._bo_session is not None else []
         metric = self._analysis_trend_metric_var.get() or "Q_run"
         self._render_metric_trend_plot(
@@ -3652,17 +3658,47 @@ class BayesianOptimizationTab:
         self._set_rescore_vars_from_config(self._config)
         self._record_dir_var.set(f"Record folder: {self._bo_session.record_dir}")
         self._refresh_history()
-        self._render_best()
         self._refresh_model_artifacts()
         self._refresh_record_files()
-        self._select_latest_history_iteration()
-        self._refresh_surrogate_view()
+        if self._measurement_priority_active():
+            self._results_render_deferred = True
+        else:
+            self._render_best()
+            self._select_latest_history_iteration()
+            self._refresh_surrogate_view()
         iteration = payload.get("iteration")
         completed = len(self._bo_session.observations)
         if iteration is not None:
             self._auto_status_var.set(
                 f"Paired BO progress: imported iteration {iteration}. {completed} paired comparison(s) recorded."
             )
+
+    def _measurement_priority_active(self) -> bool:
+        if getattr(self._session, "current_runner", None) is not None:
+            return True
+        try:
+            status = self._session.get_queue_status()
+        except Exception:
+            status = {}
+        active_type = str(status.get("active_step_type") or "").strip().upper()
+        measurement_types = {"CV", "SWV", "DPV", "LSV", "EIS", "CUSTOM", "CUSTOM_MUX"}
+        return active_type in measurement_types
+
+    def _defer_results_render(self, frame, message: str) -> bool:
+        if not self._measurement_priority_active():
+            return False
+        self._results_render_deferred = True
+        if frame is not None:
+            for child in frame.winfo_children():
+                child.destroy()
+            ttk.Label(
+                frame,
+                text=message,
+                anchor="center",
+                justify="center",
+            ).pack(fill="both", expand=True)
+        self._status_var.set("Measurement is collecting data; heavy BO result plots are deferred until acquisition finishes.")
+        return True
 
     def _load_latest_paired_queue_session(self):
         for item in self._session.measurement_queue:
@@ -3998,8 +4034,9 @@ class BayesianOptimizationTab:
         paired = self._is_paired_observation(observation)
         if paired:
             score_cols = (
-                "Phase", "Q", "Peak uA", "Raw SNR", "SNR Score",
-                "Shape", "Success", "Paired Q", "Delta Peak", "Delta Score",
+                "Phase", "Classic Q", "Classic Pair Q", "Buffer Term", "Target Term",
+                "Delta Term", "Peak uA", "Raw SNR", "SNR Score", "Shape", "Success",
+                "Paired Q", "Delta Peak", "Delta Score",
             )
         else:
             score_cols = ("Q", "Peak uA", "Raw SNR", "SNR Score", "Shape", "Baseline", "Replicate", "Success")
@@ -4025,6 +4062,10 @@ class BayesianOptimizationTab:
                         (
                             "Buffer",
                             self._fmt(data.get("buffer_classic_Q")),
+                            self._fmt(data.get("classic_pair_Q")),
+                            self._fmt(data.get("buffer_classic_Q_contribution")),
+                            self._fmt(data.get("target_classic_Q_contribution")),
+                            self._fmt(data.get("delta_peak_contribution")),
                             self._fmt(self._channel_peak_height(buffer_metrics)),
                             self._fmt(data.get("buffer_snr_raw")),
                             self._fmt(data.get("buffer_snr_score")),
@@ -4040,6 +4081,10 @@ class BayesianOptimizationTab:
                         (
                             "Target",
                             self._fmt(data.get("target_classic_Q")),
+                            self._fmt(data.get("classic_pair_Q")),
+                            self._fmt(data.get("buffer_classic_Q_contribution")),
+                            self._fmt(data.get("target_classic_Q_contribution")),
+                            self._fmt(data.get("delta_peak_contribution")),
                             self._fmt(self._channel_peak_height(target_metrics)),
                             self._fmt(data.get("target_snr_raw")),
                             self._fmt(data.get("target_snr_score")),
@@ -4090,6 +4135,7 @@ class BayesianOptimizationTab:
             columns = (
                 "Set", "BO Iter", "Buffer Trace", "Target Trace",
                 "Q_run", "Paired Q", "Buffer Q", "Target Q", "Classic Pair Q",
+                "Buffer Term", "Target Term", "Delta Term",
                 "Delta Peak", "Frac Delta", "Distance",
                 "Buffer SNR", "Target SNR", "Target Shape", "Success",
                 "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t",
@@ -4101,6 +4147,9 @@ class BayesianOptimizationTab:
                 "Buffer Trace": 96,
                 "Target Trace": 96,
                 "Paired Q": 82,
+                "Buffer Term": 92,
+                "Target Term": 92,
+                "Delta Term": 88,
                 "Delta Peak": 88,
                 "Classic Pair Q": 104,
                 "Buffer SNR": 86,
@@ -4127,16 +4176,21 @@ class BayesianOptimizationTab:
         truth = dict(obs.get("simulation_truth") or {})
         paired_q = truth.get("paired_Q_score")
         delta_peak = quality.get("mean_abs_delta_peak_height_uA", truth.get("expected_delta_peak_uA"))
+        batch_size = self._paired_batch_size_for_observation(obs)
+        paired_batch_index = self._paired_batch_index_for_observation(obs, batch_size=batch_size)
         return (
-            str(obs.get("paired_batch_index") or ""),
+            str(paired_batch_index) if paired_batch_index is not None else "",
             str(obs.get("iteration") or ""),
-            str(obs.get("buffer_trace_number") or ""),
-            str(obs.get("target_trace_number") or ""),
+            self._string_or_empty(obs.get("buffer_trace_number")),
+            self._string_or_empty(obs.get("target_trace_number")),
             self._fmt(obs.get("Q_run")),
             self._fmt(paired_q if paired_q is not None else quality.get("mean_paired_Q_channel", quality.get("mean_Q_channel"))),
             self._fmt(quality.get("mean_buffer_classic_Q")),
             self._fmt(quality.get("mean_target_classic_Q")),
             self._fmt(quality.get("mean_classic_pair_Q")),
+            self._fmt(quality.get("mean_buffer_classic_Q_contribution")),
+            self._fmt(quality.get("mean_target_classic_Q_contribution")),
+            self._fmt(quality.get("mean_delta_peak_contribution")),
             self._fmt(delta_peak),
             self._fmt(quality.get("mean_fractional_delta_peak")),
             self._fmt(truth.get("normalized_distance")),
@@ -4152,6 +4206,53 @@ class BayesianOptimizationTab:
             self._fmt_raw(params.get("conditioning_potential")),
             self._fmt_raw(params.get("conditioning_time")),
         )
+
+    @staticmethod
+    def _string_or_empty(value):
+        return "" if value is None else str(value)
+
+    def _paired_batch_size_for_observation(self, obs) -> int:
+        for source in (
+            dict((obs or {}).get("quality") or {}),
+            dict(getattr(self._bo_session, "config", {}) or {}) if self._bo_session is not None else {},
+            dict(self._config or {}),
+        ):
+            try:
+                value = source.get("paired_batch_size")
+                if value is not None and value != "":
+                    return max(1, int(value))
+            except Exception:
+                pass
+        try:
+            return max(1, int(self._paired_batch_size_var.get() or 1))
+        except Exception:
+            return 1
+
+    def _paired_cycle_for_observation(self, obs, batch_size: int | None = None):
+        value = (obs or {}).get("paired_cycle")
+        if value is not None and value != "":
+            return value
+        try:
+            iteration = int((obs or {}).get("iteration") or 0)
+        except Exception:
+            return None
+        if iteration < 1:
+            return None
+        batch = max(1, int(batch_size or self._paired_batch_size_for_observation(obs)))
+        return ((iteration - 1) // batch) + 1
+
+    def _paired_batch_index_for_observation(self, obs, batch_size: int | None = None):
+        value = (obs or {}).get("paired_batch_index")
+        if value is not None and value != "":
+            return value
+        try:
+            iteration = int((obs or {}).get("iteration") or 0)
+        except Exception:
+            return None
+        if iteration < 1:
+            return None
+        batch = max(1, int(batch_size or self._paired_batch_size_for_observation(obs)))
+        return ((iteration - 1) % batch) + 1
 
     def _refresh_history(self):
         self._refresh_current_q_equation()
@@ -4185,7 +4286,8 @@ class BayesianOptimizationTab:
             self._history_rows[iteration] = obs
             if paired_history:
                 values = self._paired_history_values(obs, peak_uA, snr_raw)
-                text = str(obs.get("paired_cycle") or "")
+                cycle = self._paired_cycle_for_observation(obs)
+                text = str(cycle) if cycle is not None else ""
             else:
                 values = (
                     self._fmt(obs.get("Q_run")),
@@ -4239,6 +4341,14 @@ class BayesianOptimizationTab:
             return
         self._selected_history_observation = obs
         self._render_scores(obs)
+        if self._measurement_priority_active():
+            self._render_raw_traces(obs)
+            self._render_corrected_traces(obs)
+            self._status_var.set(
+                f"Selected BO iteration {obs.get('iteration')}; trace plots are deferred while a measurement is collecting data."
+            )
+            self._restore_tree_focus(self._history_tree)
+            return
         self._render_raw_traces(obs)
         self._render_corrected_traces(obs)
         artifact_iterations = self._surrogate_artifact_iterations()
@@ -4255,6 +4365,11 @@ class BayesianOptimizationTab:
         self._restore_tree_focus(self._history_tree)
 
     def _on_score_tree_select(self):
+        if self._measurement_priority_active():
+            self._render_raw_traces(self._selected_history_observation)
+            self._render_corrected_traces(self._selected_history_observation)
+            self._restore_tree_focus(self._score_tree)
+            return
         self._render_raw_traces(self._selected_history_observation)
         self._render_corrected_traces(self._selected_history_observation)
         self._restore_tree_focus(self._score_tree)
@@ -4344,6 +4459,10 @@ class BayesianOptimizationTab:
         self._score_tree.selection_set(target)
         self._score_tree.focus(target)
         self._score_tree.see(target)
+        if self._measurement_priority_active():
+            self._render_raw_traces(self._selected_history_observation)
+            self._render_corrected_traces(self._selected_history_observation)
+            return "break"
         self._render_raw_traces(self._selected_history_observation)
         self._render_corrected_traces(self._selected_history_observation)
         return "break"
@@ -4415,6 +4534,11 @@ class BayesianOptimizationTab:
 
     def _render_raw_traces(self, observation):
         if not hasattr(self, "_raw_trace_frame"):
+            return
+        if self._defer_results_render(
+            self._raw_trace_frame,
+            "Raw trace plotting is paused while a measurement is collecting data.\nAcquisition has priority.",
+        ):
             return
         for child in self._raw_trace_frame.winfo_children():
             child.destroy()
@@ -4544,6 +4668,11 @@ class BayesianOptimizationTab:
 
     def _render_corrected_traces(self, observation):
         if not hasattr(self, "_corrected_trace_frame"):
+            return
+        if self._defer_results_render(
+            self._corrected_trace_frame,
+            "Corrected trace recomputation is paused while a measurement is collecting data.\nAcquisition has priority.",
+        ):
             return
         for child in self._corrected_trace_frame.winfo_children():
             child.destroy()
@@ -5657,6 +5786,11 @@ class BayesianOptimizationTab:
 
     def _refresh_surrogate_view(self):
         if not hasattr(self, "_surrogate_plot_frame"):
+            return
+        if self._defer_results_render(
+            self._surrogate_plot_frame,
+            "Surrogate/acquisition plot rendering is paused while a measurement is collecting data.\nAcquisition has priority.",
+        ):
             return
         self._refresh_surrogate_controls()
         for child in self._surrogate_plot_frame.winfo_children():
