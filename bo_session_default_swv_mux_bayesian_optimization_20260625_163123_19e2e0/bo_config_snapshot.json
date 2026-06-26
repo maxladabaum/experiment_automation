@@ -2,19 +2,10 @@
   "schema_version": 1,
   "name": "Default SWV mux Bayesian optimization",
   "description": "Editable default search space for closed-loop SWV method optimization across a mux batch.",
-  "n_initial_points": 30,
+  "n_initial_points": 12,
   "random_seed": 42,
   "channels": [
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10
+    1
   ],
   "method_options": {
     "bandwidth": "4k",
@@ -191,7 +182,7 @@
     "exploration": 0.0,
     "candidate_pool_size": 1000,
     "local_candidate_pool_size": 100,
-    "initial_point_mode": "random",
+    "initial_point_mode": "specific",
     "use_gp": true,
     "gp_optimizer_restarts": 2,
     "gp_falloff_fractions": {
@@ -214,7 +205,7 @@
     }
   },
   "scoring": {
-    "mode": "classic",
+    "mode": "signal_priority_unbounded",
     "channel_weights": {
       "snr": 0.5,
       "peak_height": 1.0,
@@ -264,5 +255,5 @@
   },
   "objective": "paired_response",
   "paired_warmup_cycles": 3,
-  "paired_batch_size": 10
+  "paired_batch_size": 4
 }

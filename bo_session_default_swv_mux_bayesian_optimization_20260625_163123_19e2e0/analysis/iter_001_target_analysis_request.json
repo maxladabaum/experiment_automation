@@ -1,0 +1,28 @@
+{
+  "folders": [
+    "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\swv_ch1_272c12_meas_20260625_1639_005_ch1.csv"
+  ],
+  "output_dir": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis",
+  "output_stem": "bo_iter_001_target",
+  "analysis": {
+    "file_glob": "*.json",
+    "copy_outputs_into_record": true,
+    "crop_min_v": -0.45,
+    "crop_max_v": 0.0,
+    "smooth_window": 3,
+    "smooth_polyorder": 2,
+    "minima_search_window_v": 0.3,
+    "use_prominent_minima": false,
+    "use_double_correction": true,
+    "min_peak_height_ua": null,
+    "min_start_voltage_v": -0.6,
+    "scan_windows": "",
+    "compute_skew": false,
+    "compute_wavelet_energy": false,
+    "compute_wavelet_denoised_trace": false,
+    "use_wavelet_for_correction": false,
+    "require_local_minima_on_both_sides": false,
+    "peak_voltage_min_v": -0.4,
+    "peak_voltage_max_v": -0.2
+  }
+}

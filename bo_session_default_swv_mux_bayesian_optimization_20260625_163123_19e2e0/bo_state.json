@@ -1,0 +1,959 @@
+{
+  "session_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0",
+  "config_path": "optimizer\\bo_configs\\default_swv_bo.json",
+  "record_dir": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0",
+  "analysis_output_dir": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis",
+  "candidate_count": 954,
+  "active_parameters": [
+    "step_potential",
+    "amplitude",
+    "frequency"
+  ],
+  "pending": null,
+  "pending_batch": [
+    {
+      "iteration": 5,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_005",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.001,
+        "amplitude": 0.08,
+        "frequency": 37.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "created_at": "2026-06-25T16:47:29",
+      "status": "suggested"
+    },
+    {
+      "iteration": 6,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_006",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.001,
+        "amplitude": 0.011,
+        "frequency": 883.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "created_at": "2026-06-25T16:47:29",
+      "status": "suggested"
+    },
+    {
+      "iteration": 7,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_007",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.005,
+        "amplitude": 0.054,
+        "frequency": 193.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "created_at": "2026-06-25T16:47:30",
+      "status": "suggested"
+    },
+    {
+      "iteration": 8,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_008",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.001,
+        "amplitude": 0.041,
+        "frequency": 535.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "created_at": "2026-06-25T16:47:30",
+      "status": "suggested"
+    }
+  ],
+  "suggestions": [
+    {
+      "iteration": 1,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_001",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.002,
+        "amplitude": 0.02,
+        "frequency": 60.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "created_at": "2026-06-25T16:31:23",
+      "status": "completed",
+      "queued_at": "2026-06-25T16:31:24",
+      "queue_item_count": 2,
+      "queue_completed_at": "2026-06-25T16:40:04",
+      "queue_completion_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json",
+      "queue_completion_records": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json"
+      ],
+      "completed_queue_items": 4,
+      "failed_queue_items": 0,
+      "completed_at": "2026-06-25T16:47:24",
+      "Q_run": 0.30106827780553397,
+      "objective": "paired_response",
+      "archived_measurements": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\legacy\\iter_001_target\\swv_ch1_272c12_meas_20260625_1639_005_ch1.csv"
+      ]
+    },
+    {
+      "iteration": 2,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_002",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.01,
+        "amplitude": 0.077,
+        "frequency": 88.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "created_at": "2026-06-25T16:31:23",
+      "status": "completed",
+      "queued_at": "2026-06-25T16:31:24",
+      "queue_item_count": 2,
+      "queue_completed_at": "2026-06-25T16:40:04",
+      "queue_completion_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json",
+      "queue_completion_records": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json"
+      ],
+      "completed_queue_items": 4,
+      "failed_queue_items": 0,
+      "completed_at": "2026-06-25T16:47:25",
+      "Q_run": 0.09896275221828577,
+      "objective": "paired_response",
+      "archived_measurements": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\legacy\\iter_002_target\\swv_ch1_13b8ef_meas_20260625_1639_006_ch1.csv"
+      ]
+    },
+    {
+      "iteration": 3,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_003",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.001,
+        "amplitude": 0.076,
+        "frequency": 928.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "created_at": "2026-06-25T16:31:24",
+      "status": "completed",
+      "queued_at": "2026-06-25T16:31:24",
+      "queue_item_count": 2,
+      "queue_completed_at": "2026-06-25T16:40:04",
+      "queue_completion_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json",
+      "queue_completion_records": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json"
+      ],
+      "completed_queue_items": 4,
+      "failed_queue_items": 0,
+      "completed_at": "2026-06-25T16:47:26",
+      "Q_run": 0.7269884462157972,
+      "objective": "paired_response",
+      "archived_measurements": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\legacy\\iter_003_target\\swv_ch1_6bc063_meas_20260625_1639_007_ch1.csv"
+      ]
+    },
+    {
+      "iteration": 4,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_004",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.01,
+        "amplitude": 0.01,
+        "frequency": 52.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "created_at": "2026-06-25T16:31:24",
+      "status": "completed",
+      "queued_at": "2026-06-25T16:31:24",
+      "queue_item_count": 2,
+      "queue_completed_at": "2026-06-25T16:40:04",
+      "queue_completion_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json",
+      "queue_completion_records": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json"
+      ],
+      "completed_queue_items": 4,
+      "failed_queue_items": 0,
+      "completed_at": "2026-06-25T16:47:28",
+      "Q_run": 0.3749969640633271,
+      "objective": "paired_response",
+      "archived_measurements": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\legacy\\iter_004_target\\swv_ch1_48a28b_meas_20260625_1639_008_ch1.csv"
+      ]
+    },
+    {
+      "iteration": 5,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_005",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.001,
+        "amplitude": 0.08,
+        "frequency": 37.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "created_at": "2026-06-25T16:47:29",
+      "status": "queued",
+      "queued_at": "2026-06-25T16:47:30",
+      "queue_item_count": 2,
+      "queue_completed_at": "2026-06-25T16:48:00",
+      "queue_completion_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json",
+      "queue_completion_records": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json"
+      ],
+      "completed_queue_items": 2,
+      "failed_queue_items": 0
+    },
+    {
+      "iteration": 6,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_006",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.001,
+        "amplitude": 0.011,
+        "frequency": 883.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "created_at": "2026-06-25T16:47:29",
+      "status": "queued",
+      "queued_at": "2026-06-25T16:47:31",
+      "queue_item_count": 2,
+      "queue_completed_at": "2026-06-25T16:48:00",
+      "queue_completion_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json",
+      "queue_completion_records": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json"
+      ],
+      "completed_queue_items": 2,
+      "failed_queue_items": 0
+    },
+    {
+      "iteration": 7,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_007",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.005,
+        "amplitude": 0.054,
+        "frequency": 193.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "created_at": "2026-06-25T16:47:30",
+      "status": "queued",
+      "queued_at": "2026-06-25T16:47:31",
+      "queue_item_count": 2,
+      "queue_completed_at": "2026-06-25T16:48:00",
+      "queue_completion_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json",
+      "queue_completion_records": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\queue\\queue_completion_mixed.json"
+      ],
+      "completed_queue_items": 2,
+      "failed_queue_items": 0
+    },
+    {
+      "iteration": 8,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_008",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.001,
+        "amplitude": 0.041,
+        "frequency": 535.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "created_at": "2026-06-25T16:47:30",
+      "status": "queued",
+      "queued_at": "2026-06-25T16:47:31",
+      "queue_item_count": 2
+    }
+  ],
+  "observations": [
+    {
+      "iteration": 1,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_001",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.002,
+        "amplitude": 0.02,
+        "frequency": 60.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "objective": "paired_response",
+      "analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_001_target.json",
+      "analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_001_target_bo_iter_001_target.json",
+      "buffer_analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_001_buffer.json",
+      "buffer_analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_001_buffer_bo_iter_001_buffer.json",
+      "target_analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_001_target.json",
+      "target_analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_001_target_bo_iter_001_target.json",
+      "buffer_channel_metrics": {
+        "1": {
+          "snr": 18.503739994234625,
+          "snr_unadjusted": 18.503739994234625,
+          "peak_shape_score": 0.955148068078691,
+          "baseline_stability_score": 0.458764261469018,
+          "replicate_consistency_score": 0.4646326160061244,
+          "success_score": 1.0,
+          "ok_scan_count": 8,
+          "total_scan_count": 8,
+          "mean_bracket_point_count": 120.25,
+          "mean_crop_point_count": 174.25,
+          "median_peak_current_uA": 0.28909842680937603,
+          "mean_peak_current_uA": 0.4907559884550602,
+          "median_background_rms_uA": 0.013890177905986718,
+          "mean_background_rms_uA": 0.026521988992926265
+        }
+      },
+      "target_channel_metrics": {
+        "1": {
+          "snr": 46.69825071137836,
+          "snr_unadjusted": 46.69825071137836,
+          "peak_shape_score": 1.0,
+          "baseline_stability_score": 1.0,
+          "replicate_consistency_score": 1.0,
+          "success_score": 1.0,
+          "ok_scan_count": 1,
+          "total_scan_count": 1,
+          "mean_bracket_point_count": 140.0,
+          "mean_crop_point_count": 228.0,
+          "median_peak_current_uA": 0.16681320385616705,
+          "mean_peak_current_uA": 0.16681320385616705,
+          "median_background_rms_uA": 0.003572151018828674,
+          "mean_background_rms_uA": 0.003572151018828674
+        }
+      },
+      "channel_metrics": {
+        "1": {
+          "snr": 46.69825071137836,
+          "snr_unadjusted": 46.69825071137836,
+          "peak_shape_score": 1.0,
+          "baseline_stability_score": 1.0,
+          "replicate_consistency_score": 1.0,
+          "success_score": 1.0,
+          "ok_scan_count": 1,
+          "total_scan_count": 1,
+          "mean_bracket_point_count": 140.0,
+          "mean_crop_point_count": 228.0,
+          "median_peak_current_uA": 0.16681320385616705,
+          "mean_peak_current_uA": 0.16681320385616705,
+          "median_background_rms_uA": 0.003572151018828674,
+          "mean_background_rms_uA": 0.003572151018828674
+        }
+      },
+      "quality": {
+        "Q_run": 0.30106827780553397,
+        "objective": "paired_response",
+        "mean_Q_channel": 0.30106827780553397,
+        "mean_paired_Q_channel": 0.30106827780553397,
+        "std_Q_channel": 0.0,
+        "failed_channel_fraction": 0.0,
+        "low_channel_fraction": 0.0,
+        "mean_buffer_classic_Q": 1.2563909913107676,
+        "mean_target_classic_Q": 1.3911490916648732,
+        "mean_classic_pair_Q": 1.3237700414878204,
+        "mean_delta_peak_height_uA": -0.32394278459889314,
+        "mean_abs_delta_peak_height_uA": 0.32394278459889314,
+        "mean_fractional_delta_peak": 0.6600893157079782,
+        "mean_delta_peak_score": 0.28061424253188816,
+        "mean_fractional_delta_peak_score": 0.5068714055643944,
+        "mean_buffer_snr_raw": 18.503739994234625,
+        "mean_target_snr_raw": 46.69825071137836,
+        "mean_buffer_snr_score": 0.9251869997117312,
+        "mean_target_snr_score": 1.0,
+        "mean_target_shape_score": 1.0,
+        "mean_success_score": 1.0,
+        "Q_channels": {
+          "1": 0.30106827780553397
+        },
+        "channel_components": {
+          "1": {
+            "Q_channel": 0.30106827780553397,
+            "paired_Q_channel": 0.30106827780553397,
+            "buffer_classic_Q": 1.2563909913107676,
+            "target_classic_Q": 1.3911490916648732,
+            "classic_pair_Q": 1.3237700414878204,
+            "buffer_classic_Q_weight": 0.05,
+            "target_classic_Q_weight": 0.05,
+            "delta_peak_weight": 5.0,
+            "paired_weight_total": 5.1,
+            "buffer_peak_height_raw": 0.4907559884550602,
+            "target_peak_height_raw": 0.16681320385616705,
+            "delta_peak_height_uA": -0.32394278459889314,
+            "abs_delta_peak_height_uA": 0.32394278459889314,
+            "fractional_delta_peak": 0.6600893157079782,
+            "delta_peak_score": 0.28061424253188816,
+            "fractional_delta_peak_score": 0.5068714055643944,
+            "buffer_snr_raw": 18.503739994234625,
+            "target_snr_raw": 46.69825071137836,
+            "target_snr_score": 1.0,
+            "buffer_snr_score": 0.9251869997117312,
+            "target_shape_score": 1.0,
+            "standard_quality_score": 1.3237700414878204,
+            "classic_pair_Q_score": 1.3237700414878204,
+            "success_score": 1.0
+          }
+        }
+      },
+      "Q_run": 0.30106827780553397,
+      "notes": "Imported from recipe paired-response BO block",
+      "completed_at": "2026-06-25T16:47:24",
+      "archived_measurements": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\legacy\\iter_001_target\\swv_ch1_272c12_meas_20260625_1639_005_ch1.csv"
+      ]
+    },
+    {
+      "iteration": 2,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_002",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.01,
+        "amplitude": 0.077,
+        "frequency": 88.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "objective": "paired_response",
+      "analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_002_target.json",
+      "analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_002_target_bo_iter_002_target.json",
+      "buffer_analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_002_buffer.json",
+      "buffer_analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_002_buffer_bo_iter_002_buffer.json",
+      "target_analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_002_target.json",
+      "target_analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_002_target_bo_iter_002_target.json",
+      "buffer_channel_metrics": {
+        "1": {
+          "snr": 18.503739994234625,
+          "snr_unadjusted": 18.503739994234625,
+          "peak_shape_score": 0.955148068078691,
+          "baseline_stability_score": 0.458764261469018,
+          "replicate_consistency_score": 0.4646326160061244,
+          "success_score": 1.0,
+          "ok_scan_count": 8,
+          "total_scan_count": 8,
+          "mean_bracket_point_count": 120.25,
+          "mean_crop_point_count": 174.25,
+          "median_peak_current_uA": 0.28909842680937603,
+          "mean_peak_current_uA": 0.4907559884550602,
+          "median_background_rms_uA": 0.013890177905986718,
+          "mean_background_rms_uA": 0.026521988992926265
+        }
+      },
+      "target_channel_metrics": {
+        "1": {
+          "snr": 17.62022750621334,
+          "snr_unadjusted": 17.62022750621334,
+          "peak_shape_score": 1.0,
+          "baseline_stability_score": 1.0,
+          "replicate_consistency_score": 1.0,
+          "success_score": 1.0,
+          "ok_scan_count": 1,
+          "total_scan_count": 1,
+          "mean_bracket_point_count": 33.0,
+          "mean_crop_point_count": 45.0,
+          "median_peak_current_uA": 0.4114338132645343,
+          "mean_peak_current_uA": 0.4114338132645343,
+          "median_background_rms_uA": 0.02335008518587245,
+          "mean_background_rms_uA": 0.02335008518587245
+        }
+      },
+      "channel_metrics": {
+        "1": {
+          "snr": 17.62022750621334,
+          "snr_unadjusted": 17.62022750621334,
+          "peak_shape_score": 1.0,
+          "baseline_stability_score": 1.0,
+          "replicate_consistency_score": 1.0,
+          "success_score": 1.0,
+          "ok_scan_count": 1,
+          "total_scan_count": 1,
+          "mean_bracket_point_count": 33.0,
+          "mean_crop_point_count": 45.0,
+          "median_peak_current_uA": 0.4114338132645343,
+          "mean_peak_current_uA": 0.4114338132645343,
+          "median_background_rms_uA": 0.02335008518587245,
+          "mean_background_rms_uA": 0.02335008518587245
+        }
+      },
+      "quality": {
+        "Q_run": 0.09896275221828577,
+        "objective": "paired_response",
+        "mean_Q_channel": 0.09896275221828577,
+        "mean_paired_Q_channel": 0.09896275221828577,
+        "std_Q_channel": 0.0,
+        "failed_channel_fraction": 0.0,
+        "low_channel_fraction": 0.0,
+        "mean_buffer_classic_Q": 1.2563909913107676,
+        "mean_target_classic_Q": 1.2044868810836655,
+        "mean_classic_pair_Q": 1.2304389361972166,
+        "mean_delta_peak_height_uA": -0.07932217519052587,
+        "mean_abs_delta_peak_height_uA": 0.07932217519052587,
+        "mean_fractional_delta_peak": 0.16163261795386039,
+        "mean_delta_peak_score": 0.07633322853870714,
+        "mean_fractional_delta_peak_score": 0.14982644488859237,
+        "mean_buffer_snr_raw": 18.503739994234625,
+        "mean_target_snr_raw": 17.62022750621334,
+        "mean_buffer_snr_score": 0.9251869997117312,
+        "mean_target_snr_score": 0.881011375310667,
+        "mean_target_shape_score": 1.0,
+        "mean_success_score": 1.0,
+        "Q_channels": {
+          "1": 0.09896275221828577
+        },
+        "channel_components": {
+          "1": {
+            "Q_channel": 0.09896275221828577,
+            "paired_Q_channel": 0.09896275221828577,
+            "buffer_classic_Q": 1.2563909913107676,
+            "target_classic_Q": 1.2044868810836655,
+            "classic_pair_Q": 1.2304389361972166,
+            "buffer_classic_Q_weight": 0.05,
+            "target_classic_Q_weight": 0.05,
+            "delta_peak_weight": 5.0,
+            "paired_weight_total": 5.1,
+            "buffer_peak_height_raw": 0.4907559884550602,
+            "target_peak_height_raw": 0.4114338132645343,
+            "delta_peak_height_uA": -0.07932217519052587,
+            "abs_delta_peak_height_uA": 0.07932217519052587,
+            "fractional_delta_peak": 0.16163261795386039,
+            "delta_peak_score": 0.07633322853870714,
+            "fractional_delta_peak_score": 0.14982644488859237,
+            "buffer_snr_raw": 18.503739994234625,
+            "target_snr_raw": 17.62022750621334,
+            "target_snr_score": 0.881011375310667,
+            "buffer_snr_score": 0.9251869997117312,
+            "target_shape_score": 1.0,
+            "standard_quality_score": 1.2304389361972166,
+            "classic_pair_Q_score": 1.2304389361972166,
+            "success_score": 1.0
+          }
+        }
+      },
+      "Q_run": 0.09896275221828577,
+      "notes": "Imported from recipe paired-response BO block",
+      "completed_at": "2026-06-25T16:47:25",
+      "archived_measurements": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\legacy\\iter_002_target\\swv_ch1_13b8ef_meas_20260625_1639_006_ch1.csv"
+      ]
+    },
+    {
+      "iteration": 3,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_003",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.001,
+        "amplitude": 0.076,
+        "frequency": 928.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "objective": "paired_response",
+      "analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_003_target.json",
+      "analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_003_target_bo_iter_003_target.json",
+      "buffer_analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_003_buffer.json",
+      "buffer_analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_003_buffer_bo_iter_003_buffer.json",
+      "target_analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_003_target.json",
+      "target_analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_003_target_bo_iter_003_target.json",
+      "buffer_channel_metrics": {
+        "1": {
+          "snr": 18.503739994234625,
+          "snr_unadjusted": 18.503739994234625,
+          "peak_shape_score": 0.955148068078691,
+          "baseline_stability_score": 0.458764261469018,
+          "replicate_consistency_score": 0.4646326160061244,
+          "success_score": 1.0,
+          "ok_scan_count": 8,
+          "total_scan_count": 8,
+          "mean_bracket_point_count": 120.25,
+          "mean_crop_point_count": 174.25,
+          "median_peak_current_uA": 0.28909842680937603,
+          "mean_peak_current_uA": 0.4907559884550602,
+          "median_background_rms_uA": 0.013890177905986718,
+          "mean_background_rms_uA": 0.026521988992926265
+        }
+      },
+      "target_channel_metrics": {
+        "1": {
+          "snr": 19.151089929146536,
+          "snr_unadjusted": 19.151089929146536,
+          "peak_shape_score": 1.0,
+          "baseline_stability_score": 1.0,
+          "replicate_consistency_score": 1.0,
+          "success_score": 1.0,
+          "ok_scan_count": 1,
+          "total_scan_count": 1,
+          "mean_bracket_point_count": 305.0,
+          "mean_crop_point_count": 379.0,
+          "median_peak_current_uA": 1.5303776289071065,
+          "mean_peak_current_uA": 1.5303776289071065,
+          "median_background_rms_uA": 0.07991073273474558,
+          "mean_background_rms_uA": 0.07991073273474558
+        }
+      },
+      "channel_metrics": {
+        "1": {
+          "snr": 19.151089929146536,
+          "snr_unadjusted": 19.151089929146536,
+          "peak_shape_score": 1.0,
+          "baseline_stability_score": 1.0,
+          "replicate_consistency_score": 1.0,
+          "success_score": 1.0,
+          "ok_scan_count": 1,
+          "total_scan_count": 1,
+          "mean_bracket_point_count": 305.0,
+          "mean_crop_point_count": 379.0,
+          "median_peak_current_uA": 1.5303776289071065,
+          "mean_peak_current_uA": 1.5303776289071065,
+          "median_background_rms_uA": 0.07991073273474558,
+          "mean_background_rms_uA": 0.07991073273474558
+        }
+      },
+      "quality": {
+        "Q_run": 0.7269884462157972,
+        "objective": "paired_response",
+        "mean_Q_channel": 0.7269884462157972,
+        "mean_paired_Q_channel": 0.7269884462157972,
+        "std_Q_channel": 0.0,
+        "failed_channel_fraction": 0.0,
+        "low_channel_fraction": 0.0,
+        "mean_buffer_classic_Q": 1.2563909913107676,
+        "mean_target_classic_Q": 1.6199984939279737,
+        "mean_classic_pair_Q": 1.4381947426193706,
+        "mean_delta_peak_height_uA": 1.0396216404520464,
+        "mean_abs_delta_peak_height_uA": 1.0396216404520464,
+        "mean_fractional_delta_peak": 2.1184084655285815,
+        "mean_delta_peak_score": 0.7127643202877256,
+        "mean_fractional_delta_peak_score": 1.1373227644700725,
+        "mean_buffer_snr_raw": 18.503739994234625,
+        "mean_target_snr_raw": 19.151089929146536,
+        "mean_buffer_snr_score": 0.9251869997117312,
+        "mean_target_snr_score": 0.9575544964573268,
+        "mean_target_shape_score": 1.0,
+        "mean_success_score": 1.0,
+        "Q_channels": {
+          "1": 0.7269884462157972
+        },
+        "channel_components": {
+          "1": {
+            "Q_channel": 0.7269884462157972,
+            "paired_Q_channel": 0.7269884462157972,
+            "buffer_classic_Q": 1.2563909913107676,
+            "target_classic_Q": 1.6199984939279737,
+            "classic_pair_Q": 1.4381947426193706,
+            "buffer_classic_Q_weight": 0.05,
+            "target_classic_Q_weight": 0.05,
+            "delta_peak_weight": 5.0,
+            "paired_weight_total": 5.1,
+            "buffer_peak_height_raw": 0.4907559884550602,
+            "target_peak_height_raw": 1.5303776289071065,
+            "delta_peak_height_uA": 1.0396216404520464,
+            "abs_delta_peak_height_uA": 1.0396216404520464,
+            "fractional_delta_peak": 2.1184084655285815,
+            "delta_peak_score": 0.7127643202877256,
+            "fractional_delta_peak_score": 1.1373227644700725,
+            "buffer_snr_raw": 18.503739994234625,
+            "target_snr_raw": 19.151089929146536,
+            "target_snr_score": 0.9575544964573268,
+            "buffer_snr_score": 0.9251869997117312,
+            "target_shape_score": 1.0,
+            "standard_quality_score": 1.4381947426193706,
+            "classic_pair_Q_score": 1.4381947426193706,
+            "success_score": 1.0
+          }
+        }
+      },
+      "Q_run": 0.7269884462157972,
+      "notes": "Imported from recipe paired-response BO block",
+      "completed_at": "2026-06-25T16:47:26",
+      "archived_measurements": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\legacy\\iter_003_target\\swv_ch1_6bc063_meas_20260625_1639_007_ch1.csv"
+      ]
+    },
+    {
+      "iteration": 4,
+      "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_004",
+      "params": {
+        "begin_potential": -0.5,
+        "end_potential": 0.0,
+        "step_potential": 0.01,
+        "amplitude": 0.01,
+        "frequency": 52.0,
+        "conditioning_potential": -0.5,
+        "conditioning_time": 0.1
+      },
+      "objective": "paired_response",
+      "analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_004_target.json",
+      "analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_004_target_bo_iter_004_target.json",
+      "buffer_analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_004_buffer.json",
+      "buffer_analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_004_buffer_bo_iter_004_buffer.json",
+      "target_analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_004_target.json",
+      "target_analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_004_target_bo_iter_004_target.json",
+      "buffer_channel_metrics": {
+        "1": {
+          "snr": 18.503739994234625,
+          "snr_unadjusted": 18.503739994234625,
+          "peak_shape_score": 0.955148068078691,
+          "baseline_stability_score": 0.458764261469018,
+          "replicate_consistency_score": 0.4646326160061244,
+          "success_score": 1.0,
+          "ok_scan_count": 8,
+          "total_scan_count": 8,
+          "mean_bracket_point_count": 120.25,
+          "mean_crop_point_count": 174.25,
+          "median_peak_current_uA": 0.28909842680937603,
+          "mean_peak_current_uA": 0.4907559884550602,
+          "median_background_rms_uA": 0.013890177905986718,
+          "mean_background_rms_uA": 0.026521988992926265
+        }
+      },
+      "target_channel_metrics": {
+        "1": {
+          "snr": 12.141157801132302,
+          "snr_unadjusted": 12.141157801132302,
+          "peak_shape_score": 1.0,
+          "baseline_stability_score": 1.0,
+          "replicate_consistency_score": 1.0,
+          "success_score": 1.0,
+          "ok_scan_count": 1,
+          "total_scan_count": 1,
+          "mean_bracket_point_count": 29.0,
+          "mean_crop_point_count": 45.0,
+          "median_peak_current_uA": 0.05601575767653443,
+          "mean_peak_current_uA": 0.05601575767653443,
+          "median_background_rms_uA": 0.004613708065907053,
+          "mean_background_rms_uA": 0.004613708065907053
+        }
+      },
+      "channel_metrics": {
+        "1": {
+          "snr": 12.141157801132302,
+          "snr_unadjusted": 12.141157801132302,
+          "peak_shape_score": 1.0,
+          "baseline_stability_score": 1.0,
+          "replicate_consistency_score": 1.0,
+          "success_score": 1.0,
+          "ok_scan_count": 1,
+          "total_scan_count": 1,
+          "mean_bracket_point_count": 29.0,
+          "mean_crop_point_count": 45.0,
+          "median_peak_current_uA": 0.05601575767653443,
+          "mean_peak_current_uA": 0.05601575767653443,
+          "median_background_rms_uA": 0.004613708065907053,
+          "mean_background_rms_uA": 0.004613708065907053
+        }
+      },
+      "quality": {
+        "Q_run": 0.3749969640633271,
+        "objective": "paired_response",
+        "mean_Q_channel": 0.3749969640633271,
+        "mean_paired_Q_channel": 0.3749969640633271,
+        "std_Q_channel": 0.0,
+        "failed_channel_fraction": 0.0,
+        "low_channel_fraction": 0.0,
+        "mean_buffer_classic_Q": 1.2563909913107676,
+        "mean_target_classic_Q": 0.8949184454413134,
+        "mean_classic_pair_Q": 1.0756547183760405,
+        "mean_delta_peak_height_uA": -0.43474023077852575,
+        "mean_abs_delta_peak_height_uA": 0.43474023077852575,
+        "mean_fractional_delta_peak": 0.8858582289482058,
+        "mean_delta_peak_score": 0.36098380897707283,
+        "mean_fractional_delta_peak_score": 0.6343830111568954,
+        "mean_buffer_snr_raw": 18.503739994234625,
+        "mean_target_snr_raw": 12.141157801132302,
+        "mean_buffer_snr_score": 0.9251869997117312,
+        "mean_target_snr_score": 0.607057890056615,
+        "mean_target_shape_score": 1.0,
+        "mean_success_score": 1.0,
+        "Q_channels": {
+          "1": 0.3749969640633271
+        },
+        "channel_components": {
+          "1": {
+            "Q_channel": 0.3749969640633271,
+            "paired_Q_channel": 0.3749969640633271,
+            "buffer_classic_Q": 1.2563909913107676,
+            "target_classic_Q": 0.8949184454413134,
+            "classic_pair_Q": 1.0756547183760405,
+            "buffer_classic_Q_weight": 0.05,
+            "target_classic_Q_weight": 0.05,
+            "delta_peak_weight": 5.0,
+            "paired_weight_total": 5.1,
+            "buffer_peak_height_raw": 0.4907559884550602,
+            "target_peak_height_raw": 0.05601575767653443,
+            "delta_peak_height_uA": -0.43474023077852575,
+            "abs_delta_peak_height_uA": 0.43474023077852575,
+            "fractional_delta_peak": 0.8858582289482058,
+            "delta_peak_score": 0.36098380897707283,
+            "fractional_delta_peak_score": 0.6343830111568954,
+            "buffer_snr_raw": 18.503739994234625,
+            "target_snr_raw": 12.141157801132302,
+            "target_snr_score": 0.607057890056615,
+            "buffer_snr_score": 0.9251869997117312,
+            "target_shape_score": 1.0,
+            "standard_quality_score": 1.0756547183760405,
+            "classic_pair_Q_score": 1.0756547183760405,
+            "success_score": 1.0
+          }
+        }
+      },
+      "Q_run": 0.3749969640633271,
+      "notes": "Imported from recipe paired-response BO block",
+      "completed_at": "2026-06-25T16:47:28",
+      "archived_measurements": [
+        "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\legacy\\iter_004_target\\swv_ch1_48a28b_meas_20260625_1639_008_ch1.csv"
+      ]
+    }
+  ],
+  "best_observation": {
+    "iteration": 3,
+    "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_003",
+    "params": {
+      "begin_potential": -0.5,
+      "end_potential": 0.0,
+      "step_potential": 0.001,
+      "amplitude": 0.076,
+      "frequency": 928.0,
+      "conditioning_potential": -0.5,
+      "conditioning_time": 0.1
+    },
+    "objective": "paired_response",
+    "analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_003_target.json",
+    "analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_003_target_bo_iter_003_target.json",
+    "buffer_analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_003_buffer.json",
+    "buffer_analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_003_buffer_bo_iter_003_buffer.json",
+    "target_analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_003_target.json",
+    "target_analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_003_target_bo_iter_003_target.json",
+    "buffer_channel_metrics": {
+      "1": {
+        "snr": 18.503739994234625,
+        "snr_unadjusted": 18.503739994234625,
+        "peak_shape_score": 0.955148068078691,
+        "baseline_stability_score": 0.458764261469018,
+        "replicate_consistency_score": 0.4646326160061244,
+        "success_score": 1.0,
+        "ok_scan_count": 8,
+        "total_scan_count": 8,
+        "mean_bracket_point_count": 120.25,
+        "mean_crop_point_count": 174.25,
+        "median_peak_current_uA": 0.28909842680937603,
+        "mean_peak_current_uA": 0.4907559884550602,
+        "median_background_rms_uA": 0.013890177905986718,
+        "mean_background_rms_uA": 0.026521988992926265
+      }
+    },
+    "target_channel_metrics": {
+      "1": {
+        "snr": 19.151089929146536,
+        "snr_unadjusted": 19.151089929146536,
+        "peak_shape_score": 1.0,
+        "baseline_stability_score": 1.0,
+        "replicate_consistency_score": 1.0,
+        "success_score": 1.0,
+        "ok_scan_count": 1,
+        "total_scan_count": 1,
+        "mean_bracket_point_count": 305.0,
+        "mean_crop_point_count": 379.0,
+        "median_peak_current_uA": 1.5303776289071065,
+        "mean_peak_current_uA": 1.5303776289071065,
+        "median_background_rms_uA": 0.07991073273474558,
+        "mean_background_rms_uA": 0.07991073273474558
+      }
+    },
+    "channel_metrics": {
+      "1": {
+        "snr": 19.151089929146536,
+        "snr_unadjusted": 19.151089929146536,
+        "peak_shape_score": 1.0,
+        "baseline_stability_score": 1.0,
+        "replicate_consistency_score": 1.0,
+        "success_score": 1.0,
+        "ok_scan_count": 1,
+        "total_scan_count": 1,
+        "mean_bracket_point_count": 305.0,
+        "mean_crop_point_count": 379.0,
+        "median_peak_current_uA": 1.5303776289071065,
+        "mean_peak_current_uA": 1.5303776289071065,
+        "median_background_rms_uA": 0.07991073273474558,
+        "mean_background_rms_uA": 0.07991073273474558
+      }
+    },
+    "quality": {
+      "Q_run": 0.7269884462157972,
+      "objective": "paired_response",
+      "mean_Q_channel": 0.7269884462157972,
+      "mean_paired_Q_channel": 0.7269884462157972,
+      "std_Q_channel": 0.0,
+      "failed_channel_fraction": 0.0,
+      "low_channel_fraction": 0.0,
+      "mean_buffer_classic_Q": 1.2563909913107676,
+      "mean_target_classic_Q": 1.6199984939279737,
+      "mean_classic_pair_Q": 1.4381947426193706,
+      "mean_delta_peak_height_uA": 1.0396216404520464,
+      "mean_abs_delta_peak_height_uA": 1.0396216404520464,
+      "mean_fractional_delta_peak": 2.1184084655285815,
+      "mean_delta_peak_score": 0.7127643202877256,
+      "mean_fractional_delta_peak_score": 1.1373227644700725,
+      "mean_buffer_snr_raw": 18.503739994234625,
+      "mean_target_snr_raw": 19.151089929146536,
+      "mean_buffer_snr_score": 0.9251869997117312,
+      "mean_target_snr_score": 0.9575544964573268,
+      "mean_target_shape_score": 1.0,
+      "mean_success_score": 1.0,
+      "Q_channels": {
+        "1": 0.7269884462157972
+      },
+      "channel_components": {
+        "1": {
+          "Q_channel": 0.7269884462157972,
+          "paired_Q_channel": 0.7269884462157972,
+          "buffer_classic_Q": 1.2563909913107676,
+          "target_classic_Q": 1.6199984939279737,
+          "classic_pair_Q": 1.4381947426193706,
+          "buffer_classic_Q_weight": 0.05,
+          "target_classic_Q_weight": 0.05,
+          "delta_peak_weight": 5.0,
+          "paired_weight_total": 5.1,
+          "buffer_peak_height_raw": 0.4907559884550602,
+          "target_peak_height_raw": 1.5303776289071065,
+          "delta_peak_height_uA": 1.0396216404520464,
+          "abs_delta_peak_height_uA": 1.0396216404520464,
+          "fractional_delta_peak": 2.1184084655285815,
+          "delta_peak_score": 0.7127643202877256,
+          "fractional_delta_peak_score": 1.1373227644700725,
+          "buffer_snr_raw": 18.503739994234625,
+          "target_snr_raw": 19.151089929146536,
+          "target_snr_score": 0.9575544964573268,
+          "buffer_snr_score": 0.9251869997117312,
+          "target_shape_score": 1.0,
+          "standard_quality_score": 1.4381947426193706,
+          "classic_pair_Q_score": 1.4381947426193706,
+          "success_score": 1.0
+        }
+      }
+    },
+    "Q_run": 0.7269884462157972,
+    "notes": "Imported from recipe paired-response BO block",
+    "completed_at": "2026-06-25T16:47:26",
+    "archived_measurements": [
+      "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\legacy\\iter_003_target\\swv_ch1_6bc063_meas_20260625_1639_007_ch1.csv"
+    ]
+  },
+  "updated_at": "2026-06-25T16:48:00"
+}

@@ -1,0 +1,134 @@
+{
+  "iteration": 4,
+  "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_004",
+  "params": {
+    "begin_potential": -0.5,
+    "end_potential": 0.0,
+    "step_potential": 0.01,
+    "amplitude": 0.01,
+    "frequency": 52.0,
+    "conditioning_potential": -0.5,
+    "conditioning_time": 0.1
+  },
+  "objective": "paired_response",
+  "analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_004_target.json",
+  "analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_004_target_bo_iter_004_target.json",
+  "buffer_analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_004_buffer.json",
+  "buffer_analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_004_buffer_bo_iter_004_buffer.json",
+  "target_analysis_source": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_004_target.json",
+  "target_analysis_record": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0\\analysis\\iter_004_target_bo_iter_004_target.json",
+  "buffer_channel_metrics": {
+    "1": {
+      "snr": 18.503739994234625,
+      "snr_unadjusted": 18.503739994234625,
+      "peak_shape_score": 0.955148068078691,
+      "baseline_stability_score": 0.458764261469018,
+      "replicate_consistency_score": 0.4646326160061244,
+      "success_score": 1.0,
+      "ok_scan_count": 8,
+      "total_scan_count": 8,
+      "mean_bracket_point_count": 120.25,
+      "mean_crop_point_count": 174.25,
+      "median_peak_current_uA": 0.28909842680937603,
+      "mean_peak_current_uA": 0.4907559884550602,
+      "median_background_rms_uA": 0.013890177905986718,
+      "mean_background_rms_uA": 0.026521988992926265
+    }
+  },
+  "target_channel_metrics": {
+    "1": {
+      "snr": 12.141157801132302,
+      "snr_unadjusted": 12.141157801132302,
+      "peak_shape_score": 1.0,
+      "baseline_stability_score": 1.0,
+      "replicate_consistency_score": 1.0,
+      "success_score": 1.0,
+      "ok_scan_count": 1,
+      "total_scan_count": 1,
+      "mean_bracket_point_count": 29.0,
+      "mean_crop_point_count": 45.0,
+      "median_peak_current_uA": 0.05601575767653443,
+      "mean_peak_current_uA": 0.05601575767653443,
+      "median_background_rms_uA": 0.004613708065907053,
+      "mean_background_rms_uA": 0.004613708065907053
+    }
+  },
+  "channel_metrics": {
+    "1": {
+      "snr": 12.141157801132302,
+      "snr_unadjusted": 12.141157801132302,
+      "peak_shape_score": 1.0,
+      "baseline_stability_score": 1.0,
+      "replicate_consistency_score": 1.0,
+      "success_score": 1.0,
+      "ok_scan_count": 1,
+      "total_scan_count": 1,
+      "mean_bracket_point_count": 29.0,
+      "mean_crop_point_count": 45.0,
+      "median_peak_current_uA": 0.05601575767653443,
+      "mean_peak_current_uA": 0.05601575767653443,
+      "median_background_rms_uA": 0.004613708065907053,
+      "mean_background_rms_uA": 0.004613708065907053
+    }
+  },
+  "quality": {
+    "Q_run": 0.3749969640633271,
+    "objective": "paired_response",
+    "mean_Q_channel": 0.3749969640633271,
+    "mean_paired_Q_channel": 0.3749969640633271,
+    "std_Q_channel": 0.0,
+    "failed_channel_fraction": 0.0,
+    "low_channel_fraction": 0.0,
+    "mean_buffer_classic_Q": 1.2563909913107676,
+    "mean_target_classic_Q": 0.8949184454413134,
+    "mean_classic_pair_Q": 1.0756547183760405,
+    "mean_delta_peak_height_uA": -0.43474023077852575,
+    "mean_abs_delta_peak_height_uA": 0.43474023077852575,
+    "mean_fractional_delta_peak": 0.8858582289482058,
+    "mean_delta_peak_score": 0.36098380897707283,
+    "mean_fractional_delta_peak_score": 0.6343830111568954,
+    "mean_buffer_snr_raw": 18.503739994234625,
+    "mean_target_snr_raw": 12.141157801132302,
+    "mean_buffer_snr_score": 0.9251869997117312,
+    "mean_target_snr_score": 0.607057890056615,
+    "mean_target_shape_score": 1.0,
+    "mean_success_score": 1.0,
+    "Q_channels": {
+      "1": 0.3749969640633271
+    },
+    "channel_components": {
+      "1": {
+        "Q_channel": 0.3749969640633271,
+        "paired_Q_channel": 0.3749969640633271,
+        "buffer_classic_Q": 1.2563909913107676,
+        "target_classic_Q": 0.8949184454413134,
+        "classic_pair_Q": 1.0756547183760405,
+        "buffer_classic_Q_weight": 0.05,
+        "target_classic_Q_weight": 0.05,
+        "delta_peak_weight": 5.0,
+        "paired_weight_total": 5.1,
+        "buffer_peak_height_raw": 0.4907559884550602,
+        "target_peak_height_raw": 0.05601575767653443,
+        "delta_peak_height_uA": -0.43474023077852575,
+        "abs_delta_peak_height_uA": 0.43474023077852575,
+        "fractional_delta_peak": 0.8858582289482058,
+        "delta_peak_score": 0.36098380897707283,
+        "fractional_delta_peak_score": 0.6343830111568954,
+        "buffer_snr_raw": 18.503739994234625,
+        "target_snr_raw": 12.141157801132302,
+        "target_snr_score": 0.607057890056615,
+        "buffer_snr_score": 0.9251869997117312,
+        "target_shape_score": 1.0,
+        "standard_quality_score": 1.0756547183760405,
+        "classic_pair_Q_score": 1.0756547183760405,
+        "success_score": 1.0
+      }
+    }
+  },
+  "Q_run": 0.3749969640633271,
+  "notes": "Imported from recipe paired-response BO block",
+  "completed_at": "2026-06-25T16:47:28",
+  "archived_measurements": [
+    "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\legacy\\iter_004_target\\swv_ch1_48a28b_meas_20260625_1639_008_ch1.csv"
+  ]
+}

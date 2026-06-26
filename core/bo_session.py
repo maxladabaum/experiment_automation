@@ -974,11 +974,37 @@ class BOIntegrationSession:
         quality = compute_paired_response_quality(buffer_metrics, target_metrics, self.config.get("scoring", {}))
         retained_buffer = self._retain_analysis_file(Path(buffer_path), iteration, suffix="buffer")
         retained_target = self._retain_analysis_file(Path(target_path), iteration, suffix="target")
+        buffer_truth = dict(buffer_payload.get("simulation_truth") or {})
+        target_truth = dict(target_payload.get("simulation_truth") or {})
+        paired_cycle = (
+            target_payload.get("paired_cycle")
+            if target_payload.get("paired_cycle") is not None
+            else buffer_payload.get("paired_cycle")
+        )
+        paired_batch_index = (
+            target_payload.get("paired_batch_index")
+            if target_payload.get("paired_batch_index") is not None
+            else buffer_payload.get("paired_batch_index")
+        )
+        buffer_trace_number = (
+            buffer_payload.get("trace_number")
+            if buffer_payload.get("trace_number") is not None
+            else buffer_truth.get("trace_number")
+        )
+        target_trace_number = (
+            target_payload.get("trace_number")
+            if target_payload.get("trace_number") is not None
+            else target_truth.get("trace_number")
+        )
         observation = {
             "iteration": iteration,
             "method_id": method_id,
             "params": dict(suggestion_data["params"]),
             "objective": "paired_response",
+            "paired_cycle": paired_cycle,
+            "paired_batch_index": paired_batch_index,
+            "buffer_trace_number": buffer_trace_number,
+            "target_trace_number": target_trace_number,
             "analysis_source": str(target_path),
             "analysis_record": str(retained_target),
             "buffer_analysis_source": str(buffer_path),
@@ -1042,6 +1068,13 @@ class BOIntegrationSession:
         if not items:
             return None
         iterations = sorted({int((item.get("bo_ref") or {}).get("iteration", 0)) for item in items})
+        phases = sorted(
+            {
+                str((item.get("bo_ref") or {}).get("phase") or "").strip().lower()
+                for item in items
+                if str((item.get("bo_ref") or {}).get("phase") or "").strip()
+            }
+        )
         iteration = iterations[0] if len(iterations) == 1 else 0
         payload = {
             "session_id": self.session_id,
@@ -1056,7 +1089,8 @@ class BOIntegrationSession:
             "bo_iterations": iterations,
             "items": items,
         }
-        name = f"iter_{iteration:03d}_queue_completion.json" if iteration else "queue_completion_mixed.json"
+        phase_suffix = f"_{phases[0]}" if len(phases) == 1 else ""
+        name = f"iter_{iteration:03d}_queue_completion{phase_suffix}.json" if iteration else f"queue_completion_mixed{phase_suffix}.json"
         path = self.queue_dir / name
         self._write_json(path, payload)
         for item in items:

@@ -1,0 +1,34 @@
+{
+  "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_005",
+  "items": [
+    {
+      "type": "SWV",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_6c2fab.ms",
+      "status": "pending",
+      "details": "BO iter 005 | swv_ch1_6c2fab.ms (MUX ch 1) | target",
+      "method_ref": {
+        "hash_key": "swv_ch1_6c2fab",
+        "technique": "SWV",
+        "params": {
+          "begin_potential": "-0.5",
+          "end_potential": "0",
+          "step_potential": "0.001",
+          "amplitude": "0.08",
+          "frequency": "37",
+          "conditioning_potential": "-0.5",
+          "conditioning_time": "0.1",
+          "bandwidth": "4k",
+          "bo_session_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0"
+        },
+        "mux_channel": 1
+      },
+      "bo_ref": {
+        "session_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0",
+        "iteration": 5,
+        "method_id": "default_swv_mux_bayesian_optimization_20260625_163123_19e2e0_iter_005",
+        "record_dir": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_sessions\\bo_session_default_swv_mux_bayesian_optimization_20260625_163123_19e2e0",
+        "phase": "target"
+      }
+    }
+  ]
+}

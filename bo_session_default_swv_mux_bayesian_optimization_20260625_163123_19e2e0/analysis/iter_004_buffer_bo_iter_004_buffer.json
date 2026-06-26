@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-06-25T16:47:28",
+  "folders": [
+    "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424"
+  ],
+  "analysis": {
+    "file_glob": "*.json",
+    "copy_outputs_into_record": true,
+    "crop_min_v": -0.45,
+    "crop_max_v": 0.0,
+    "smooth_window": 3,
+    "smooth_polyorder": 2,
+    "minima_search_window_v": 0.3,
+    "use_prominent_minima": false,
+    "use_double_correction": true,
+    "min_peak_height_ua": null,
+    "min_start_voltage_v": -0.6,
+    "scan_windows": "",
+    "compute_skew": false,
+    "compute_wavelet_energy": false,
+    "compute_wavelet_denoised_trace": false,
+    "use_wavelet_for_correction": false,
+    "require_local_minima_on_both_sides": false,
+    "peak_voltage_min_v": -0.4,
+    "peak_voltage_max_v": -0.2
+  },
+  "result_count": 8,
+  "channel_metrics": {
+    "1": {
+      "snr": 18.503739994234625,
+      "snr_unadjusted": 18.503739994234625,
+      "peak_shape_score": 0.955148068078691,
+      "baseline_stability_score": 0.458764261469018,
+      "replicate_consistency_score": 0.4646326160061244,
+      "success_score": 1.0,
+      "ok_scan_count": 8,
+      "total_scan_count": 8,
+      "mean_bracket_point_count": 120.25,
+      "mean_crop_point_count": 174.25,
+      "median_peak_current_uA": 0.28909842680937603,
+      "mean_peak_current_uA": 0.4907559884550602,
+      "median_background_rms_uA": 0.013890177905986718,
+      "mean_background_rms_uA": 0.026521988992926265
+    }
+  },
+  "results_csv": "C:\\Users\\Chien Lab\\Desktop\\Data_Drive\\unc(master)\\fluidic_bo_20260625_162423\\first_fluidic_bo_20260625_162424\\bo_analysis\\bo_iter_004_buffer_results.csv"
+}

@@ -209,6 +209,7 @@ class BayesianOptimizationTab:
 
         self._build()
         self._load_config(initial=True)
+        setattr(self._session, "_bo_live_refresh_callback", self._on_live_paired_bo_update)
 
     def _build(self):
         self._configure_styles()
@@ -1009,14 +1010,18 @@ class BayesianOptimizationTab:
         top.add(score_box, minsize=260, stretch="always")
         top.add(best_box, minsize=260, stretch="always")
 
+        score_tree_frame = ttk.Frame(score_box)
+        score_tree_frame.pack(fill="both", expand=True)
         score_cols = ("Q", "Peak uA", "Raw SNR", "SNR Score", "Shape", "Baseline", "Replicate", "Success")
-        self._score_tree = ttk.Treeview(score_box, columns=score_cols, show="tree headings", height=10, selectmode="extended")
+        self._score_tree = ttk.Treeview(score_tree_frame, columns=score_cols, show="tree headings", height=10, selectmode="extended")
         self._score_tree.heading("#0", text="Ch")
-        self._score_tree.column("#0", width=50, anchor="center")
+        self._score_tree.column("#0", width=50, anchor="center", stretch=False)
         for col in score_cols:
             self._score_tree.heading(col, text=col)
-            self._score_tree.column(col, width=78, anchor="center")
-        self._score_tree.pack(fill="both", expand=True)
+            self._score_tree.column(col, width=78, anchor="center", stretch=False)
+        self._score_tree.grid(row=0, column=0, sticky="nsew")
+        score_tree_frame.columnconfigure(0, weight=1)
+        score_tree_frame.rowconfigure(0, weight=1)
         self._score_tree.configure(takefocus=True)
         self._score_tree.bind("<ButtonPress-1>", self._focus_tree_on_click, add="+")
         self._score_tree.bind("<Enter>", lambda _e: self._set_active_results_tree("score"), add="+")
@@ -1027,9 +1032,31 @@ class BayesianOptimizationTab:
         self._score_tree.bind("<Down>", lambda event: self._move_score_selection(1, event))
         self._score_tree.bind("<Left>", lambda event: self._move_score_selection(-1, event))
         self._score_tree.bind("<Right>", lambda event: self._move_score_selection(1, event))
-        score_x = ttk.Scrollbar(score_box, orient=tk.HORIZONTAL, command=self._score_tree.xview)
+        score_y = ttk.Scrollbar(score_tree_frame, orient=tk.VERTICAL, command=self._score_tree.yview)
+        score_y.grid(row=0, column=1, sticky="ns")
+        self._score_tree.configure(yscrollcommand=score_y.set)
+        score_x = ttk.Scrollbar(score_tree_frame, orient=tk.HORIZONTAL, command=self._score_tree.xview)
+        score_x.grid(row=1, column=0, sticky="ew", pady=(4, 0))
         self._score_tree.configure(xscrollcommand=score_x.set)
-        score_x.pack(fill="x")
+        score_scroll_controls = ttk.Frame(score_box)
+        score_scroll_controls.pack(fill="x", pady=(4, 0))
+        ttk.Label(score_scroll_controls, text="Score scroll:").pack(side="left", padx=(0, 6))
+        ttk.Button(
+            score_scroll_controls,
+            text="<",
+            width=3,
+            command=lambda: self._score_tree.xview_scroll(-3, "units"),
+        ).pack(side="left")
+        ttk.Button(
+            score_scroll_controls,
+            text=">",
+            width=3,
+            command=lambda: self._score_tree.xview_scroll(3, "units"),
+        ).pack(side="left", padx=(4, 8))
+        ttk.Label(
+            score_scroll_controls,
+            text="Use the bar above or Shift+mouse wheel to view hidden columns.",
+        ).pack(side="left")
         self._q_equation_text = scrolledtext.ScrolledText(score_box, height=5, wrap=tk.WORD)
         self._q_equation_text.pack(fill="x", pady=(6, 0))
         self._q_equation_text.config(state="disabled")
@@ -1069,13 +1096,17 @@ class BayesianOptimizationTab:
             "Peak uA", "Noise uA", "Raw SNR", "SNR Score", "Shape", "Baseline", "Replicate", "Success",
             "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t",
         )
-        self._history_tree = ttk.Treeview(hist_box, columns=hist_cols, show="tree headings", height=10)
+        history_tree_frame = ttk.Frame(hist_box)
+        history_tree_frame.pack(fill="both", expand=True)
+        self._history_tree = ttk.Treeview(history_tree_frame, columns=hist_cols, show="tree headings", height=10)
         self._history_tree.heading("#0", text="Iter")
-        self._history_tree.column("#0", width=55, anchor="center")
+        self._history_tree.column("#0", width=55, anchor="center", stretch=False)
         for col in hist_cols:
             self._history_tree.heading(col, text=col)
-            self._history_tree.column(col, width=76, anchor="center")
-        self._history_tree.pack(fill="both", expand=True)
+            self._history_tree.column(col, width=76, anchor="center", stretch=False)
+        self._history_tree.grid(row=0, column=0, sticky="nsew")
+        history_tree_frame.columnconfigure(0, weight=1)
+        history_tree_frame.rowconfigure(0, weight=1)
         self._history_tree.configure(takefocus=True)
         self._history_tree.bind("<ButtonPress-1>", self._focus_tree_on_click, add="+")
         self._history_tree.bind("<Enter>", lambda _e: self._set_active_results_tree("history"), add="+")
@@ -1087,13 +1118,37 @@ class BayesianOptimizationTab:
         self._history_tree.bind("<Down>", lambda event: self._move_history_selection(1, event))
         self._history_tree.bind("<Left>", lambda event: self._move_history_selection(-1, event))
         self._history_tree.bind("<Right>", lambda event: self._move_history_selection(1, event))
+        self._history_tree.bind("<Shift-MouseWheel>", self._scroll_history_horizontally, add="+")
         self._history_tree.bind_all("<Up>", lambda event: self._route_results_arrow(-1, event), add="+")
         self._history_tree.bind_all("<Down>", lambda event: self._route_results_arrow(1, event), add="+")
         self._history_tree.bind_all("<Left>", lambda event: self._route_results_arrow(-1, event), add="+")
         self._history_tree.bind_all("<Right>", lambda event: self._route_results_arrow(1, event), add="+")
-        history_x = ttk.Scrollbar(hist_box, orient=tk.HORIZONTAL, command=self._history_tree.xview)
+        history_y = ttk.Scrollbar(history_tree_frame, orient=tk.VERTICAL, command=self._history_tree.yview)
+        history_y.grid(row=0, column=1, sticky="ns")
+        self._history_tree.configure(yscrollcommand=history_y.set)
+        history_x = ttk.Scrollbar(history_tree_frame, orient=tk.HORIZONTAL, command=self._history_tree.xview)
+        history_x.grid(row=1, column=0, sticky="ew", pady=(4, 0))
         self._history_tree.configure(xscrollcommand=history_x.set)
-        history_x.pack(fill="x")
+        history_tree_frame.columnconfigure(0, weight=1)
+        history_scroll_controls = ttk.Frame(hist_box)
+        history_scroll_controls.pack(fill="x", pady=(4, 0))
+        ttk.Label(history_scroll_controls, text="History scroll:").pack(side="left", padx=(0, 6))
+        ttk.Button(
+            history_scroll_controls,
+            text="<",
+            width=3,
+            command=lambda: self._history_tree.xview_scroll(-3, "units"),
+        ).pack(side="left")
+        ttk.Button(
+            history_scroll_controls,
+            text=">",
+            width=3,
+            command=lambda: self._history_tree.xview_scroll(3, "units"),
+        ).pack(side="left", padx=(4, 8))
+        ttk.Label(
+            history_scroll_controls,
+            text="Use the bar above or Shift+mouse wheel to view hidden columns.",
+        ).pack(side="left")
 
         q_rescore_left = ttk.Frame(bottom)
         bottom.add(q_rescore_left, minsize=420, stretch="always")
@@ -3548,6 +3603,7 @@ class BayesianOptimizationTab:
                 self._bo_session = loaded
                 self._loaded_original_config = json.loads(json.dumps(self._bo_session.config))
                 self._config = dict(self._bo_session.config)
+                self._sync_suggestion_from_session()
                 self._set_rescore_vars_from_config(self._config)
                 self._record_dir_var.set(f"Record folder: {self._bo_session.record_dir}")
                 self._refresh_history()
@@ -3578,6 +3634,35 @@ class BayesianOptimizationTab:
             return
         if self._clear_auto_queue_if_safe():
             self._auto_submit_next()
+
+    def _on_live_paired_bo_update(self, payload):
+        if not isinstance(payload, dict):
+            return
+        record_dir = str(payload.get("record_dir") or "").strip()
+        if not record_dir:
+            return
+        try:
+            loaded = BOIntegrationSession.load(record_dir)
+        except Exception:
+            return
+        self._bo_session = loaded
+        self._loaded_original_config = json.loads(json.dumps(self._bo_session.config))
+        self._config = dict(self._bo_session.config)
+        self._sync_suggestion_from_session()
+        self._set_rescore_vars_from_config(self._config)
+        self._record_dir_var.set(f"Record folder: {self._bo_session.record_dir}")
+        self._refresh_history()
+        self._render_best()
+        self._refresh_model_artifacts()
+        self._refresh_record_files()
+        self._select_latest_history_iteration()
+        self._refresh_surrogate_view()
+        iteration = payload.get("iteration")
+        completed = len(self._bo_session.observations)
+        if iteration is not None:
+            self._auto_status_var.set(
+                f"Paired BO progress: imported iteration {iteration}. {completed} paired comparison(s) recorded."
+            )
 
     def _load_latest_paired_queue_session(self):
         for item in self._session.measurement_queue:
@@ -3868,6 +3953,10 @@ class BayesianOptimizationTab:
     # Rendering and file lists
     def _render_suggestion(self):
         if self._suggestion is None:
+            self._write_text(
+                self._suggestion_text,
+                "No active BO suggestion.\n\nStart a BO run to populate the current suggested method.",
+            )
             return
         lines = [
             f"Method ID: {self._suggestion.method_id}",
@@ -3879,6 +3968,27 @@ class BayesianOptimizationTab:
             lines.append(f"{name}: {self._fmt_raw(self._suggestion.params.get(name))}")
         self._write_text(self._suggestion_text, "\n".join(lines))
 
+    def _sync_suggestion_from_session(self):
+        if self._bo_session is None:
+            self._suggestion = None
+            self._render_suggestion()
+            return
+        pending_batch = list(getattr(self._bo_session, "pending_batch", []) or [])
+        if pending_batch:
+            try:
+                self._suggestion = self._bo_session.ask_batch(len(pending_batch))[0]
+            except Exception:
+                record = pending_batch[0]
+                self._suggestion = type("SuggestionView", (), record)()
+            self._render_suggestion()
+            return
+        pending = getattr(self._bo_session, "pending", None)
+        if isinstance(pending, dict):
+            self._suggestion = type("SuggestionView", (), dict(pending))()
+        else:
+            self._suggestion = None
+        self._render_suggestion()
+
     def _render_scores(self, observation):
         for row in self._score_tree.get_children():
             self._score_tree.delete(row)
@@ -3888,34 +3998,67 @@ class BayesianOptimizationTab:
         paired = self._is_paired_observation(observation)
         if paired:
             score_cols = (
-                "Paired Q", "Buffer Q", "Target Q", "Classic Pair Q",
-                "Delta Peak", "Frac Delta", "Delta Score",
-                "Buffer SNR", "Target SNR", "Target Shape", "Success",
+                "Phase", "Q", "Peak uA", "Raw SNR", "SNR Score",
+                "Shape", "Success", "Paired Q", "Delta Peak", "Delta Score",
             )
         else:
             score_cols = ("Q", "Peak uA", "Raw SNR", "SNR Score", "Shape", "Baseline", "Replicate", "Success")
         self._score_tree.configure(columns=score_cols)
         for col in score_cols:
             self._score_tree.heading(col, text=col)
-            self._score_tree.column(col, width=86, anchor="center")
+            self._score_tree.column(col, width=86, anchor="center", stretch=False)
         components = observation["quality"].get("channel_components", {})
         channel_metrics = observation.get("channel_metrics", {})
+        buffer_channel_metrics = observation.get("buffer_channel_metrics", {})
+        target_channel_metrics = observation.get("target_channel_metrics", channel_metrics)
         for ch, data in sorted(components.items(), key=lambda item: int(item[0])):
             metrics = channel_metrics.get(str(ch), {}) if isinstance(channel_metrics, dict) else {}
             if paired:
-                values = (
-                    self._fmt(data.get("paired_Q_channel", data.get("Q_channel"))),
-                    self._fmt(data.get("buffer_classic_Q")),
-                    self._fmt(data.get("target_classic_Q")),
-                    self._fmt(data.get("classic_pair_Q", data.get("standard_quality_score"))),
-                    self._fmt(data.get("delta_peak_height_uA")),
-                    self._fmt(data.get("fractional_delta_peak")),
-                    self._fmt(data.get("delta_peak_score")),
-                    self._fmt(data.get("buffer_snr_raw")),
-                    self._fmt(data.get("target_snr_raw")),
-                    self._fmt(data.get("target_shape_score")),
-                    self._fmt(data.get("success_score")),
+                buffer_metrics = buffer_channel_metrics.get(str(ch), {}) if isinstance(buffer_channel_metrics, dict) else {}
+                target_metrics = target_channel_metrics.get(str(ch), {}) if isinstance(target_channel_metrics, dict) else metrics
+                paired_q = self._fmt(data.get("paired_Q_channel", data.get("Q_channel")))
+                delta_peak = self._fmt(data.get("delta_peak_height_uA"))
+                delta_score = self._fmt(data.get("delta_peak_score"))
+                row_specs = (
+                    (
+                        f"{ch}_buffer",
+                        (
+                            "Buffer",
+                            self._fmt(data.get("buffer_classic_Q")),
+                            self._fmt(self._channel_peak_height(buffer_metrics)),
+                            self._fmt(data.get("buffer_snr_raw")),
+                            self._fmt(data.get("buffer_snr_score")),
+                            "",
+                            self._fmt(data.get("success_score")),
+                            paired_q,
+                            delta_peak,
+                            delta_score,
+                        ),
+                    ),
+                    (
+                        f"{ch}_target",
+                        (
+                            "Target",
+                            self._fmt(data.get("target_classic_Q")),
+                            self._fmt(self._channel_peak_height(target_metrics)),
+                            self._fmt(data.get("target_snr_raw")),
+                            self._fmt(data.get("target_snr_score")),
+                            self._fmt(data.get("target_shape_score")),
+                            self._fmt(data.get("success_score")),
+                            paired_q,
+                            delta_peak,
+                            delta_score,
+                        ),
+                    ),
                 )
+                for iid, values in row_specs:
+                    self._score_tree.insert(
+                        "",
+                        "end",
+                        iid=iid,
+                        text=str(ch),
+                        values=values,
+                    )
             else:
                 values = (
                     self._fmt(data.get("Q_channel")),
@@ -3927,13 +4070,13 @@ class BayesianOptimizationTab:
                     self._fmt(data.get("replicate_consistency_score")),
                     self._fmt(data.get("success_score")),
                 )
-            self._score_tree.insert(
-                "",
-                "end",
-                iid=str(ch),
-                text=str(ch),
-                values=values,
-            )
+                self._score_tree.insert(
+                    "",
+                    "end",
+                    iid=str(ch),
+                    text=str(ch),
+                    values=values,
+                )
 
     @staticmethod
     def _is_paired_observation(observation):
@@ -3953,7 +4096,7 @@ class BayesianOptimizationTab:
             )
             self._history_tree.configure(columns=columns)
             self._history_tree.heading("#0", text="Cycle")
-            self._history_tree.column("#0", width=62, anchor="center")
+            self._history_tree.column("#0", width=62, anchor="center", stretch=False)
             widths = {
                 "Buffer Trace": 96,
                 "Target Trace": 96,
@@ -3972,11 +4115,11 @@ class BayesianOptimizationTab:
             )
             self._history_tree.configure(columns=columns)
             self._history_tree.heading("#0", text="Iter")
-            self._history_tree.column("#0", width=55, anchor="center")
+            self._history_tree.column("#0", width=55, anchor="center", stretch=False)
             widths = {}
         for col in columns:
             self._history_tree.heading(col, text=col)
-            self._history_tree.column(col, width=widths.get(col, 76), anchor="center")
+            self._history_tree.column(col, width=widths.get(col, 76), anchor="center", stretch=False)
 
     def _paired_history_values(self, obs, peak_uA, snr_raw):
         params = obs.get("params", {})
@@ -4285,11 +4428,16 @@ class BayesianOptimizationTab:
             return
 
         rows = self._raw_trace_rows_for_observation(observation)
-        selected_channels = self._selected_score_channels()
+        selected_channels, selected_phases = self._selected_score_filters()
         if selected_channels:
             rows = [
                 row for row in rows
                 if str(row.get("channel") or "") in selected_channels
+            ]
+        if selected_phases:
+            rows = [
+                row for row in rows
+                if str(row.get("phase") or "").strip().lower() in selected_phases
             ]
         if not rows:
             if selected_channels:
@@ -4297,6 +4445,8 @@ class BayesianOptimizationTab:
                     "No raw SWV CSV paths were found for the selected channel(s) "
                     f"{', '.join(sorted(selected_channels, key=self._channel_sort_key))} in this iteration."
                 )
+                if selected_phases:
+                    message += f" Requested phase(s): {', '.join(sorted(selected_phases))}."
             else:
                 message = (
                     "No raw SWV CSV paths were found for this iteration.\n\n"
@@ -4370,6 +4520,8 @@ class BayesianOptimizationTab:
         channel_suffix = ""
         if selected_channels:
             channel_suffix = f" | Ch {', '.join(sorted(selected_channels, key=self._channel_sort_key))}"
+        if selected_phases:
+            channel_suffix += f" | {'/'.join(sorted(selected_phases))}"
         title_prefix = f"Cycle {observation.get('paired_cycle')} set {observation.get('paired_batch_index')}" if str(observation.get("objective") or "").lower() == "paired_response" else f"Iteration {observation.get('iteration')}"
         ax.set_title(f"{title_prefix} raw SWV traces{channel_suffix} | Q_run={self._fmt(observation.get('Q_run'))}")
         ax.set_xlabel("Voltage (V)")
@@ -4405,10 +4557,13 @@ class BayesianOptimizationTab:
             return
 
         rows, diagnostics = self._corrected_trace_rows_for_observation(observation)
-        selected_channels = self._selected_score_channels()
+        selected_channels, selected_phases = self._selected_score_filters()
         if selected_channels:
             rows = [row for row in rows if str(row.get("channel") or "") in selected_channels]
             diagnostics = [d for d in diagnostics if str(d.get("channel") or "") in selected_channels]
+        if selected_phases:
+            rows = [row for row in rows if str(row.get("phase") or "").strip().lower() in selected_phases]
+            diagnostics = [d for d in diagnostics if str(d.get("phase") or "").strip().lower() in selected_phases]
         if not rows:
             message = (
                 "No corrected traces could be recomputed for this iteration.\n\n"
@@ -4420,6 +4575,8 @@ class BayesianOptimizationTab:
                     "No corrected traces could be recomputed for the selected channel(s) "
                     f"{', '.join(sorted(selected_channels, key=self._channel_sort_key))} in this iteration."
                 )
+                if selected_phases:
+                    message += f" Requested phase(s): {', '.join(sorted(selected_phases))}."
             detail_lines = self._corrected_trace_diagnostic_lines(diagnostics)
             if detail_lines:
                 message += "\n\nWhy recomputation failed:\n" + "\n".join(detail_lines[:12])
@@ -4499,6 +4656,8 @@ class BayesianOptimizationTab:
         channel_suffix = ""
         if selected_channels:
             channel_suffix = f" | Ch {', '.join(sorted(selected_channels, key=self._channel_sort_key))}"
+        if selected_phases:
+            channel_suffix += f" | {'/'.join(sorted(selected_phases))}"
         title_prefix = f"Cycle {observation.get('paired_cycle')} set {observation.get('paired_batch_index')}" if str(observation.get("objective") or "").lower() == "paired_response" else f"Iteration {observation.get('iteration')}"
         ax.set_title(f"{title_prefix} smoothed corrected traces{channel_suffix}", fontsize=9, pad=8, wrap=True)
         ax.set_xlabel("Voltage (V)", fontsize=9, labelpad=4)
@@ -4631,6 +4790,16 @@ class BayesianOptimizationTab:
             diagnostics,
             key=lambda row: (self._channel_sort_key(row.get("channel")), str(row.get("scan") or ""), str(row.get("label") or "")),
         )
+
+    def _scroll_history_horizontally(self, event):
+        if not hasattr(self, "_history_tree"):
+            return None
+        delta = getattr(event, "delta", 0)
+        if delta == 0:
+            return "break"
+        units = -1 if delta > 0 else 1
+        self._history_tree.xview_scroll(units, "units")
+        return "break"
 
     def _current_analysis_settings(self):
         analysis_cfg = {}
@@ -4808,12 +4977,7 @@ class BayesianOptimizationTab:
 
     def _analysis_results_paths_for_observation(self, observation):
         paths = []
-        analysis_record_path = self._resolve_observation_file_path(observation.get("analysis_record"), observation)
-        analysis_records = []
-        if analysis_record_path.exists():
-            analysis_records.append(analysis_record_path)
-
-        for analysis_record in analysis_records:
+        for analysis_record, _phase_hint in self._analysis_record_paths_with_phase(observation):
             try:
                 with open(analysis_record, "r", encoding="utf-8") as fh:
                     payload = json.load(fh)
@@ -4828,19 +4992,52 @@ class BayesianOptimizationTab:
                 pass
         return paths
 
-    def _selected_score_channels(self):
+    def _analysis_record_paths_for_observation(self, observation):
+        return [path for path, _phase_hint in self._analysis_record_paths_with_phase(observation)]
+
+    def _analysis_record_paths_with_phase(self, observation):
+        paths = []
+        seen = set()
+        key_phase_pairs = (
+            ("buffer_analysis_record", "buffer"),
+            ("target_analysis_record", "target"),
+            ("analysis_record", ""),
+        )
+        for key, phase_hint in key_phase_pairs:
+            raw_path = (observation or {}).get(key)
+            if not raw_path:
+                continue
+            path = self._resolve_observation_file_path(raw_path, observation)
+            if not path.exists():
+                continue
+            norm = str(path)
+            if norm in seen:
+                continue
+            seen.add(norm)
+            inferred_phase = phase_hint or self._infer_measurement_phase_from_path(path)
+            paths.append((path, inferred_phase))
+        return paths
+
+    def _selected_score_filters(self):
         if not hasattr(self, "_score_tree"):
-            return set()
-        selected = set()
+            return set(), set()
+        selected_channels = set()
+        selected_phases = set()
         for item in self._score_tree.selection():
             channel = str(self._score_tree.item(item, "text") or item).strip()
             if channel:
-                selected.add(channel)
-        return selected
+                selected_channels.add(channel)
+            values = self._score_tree.item(item, "values") or ()
+            if values:
+                phase = str(values[0] or "").strip().lower()
+                if phase in ("buffer", "target"):
+                    selected_phases.add(phase)
+        return selected_channels, selected_phases
 
     def _raw_trace_rows_for_observation(self, observation):
         rows = []
         seen = set()
+        paired = str((observation or {}).get("objective") or "").lower() == "paired_response"
 
         def add_embedded_traces(traces, phase=None, trace_number=None):
             if not isinstance(traces, dict):
@@ -4871,11 +5068,18 @@ class BayesianOptimizationTab:
                     }
                 )
 
-        def add(path, channel=None, scan=None):
+        def add(path, channel=None, scan=None, phase=None, trace_number=None):
             if not path:
                 return
             p = self._resolve_observation_file_path(path, observation)
-            key = str(p)
+            phase_label = str(phase or self._infer_measurement_phase_from_path(p) or "")
+            trace_no = trace_number
+            if trace_no in (None, ""):
+                if phase_label == "buffer":
+                    trace_no = observation.get("buffer_trace_number")
+                elif phase_label == "target":
+                    trace_no = observation.get("target_trace_number")
+            key = (str(p), str(phase_label), str(trace_no or ""))
             if key in seen or not p.exists() or not p.is_file():
                 return
             seen.add(key)
@@ -4884,6 +5088,9 @@ class BayesianOptimizationTab:
                     "path": str(p),
                     "channel": channel if channel not in (None, "") else self._infer_channel_from_path(p),
                     "scan": scan,
+                    "phase": phase_label,
+                    "trace_number": trace_no,
+                    "measurement_id": self._infer_measurement_id_from_path(p),
                 }
             )
 
@@ -4901,15 +5108,11 @@ class BayesianOptimizationTab:
         else:
             add_embedded_traces(observation.get("swv_trace_preview") or {}, phase="simulated", trace_number=observation.get("iteration"))
 
-        for path in observation.get("archived_measurements") or []:
+        archived_measurements = list(observation.get("archived_measurements") or [])
+        for path in archived_measurements:
             add(path)
 
-        analysis_record_path = self._resolve_observation_file_path(observation.get("analysis_record"), observation)
-        analysis_records = []
-        if analysis_record_path.exists():
-            analysis_records.append(analysis_record_path)
-
-        for analysis_record in analysis_records:
+        for analysis_record, phase_hint in self._analysis_record_paths_with_phase(observation):
             results_paths = []
             payload = {}
             try:
@@ -4930,9 +5133,17 @@ class BayesianOptimizationTab:
                 try:
                     with open(results_path, "r", encoding="utf-8-sig", newline="") as fh:
                         for row in csv.DictReader(fh):
-                            add(row.get("file_path") or row.get("file_name"), channel=row.get("channel"), scan=row.get("scan_number"))
+                            add(
+                                row.get("file_path") or row.get("file_name"),
+                                channel=row.get("channel"),
+                                scan=row.get("scan_number"),
+                                phase=phase_hint,
+                            )
                 except Exception:
                     pass
+
+        if paired:
+            rows = self._filter_paired_rows_to_matching_measurements(rows)
 
         return sorted(
             rows,
@@ -5003,6 +5214,98 @@ class BayesianOptimizationTab:
     def _infer_channel_from_path(path):
         match = re.search(r"(?:^|[_\-\s])ch(?:annel)?\s*0*(\d+)(?:\D|$)", Path(path).stem, re.IGNORECASE)
         return match.group(1) if match else ""
+
+    @staticmethod
+    def _infer_measurement_phase_from_path(path):
+        parts = [Path(path).name.lower()]
+        try:
+            parts.extend(part.lower() for part in Path(path).parts)
+        except Exception:
+            pass
+        for part in parts:
+            if "buffer" in part:
+                return "buffer"
+            if "target" in part:
+                return "target"
+        return ""
+
+    @staticmethod
+    def _infer_measurement_id_from_path(path):
+        stem = Path(path).stem
+        match = re.search(r"swv_ch\d+_([0-9a-f]{4,})_meas", stem, re.IGNORECASE)
+        return match.group(1).lower() if match else ""
+
+    def _filter_paired_rows_to_matching_measurements(self, rows):
+        phase_groups = {"buffer": [], "target": []}
+        for row in rows:
+            phase = str(row.get("phase") or "").strip().lower()
+            if phase in phase_groups:
+                phase_groups[phase].append(row)
+        non_empty = {phase: group for phase, group in phase_groups.items() if group}
+        if len(non_empty) < 2:
+            return rows
+        reference_phase, reference_rows = min(non_empty.items(), key=lambda item: len(item[1]))
+        preferred_ids = {
+            str(row.get("measurement_id") or "").strip().lower()
+            for row in reference_rows
+            if str(row.get("measurement_id") or "").strip()
+        }
+        if not preferred_ids:
+            return rows
+        filtered = []
+        for row in rows:
+            phase = str(row.get("phase") or "").strip().lower()
+            measurement_id = str(row.get("measurement_id") or "").strip().lower()
+            if phase in non_empty and len(non_empty.get(phase, [])) > len(reference_rows):
+                if measurement_id and measurement_id not in preferred_ids:
+                    continue
+            filtered.append(row)
+        return self._collapse_paired_phase_duplicates(filtered)
+
+    def _collapse_paired_phase_duplicates(self, rows):
+        grouped = {}
+        for row in rows:
+            phase = str(row.get("phase") or "").strip().lower()
+            measurement_id = str(row.get("measurement_id") or "").strip().lower()
+            if phase not in {"buffer", "target"} or not measurement_id:
+                grouped.setdefault(None, []).append(row)
+                continue
+            grouped.setdefault((phase, measurement_id), []).append(row)
+
+        archived_by_phase = {"buffer": set(), "target": set()}
+        for row in rows:
+            phase = str(row.get("phase") or "").strip().lower()
+            path = str(row.get("path") or "").strip()
+            if phase in archived_by_phase and path:
+                archived_by_phase[phase].add(path.lower())
+
+        collapsed = list(grouped.pop(None, []))
+        for key, group in grouped.items():
+            phase, _measurement_id = key
+            if len(group) == 1:
+                collapsed.append(group[0])
+                continue
+            archived_matches = [
+                row for row in group
+                if str(row.get("path") or "").strip().lower() in archived_by_phase.get(phase, set())
+            ]
+            if archived_matches:
+                collapsed.append(archived_matches[0])
+                continue
+            if phase == "buffer":
+                chosen = min(group, key=self._paired_row_scan_sort_key)
+            else:
+                chosen = max(group, key=self._paired_row_scan_sort_key)
+            collapsed.append(chosen)
+        return collapsed
+
+    @staticmethod
+    def _paired_row_scan_sort_key(row):
+        scan = row.get("scan")
+        try:
+            return int(scan)
+        except (TypeError, ValueError):
+            return -1
 
     @staticmethod
     def _channel_sort_key(channel):

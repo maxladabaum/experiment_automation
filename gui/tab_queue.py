@@ -1722,6 +1722,17 @@ class QueueTab:
                     bo_session.record_queued(suggestion, buffer + target)
                     buffer_items.extend(buffer)
                     target_items.extend(target)
+                live_refresh = getattr(self._session, "_bo_live_refresh_callback", None)
+                if callable(live_refresh):
+                    self._root.after(
+                        0,
+                        lambda cb=live_refresh, data={
+                            "record_dir": str(bo_session.record_dir),
+                            "session_id": bo_session.session_id,
+                            "iteration": suggestions[0].iteration if suggestions else None,
+                            "event": "batch_queued",
+                        }: cb(dict(data)),
+                    )
 
                 b_completed, b_failed, b_stopped, b_recorded = self._run_bo_queue_items(buffer_items, "BO buffer batch")
                 bo_session.record_queue_completion({
@@ -1788,6 +1799,16 @@ class QueueTab:
                         f"Q_run={obs['Q_run']:.3f}, "
                         f"mean delta={float(obs['quality'].get('mean_delta_peak_height_uA', 0.0)):.4g} uA"
                     )
+                    if callable(live_refresh):
+                        self._root.after(
+                            0,
+                            lambda cb=live_refresh, data={
+                                "record_dir": str(bo_session.record_dir),
+                                "session_id": bo_session.session_id,
+                                "iteration": obs.get("iteration"),
+                                "event": "paired_imported",
+                            }: cb(dict(data)),
+                        )
                 completed_cycles += 1
                 if session_mgr is not None and not halfway_notified and completed_cycles >= halfway_cycle:
                     halfway_notified = True
