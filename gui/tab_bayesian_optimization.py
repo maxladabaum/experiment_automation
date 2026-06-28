@@ -30,6 +30,7 @@ from core.bo_session import (
     BOIntegrationSession,
     OPTIMIZER_ORDER,
     PARAMETER_ORDER,
+    _acquisition_score,
     active_parameters,
     build_swv_script,
     compute_run_quality,
@@ -161,6 +162,44 @@ class BayesianOptimizationTab:
         self._engine_iterations_var = tk.StringVar(value="20")
         self._engine_paired_response_var = tk.BooleanVar(value=False)
         self._engine_paired_batch_size_var = tk.StringVar(value="4")
+        self._engine_exploration_var = tk.DoubleVar(value=0.35)
+        self._engine_exploration_text_var = tk.StringVar(value="0.35")
+        self._engine_warmup_iterations_var = tk.StringVar(value="8")
+        self._engine_candidate_pool_var = tk.StringVar(value="600")
+        self._engine_local_pool_var = tk.StringVar(value="120")
+        self._engine_initial_point_mode_var = tk.StringVar(value="specific")
+        self._engine_gp_length_scale_vars = {
+            name: tk.StringVar(value="0.2") for name in PARAMETER_ORDER
+        }
+        self._engine_score_vars = {
+            key: tk.StringVar(value=value)
+            for key, value in {
+                "mode": "classic",
+                "snr": "0.35",
+                "peak_height": "0.00",
+                "peak_shape": "0.20",
+                "baseline": "0.20",
+                "replicate_consistency": "0.15",
+                "success": "0.10",
+                "noise_penalty": "0.00",
+                "snr_saturation": "20.0",
+                "lambda_variability": "0.20",
+                "lambda_failed": "0.40",
+                "lambda_low": "0.20",
+                "low_channel_threshold": "0.50",
+            }.items()
+        }
+        self._engine_score_formula_var = tk.StringVar(value="")
+        self._engine_paired_score_vars = {
+            key: tk.StringVar(value=value)
+            for key, value in {
+                "buffer_classic_Q": "0.25",
+                "target_classic_Q": "0.25",
+                "delta_peak": "1.0",
+                "delta_scale_uA": "1.0",
+            }.items()
+        }
+        self._engine_paired_formula_var = tk.StringVar(value="")
         self._engine_target_response_gain_var = tk.StringVar(value="2.0")
         self._engine_target_noise_multiplier_var = tk.StringVar(value="1.05")
         self._engine_delta_peak_floor_var = tk.StringVar(value="0.0")
@@ -535,7 +574,7 @@ class BayesianOptimizationTab:
         ttk.Button(algo_box, text="Edit GP Falloff", command=self._edit_gp_length_scales).grid(row=3, column=2, sticky="e", padx=(6, 0), pady=2)
         ttk.Label(
             algo_box,
-            text="`specific` uses Initial Parameters. `random` chooses one valid candidate as the first BO point. In paired mode, GP warmup iters means full batches/cycles.",
+            text="`specific` uses Initial Parameters. `random` chooses one valid candidate as the first BO point. In paired mode, warmup cycles are consolidated into one buffer block and one target block.",
             foreground=self.ACCENT,
         ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(2, 0))
 
@@ -770,7 +809,9 @@ class BayesianOptimizationTab:
             ("3/3 Results", results_page),
         ]
 
-        setup_box = ttk.LabelFrame(setup_page, text="Simulation Setup", padding=10)
+        setup_scroll = ScrollableFrame(setup_page, min_width=900)
+        setup_scroll.pack(fill="both", expand=True)
+        setup_box = ttk.LabelFrame(setup_scroll.content, text="Simulation Setup", padding=10)
         setup_box.pack(fill="both", expand=True)
         mode_box = ttk.LabelFrame(setup_box, text="Simulation Type", padding=8)
         mode_box.pack(fill="x", pady=(0, 8))
@@ -803,6 +844,72 @@ class BayesianOptimizationTab:
             wraplength=760,
             justify="left",
         ).pack(fill="x", pady=(0, 8))
+
+        optimizer_box = ttk.LabelFrame(setup_box, text="Optimizer Behavior", padding=8)
+        optimizer_box.pack(fill="x", pady=(0, 8))
+        optimizer_box.columnconfigure(1, weight=1)
+        ttk.Label(optimizer_box, text="Exploit <-> Explore:").grid(row=0, column=0, sticky="w", pady=2)
+        ttk.Scale(
+            optimizer_box,
+            from_=0.0,
+            to=1.0,
+            orient=tk.HORIZONTAL,
+            variable=self._engine_exploration_var,
+            command=lambda _v: self._refresh_engine_scoring_formulas(),
+        ).grid(row=0, column=1, sticky="ew", padx=6, pady=2)
+        ttk.Label(
+            optimizer_box,
+            textvariable=self._engine_exploration_text_var,
+            foreground=self.ACCENT,
+            width=5,
+        ).grid(row=0, column=2, sticky="e")
+        optimizer_entries = [
+            ("Global pool:", self._engine_candidate_pool_var),
+            ("Local pool:", self._engine_local_pool_var),
+            ("GP warmup iters/cycles:", self._engine_warmup_iterations_var),
+        ]
+        for idx, (label, var) in enumerate(optimizer_entries, start=1):
+            ttk.Label(optimizer_box, text=label).grid(row=idx, column=0, sticky="w", pady=2)
+            ttk.Entry(optimizer_box, textvariable=var, width=12).grid(
+                row=idx, column=1, sticky="w", padx=6, pady=2
+            )
+        ttk.Label(optimizer_box, text="Start point:").grid(row=4, column=0, sticky="w", pady=2)
+        ttk.Combobox(
+            optimizer_box,
+            textvariable=self._engine_initial_point_mode_var,
+            values=("specific", "random"),
+            state="readonly",
+            width=12,
+        ).grid(row=4, column=1, sticky="w", padx=6, pady=2)
+        ttk.Label(
+            optimizer_box,
+            text=(
+                "In paired mode, warmup is measured in cycles and total warmup points equal "
+                "warmup cycles × batch size."
+            ),
+            foreground=self.ACCENT,
+            justify="left",
+        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(4, 0))
+
+        scoring_tabs = ttk.Notebook(setup_box)
+        scoring_tabs.pack(fill="both", expand=True, pady=(0, 8))
+        classic_scoring_tab = ttk.Frame(scoring_tabs)
+        paired_scoring_tab = ttk.Frame(scoring_tabs)
+        scoring_tabs.add(classic_scoring_tab, text="Classic Q Scoring")
+        scoring_tabs.add(paired_scoring_tab, text="Paired Q Scoring")
+        self._build_q_scoring_controls(
+            classic_scoring_tab,
+            self._engine_score_vars,
+            self._engine_score_formula_var,
+            self._refresh_engine_scoring_formulas,
+        )
+        self._build_paired_q_scoring_controls(
+            paired_scoring_tab,
+            vars_by_name=self._engine_paired_score_vars,
+            formula_var=self._engine_paired_formula_var,
+            on_change=self._refresh_engine_scoring_formulas,
+        )
+        self._refresh_engine_scoring_formulas()
         ttk.Button(setup_box, text="Next: Landscape", command=self._engine_next_page).pack(anchor="e", pady=(8, 0))
 
         dims_box = ttk.LabelFrame(landscape_page, text="Synthetic Parameter Landscape Map", padding=8)
@@ -859,8 +966,6 @@ class BayesianOptimizationTab:
         model_entries = [
             ("Grid", self._engine_grid_var),
             ("Seed", self._engine_seed_var),
-            ("Global pool", self._candidate_pool_var),
-            ("Local pool", self._local_pool_var),
             ("Meas noise", self._engine_measurement_noise_var),
             ("Channel noise", self._engine_channel_noise_var),
             ("Target response gain", self._engine_target_response_gain_var),
@@ -883,10 +988,8 @@ class BayesianOptimizationTab:
             row = idx // 2
             col = (idx % 2) * 2
             ttk.Label(gp_box, text=f"{name.replace('_', ' ').title()}:").grid(row=row, column=col, sticky="w", pady=2)
-            entry = ttk.Entry(gp_box, textvariable=self._gp_length_scale_vars[name], width=10)
+            entry = ttk.Entry(gp_box, textvariable=self._engine_gp_length_scale_vars[name], width=10)
             entry.grid(row=row, column=col + 1, sticky="w", padx=(4, 12), pady=2)
-            entry.bind("<FocusOut>", lambda _e: self._sync_algorithm_config(show_error=False))
-            entry.bind("<Return>", lambda _e: self._sync_algorithm_config(show_error=False))
         run_bar = ttk.Frame(model_box)
         run_bar.pack(fill="x", pady=(8, 0))
         ttk.Button(run_bar, text="Draw Landscape", command=self._engine_draw_landscape).pack(side="left", padx=2)
@@ -1294,6 +1397,7 @@ class BayesianOptimizationTab:
             self._set_method_option_vars_from_config(self._config)
             self._set_algorithm_vars_from_config(self._config)
             self._set_scoring_vars_from_config(self._config)
+            self._set_engine_tuning_vars_from_config(self._config)
             if self._bo_session is None:
                 self._loaded_original_config = None
                 self._set_rescore_vars_from_config(self._config)
@@ -1448,6 +1552,112 @@ class BayesianOptimizationTab:
         for name, var in self._gp_length_scale_vars.items():
             var.set(str(length_scales.get(name, 0.2)))
         self._refresh_gp_falloff_summary()
+
+    def _set_engine_tuning_vars_from_config(self, cfg: dict):
+        acquisition = dict((cfg or {}).get("acquisition") or {})
+        exploration = float(acquisition.get("exploration", 0.35))
+        self._engine_exploration_var.set(exploration)
+        self._engine_exploration_text_var.set(f"{exploration:.2f}")
+        self._engine_candidate_pool_var.set(str(acquisition.get("candidate_pool_size", 600)))
+        self._engine_local_pool_var.set(str(acquisition.get("local_candidate_pool_size", 120)))
+        self._engine_initial_point_mode_var.set(str(acquisition.get("initial_point_mode", "specific")))
+        paired = str((cfg or {}).get("objective") or "").lower() == "paired_response"
+        if paired:
+            warmup = int((cfg or {}).get("paired_warmup_cycles", 0) or 0)
+            batch_size = max(1, int((cfg or {}).get("paired_batch_size", 1) or 1))
+            self._engine_paired_batch_size_var.set(str(batch_size))
+        else:
+            warmup = int((cfg or {}).get("n_initial_points", 8) or 0)
+        self._engine_warmup_iterations_var.set(str(warmup))
+        length_scales = dict(
+            acquisition.get("gp_falloff_fractions")
+            or acquisition.get("gp_length_scales")
+            or {}
+        )
+        for name, var in self._engine_gp_length_scale_vars.items():
+            var.set("" if not length_scales else str(length_scales.get(name, 0.2)))
+
+        scoring = dict((cfg or {}).get("scoring") or {})
+        self._set_scoring_vars(cfg, self._engine_score_vars, self._engine_score_formula_var)
+        paired_weights = self._default_paired_response_weights()
+        paired_weights.update(dict(scoring.get("paired_response_weights") or {}))
+        for key, var in self._engine_paired_score_vars.items():
+            var.set(str(paired_weights.get(key, self._default_paired_response_weights()[key])))
+        self._refresh_engine_scoring_formulas()
+
+    def _refresh_engine_scoring_formulas(self):
+        self._engine_exploration_text_var.set(f"{float(self._engine_exploration_var.get()):.2f}")
+        self._refresh_formula_from_vars(self._engine_score_vars, self._engine_score_formula_var)
+        try:
+            weights = {
+                key: max(1e-12, float(var.get() or 0.0))
+                if key == "delta_scale_uA"
+                else max(0.0, float(var.get() or 0.0))
+                for key, var in self._engine_paired_score_vars.items()
+            }
+            total = (
+                weights["buffer_classic_Q"]
+                + weights["target_classic_Q"]
+                + weights["delta_peak"]
+            )
+            self._engine_paired_formula_var.set(
+                "paired_Q_channel = ("
+                f"{weights['buffer_classic_Q']:g}*buffer_classic_Q + "
+                f"{weights['target_classic_Q']:g}*target_classic_Q + "
+                f"{weights['delta_peak']:g}*log1p(abs(delta_peak)/"
+                f"{weights['delta_scale_uA']:g})) / {max(total, 1e-12):.3g}"
+            )
+        except Exception:
+            self._engine_paired_formula_var.set("Enter numeric paired-Q weights.")
+
+    def _engine_bo_config(self, sim_cfg=None):
+        if self._config is None:
+            raise ValueError("Load a BO config first.")
+        sim_cfg = sim_cfg or self._engine_sim_config()
+        cfg = json.loads(json.dumps(self._config))
+        acquisition = cfg.setdefault("acquisition", {})
+        acquisition["exploration"] = max(0.0, min(1.0, float(self._engine_exploration_var.get())))
+        acquisition["candidate_pool_size"] = max(50, int(self._engine_candidate_pool_var.get() or 600))
+        acquisition["local_candidate_pool_size"] = max(0, int(self._engine_local_pool_var.get() or 120))
+        mode = str(self._engine_initial_point_mode_var.get() or "specific").strip().lower()
+        acquisition["initial_point_mode"] = "random" if mode == "random" else "specific"
+        falloffs = {
+            name: (var.get() or "").strip()
+            for name, var in self._engine_gp_length_scale_vars.items()
+        }
+        populated = {name: float(value) for name, value in falloffs.items() if value}
+        if populated and len(populated) != len(PARAMETER_ORDER):
+            missing = [name for name in PARAMETER_ORDER if not falloffs[name]]
+            raise ValueError(
+                "Fill every simulation GP falloff fraction, or clear every field. "
+                f"Missing: {', '.join(missing)}"
+            )
+        if populated and any(value <= 0 for value in populated.values()):
+            raise ValueError("Simulation GP falloff fractions must be positive.")
+        acquisition["gp_falloff_fractions"] = populated
+        acquisition["gp_length_scales"] = populated
+
+        scoring = self._scoring_from_vars(self._engine_score_vars)
+        scoring["paired_response_weights"] = {
+            key: max(1e-12, float(var.get() or 0.0))
+            if key == "delta_scale_uA"
+            else max(0.0, float(var.get() or 0.0))
+            for key, var in self._engine_paired_score_vars.items()
+        }
+        cfg["scoring"] = scoring
+        warmup = max(0, int(self._engine_warmup_iterations_var.get() or 0))
+        if bool(sim_cfg.get("paired_response")):
+            batch_size = max(1, int(sim_cfg.get("paired_batch_size", 1)))
+            cfg["objective"] = "paired_response"
+            cfg["paired_warmup_cycles"] = warmup
+            cfg["paired_batch_size"] = batch_size
+            cfg["n_initial_points"] = warmup * batch_size
+        else:
+            cfg["objective"] = "quality"
+            cfg["n_initial_points"] = warmup
+            cfg.pop("paired_warmup_cycles", None)
+            cfg.pop("paired_batch_size", None)
+        return normalize_bo_config(cfg)
 
     def _sync_algorithm_config(self, show_error=True):
         if self._config is None:
@@ -1690,12 +1900,21 @@ class BayesianOptimizationTab:
             pady=(6, 0),
         )
 
-    def _build_paired_q_scoring_controls(self, scoring_box):
+    def _build_paired_q_scoring_controls(
+        self,
+        scoring_box,
+        vars_by_name=None,
+        formula_var=None,
+        on_change=None,
+    ):
+        vars_by_name = vars_by_name or self._paired_scoring_vars()
+        formula_var = formula_var or self._paired_formula_var
+        on_change = on_change or (lambda: self._sync_scoring_config(show_error=False))
         for idx in range(6):
             scoring_box.columnconfigure(idx, weight=1 if idx in (1, 3, 5) else 0)
         ttk.Label(
             scoring_box,
-            textvariable=self._paired_formula_var,
+            textvariable=formula_var,
             foreground=self.ACCENT,
             wraplength=760,
             justify="left",
@@ -1716,15 +1935,14 @@ class BayesianOptimizationTab:
             ("Delta peak weight:", "delta_peak"),
             ("Delta scale (uA):", "delta_scale_uA"),
         ]
-        vars_by_name = self._paired_scoring_vars()
         for idx, (label, key) in enumerate(entries):
             row = 2 + idx // 2
             base_col = (idx % 2) * 3
             ttk.Label(scoring_box, text=label).grid(row=row, column=base_col, sticky="w", pady=2)
             entry = ttk.Entry(scoring_box, textvariable=vars_by_name[key], width=9)
             entry.grid(row=row, column=base_col + 1, sticky="w", padx=(4, 10), pady=2)
-            entry.bind("<FocusOut>", lambda _e: self._sync_scoring_config(show_error=False))
-            entry.bind("<Return>", lambda _e: self._sync_scoring_config(show_error=False))
+            entry.bind("<FocusOut>", lambda _e: on_change())
+            entry.bind("<Return>", lambda _e: on_change())
 
     def _set_scoring_vars_from_config(self, cfg: dict):
         scoring = dict((cfg or {}).get("scoring") or {})
@@ -2126,6 +2344,7 @@ class BayesianOptimizationTab:
             self._set_method_option_vars_from_config(self._config)
             self._set_algorithm_vars_from_config(self._config)
             self._set_scoring_vars_from_config(self._config)
+            self._set_engine_tuning_vars_from_config(self._config)
             self._set_rescore_vars_from_config(self._config)
             self._channels_var.set(", ".join(str(ch) for ch in self._config.get("channels", [])))
             self._refresh_parameter_table()
@@ -2531,9 +2750,10 @@ class BayesianOptimizationTab:
         if self._config is None:
             return
         sim_cfg = self._engine_sim_config()
+        sim_bo_config = self._engine_bo_config(sim_cfg)
         from core.bo_simulation import SyntheticSWVSimulationEngine
 
-        engine = SyntheticSWVSimulationEngine(self._config, sim_cfg)
+        engine = SyntheticSWVSimulationEngine(sim_bo_config, sim_cfg)
         rows = []
         session = None
         if isinstance(self._simulation_result, dict):
@@ -2561,9 +2781,8 @@ class BayesianOptimizationTab:
             return
         try:
             self._sync_channels_from_entry(show_error=False)
-            self._sync_algorithm_config(show_error=False)
-            self._sync_scoring_config(show_error=False)
             sim_cfg = self._engine_sim_config()
+            sim_bo_config = self._engine_bo_config(sim_cfg)
             session_mgr = getattr(self._session, "session_manager", None)
             exp_path = session_mgr.require_experiment() if session_mgr is not None else None
             if exp_path is None:
@@ -2584,8 +2803,6 @@ class BayesianOptimizationTab:
                 self._frame.update_idletasks()
 
             if bool(sim_cfg.get("paired_response")):
-                sim_bo_config = json.loads(json.dumps(self._config))
-                sim_bo_config["objective"] = "paired_response"
                 result = run_paired_response_optimizer_simulation(
                     sim_bo_config,
                     sim_cfg,
@@ -2597,7 +2814,7 @@ class BayesianOptimizationTab:
                 )
             else:
                 result = run_optimizer_simulation(
-                    self._config,
+                    sim_bo_config,
                     sim_cfg,
                     output_root=output_root,
                     iterations=sim_cfg["iterations"],
@@ -6123,42 +6340,135 @@ class BayesianOptimizationTab:
 
     def _plot_surrogate_2d(self, fig, rows, value_key, x_name, y_name, color_limits=None):
         ax = fig.add_subplot(111)
-        points = [
-            row for row in rows
-            if row.get(x_name) is not None and row.get(y_name) is not None and row.get(value_key) is not None
-        ]
-        if not points:
-            ax.text(0.5, 0.5, "No plottable surrogate rows", ha="center", va="center")
-            ax.set_axis_off()
-            return
-        x = [float(row[x_name]) for row in points]
-        y = [float(row[y_name]) for row in points]
-        z = [float(row[value_key]) for row in points]
         color_kwargs = {}
         if color_limits is not None:
             color_kwargs = {"vmin": color_limits[0], "vmax": color_limits[1]}
-        if len(set(x)) >= 2 and len(set(y)) >= 2 and len(points) >= 4:
-            try:
-                if color_limits is not None:
-                    import numpy as np
-                    levels = np.linspace(color_limits[0], color_limits[1], 15)
-                else:
-                    levels = 14
-                mesh = ax.tricontourf(x, y, z, levels=levels, cmap="viridis", **color_kwargs)
-                ax.tricontour(x, y, z, levels=levels, colors="white", linewidths=0.35, alpha=0.55)
-            except Exception:
-                mesh = ax.scatter(x, y, c=z, cmap="viridis", s=14, alpha=0.8, **color_kwargs)
+        grid = self._surrogate_2d_prediction_grid(
+            rows,
+            value_key,
+            x_name,
+            y_name,
+        )
+        if grid is not None:
+            x_values, y_values, z_values, x_is_log, y_is_log = grid
+            mesh = ax.pcolormesh(
+                x_values,
+                y_values,
+                z_values,
+                cmap="viridis",
+                shading="auto",
+                **color_kwargs,
+            )
+            if x_is_log:
+                ax.set_xscale("log")
+            if y_is_log:
+                ax.set_yscale("log")
         else:
-            mesh = ax.scatter(x, y, c=z, cmap="viridis", s=14, alpha=0.8, **color_kwargs)
+            # Old sessions may not have a saved GP model. A scatter plot is an
+            # honest fallback; triangulating a high-dimensional candidate
+            # projection invents jagged connections and holes.
+            points = [
+                row for row in rows
+                if row.get(x_name) is not None
+                and row.get(y_name) is not None
+                and row.get(value_key) is not None
+            ]
+            if not points:
+                ax.text(0.5, 0.5, "No plottable surrogate rows", ha="center", va="center")
+                ax.set_axis_off()
+                return
+            mesh = ax.scatter(
+                [float(row[x_name]) for row in points],
+                [float(row[y_name]) for row in points],
+                c=[float(row[value_key]) for row in points],
+                cmap="viridis",
+                s=14,
+                alpha=0.8,
+                **color_kwargs,
+            )
         cbar = fig.colorbar(mesh, ax=ax, label=value_key)
         cbar.ax.tick_params(labelsize=8)
         cbar.set_label(value_key, fontsize=8)
         self._overlay_observed_points(ax, x_name, y_name)
         ax.set_xlabel(x_name, fontsize=9, labelpad=4)
         ax.set_ylabel(y_name, fontsize=9, labelpad=4)
-        ax.set_title(self._surrogate_plot_title(value_key, "2D surrogate map"), fontsize=9, pad=8, wrap=True)
+        ax.set_title(self._surrogate_plot_title(value_key, "2D surrogate slice"), fontsize=9, pad=8, wrap=True)
         ax.tick_params(labelsize=8)
         ax.grid(alpha=0.2)
+
+    def _surrogate_2d_prediction_grid(self, rows, value_key, x_name, y_name, grid_size=75):
+        gp = self._load_surrogate_gp_model()
+        cfg = self._bo_session.config if self._bo_session is not None else self._config
+        if gp is None or not cfg or x_name == y_name:
+            return None
+        if x_name not in OPTIMIZER_ORDER or y_name not in OPTIMIZER_ORDER:
+            return None
+        x_bounds = self._parameter_plot_bounds(cfg, x_name)
+        y_bounds = self._parameter_plot_bounds(cfg, y_name)
+        if x_bounds is None or y_bounds is None:
+            return None
+        try:
+            import numpy as np
+
+            observations = self._surrogate_observations_so_far()
+            center = self._selected_surrogate_observation()
+            if center is None and observations:
+                center = max(observations, key=lambda obs: float(obs.get("Q_run", 0.0)))
+            base = dict((center or {}).get("params") or {})
+            initial = dict((cfg or {}).get("initial_parameters") or {})
+            for name in PARAMETER_ORDER:
+                if base.get(name) is None:
+                    base[name] = float(initial.get(name, 0.0))
+            base_encoded = np.asarray(encode_candidate(base, cfg), dtype=float)
+
+            size = max(20, min(200, int(grid_size)))
+            x_encoded = np.linspace(0.0, 1.0, size)
+            y_encoded = np.linspace(0.0, 1.0, size)
+            x_mesh_encoded, y_mesh_encoded = np.meshgrid(x_encoded, y_encoded)
+            encoded_points = np.repeat(base_encoded[None, :], size * size, axis=0)
+            encoded_points[:, OPTIMIZER_ORDER.index(x_name)] = x_mesh_encoded.ravel()
+            encoded_points[:, OPTIMIZER_ORDER.index(y_name)] = y_mesh_encoded.ravel()
+            means, stds = gp.predict(encoded_points, return_std=True)
+
+            if value_key == "predicted_mean_Q":
+                values = means
+            elif value_key == "predicted_std_Q":
+                values = stds
+            elif value_key == "acquisition_value":
+                best_q = max(
+                    (float(obs.get("Q_run", 0.0)) for obs in observations),
+                    default=float(rows[0].get("best_observed_Q", 0.0)) if rows else 0.0,
+                )
+                exploration = float((cfg.get("acquisition") or {}).get("exploration", 0.35))
+                values = np.asarray(
+                    [
+                        _acquisition_score(float(mean), float(std), best_q, exploration)
+                        for mean, std in zip(means, stds)
+                    ],
+                    dtype=float,
+                )
+            else:
+                return None
+
+            x_lo, x_hi, x_is_log = x_bounds
+            y_lo, y_hi, y_is_log = y_bounds
+            x_values = np.asarray(
+                [
+                    self._raw_from_encoded_parameter(value, x_lo, x_hi, x_is_log)
+                    for value in x_encoded
+                ],
+                dtype=float,
+            )
+            y_values = np.asarray(
+                [
+                    self._raw_from_encoded_parameter(value, y_lo, y_hi, y_is_log)
+                    for value in y_encoded
+                ],
+                dtype=float,
+            )
+            return x_values, y_values, values.reshape(size, size), x_is_log, y_is_log
+        except Exception:
+            return None
 
     def _plot_surrogate_3d(self, fig, rows, value_key, x_name, y_name, z_name, color_limits=None):
         ax = fig.add_subplot(111, projection="3d")

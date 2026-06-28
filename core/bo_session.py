@@ -1320,7 +1320,10 @@ class BOIntegrationSession:
         if len(self.observations) < int(self.config.get("n_initial_points", 8)):
             return self._maximin_candidate(available, extra_anchors=pending_params)
         if bool(self.config.get("acquisition", {}).get("use_gp", True)):
-            gp_choice = self._gp_expected_improvement_candidate(available)
+            gp_choice = self._gp_expected_improvement_candidate(
+                available,
+                pending_params=pending_params,
+            )
             if gp_choice is not None:
                 return gp_choice
         return self._distance_surrogate_candidate(available)
@@ -1363,8 +1366,12 @@ class BOIntegrationSession:
 
         return max(available, key=score)
 
-    def _gp_expected_improvement_candidate(self, available: List[Dict[str, float]]) -> Optional[Dict[str, float]]:
-        gp, train = self._fit_gp_surrogate()
+    def _gp_expected_improvement_candidate(
+        self,
+        available: List[Dict[str, float]],
+        pending_params: Optional[List[dict]] = None,
+    ) -> Optional[Dict[str, float]]:
+        gp, train = self._fit_gp_surrogate(pending_params=pending_params)
         if gp is None or train is None or len(self.observations) < 2:
             return None
         try:
@@ -1382,7 +1389,7 @@ class BOIntegrationSession:
         except Exception:
             return None
 
-    def _fit_gp_surrogate(self):
+    def _fit_gp_surrogate(self, pending_params: Optional[List[dict]] = None):
         try:
             import numpy as np
             from sklearn.gaussian_process import GaussianProcessRegressor
@@ -1417,6 +1424,28 @@ class BOIntegrationSession:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", ConvergenceWarning)
                 gp.fit(x_train, y_train)
+
+            # Kriging believer for batched BO: condition the surrogate on each
+            # already-selected batch point using its current posterior mean as a
+            # fantasy observation. This leaves the expected response largely
+            # unchanged while reducing posterior uncertainty near pending points.
+            # Freeze the kernel learned from real observations so fantasies do not
+            # alter fitted length scales or the estimated measurement noise.
+            for params in pending_params or []:
+                x_pending = np.asarray([encode_candidate(params, self.config)], dtype=float)
+                y_pending = float(gp.predict(x_pending)[0])
+                x_train = np.vstack((x_train, x_pending))
+                y_train = np.append(y_train, y_pending)
+                fantasy_gp = GaussianProcessRegressor(
+                    kernel=gp.kernel_,
+                    optimizer=None,
+                    normalize_y=True,
+                    random_state=int(self.config.get("random_seed", 42)),
+                )
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", ConvergenceWarning)
+                    fantasy_gp.fit(x_train, y_train)
+                gp = fantasy_gp
             return gp, {"x_train": x_train, "y_train": y_train}
         except Exception:
             return None, None

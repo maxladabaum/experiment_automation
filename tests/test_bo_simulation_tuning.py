@@ -1,0 +1,62 @@
+import tkinter as tk
+
+from core.bo_session import load_bo_config
+from gui.tab_bayesian_optimization import BayesianOptimizationTab
+
+
+def _var(master, value):
+    return tk.StringVar(master=master, value=str(value))
+
+
+def test_simulation_tuning_builds_independent_paired_bo_config():
+    master = tk.Tcl()
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    tab._config = load_bo_config("optimizer/bo_configs/default_swv_bo.json")
+    original_exploration = tab._config["acquisition"]["exploration"]
+    original_scoring = dict(tab._config["scoring"]["paired_response_weights"])
+
+    tab._engine_exploration_var = tk.DoubleVar(master=master, value=0.45)
+    tab._engine_candidate_pool_var = _var(master, 1500)
+    tab._engine_local_pool_var = _var(master, 25)
+    tab._engine_initial_point_mode_var = _var(master, "random")
+    tab._engine_warmup_iterations_var = _var(master, 2)
+    tab._engine_gp_length_scale_vars = {
+        name: _var(master, 0.35) for name in tab._config["parameters"]
+    }
+    tab._engine_score_vars = {
+        "mode": _var(master, "classic"),
+        "snr": _var(master, 0.5),
+        "peak_height": _var(master, 1.0),
+        "peak_shape": _var(master, 0.0),
+        "baseline": _var(master, 0.0),
+        "replicate_consistency": _var(master, 0.0),
+        "success": _var(master, 0.0),
+        "noise_penalty": _var(master, 5.0),
+        "snr_saturation": _var(master, 20.0),
+        "lambda_variability": _var(master, 0.0),
+        "lambda_failed": _var(master, 0.0),
+        "lambda_low": _var(master, 0.0),
+        "low_channel_threshold": _var(master, 0.0),
+    }
+    tab._engine_paired_score_vars = {
+        "buffer_classic_Q": _var(master, 0.1),
+        "target_classic_Q": _var(master, 0.2),
+        "delta_peak": _var(master, 2.0),
+        "delta_scale_uA": _var(master, 0.5),
+    }
+
+    tuned = tab._engine_bo_config(
+        {"paired_response": True, "paired_batch_size": 5}
+    )
+
+    assert tuned["acquisition"]["exploration"] == 0.45
+    assert tuned["acquisition"]["candidate_pool_size"] == 1500
+    assert tuned["acquisition"]["local_candidate_pool_size"] == 25
+    assert tuned["acquisition"]["gp_falloff_fractions"]["frequency"] == 0.35
+    assert tuned["paired_warmup_cycles"] == 2
+    assert tuned["n_initial_points"] == 10
+    assert tuned["scoring"]["channel_weights"]["noise_penalty"] == 5.0
+    assert tuned["scoring"]["paired_response_weights"]["delta_peak"] == 2.0
+
+    assert tab._config["acquisition"]["exploration"] == original_exploration
+    assert tab._config["scoring"]["paired_response_weights"] == original_scoring
