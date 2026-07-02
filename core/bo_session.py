@@ -16,6 +16,7 @@ those metrics and updates the optimizer state.
 from __future__ import annotations
 
 import csv
+import copy
 import hashlib
 import itertools
 import json
@@ -1142,7 +1143,7 @@ class BOIntegrationSession:
         channel_metrics = self._filter_metrics(channel_metrics, group["channels"])
         quality = compute_run_quality(channel_metrics, self.config.get("scoring", {}))
         iteration = int(suggestion_data["iteration"])
-        retained_path = self._retain_analysis_file(source, iteration)
+        retained_path = self._retain_analysis_file(source, iteration, group_id=group_id)
         observation = {
             "iteration": iteration,
             "method_id": suggestion_data["method_id"],
@@ -1164,7 +1165,11 @@ class BOIntegrationSession:
             observation["analysis_results_csv"] = str(payload["results_csv"])
         if payload.get("analysis_engine"):
             observation["analysis_engine"] = str(payload["analysis_engine"])
-        archived_measurements = self._archive_iteration_measurements(iteration, suggestion_data["method_id"])
+        archived_measurements = self._archive_iteration_measurements(
+            iteration,
+            suggestion_data["method_id"],
+            group_id=group_id,
+        )
         if archived_measurements:
             observation["archived_measurements"] = archived_measurements
         self.observations.append(observation)
@@ -1212,8 +1217,8 @@ class BOIntegrationSession:
         buffer_metrics = self._filter_metrics(extract_channel_metrics(buffer_payload), group["channels"])
         target_metrics = self._filter_metrics(extract_channel_metrics(target_payload), group["channels"])
         quality = compute_paired_response_quality(buffer_metrics, target_metrics, self.config.get("scoring", {}))
-        retained_buffer = self._retain_analysis_file(Path(buffer_path), iteration, suffix="buffer")
-        retained_target = self._retain_analysis_file(Path(target_path), iteration, suffix="target")
+        retained_buffer = self._retain_analysis_file(Path(buffer_path), iteration, suffix="buffer", group_id=group_id)
+        retained_target = self._retain_analysis_file(Path(target_path), iteration, suffix="target", group_id=group_id)
         buffer_truth = dict(buffer_payload.get("simulation_truth") or {})
         target_truth = dict(target_payload.get("simulation_truth") or {})
         paired_cycle = self._first_present(
@@ -1281,8 +1286,18 @@ class BOIntegrationSession:
         }
         if engines:
             observation["analysis_engine"] = ", ".join(sorted(engines))
-        archived_buffer = self._archive_iteration_measurements(iteration, method_id, phase="buffer")
-        archived_target = self._archive_iteration_measurements(iteration, method_id, phase="target")
+        archived_buffer = self._archive_iteration_measurements(
+            iteration,
+            method_id,
+            phase="buffer",
+            group_id=group_id,
+        )
+        archived_target = self._archive_iteration_measurements(
+            iteration,
+            method_id,
+            phase="target",
+            group_id=group_id,
+        )
         archived_measurements = archived_buffer + archived_target
         if archived_measurements:
             observation["archived_measurements"] = archived_measurements
@@ -1312,7 +1327,10 @@ class BOIntegrationSession:
 
     def _write_optional_iteration_artifacts(self, iteration: int, observation: dict) -> None:
         try:
-            self._write_surrogate_and_acquisition_artifacts(iteration)
+            self._write_surrogate_and_acquisition_artifacts(
+                iteration,
+                group_id=int(observation.get("group_id", 1) or 1),
+            )
         except Exception as exc:
             warnings.warn(f"BO surrogate/acquisition artifact write failed for iter {iteration}: {exc}")
         try:
@@ -1360,6 +1378,13 @@ class BOIntegrationSession:
                 if str((item.get("bo_ref") or {}).get("phase") or "").strip()
             }
         )
+        group_ids = sorted(
+            {
+                int((item.get("bo_ref") or {}).get("group_id", 0) or 0)
+                for item in items
+                if int((item.get("bo_ref") or {}).get("group_id", 0) or 0) > 0
+            }
+        )
         iteration = iterations[0] if len(iterations) == 1 else 0
         payload = {
             "session_id": self.session_id,
@@ -1375,7 +1400,12 @@ class BOIntegrationSession:
             "items": items,
         }
         phase_suffix = f"_{phases[0]}" if len(phases) == 1 else ""
-        name = f"iter_{iteration:03d}_queue_completion{phase_suffix}.json" if iteration else f"queue_completion_mixed{phase_suffix}.json"
+        group_prefix = f"group_{group_ids[0]:02d}_" if len(group_ids) == 1 else ""
+        name = (
+            f"{group_prefix}iter_{iteration:03d}_queue_completion{phase_suffix}.json"
+            if iteration else
+            f"{group_prefix}queue_completion_mixed{phase_suffix}.json"
+        )
         path = self.queue_dir / name
         self._write_json(path, payload)
         for item in items:
@@ -1396,12 +1426,18 @@ class BOIntegrationSession:
         self.save_state()
         return path
 
-    def _archive_iteration_measurements(self, iteration: int, method_id: str, phase: Optional[str] = None) -> List[str]:
+    def _archive_iteration_measurements(
+        self,
+        iteration: int,
+        method_id: str,
+        phase: Optional[str] = None,
+        group_id: Optional[int] = None,
+    ) -> List[str]:
         csv_paths = self._iteration_csv_paths(iteration, method_id, phase=phase)
         if not csv_paths:
             return []
         phase_part = f"_{str(phase).strip().lower()}" if phase else ""
-        archive_dir = self.experiment_dir / "legacy" / f"iter_{iteration:03d}{phase_part}"
+        archive_dir = self.experiment_dir / "legacy" / f"{self._group_iteration_stem(iteration, group_id=group_id)}{phase_part}"
         archive_dir.mkdir(parents=True, exist_ok=True)
         archived: List[str] = []
         for csv_path in csv_paths:
@@ -1496,19 +1532,21 @@ class BOIntegrationSession:
 
         suggestion_data = suggestion if isinstance(suggestion, dict) else (suggestion.__dict__ if suggestion is not None else self.pending)
         iteration = int(suggestion_data["iteration"])
+        group_id = int(suggestion_data.get("group_id", 1) or 1)
         method_id = str(suggestion_data["method_id"])
         phase_label = str(phase or "").strip().lower()
         output = Path(output_dir) if output_dir else (self.experiment_dir / "bo_analysis")
         csv_paths = self._iteration_csv_paths(iteration, method_id, phase=phase_label or None)
         input_paths = csv_paths if csv_paths else [Path(folder) for folder in (folders or [self.experiment_dir])]
-        output_stem = f"bo_iter_{iteration:03d}" + (f"_{phase_label}" if phase_label else "")
+        stem = self._group_iteration_stem(iteration, group_id=group_id)
+        output_stem = f"bo_{stem}" + (f"_{phase_label}" if phase_label else "")
         request = {
             "folders": [str(Path(folder)) for folder in input_paths],
             "output_dir": str(output),
             "output_stem": output_stem,
             "analysis": dict(analysis if analysis is not None else self.config.get("analysis") or {}),
         }
-        request_name = f"iter_{iteration:03d}" + (f"_{phase_label}" if phase_label else "") + "_analysis_request.json"
+        request_name = stem + (f"_{phase_label}" if phase_label else "") + "_analysis_request.json"
         request_path = self.analysis_dir / request_name
         self._write_json(request_path, request)
         summary = run_analysis(request_path, request)
@@ -1529,6 +1567,7 @@ class BOIntegrationSession:
         from core.analysis_worker import run_analysis
 
         iteration = int(observation.get("iteration", 0) or 0)
+        group_id = int(observation.get("group_id", 1) or 1)
         if iteration < 1:
             raise ValueError("Observation has no valid BO iteration")
         raw_paths = []
@@ -1539,7 +1578,15 @@ class BOIntegrationSession:
             if path.exists() and path.is_file() and path not in raw_paths:
                 raw_paths.append(path)
         if not raw_paths:
-            raw_paths = self._discover_archived_measurements(iteration)
+            raw_paths = self._discover_archived_measurements(iteration, group_id=group_id)
+        allowed_channels = {int(ch) for ch in observation.get("channels") or []}
+        if allowed_channels:
+            filtered_raw_paths = []
+            for path in raw_paths:
+                channel = _measurement_channel_from_path(path)
+                if channel is None or channel in allowed_channels:
+                    filtered_raw_paths.append(path)
+            raw_paths = filtered_raw_paths
         if not raw_paths:
             raise FileNotFoundError(
                 f"No archived raw CSV files were found for BO iteration {iteration}"
@@ -1550,7 +1597,7 @@ class BOIntegrationSession:
 
         def analyze(paths: List[Path], phase: str = "") -> tuple[dict, Path]:
             suffix = f"_{phase}" if phase else ""
-            stem = f"bo_iter_{iteration:03d}_reanalyzed{suffix}"
+            stem = f"bo_{self._group_iteration_stem(iteration, group_id=group_id)}_reanalyzed{suffix}"
             request = {
                 "folders": [str(path.resolve()) for path in paths],
                 "output_dir": str(output.resolve()),
@@ -1654,14 +1701,16 @@ class BOIntegrationSession:
             f"analyzed peaks, so its Q score was not replaced. {detail}"
         )
 
-    def _discover_archived_measurements(self, iteration: int) -> List[Path]:
+    def _discover_archived_measurements(self, iteration: int, group_id: Optional[int] = None) -> List[Path]:
         """Find raw CSVs in legacy iteration folders used by older sessions."""
         legacy = self.experiment_dir / "legacy"
-        stems = (
-            f"iter_{iteration:03d}",
-            f"iter_{iteration:03d}_buffer",
-            f"iter_{iteration:03d}_target",
-        )
+        base_stems = [self._group_iteration_stem(iteration, group_id=group_id)]
+        legacy_stem = self._group_iteration_stem(iteration, group_id=None)
+        if legacy_stem not in base_stems:
+            base_stems.append(legacy_stem)
+        stems = []
+        for stem in base_stems:
+            stems.extend((stem, f"{stem}_buffer", f"{stem}_target"))
         paths: List[Path] = []
         for stem in stems:
             folder = legacy / stem
@@ -1966,9 +2015,22 @@ class BOIntegrationSession:
         result["bo_session_id"] = self.session_id
         return result
 
-    def _retain_analysis_file(self, source: Path, iteration: int, suffix: Optional[str] = None) -> Path:
+    @staticmethod
+    def _group_iteration_stem(iteration: int, group_id: Optional[int] = None) -> str:
+        if group_id is None:
+            return f"iter_{int(iteration):03d}"
+        return f"group_{int(group_id):02d}_iter_{int(iteration):03d}"
+
+    def _retain_analysis_file(
+        self,
+        source: Path,
+        iteration: int,
+        suffix: Optional[str] = None,
+        group_id: Optional[int] = None,
+    ) -> Path:
         suffix_part = f"_{str(suffix).strip()}" if suffix else ""
-        target = self.analysis_dir / f"iter_{iteration:03d}{suffix_part}_{source.name}"
+        stem = self._group_iteration_stem(iteration, group_id=group_id)
+        target = self.analysis_dir / f"{stem}{suffix_part}_{source.name}"
         if source.resolve() == target.resolve():
             return target
         if self.config.get("analysis", {}).get("copy_outputs_into_record", True):
@@ -2116,33 +2178,37 @@ class BOIntegrationSession:
             return None
         return ((iteration - 1) % batch_size) + 1 if iteration > 0 else None
 
-    def _write_surrogate_and_acquisition_artifacts(self, iteration: int) -> None:
-        rows, metadata, gp = self._candidate_prediction_rows()
-        self._write_json(self.surrogate_dir / f"iter_{iteration:03d}_surrogate_metadata.json", metadata)
-        self._write_csv(self.surrogate_dir / f"iter_{iteration:03d}_candidate_predictions.csv", rows)
-        self._write_csv(self.acquisition_dir / f"iter_{iteration:03d}_acquisition_values.csv", rows)
+    def _write_surrogate_and_acquisition_artifacts(self, iteration: int, group_id: Optional[int] = None) -> None:
+        rows, metadata, gp = self._candidate_prediction_rows(group_id=group_id)
+        stem = self._group_iteration_stem(iteration, group_id=group_id)
+        self._write_json(self.surrogate_dir / f"{stem}_surrogate_metadata.json", metadata)
+        self._write_csv(self.surrogate_dir / f"{stem}_candidate_predictions.csv", rows)
+        self._write_csv(self.acquisition_dir / f"{stem}_acquisition_values.csv", rows)
 
         top = [
             row for row in sorted(rows, key=lambda r: float(r.get("acquisition_value", 0.0)), reverse=True)
             if not row.get("already_tested")
         ][:20]
-        self._write_csv(self.acquisition_dir / f"iter_{iteration:03d}_top_candidates.csv", top)
+        self._write_csv(self.acquisition_dir / f"{stem}_top_candidates.csv", top)
 
         if gp is not None:
             try:
-                with open(self.surrogate_dir / f"iter_{iteration:03d}_gp_model.pkl", "wb") as fh:
+                with open(self.surrogate_dir / f"{stem}_gp_model.pkl", "wb") as fh:
                     pickle.dump(gp, fh)
             except Exception as exc:
                 metadata["gp_pickle_error"] = str(exc)
-                self._write_json(self.surrogate_dir / f"iter_{iteration:03d}_surrogate_metadata.json", metadata)
+                self._write_json(self.surrogate_dir / f"{stem}_surrogate_metadata.json", metadata)
 
-        self._write_surrogate_projection_plot(iteration, rows, value_key="predicted_mean_Q")
-        self._write_surrogate_projection_plot(iteration, rows, value_key="acquisition_value")
+        self._write_surrogate_projection_plot(iteration, rows, value_key="predicted_mean_Q", group_id=group_id)
+        self._write_surrogate_projection_plot(iteration, rows, value_key="acquisition_value", group_id=group_id)
 
-    def _candidate_prediction_rows(self) -> Tuple[List[dict], dict, Any]:
-        gp, train = self._fit_gp_surrogate()
-        observed_keys = {candidate_key(obs["params"]) for obs in self.observations}
-        best_q = max((float(obs["Q_run"]) for obs in self.observations), default=0.0)
+    def _candidate_prediction_rows(self, group_id: Optional[int] = None) -> Tuple[List[dict], dict, Any]:
+        observations = self._group_observations(group_id) if group_id is not None else list(self.observations)
+        historical_session = copy.copy(self)
+        historical_session.observations = list(observations)
+        gp, train = historical_session._fit_gp_surrogate()
+        observed_keys = {candidate_key(obs["params"]) for obs in observations}
+        best_q = max((float(obs["Q_run"]) for obs in observations), default=0.0)
         rows = []
         metadata = {
             "backend": (
@@ -2150,13 +2216,16 @@ class BOIntegrationSession:
                 if gp is not None
                 else "distance_weighted_fallback"
             ),
-            "observation_count": len(self.observations),
+            "observation_count": len(observations),
             "candidate_count": len(self.candidates),
             "active_parameters": active_parameters(self.config),
             "best_Q_run": best_q,
             "exploration": _clip01(self.config.get("acquisition", {}).get("exploration", 0.35)),
             "created_at": datetime.now().isoformat(timespec="seconds"),
         }
+        if group_id is not None:
+            metadata["group_id"] = int(group_id)
+            metadata["group_name"] = self._group(group_id).get("name")
         if gp is not None:
             metadata.update(_gp_kernel_metadata(gp))
 
@@ -2170,7 +2239,7 @@ class BOIntegrationSession:
                 stds = [0.0] * len(self.candidates)
                 metadata["prediction_error"] = "GP prediction failed; wrote zero predictions"
         else:
-            means, stds = self._fallback_predictions()
+            means, stds = self._fallback_predictions(observations=observations)
 
         for idx, candidate in enumerate(self.candidates):
             encoded = encode_candidate(candidate, self.config)
@@ -2198,10 +2267,11 @@ class BOIntegrationSession:
             rows.append(row)
         return rows, metadata, gp
 
-    def _fallback_predictions(self) -> Tuple[List[float], List[float]]:
-        if not self.observations:
+    def _fallback_predictions(self, observations: Optional[List[dict]] = None) -> Tuple[List[float], List[float]]:
+        observations = list(self.observations if observations is None else observations)
+        if not observations:
             return [0.0] * len(self.candidates), [1.0] * len(self.candidates)
-        observed = [(encode_candidate(obs["params"], self.config), float(obs["Q_run"])) for obs in self.observations]
+        observed = [(encode_candidate(obs["params"], self.config), float(obs["Q_run"])) for obs in observations]
         means = []
         stds = []
         for candidate in self.candidates:
@@ -2218,7 +2288,13 @@ class BOIntegrationSession:
             stds.append(nearest)
         return means, stds
 
-    def _write_surrogate_projection_plot(self, iteration: int, rows: List[dict], value_key: str) -> None:
+    def _write_surrogate_projection_plot(
+        self,
+        iteration: int,
+        rows: List[dict],
+        value_key: str,
+        group_id: Optional[int] = None,
+    ) -> None:
         try:
             import matplotlib
             matplotlib.use("Agg")
@@ -2251,7 +2327,8 @@ class BOIntegrationSession:
         ax.grid(alpha=0.2)
         fig.tight_layout()
         suffix = "surrogate_projection" if value_key == "predicted_mean_Q" else "acquisition_projection"
-        fig.savefig(self.plots_dir / f"iter_{iteration:03d}_{suffix}.png", dpi=160)
+        stem = self._group_iteration_stem(iteration, group_id=group_id)
+        fig.savefig(self.plots_dir / f"{stem}_{suffix}.png", dpi=160)
         plt.close(fig)
 
     @staticmethod
@@ -2548,6 +2625,16 @@ def _measurement_phase_from_path(path: str | Path) -> str:
     if re.search(r"(?:^|[/_\\-])target(?:[/_\\-]|$)", text) or "target" in name:
         return "target"
     return ""
+
+
+def _measurement_channel_from_path(path: str | Path) -> Optional[int]:
+    match = re.search(r"(?:^|[_\-\s])ch(?:annel)?\s*0*(\d+)(?:\D|$)", Path(path).stem, re.IGNORECASE)
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except (TypeError, ValueError):
+        return None
 
 
 def _expected_improvement(mean: float, std: float, best_score: float, xi: float = 0.01) -> float:

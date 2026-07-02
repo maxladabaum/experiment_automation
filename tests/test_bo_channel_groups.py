@@ -1,5 +1,6 @@
 import csv
 import json
+from pathlib import Path
 
 import pytest
 
@@ -105,3 +106,228 @@ def test_trend_series_are_split_by_group_and_iteration():
         ("Group 1", [("g1:i1", 1, 0.1), ("g1:i2", 2, 0.2)]),
         ("Group 2", [("g2:i1", 1, 0.8)]),
     ]
+
+
+def test_grouped_peak_and_noise_use_only_observation_channels(tmp_path):
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    results_csv = tmp_path / "results.csv"
+    results_csv.write_text(
+        "\n".join([
+            "channel,status,peak_current,background_current_rms",
+            "1,OK,10,1",
+            "2,OK,12,3",
+            "3,OK,100,50",
+            "4,OK,120,60",
+        ]),
+        encoding="utf-8",
+    )
+    tab._analysis_results_paths_for_observation = lambda observation: [results_csv]
+
+    peak, noise = tab._observation_peak_rms({"channels": [1, 2]})
+
+    assert peak == pytest.approx(11.0)
+    assert noise == pytest.approx(2.0)
+
+
+def test_rebuilt_group_metrics_ignore_other_groups_in_results_csv(tmp_path):
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    results_csv = tmp_path / "results.csv"
+    results_csv.write_text(
+        "\n".join([
+            "channel,status,peak_current,background_current_rms,peak_offset_norm,bracket_width_V",
+            "1,OK,10,1,0.1,0.05",
+            "2,OK,12,3,0.2,0.06",
+            "3,OK,100,50,0.9,0.30",
+            "4,OK,120,60,0.8,0.35",
+        ]),
+        encoding="utf-8",
+    )
+    tab._analysis_results_paths_for_observation = lambda observation: [results_csv]
+
+    metrics = tab._rebuilt_channel_metrics_for_observation({"channels": [1, 2]})
+
+    assert set(metrics) == {"1", "2"}
+
+
+def test_raw_trace_rows_are_filtered_to_observation_channels(tmp_path):
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    kept = tmp_path / "ch003_trace.csv"
+    dropped = tmp_path / "ch009_trace.csv"
+    kept.write_text("voltage,current\n0,0\n", encoding="utf-8")
+    dropped.write_text("voltage,current\n0,0\n", encoding="utf-8")
+
+    analysis_record = tmp_path / "analysis.json"
+    results_csv = tmp_path / "results.csv"
+    results_csv.write_text(
+        "\n".join([
+            "channel,file_path,scan_number",
+            f"3,{kept},1",
+            f"9,{dropped},1",
+        ]),
+        encoding="utf-8",
+    )
+    analysis_record.write_text(json.dumps({"results_csv": str(results_csv)}), encoding="utf-8")
+
+    tab._analysis_record_paths_with_phase = lambda observation: [(analysis_record, "")]
+    tab._resolve_observation_file_path = lambda raw_path, observation=None: Path(raw_path)
+    tab._infer_measurement_phase_from_path = lambda path: ""
+    tab._infer_channel_from_path = lambda path: Path(path).stem
+    tab._infer_measurement_id_from_path = lambda path: ""
+
+    rows = tab._raw_trace_rows_for_observation({"channels": [3, 4], "archived_measurements": []})
+
+    assert [row["channel"] for row in rows] == ["3"]
+
+
+def test_external_corrected_rows_are_filtered_to_observation_channels():
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    tab._external_analysis_results = lambda observation: [
+        {"channel": 3, "voltage": [0.0, 1.0], "smoothed_corrected_current": [0.1, 0.2], "file_name": "ch3.csv"},
+        {"channel": 9, "voltage": [0.0, 1.0], "smoothed_corrected_current": [0.3, 0.4], "file_name": "ch9.csv"},
+    ]
+
+    rows, diagnostics = tab._corrected_trace_rows_for_observation({"channels": [3, 4]})
+
+    assert diagnostics == []
+    assert [row["channel"] for row in rows] == ["3"]
+
+
+def test_grouped_analysis_records_are_namespaced(tmp_path):
+    session = BOIntegrationSession(_config(), tmp_path)
+    first = session.ask_next_groups()
+
+    source = tmp_path / "analysis_summary.json"
+    source.write_text(json.dumps({"channel_metrics": {"1": {"snr": 1, "success_score": 1}}}), encoding="utf-8")
+
+    left = session.import_analysis(source, suggestion=first[0])
+    right = session.import_analysis(source, suggestion=first[1])
+
+    assert Path(left["analysis_record"]).name.startswith("group_01_iter_001_")
+    assert Path(right["analysis_record"]).name.startswith("group_02_iter_001_")
+    assert left["analysis_record"] != right["analysis_record"]
+
+
+def test_run_pending_analysis_uses_group_namespaced_output_stem(tmp_path):
+    session = BOIntegrationSession(_config(), tmp_path)
+    suggestion = session.ask_next_groups()[1]
+
+    import core.analysis_worker as analysis_worker
+
+    captured = {}
+    summary_path = tmp_path / "summary.json"
+    results_json = tmp_path / "results.json"
+    results_json.write_text("[]", encoding="utf-8")
+    summary_path.write_text(json.dumps({"ok": True}), encoding="utf-8")
+    original = analysis_worker.run_analysis
+    try:
+        def fake_run_analysis(request_path, request):
+            captured["request_path"] = str(request_path)
+            captured["request"] = dict(request)
+            return {
+                "summary_path": str(summary_path),
+                "channel_metrics": {"3": {"snr": 1, "success_score": 1}},
+                "result_count": 1,
+                "results_json": str(results_json),
+            }
+
+        analysis_worker.run_analysis = fake_run_analysis
+        session.run_pending_analysis(folders=[tmp_path], suggestion=suggestion)
+    finally:
+        analysis_worker.run_analysis = original
+
+    assert captured["request"]["output_stem"] == "bo_group_02_iter_001"
+    assert Path(captured["request_path"]).name == "group_02_iter_001_analysis_request.json"
+
+
+def test_reanalysis_filters_mixed_archived_measurements_by_group(tmp_path):
+    session = BOIntegrationSession(_config(), tmp_path)
+
+    keep = tmp_path / "ch003_keep.csv"
+    drop = tmp_path / "ch009_drop.csv"
+    keep.write_text("voltage,current\n0,0\n", encoding="utf-8")
+    drop.write_text("voltage,current\n0,0\n", encoding="utf-8")
+
+    import core.analysis_worker as analysis_worker
+
+    captured = {}
+    summary_path = tmp_path / "reanalyzed_summary.json"
+    results_json = tmp_path / "reanalyzed_results.json"
+    results_json.write_text("[]", encoding="utf-8")
+    summary_path.write_text(json.dumps({"ok": True}), encoding="utf-8")
+    original = analysis_worker.run_analysis
+    try:
+        def fake_run_analysis(request_path, request):
+            captured["request"] = dict(request)
+            return {
+                "summary_path": str(summary_path),
+                "channel_metrics": {"3": {"snr": 1, "success_score": 1, "ok_scan_count": 1}},
+                "result_count": 1,
+                "results_json": str(results_json),
+                "analysis_engine": "test",
+            }
+
+        analysis_worker.run_analysis = fake_run_analysis
+        session.reanalyze_observation(
+            {
+                "iteration": 1,
+                "group_id": 1,
+                "channels": [3, 4],
+                "archived_measurements": [str(keep), str(drop)],
+            },
+            analysis={},
+            scoring=session.config["scoring"],
+            output_dir=tmp_path / "reanalysis",
+        )
+    finally:
+        analysis_worker.run_analysis = original
+
+    assert captured["request"]["folders"] == [str(keep.resolve())]
+
+
+def test_candidate_prediction_rows_are_group_specific(tmp_path):
+    session = BOIntegrationSession(_config(), tmp_path)
+    suggestions = session.ask_next_groups()
+
+    for suggestion, q in zip(suggestions, (0.1, 0.9)):
+        payload = tmp_path / f"group_{suggestion.group_id}.json"
+        payload.write_text(json.dumps({
+            "channel_metrics": {
+                str(channel): {
+                    "snr": q * 20,
+                    "peak_shape_score": q,
+                    "baseline_stability_score": q,
+                    "replicate_consistency_score": q,
+                    "success_score": 1,
+                }
+                for channel in suggestion.channels
+            }
+        }), encoding="utf-8")
+        session.import_analysis(payload, suggestion=suggestion)
+
+    left_rows, left_meta, _gp = session._candidate_prediction_rows(group_id=1)
+    right_rows, right_meta, _gp = session._candidate_prediction_rows(group_id=2)
+
+    assert left_rows
+    assert right_rows
+    assert left_meta["observation_count"] == 1
+    assert right_meta["observation_count"] == 1
+    assert left_meta["group_id"] == 1
+    assert right_meta["group_id"] == 2
+    assert left_meta["best_Q_run"] != right_meta["best_Q_run"]
+
+
+def test_surrogate_history_filters_to_selected_group():
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    tab._bo_session = type("Session", (), {
+        "observations": [
+            {"group_id": 1, "iteration": 1, "params": {"amplitude": 0.02}, "Q_run": 0.1},
+            {"group_id": 2, "iteration": 1, "params": {"amplitude": 0.05}, "Q_run": 0.9},
+            {"group_id": 1, "iteration": 2, "params": {"amplitude": 0.036}, "Q_run": 0.2},
+        ]
+    })()
+    tab._selected_history_observation = {"group_id": 1, "iteration": 2}
+    tab._surrogate_iteration_var = type("Var", (), {"get": lambda self: "2"})()
+
+    observations = tab._surrogate_observations_so_far()
+
+    assert [(obs["group_id"], obs["iteration"]) for obs in observations] == [(1, 1), (1, 2)]

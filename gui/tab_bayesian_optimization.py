@@ -2695,7 +2695,11 @@ class BayesianOptimizationTab:
             for obs in self._bo_session.observations:
                 iteration = int(obs.get("iteration", 0) or 0)
                 if iteration > 0:
-                    self._bo_session._write_json(self._bo_session.analysis_dir / f"iter_{iteration:03d}_quality.json", obs)
+                    group_id = int(obs.get("group_id", 1) or 1)
+                    objective = str(obs.get("objective") or "").lower()
+                    suffix = "_paired_quality.json" if objective == "paired_response" else "_quality.json"
+                    stem = self._bo_session._group_iteration_stem(iteration, group_id=group_id)
+                    self._bo_session._write_json(self._bo_session.analysis_dir / f"{stem}{suffix}", obs)
             self._bo_session._write_json(self._bo_session.record_dir / "bo_config_snapshot.json", self._bo_session.config)
             self._bo_session._write_history_csv()
             self._bo_session.save_state()
@@ -5884,10 +5888,13 @@ class BayesianOptimizationTab:
         rows = []
         diagnostics = []
         seen = set()
+        selected_channels = self._observation_channel_filter(observation)
         external_results = self._external_analysis_results(observation)
         if external_results:
             for result in external_results:
-                channel = result.get("channel")
+                channel = self._normalize_observation_channel(result.get("channel"))
+                if selected_channels and channel not in selected_channels:
+                    continue
                 scan = result.get("scan_number", result.get("scan_id_from_name"))
                 label = str(result.get("file_name") or Path(str(result.get("file_path") or "trace")).name)
                 voltage = self._to_float_list(result.get("voltage"))
@@ -5951,7 +5958,9 @@ class BayesianOptimizationTab:
                     )
                     continue
                 file_label = Path(file_path).name
-            channel = raw_row.get("channel") or (self._infer_channel_from_path(file_path) if file_path else "")
+            channel = self._normalize_observation_channel(
+                raw_row.get("channel") or (self._infer_channel_from_path(file_path) if file_path else "")
+            )
             scan = raw_row.get("scan")
             key = (str(file_path) if file_path else str(file_label), str(channel), str(scan or ""), str(raw_row.get("phase") or ""), str(raw_row.get("trace_number") or ""))
             if key in seen:
@@ -6225,6 +6234,7 @@ class BayesianOptimizationTab:
 
     def _rebuilt_channel_metrics_for_observation(self, observation):
         rows = []
+        selected_channels = self._observation_channel_filter(observation)
         for path in self._analysis_results_paths_for_observation(observation):
             if not path.exists():
                 continue
@@ -6232,6 +6242,10 @@ class BayesianOptimizationTab:
                 with open(path, "r", encoding="utf-8-sig", newline="") as fh:
                     for row in csv.DictReader(fh):
                         row = dict(row)
+                        if selected_channels:
+                            channel = self._normalize_observation_channel(row.get("channel"))
+                            if channel is None or channel not in selected_channels:
+                                continue
                         noise, bracket_count, crop_count = self._minima_bracket_rms_noise_from_row(row)
                         if noise is not None:
                             row["background_current_rms"] = noise
@@ -6295,7 +6309,7 @@ class BayesianOptimizationTab:
         selected_channels = set()
         selected_phases = set()
         for item in self._score_tree.selection():
-            channel = str(self._score_tree.item(item, "text") or item).strip()
+            channel = self._normalize_observation_channel(self._score_tree.item(item, "text") or item)
             if channel:
                 selected_channels.add(channel)
             values = self._score_tree.item(item, "values") or ()
@@ -6309,6 +6323,7 @@ class BayesianOptimizationTab:
         rows = []
         seen = set()
         paired = str((observation or {}).get("objective") or "").lower() == "paired_response"
+        selected_channels = self._observation_channel_filter(observation)
 
         def add_embedded_traces(traces, phase=None, trace_number=None):
             if not isinstance(traces, dict):
@@ -6316,22 +6331,25 @@ class BayesianOptimizationTab:
             for channel, trace in traces.items():
                 if not isinstance(trace, dict):
                     continue
+                normalized_channel = self._normalize_observation_channel(channel)
+                if selected_channels and normalized_channel not in selected_channels:
+                    continue
                 voltage = self._to_float_list(trace.get("voltage_v") or trace.get("voltage") or [])
                 current = self._to_float_list(trace.get("current_uA") or trace.get("current") or [])
                 if not voltage or not current:
                     continue
-                key = ("embedded", str(phase or ""), str(trace_number or ""), str(channel))
+                key = ("embedded", str(phase or ""), str(trace_number or ""), str(normalized_channel or channel))
                 if key in seen:
                     continue
                 seen.add(key)
                 phase_label = str(phase or "simulated")
-                trace_label = f"{phase_label} ch {channel}"
+                trace_label = f"{phase_label} ch {normalized_channel or channel}"
                 rows.append(
                     {
                         "path": "",
                         "voltage": voltage,
                         "current": current,
-                        "channel": str(channel),
+                        "channel": normalized_channel or str(channel),
                         "scan": "",
                         "phase": phase_label,
                         "trace_number": trace_number,
@@ -6350,6 +6368,11 @@ class BayesianOptimizationTab:
                     trace_no = observation.get("buffer_trace_number")
                 elif phase_label == "target":
                     trace_no = observation.get("target_trace_number")
+            normalized_channel = self._normalize_observation_channel(
+                channel if channel not in (None, "") else self._infer_channel_from_path(p)
+            )
+            if selected_channels and normalized_channel not in selected_channels:
+                return
             key = (str(p), str(phase_label), str(trace_no or ""))
             if key in seen or not p.exists() or not p.is_file():
                 return
@@ -6357,7 +6380,7 @@ class BayesianOptimizationTab:
             rows.append(
                 {
                     "path": str(p),
-                    "channel": channel if channel not in (None, "") else self._infer_channel_from_path(p),
+                    "channel": normalized_channel or "",
                     "scan": scan,
                     "phase": phase_label,
                     "trace_number": trace_no,
@@ -6820,20 +6843,47 @@ class BayesianOptimizationTab:
         elif not values:
             self._surrogate_iteration_var.set("")
 
+    def _surrogate_group_id(self):
+        selected = self._selected_history_observation
+        if selected is not None:
+            try:
+                return int(selected.get("group_id", 1))
+            except Exception:
+                return None
+        return None
+
     def _surrogate_artifact_iterations(self):
         if self._bo_session is None:
             return []
+        selected_group_id = self._surrogate_group_id()
         iterations = set()
         for folder in (self._bo_session.surrogate_dir, self._bo_session.acquisition_dir):
-            for path in Path(folder).glob("iter_*_*values.csv"):
-                match = re.search(r"iter_(\d+)_", path.name)
-                if match:
-                    iterations.add(int(match.group(1)))
-            for path in Path(folder).glob("iter_*_candidate_predictions.csv"):
-                match = re.search(r"iter_(\d+)_", path.name)
-                if match:
-                    iterations.add(int(match.group(1)))
+            for path in Path(folder).glob("*_candidate_predictions.csv"):
+                group_id, iteration = self._parse_surrogate_artifact_name(path.name)
+                if iteration is None:
+                    continue
+                if selected_group_id is not None and group_id != selected_group_id:
+                    continue
+                iterations.add(iteration)
+            for path in Path(folder).glob("*_acquisition_values.csv"):
+                group_id, iteration = self._parse_surrogate_artifact_name(path.name)
+                if iteration is None:
+                    continue
+                if selected_group_id is not None and group_id != selected_group_id:
+                    continue
+                iterations.add(iteration)
         return sorted(iterations)
+
+    @staticmethod
+    def _parse_surrogate_artifact_name(name):
+        text = str(name or "")
+        grouped = re.search(r"group_(\d+)_iter_(\d+)_", text)
+        if grouped:
+            return int(grouped.group(1)), int(grouped.group(2))
+        plain = re.search(r"iter_(\d+)_", text)
+        if plain:
+            return None, int(plain.group(1))
+        return None, None
 
     def _surrogate_dimension_options(self):
         cfg = self._bo_session.config if self._bo_session is not None else self._config
@@ -6863,7 +6913,11 @@ class BayesianOptimizationTab:
             if not raw:
                 return None
             iteration = int(raw)
+        group_id = self._surrogate_group_id()
+        stem = self._bo_session._group_iteration_stem(iteration, group_id=group_id) if group_id is not None else f"iter_{int(iteration):03d}"
         candidates = (
+            self._bo_session.surrogate_dir / f"{stem}_candidate_predictions.csv",
+            self._bo_session.acquisition_dir / f"{stem}_acquisition_values.csv",
             self._bo_session.surrogate_dir / f"iter_{int(iteration):03d}_candidate_predictions.csv",
             self._bo_session.acquisition_dir / f"iter_{int(iteration):03d}_acquisition_values.csv",
         )
@@ -6954,8 +7008,15 @@ class BayesianOptimizationTab:
             if not raw:
                 return None
             iteration = int(raw)
-        path = self._bo_session.surrogate_dir / f"iter_{int(iteration):03d}_gp_model.pkl"
-        return path if path.exists() else None
+        group_id = self._surrogate_group_id()
+        candidates = []
+        if group_id is not None:
+            candidates.append(self._bo_session.surrogate_dir / f"{self._bo_session._group_iteration_stem(iteration, group_id=group_id)}_gp_model.pkl")
+        candidates.append(self._bo_session.surrogate_dir / f"iter_{int(iteration):03d}_gp_model.pkl")
+        for path in candidates:
+            if path.exists():
+                return path
+        return None
 
     def _load_surrogate_gp_model(self):
         path = self._surrogate_gp_model_path()
@@ -7461,12 +7522,19 @@ class BayesianOptimizationTab:
         if self._bo_session is None:
             return []
         limit = self._surrogate_iteration_limit()
+        selected_group_id = self._surrogate_group_id()
         observations = []
         for obs in self._bo_session.observations:
             try:
                 iteration = int(obs.get("iteration"))
             except Exception:
                 continue
+            if selected_group_id is not None:
+                try:
+                    if int(obs.get("group_id", 1)) != selected_group_id:
+                        continue
+                except Exception:
+                    continue
             if limit is None or iteration <= limit:
                 observations.append(obs)
         return observations
@@ -7536,15 +7604,30 @@ class BayesianOptimizationTab:
         iteration = self._surrogate_iteration_var.get() or "?"
         backend = ""
         if self._bo_session is not None:
-            metadata = self._bo_session.surrogate_dir / f"iter_{int(iteration):03d}_surrogate_metadata.json" if str(iteration).isdigit() else None
-            if metadata is not None and metadata.exists():
-                try:
-                    with open(metadata, "r", encoding="utf-8") as fh:
-                        backend = str((json.load(fh) or {}).get("backend") or "")
-                except Exception:
-                    backend = ""
+            metadata_candidates = []
+            if str(iteration).isdigit():
+                group_id = self._surrogate_group_id()
+                if group_id is not None:
+                    metadata_candidates.append(
+                        self._bo_session.surrogate_dir / f"{self._bo_session._group_iteration_stem(int(iteration), group_id=group_id)}_surrogate_metadata.json"
+                    )
+                metadata_candidates.append(
+                    self._bo_session.surrogate_dir / f"iter_{int(iteration):03d}_surrogate_metadata.json"
+                )
+            for metadata in metadata_candidates:
+                if metadata.exists():
+                    try:
+                        with open(metadata, "r", encoding="utf-8") as fh:
+                            backend = str((json.load(fh) or {}).get("backend") or "")
+                        break
+                    except Exception:
+                        backend = ""
         suffix = f" ({backend})" if backend else ""
-        return f"{prefix} | {value_key} | iter {iteration}{suffix}"
+        group_text = ""
+        group_id = self._surrogate_group_id()
+        if group_id is not None:
+            group_text = f" | group {group_id}"
+        return f"{prefix} | {value_key}{group_text} | iter {iteration}{suffix}"
 
     @staticmethod
     def _analysis_trend_metric_options():
@@ -7709,6 +7792,25 @@ class BayesianOptimizationTab:
         return None
 
     @staticmethod
+    def _normalize_observation_channel(channel):
+        if channel in (None, ""):
+            return None
+        try:
+            return str(int(float(channel)))
+        except (TypeError, ValueError):
+            text = str(channel).strip()
+            return text or None
+
+    @classmethod
+    def _observation_channel_filter(cls, observation):
+        channels = set()
+        for channel in (observation or {}).get("channels", []):
+            normalized = cls._normalize_observation_channel(channel)
+            if normalized is not None:
+                channels.add(normalized)
+        return channels
+
+    @staticmethod
     def _observation_component_mean(observation, key):
         components = dict(((observation or {}).get("quality") or {}).get("channel_components") or {})
         if not components:
@@ -7729,6 +7831,7 @@ class BayesianOptimizationTab:
     def _observation_peak_rms(self, observation):
         row_peaks = []
         row_rms_values = []
+        selected_channels = self._observation_channel_filter(observation)
         try:
             analysis_result_paths = self._analysis_results_paths_for_observation(observation)
         except Exception:
@@ -7739,6 +7842,10 @@ class BayesianOptimizationTab:
             try:
                 with open(results_path, "r", encoding="utf-8-sig", newline="") as fh:
                     for row in csv.DictReader(fh):
+                        if selected_channels:
+                            channel = self._normalize_observation_channel(row.get("channel"))
+                            if channel is None or channel not in selected_channels:
+                                continue
                         if str(row.get("status", "")).upper() != "OK":
                             continue
                         peak_text = row.get("peak_current")

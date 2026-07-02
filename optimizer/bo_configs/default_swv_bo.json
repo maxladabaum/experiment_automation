@@ -239,28 +239,70 @@
     }
   },
   "analysis": {
-    "file_glob": "*.json",
-    "copy_outputs_into_record": true,
     "crop_min_v": -0.5,
     "crop_max_v": 0.0,
     "smooth_window": 15,
     "smooth_polyorder": 2,
     "minima_search_window_v": 0.3,
-    "use_prominent_minima": false,
-    "use_double_correction": true,
     "min_peak_height_ua": null,
+    "peak_voltage_min_v": -0.4,
+    "peak_voltage_max_v": -0.2,
     "min_start_voltage_v": -0.6,
     "scan_windows": "",
+    "use_prominent_minima": false,
+    "require_local_minima_on_both_sides": false,
+    "use_double_correction": true,
     "compute_skew": false,
     "compute_wavelet_energy": false,
     "compute_wavelet_denoised_trace": false,
     "use_wavelet_for_correction": false,
-    "require_local_minima_on_both_sides": false,
-    "peak_voltage_min_v": -0.4,
-    "peak_voltage_max_v": -0.2
+    "file_glob": "*.json",
+    "copy_outputs_into_record": true
   },
   "records": {
     "folder_prefix": "bo_session"
   },
-  "objective": "quality"
+  "objective": "quality",
+  "channel_groups": [
+    {
+      "id": 1,
+      "name": "Group 1",
+      "channels": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Group 2",
+      "channels": [
+        3,
+        4
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Group 3",
+      "channels": [
+        5,
+        6
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Group 4",
+      "channels": [
+        7,
+        8
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Group 5",
+      "channels": [
+        9,
+        10
+      ]
+    }
+  ]
 }
