@@ -213,11 +213,39 @@ def normalize_bo_config(config: dict) -> dict:
     groups = []
     for index, raw in enumerate(raw_groups[:10], 1):
         raw = raw if isinstance(raw, dict) else {"channels": raw}
-        groups.append({
+        group = {
             "id": index,
             "name": str(raw.get("name") or f"Group {index}"),
             "channels": parse_channels(raw.get("channels", [])),
-        })
+        }
+        if raw.get("exploration") is not None:
+            group["exploration"] = _clip01(raw["exploration"])
+        if raw.get("n_initial_points") is not None:
+            group["n_initial_points"] = max(0, int(raw["n_initial_points"]))
+        if raw.get("candidate_pool_size") is not None:
+            group["candidate_pool_size"] = max(50, int(raw["candidate_pool_size"]))
+        if raw.get("local_candidate_pool_size") is not None:
+            group["local_candidate_pool_size"] = max(0, int(raw["local_candidate_pool_size"]))
+        if raw.get("initial_point_mode") is not None:
+            mode = str(raw["initial_point_mode"]).strip().lower()
+            group["initial_point_mode"] = "random" if mode == "random" else "specific"
+        falloffs = raw.get("gp_falloff_fractions") or raw.get("gp_length_scales")
+        if isinstance(falloffs, dict):
+            parsed_falloffs = {
+                name: float(falloffs[name])
+                for name in PARAMETER_ORDER
+                if falloffs.get(name) is not None
+            }
+            if parsed_falloffs and any(value <= 0 for value in parsed_falloffs.values()):
+                raise ValueError(f"{group['name']} GP falloff fractions must be positive")
+            group["gp_falloff_fractions"] = parsed_falloffs
+        if isinstance(raw.get("initial_parameters"), dict):
+            group["initial_parameters"] = {
+                name: float(value)
+                for name, value in raw["initial_parameters"].items()
+                if name in PARAMETER_ORDER
+            }
+        groups.append(group)
     cfg["channel_groups"] = groups
     cfg["channels"] = [ch for group in groups for ch in group["channels"]]
     cfg.setdefault("method_options", {})
@@ -360,6 +388,15 @@ def validate_bo_config(config: dict) -> List[str]:
         duplicates = sorted({ch for ch in grouped if grouped.count(ch) > 1})
         if duplicates:
             errors.append(f"Mux channels may only belong to one group: {duplicates}")
+        for group in groups:
+            if isinstance(group.get("initial_parameters"), dict):
+                initial = resolve_method_payload(cfg, group["initial_parameters"])
+                group_errors = validate_candidate(initial, cfg)
+                if group_errors:
+                    errors.append(
+                        f"{group.get('name', 'Channel group')} initial parameters are invalid: "
+                        + "; ".join(group_errors)
+                    )
     except ValueError as exc:
         errors.append(str(exc))
     try:
@@ -929,6 +966,7 @@ class BOIntegrationSession:
 
     def ask_next_for_group(self, group_id: int) -> BOSuggestion:
         group = self._group(group_id)
+        group_config = self._config_for_group(group_id)
         if self.pending is not None:
             if int(self.pending.get("group_id", 1)) == int(group_id):
                 return BOSuggestion(**self.pending)
@@ -938,11 +976,15 @@ class BOIntegrationSession:
         if pending is not None:
             return BOSuggestion(**pending)
         tried = {candidate_key(obs["params"]) for obs in existing}
-        available = self._available_candidates(tried)
+        available = self._available_candidates(tried, config=group_config)
         if not available:
             raise RuntimeError("All valid candidates have been evaluated")
         iteration = len(existing) + 1
-        params = self._choose_candidate(available, observations=existing)
+        params = self._choose_candidate(
+            available,
+            observations=existing,
+            config=group_config,
+        )
         method_id = f"{self.session_id}_g{group_id:02d}_iter_{iteration:03d}"
         suggestion = {
             "iteration": iteration,
@@ -974,11 +1016,12 @@ class BOIntegrationSession:
             suggestions = []
             count = max(1, int(count))
             for group in groups:
+                group_config = self._config_for_group(group["id"])
                 observed = self._group_observations(group["id"])
                 tried = {candidate_key(obs["params"]) for obs in observed}
                 pending_params = []
                 for offset in range(count):
-                    available = self._available_candidates(tried)
+                    available = self._available_candidates(tried, config=group_config)
                     if not available:
                         break
                     iteration = len(observed) + offset + 1
@@ -986,6 +1029,7 @@ class BOIntegrationSession:
                         available,
                         pending_params=pending_params,
                         observations=observed,
+                        config=group_config,
                     )
                     record = {
                         "iteration": iteration,
@@ -1043,9 +1087,19 @@ class BOIntegrationSession:
         self.save_state()
         return [BOSuggestion(**record) for record in suggestions]
 
-    def _available_candidates(self, tried: set) -> List[Dict[str, float]]:
+    def _available_candidates(self, tried: set, config: Optional[dict] = None) -> List[Dict[str, float]]:
+        config = config or self.config
         available = [c for c in self.candidates if candidate_key(c) not in tried]
-        dynamic = self._local_continuous_candidates(tried)
+        group_initial = resolve_initial_parameters(config)
+        if not validate_candidate(group_initial, config) and candidate_key(group_initial) not in tried:
+            if all(candidate_key(candidate) != candidate_key(group_initial) for candidate in available):
+                available.insert(0, group_initial)
+        original_config = self.config
+        self.config = config
+        try:
+            dynamic = self._local_continuous_candidates(tried)
+        finally:
+            self.config = original_config
         if dynamic:
             existing = {candidate_key(c) for c in available}
             for candidate in dynamic:
@@ -1711,14 +1765,22 @@ class BOIntegrationSession:
         available: List[Dict[str, float]],
         pending_params: Optional[List[dict]] = None,
         observations: Optional[List[dict]] = None,
+        config: Optional[dict] = None,
     ) -> Dict[str, float]:
         original_observations = self.observations
+        original_config = self.config
+        original_start = self._start_candidate
         if observations is not None:
             self.observations = observations
+        if config is not None:
+            self.config = config
+            self._start_candidate = resolve_initial_parameters(config)
         try:
             return self._choose_candidate_current(available, pending_params)
         finally:
             self.observations = original_observations
+            self.config = original_config
+            self._start_candidate = original_start
 
     def _choose_candidate_current(
         self,
@@ -1748,6 +1810,29 @@ class BOIntegrationSession:
             if int(group["id"]) == int(group_id):
                 return group
         raise ValueError(f"Unknown channel group {group_id}")
+
+    def _config_for_group(self, group_id: int) -> dict:
+        group = self._group(group_id)
+        config = json.loads(json.dumps(self.config))
+        if group.get("exploration") is not None:
+            config.setdefault("acquisition", {})["exploration"] = float(group["exploration"])
+        if group.get("n_initial_points") is not None:
+            config["n_initial_points"] = int(group["n_initial_points"])
+        acquisition = config.setdefault("acquisition", {})
+        if group.get("candidate_pool_size") is not None:
+            acquisition["candidate_pool_size"] = int(group["candidate_pool_size"])
+        if group.get("local_candidate_pool_size") is not None:
+            acquisition["local_candidate_pool_size"] = int(group["local_candidate_pool_size"])
+        if group.get("initial_point_mode") is not None:
+            acquisition["initial_point_mode"] = str(group["initial_point_mode"])
+        if isinstance(group.get("gp_falloff_fractions"), dict):
+            acquisition["gp_falloff_fractions"] = dict(group["gp_falloff_fractions"])
+            acquisition["gp_length_scales"] = dict(group["gp_falloff_fractions"])
+        if isinstance(group.get("initial_parameters"), dict):
+            initial = dict(config.get("initial_parameters") or {})
+            initial.update(group["initial_parameters"])
+            config["initial_parameters"] = initial
+        return normalize_bo_config(config)
 
     def _group_observations(self, group_id: int) -> List[dict]:
         return [

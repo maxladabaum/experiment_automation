@@ -27,6 +27,24 @@ def test_simulation_tuning_builds_independent_paired_bo_config():
         _var(master, "1, 2, 3"),
         _var(master, "4, 5"),
     ]
+    tab._engine_channel_group_settings = [
+        {
+            "exploration_var": _var(master, 0.3),
+            "warmup_var": _var(master, 2),
+            "candidate_pool_var": _var(master, 700),
+            "local_pool_var": _var(master, 70),
+            "start_mode_var": _var(master, "specific"),
+            "initial_parameters": dict(tab._config["initial_parameters"]),
+        },
+        {
+            "exploration_var": _var(master, 0.5),
+            "warmup_var": _var(master, 4),
+            "candidate_pool_var": _var(master, 900),
+            "local_pool_var": _var(master, 90),
+            "start_mode_var": _var(master, "random"),
+            "initial_parameters": dict(tab._config["initial_parameters"]),
+        },
+    ]
     tab._engine_score_vars = {
         "mode": _var(master, "classic"),
         "snr": _var(master, 0.5),
@@ -83,10 +101,49 @@ def test_simulation_tuning_builds_independent_paired_bo_config():
     assert tuned["analysis"]["crop_min_v"] == -0.55
     assert tuned["analysis"]["smooth_window"] == 11
     assert tuned["analysis"]["require_local_minima_on_both_sides"] is True
-    assert tuned["channel_groups"] == [
-        {"id": 1, "name": "Group 1", "channels": [1, 2, 3]},
-        {"id": 2, "name": "Group 2", "channels": [4, 5]},
-    ]
+    assert tuned["channel_groups"][0]["exploration"] == 0.3
+    assert tuned["channel_groups"][0]["n_initial_points"] == 2
+    assert tuned["channel_groups"][1]["exploration"] == 0.5
+    assert tuned["channel_groups"][1]["n_initial_points"] == 4
 
     assert tab._config["acquisition"]["exploration"] == original_exploration
     assert tab._config["scoring"]["paired_response_weights"] == original_scoring
+
+
+def test_main_setup_persists_per_group_optimizer_settings():
+    master = tk.Tcl()
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    tab._config = load_bo_config("optimizer/bo_configs/default_swv_bo.json")
+    tab._channels_var = _var(master, "")
+    tab._channel_group_vars = [_var(master, "1, 2"), _var(master, "3, 4")]
+    first_initial = dict(tab._config["initial_parameters"])
+    second_initial = dict(tab._config["initial_parameters"])
+    first_initial["amplitude"] = 0.02
+    second_initial["amplitude"] = 0.05
+    tab._channel_group_settings = [
+        {
+            "exploration_var": _var(master, 0.3),
+            "warmup_var": _var(master, 2),
+            "candidate_pool_var": _var(master, 700),
+            "local_pool_var": _var(master, 70),
+            "start_mode_var": _var(master, "specific"),
+            "initial_parameters": first_initial,
+        },
+        {
+            "exploration_var": _var(master, 0.5),
+            "warmup_var": _var(master, 6),
+            "candidate_pool_var": _var(master, 900),
+            "local_pool_var": _var(master, 90),
+            "start_mode_var": _var(master, "random"),
+            "initial_parameters": second_initial,
+        },
+    ]
+
+    tab._sync_channel_groups(show_error=False)
+
+    assert tab._config["channel_groups"][0]["exploration"] == 0.3
+    assert tab._config["channel_groups"][0]["n_initial_points"] == 2
+    assert tab._config["channel_groups"][0]["initial_parameters"]["amplitude"] == 0.02
+    assert tab._config["channel_groups"][1]["exploration"] == 0.5
+    assert tab._config["channel_groups"][1]["n_initial_points"] == 6
+    assert tab._config["channel_groups"][1]["initial_parameters"]["amplitude"] == 0.05
