@@ -9,12 +9,15 @@ shows records. BO math lives in core.bo_session.
 from __future__ import annotations
 
 import ast
+import copy
 import csv
 import json
 import math
 import pickle
 import re
+import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog
 import tkinter as tk
@@ -24,15 +27,19 @@ from config import (
     BO_ANALYSIS_FILE_GLOB,
     BO_ANALYSIS_OUTPUT_DIR,
     BO_DEFAULT_CONFIG_PATH,
+    BO_EXTERNAL_ANALYSIS_PROJECT,
+    BO_EXTERNAL_ANALYSIS_PYTHON,
     BO_LOCAL_PATHS_CONFIG,
 )
 from core.bo_session import (
     BOIntegrationSession,
+    DEFAULT_PARAMETER_RANGES,
     OPTIMIZER_ORDER,
     PARAMETER_ORDER,
     _acquisition_score,
     active_parameters,
     build_swv_script,
+    compute_paired_response_quality,
     compute_run_quality,
     encode_candidate,
     load_bo_config,
@@ -75,6 +82,8 @@ class BayesianOptimizationTab:
 
         self._config_path_var = tk.StringVar(value=str(BO_DEFAULT_CONFIG_PATH))
         self._analysis_dir_var = tk.StringVar(value=str(BO_ANALYSIS_OUTPUT_DIR))
+        self._analysis_project_var = tk.StringVar(value=str(BO_EXTERNAL_ANALYSIS_PROJECT))
+        self._analysis_python_var = tk.StringVar(value=str(BO_EXTERNAL_ANALYSIS_PYTHON))
         self._analysis_glob_var = tk.StringVar(value=str(BO_ANALYSIS_FILE_GLOB))
         self._analysis_crop_min_var = tk.StringVar(value="-0.61")
         self._analysis_crop_max_var = tk.StringVar(value="-0.30")
@@ -136,6 +145,25 @@ class BayesianOptimizationTab:
         self._rescore_low_threshold_var = tk.StringVar(value="0.50")
         self._rescore_formula_var = tk.StringVar(value="")
         self._rescore_status_var = tk.StringVar(value="Load a BO session to rescore recorded data.")
+        self._rescore_analysis_vars = {
+            "crop_min_v": tk.StringVar(value="-0.61"),
+            "crop_max_v": tk.StringVar(value="-0.30"),
+            "smooth_window": tk.StringVar(value="15"),
+            "smooth_polyorder": tk.StringVar(value="2"),
+            "minima_search_window_v": tk.StringVar(value="0.30"),
+            "min_peak_height_ua": tk.StringVar(value="0.001"),
+            "peak_voltage_min_v": tk.StringVar(value=""),
+            "peak_voltage_max_v": tk.StringVar(value=""),
+            "min_start_voltage_v": tk.StringVar(value="-0.70"),
+            "scan_windows": tk.StringVar(value=""),
+            "use_prominent_minima": tk.BooleanVar(value=False),
+            "require_local_minima_on_both_sides": tk.BooleanVar(value=False),
+            "use_double_correction": tk.BooleanVar(value=False),
+            "compute_skew": tk.BooleanVar(value=True),
+            "compute_wavelet_energy": tk.BooleanVar(value=True),
+            "compute_wavelet_denoised_trace": tk.BooleanVar(value=False),
+            "use_wavelet_for_correction": tk.BooleanVar(value=False),
+        }
         self._status_var = tk.StringVar(value="Load a BO config to begin.")
         self._record_dir_var = tk.StringVar(value="Record folder: (not started)")
         self._auto_target_var = tk.StringVar(value="5")
@@ -200,6 +228,25 @@ class BayesianOptimizationTab:
             }.items()
         }
         self._engine_paired_formula_var = tk.StringVar(value="")
+        self._engine_analysis_vars = {
+            "crop_min_v": tk.StringVar(value="-0.61"),
+            "crop_max_v": tk.StringVar(value="-0.30"),
+            "smooth_window": tk.StringVar(value="15"),
+            "smooth_polyorder": tk.StringVar(value="2"),
+            "minima_search_window_v": tk.StringVar(value="0.30"),
+            "min_peak_height_ua": tk.StringVar(value="0.001"),
+            "peak_voltage_min_v": tk.StringVar(value=""),
+            "peak_voltage_max_v": tk.StringVar(value=""),
+            "min_start_voltage_v": tk.StringVar(value="-0.70"),
+            "scan_windows": tk.StringVar(value=""),
+            "use_prominent_minima": tk.BooleanVar(value=False),
+            "require_local_minima_on_both_sides": tk.BooleanVar(value=False),
+            "use_double_correction": tk.BooleanVar(value=False),
+            "compute_skew": tk.BooleanVar(value=True),
+            "compute_wavelet_energy": tk.BooleanVar(value=True),
+            "compute_wavelet_denoised_trace": tk.BooleanVar(value=False),
+            "use_wavelet_for_correction": tk.BooleanVar(value=False),
+        }
         self._engine_target_response_gain_var = tk.StringVar(value="2.0")
         self._engine_target_noise_multiplier_var = tk.StringVar(value="1.05")
         self._engine_delta_peak_floor_var = tk.StringVar(value="0.0")
@@ -412,17 +459,25 @@ class BayesianOptimizationTab:
         ttk.Button(cfg, text="Browse", command=self._browse_analysis_dir).grid(row=1, column=2, padx=2)
         ttk.Button(cfg, text="Save Paths", command=self._save_local_paths).grid(row=1, column=3, columnspan=2, padx=2)
 
-        ttk.Label(cfg, text="Analysis glob:").grid(row=2, column=0, sticky="w", pady=2)
-        ttk.Entry(cfg, textvariable=self._analysis_glob_var, width=14).grid(row=2, column=1, sticky="w", padx=4)
+        ttk.Label(cfg, text="64-bit analysis Python:").grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Entry(cfg, textvariable=self._analysis_python_var).grid(row=2, column=1, sticky="ew", padx=4)
+        ttk.Button(cfg, text="Browse", command=self._browse_analysis_python).grid(row=2, column=2, padx=2)
 
-        ttk.Label(cfg, text="Mux channels:").grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Label(cfg, text="Application project:").grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Entry(cfg, textvariable=self._analysis_project_var).grid(row=3, column=1, sticky="ew", padx=4)
+        ttk.Button(cfg, text="Browse", command=self._browse_analysis_project).grid(row=3, column=2, padx=2)
+
+        ttk.Label(cfg, text="Analysis glob:").grid(row=4, column=0, sticky="w", pady=2)
+        ttk.Entry(cfg, textvariable=self._analysis_glob_var, width=14).grid(row=4, column=1, sticky="w", padx=4)
+
+        ttk.Label(cfg, text="Mux channels:").grid(row=5, column=0, sticky="w", pady=2)
         channels = ttk.Entry(cfg, textvariable=self._channels_var)
-        channels.grid(row=3, column=1, sticky="ew", padx=4)
+        channels.grid(row=5, column=1, sticky="ew", padx=4)
         channels.bind("<FocusOut>", lambda _e: self._sync_channels_from_entry())
         channels.bind("<Return>", lambda _e: self._sync_channels_from_entry())
-        ttk.Button(cfg, text="Validate", command=self._validate_config).grid(row=3, column=2, padx=2)
-        ttk.Button(cfg, text="Load BO Session", command=self._load_bo_session).grid(row=3, column=3, padx=2)
-        ttk.Button(cfg, text="Start BO Session", command=self._start_bo_session).grid(row=3, column=4, padx=2)
+        ttk.Button(cfg, text="Validate", command=self._validate_config).grid(row=5, column=2, padx=2)
+        ttk.Button(cfg, text="Load BO Session", command=self._load_bo_session).grid(row=5, column=3, padx=2)
+        ttk.Button(cfg, text="Start BO Session", command=self._start_bo_session).grid(row=5, column=4, padx=2)
 
         clue = ttk.LabelFrame(left, text="Setup Cues", padding=8)
         clue.pack(fill="x", pady=(0, 8))
@@ -455,7 +510,10 @@ class BayesianOptimizationTab:
         ).grid(row=1, column=0, sticky="w", pady=2)
         ttk.Label(
             type_box,
-            text="Paired mode computes classic Q for buffer and target traces, then combines those Q values with peak-height change.",
+            text=(
+                "Paired mode scores the target response as the target-minus-buffer peak change "
+                "divided by the sum of target and buffer channel noise."
+            ),
             foreground=self.ACCENT,
             wraplength=460,
             justify="left",
@@ -571,7 +629,6 @@ class BayesianOptimizationTab:
         )
         start_mode.grid(row=3, column=1, sticky="w", padx=6, pady=2)
         start_mode.bind("<<ComboboxSelected>>", lambda _e: self._sync_algorithm_config(show_error=False))
-        ttk.Button(algo_box, text="Edit GP Falloff", command=self._edit_gp_length_scales).grid(row=3, column=2, sticky="e", padx=(6, 0), pady=2)
         ttk.Label(
             algo_box,
             text="`specific` uses Initial Parameters. `random` chooses one valid candidate as the first BO point. In paired mode, warmup cycles are consolidated into one buffer block and one target block.",
@@ -694,7 +751,7 @@ class BayesianOptimizationTab:
             lambda: self._sync_scoring_config(show_error=False),
             preset_command=self._apply_signal_priority_preset,
         )
-        paired_scoring_box = ttk.LabelFrame(scoring_content, text="Paired Q Weights", padding=8)
+        paired_scoring_box = ttk.LabelFrame(scoring_content, text="Paired Q Scoring", padding=8)
         self._paired_scoring_frame = paired_scoring_box
         scoring_scroll._bind_mousewheel(paired_scoring_box)
         self._build_paired_q_scoring_controls(paired_scoring_box)
@@ -730,7 +787,7 @@ class BayesianOptimizationTab:
         ttk.Checkbutton(analysis_box, text="Wavelet correction", variable=self._analysis_wavelet_correction_var).grid(row=5, column=2, sticky="w", pady=2)
         ttk.Label(
             analysis_box,
-            text="These settings are used by the in-repo BO analysis runner.",
+            text="These settings are sent to the external 64-bit BO analysis worker.",
             foreground=self.ACCENT,
         ).grid(row=6, column=0, columnspan=4, sticky="w", pady=(4, 0))
         self._on_bo_type_changed(sync=False)
@@ -820,12 +877,14 @@ class BayesianOptimizationTab:
             text="Classic BO simulation",
             variable=self._engine_paired_response_var,
             value=False,
+            command=self._on_engine_bo_type_changed,
         ).grid(row=0, column=0, sticky="w", padx=4, pady=3)
         ttk.Radiobutton(
             mode_box,
             text="Paired-response batched BO simulation",
             variable=self._engine_paired_response_var,
             value=True,
+            command=self._on_engine_bo_type_changed,
         ).grid(row=1, column=0, sticky="w", padx=4, pady=3)
 
         schedule_box = ttk.LabelFrame(setup_box, text="Simulation Schedule", padding=8)
@@ -891,10 +950,50 @@ class BayesianOptimizationTab:
             justify="left",
         ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(4, 0))
 
+        analysis_box = ttk.LabelFrame(setup_box, text="External Analysis Settings", padding=8)
+        analysis_box.pack(fill="x", pady=(0, 8))
+        for idx in range(4):
+            analysis_box.columnconfigure(idx, weight=1 if idx in (1, 3) else 0)
+        analysis_vars = self._engine_analysis_vars
+        ttk.Label(analysis_box, text="Crop min/max (V):").grid(row=0, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=analysis_vars["crop_min_v"], width=8).grid(row=0, column=1, sticky="w", padx=(4, 2))
+        ttk.Entry(analysis_box, textvariable=analysis_vars["crop_max_v"], width=8).grid(row=0, column=1, sticky="e", padx=(2, 4))
+        ttk.Label(analysis_box, text="Smooth win/poly:").grid(row=0, column=2, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=analysis_vars["smooth_window"], width=8).grid(row=0, column=3, sticky="w", padx=(4, 2))
+        ttk.Entry(analysis_box, textvariable=analysis_vars["smooth_polyorder"], width=8).grid(row=0, column=3, sticky="e", padx=(2, 4))
+        ttk.Label(analysis_box, text="Minima window (V):").grid(row=1, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=analysis_vars["minima_search_window_v"], width=10).grid(row=1, column=1, sticky="w", padx=4)
+        ttk.Label(analysis_box, text="Min peak height (uA):").grid(row=1, column=2, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=analysis_vars["min_peak_height_ua"], width=10).grid(row=1, column=3, sticky="w", padx=4)
+        ttk.Label(analysis_box, text="Peak V min/max:").grid(row=2, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=analysis_vars["peak_voltage_min_v"], width=8).grid(row=2, column=1, sticky="w", padx=(4, 2))
+        ttk.Entry(analysis_box, textvariable=analysis_vars["peak_voltage_max_v"], width=8).grid(row=2, column=1, sticky="e", padx=(2, 4))
+        ttk.Label(analysis_box, text="Min start V:").grid(row=2, column=2, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=analysis_vars["min_start_voltage_v"], width=10).grid(row=2, column=3, sticky="w", padx=4)
+        ttk.Label(analysis_box, text="Scan windows:").grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=analysis_vars["scan_windows"]).grid(row=3, column=1, columnspan=3, sticky="ew", padx=4)
+        ttk.Checkbutton(analysis_box, text="Prominent minima", variable=analysis_vars["use_prominent_minima"]).grid(row=4, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Require minima both sides", variable=analysis_vars["require_local_minima_on_both_sides"]).grid(row=4, column=1, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Double correction", variable=analysis_vars["use_double_correction"]).grid(row=4, column=2, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Compute skew", variable=analysis_vars["compute_skew"]).grid(row=4, column=3, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet energy", variable=analysis_vars["compute_wavelet_energy"]).grid(row=5, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet trace", variable=analysis_vars["compute_wavelet_denoised_trace"]).grid(row=5, column=1, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet correction", variable=analysis_vars["use_wavelet_for_correction"]).grid(row=5, column=2, sticky="w", pady=2)
+        ttk.Label(
+            analysis_box,
+            text="These values are sent with every simulated raw trace to the same 64-bit analysis worker used by real BO.",
+            foreground=self.ACCENT,
+            wraplength=760,
+            justify="left",
+        ).grid(row=6, column=0, columnspan=4, sticky="w", pady=(4, 0))
+
         scoring_tabs = ttk.Notebook(setup_box)
         scoring_tabs.pack(fill="both", expand=True, pady=(0, 8))
         classic_scoring_tab = ttk.Frame(scoring_tabs)
         paired_scoring_tab = ttk.Frame(scoring_tabs)
+        self._engine_scoring_tabs = scoring_tabs
+        self._engine_classic_scoring_tab = classic_scoring_tab
+        self._engine_paired_scoring_tab = paired_scoring_tab
         scoring_tabs.add(classic_scoring_tab, text="Classic Q Scoring")
         scoring_tabs.add(paired_scoring_tab, text="Paired Q Scoring")
         self._build_q_scoring_controls(
@@ -910,6 +1009,7 @@ class BayesianOptimizationTab:
             on_change=self._refresh_engine_scoring_formulas,
         )
         self._refresh_engine_scoring_formulas()
+        self._on_engine_bo_type_changed()
         ttk.Button(setup_box, text="Next: Landscape", command=self._engine_next_page).pack(anchor="e", pady=(8, 0))
 
         dims_box = ttk.LabelFrame(landscape_page, text="Synthetic Parameter Landscape Map", padding=8)
@@ -1265,16 +1365,47 @@ class BayesianOptimizationTab:
 
         rescore_box = ttk.LabelFrame(q_rescore_left, text="Rescore Recorded Data", padding=8)
         rescore_box.pack(fill="both", expand=True)
-        button_bar = ttk.Frame(rescore_box)
-        button_bar.grid(row=0, column=0, columnspan=6, sticky="ew", pady=(0, 4))
+        rescore_canvas = tk.Canvas(rescore_box, highlightthickness=0, borderwidth=0)
+        rescore_scrollbar = ttk.Scrollbar(rescore_box, orient="vertical", command=rescore_canvas.yview)
+        rescore_content = ttk.Frame(rescore_canvas)
+        rescore_window = rescore_canvas.create_window((0, 0), window=rescore_content, anchor="nw")
+        rescore_canvas.configure(yscrollcommand=rescore_scrollbar.set)
+        rescore_content.bind(
+            "<Configure>",
+            lambda _event: rescore_canvas.configure(scrollregion=rescore_canvas.bbox("all")),
+        )
+        rescore_canvas.bind(
+            "<Configure>",
+            lambda event: rescore_canvas.itemconfigure(rescore_window, width=event.width),
+        )
+        rescore_canvas.pack(side="left", fill="both", expand=True)
+        rescore_scrollbar.pack(side="right", fill="y")
+        rescore_canvas.bind(
+            "<MouseWheel>",
+            lambda event: rescore_canvas.yview_scroll(-1 if event.delta > 0 else 1, "units"),
+        )
+
+        button_bar = ttk.Frame(rescore_content)
+        button_bar.pack(fill="x", pady=(0, 4))
         ttk.Button(button_bar, text="Apply Rescore", command=self._apply_rescore_to_loaded_session).pack(side="left", padx=2)
+        self._reanalyze_rescore_button = ttk.Button(
+            button_bar,
+            text="Reanalyze & Rescore",
+            command=self._reanalyze_and_rescore_loaded_session,
+        )
+        self._reanalyze_rescore_button.pack(side="left", padx=2)
         ttk.Button(button_bar, text="Reset Original", command=self._reset_rescore_to_original).pack(side="left", padx=2)
         ttk.Button(button_bar, text="Save Rescored Session", command=self._save_rescored_session).pack(side="left", padx=2)
         ttk.Label(button_bar, textvariable=self._rescore_status_var, foreground=self.ACCENT, wraplength=430, justify="left").pack(side="left", padx=(8, 2))
-        controls = ttk.Frame(rescore_box)
-        controls.grid(row=1, column=0, columnspan=6, sticky="nsew")
-        rescore_box.rowconfigure(1, weight=1)
-        rescore_box.columnconfigure(0, weight=1)
+        analysis_controls = ttk.LabelFrame(
+            rescore_content,
+            text="Analysis Parameters Used by Reanalyze & Rescore",
+            padding=6,
+        )
+        analysis_controls.pack(fill="x", pady=(2, 6))
+        self._build_reanalysis_controls(analysis_controls)
+        controls = ttk.Frame(rescore_content)
+        controls.pack(fill="both", expand=True)
         self._build_q_scoring_controls(
             controls,
             self._rescore_scoring_vars(),
@@ -1282,6 +1413,18 @@ class BayesianOptimizationTab:
             self._preview_rescore_equation,
             preset_command=self._apply_rescore_signal_priority_preset,
         )
+        def bind_rescore_wheel(widget):
+            widget.bind(
+                "<MouseWheel>",
+                lambda event: rescore_canvas.yview_scroll(-1 if event.delta > 0 else 1, "units"),
+                add="+",
+            )
+            widget.bind("<Button-4>", lambda _event: rescore_canvas.yview_scroll(-1, "units"), add="+")
+            widget.bind("<Button-5>", lambda _event: rescore_canvas.yview_scroll(1, "units"), add="+")
+            for child in widget.winfo_children():
+                bind_rescore_wheel(child)
+
+        bind_rescore_wheel(rescore_content)
 
         surrogate_box = ttk.LabelFrame(bottom, text="Surrogate View", padding=6)
         bottom.add(surrogate_box, minsize=260, stretch="always")
@@ -1366,6 +1509,16 @@ class BayesianOptimizationTab:
         if path:
             self._analysis_dir_var.set(path)
 
+    def _browse_analysis_python(self):
+        path = filedialog.askopenfilename(title="Choose 64-bit Python executable")
+        if path:
+            self._analysis_python_var.set(path)
+
+    def _browse_analysis_project(self):
+        path = filedialog.askdirectory(title="Choose experiment automation project")
+        if path:
+            self._analysis_project_var.set(path)
+
     def _browse_paired_block(self, variable, title):
         path = filedialog.askopenfilename(
             title=title,
@@ -1379,6 +1532,14 @@ class BayesianOptimizationTab:
             payload = {
                 "analysis_output_dir": self._analysis_dir_var.get().strip(),
                 "analysis_file_glob": self._analysis_glob_var.get().strip() or "*.json",
+                "analysis_project": self._analysis_project_var.get().strip(),
+                "analysis_script": str(
+                    Path(self._analysis_project_var.get().strip())
+                    / "analysis_worker"
+                    / "bo_headless.py"
+                ),
+                "analysis_python": self._analysis_python_var.get().strip(),
+                "analysis_mode": "external",
             }
             BO_LOCAL_PATHS_CONFIG.parent.mkdir(parents=True, exist_ok=True)
             with open(BO_LOCAL_PATHS_CONFIG, "w", encoding="utf-8") as fh:
@@ -1583,32 +1744,99 @@ class BayesianOptimizationTab:
         paired_weights.update(dict(scoring.get("paired_response_weights") or {}))
         for key, var in self._engine_paired_score_vars.items():
             var.set(str(paired_weights.get(key, self._default_paired_response_weights()[key])))
+        if hasattr(self, "_engine_analysis_vars"):
+            self._set_engine_analysis_vars(dict((cfg or {}).get("analysis") or {}))
         self._refresh_engine_scoring_formulas()
+
+    def _set_engine_analysis_vars(self, analysis: dict):
+        values = {
+            "crop_min_v": analysis.get("crop_min_v", -0.61),
+            "crop_max_v": analysis.get("crop_max_v", -0.30),
+            "smooth_window": analysis.get("smooth_window", 15),
+            "smooth_polyorder": analysis.get("smooth_polyorder", 2),
+            "minima_search_window_v": analysis.get("minima_search_window_v", 0.30),
+            "min_peak_height_ua": analysis.get("min_peak_height_ua", 0.001),
+            "peak_voltage_min_v": analysis.get("peak_voltage_min_v"),
+            "peak_voltage_max_v": analysis.get("peak_voltage_max_v"),
+            "min_start_voltage_v": analysis.get("min_start_voltage_v", -0.70),
+            "scan_windows": analysis.get("scan_windows", ""),
+        }
+        for key, value in values.items():
+            self._engine_analysis_vars[key].set("" if value is None else str(value))
+        for key in (
+            "use_prominent_minima",
+            "require_local_minima_on_both_sides",
+            "use_double_correction",
+            "compute_skew",
+            "compute_wavelet_energy",
+            "compute_wavelet_denoised_trace",
+            "use_wavelet_for_correction",
+        ):
+            self._engine_analysis_vars[key].set(bool(analysis.get(key, False)))
+
+    def _engine_analysis_config(self):
+        variables = self._engine_analysis_vars
+
+        def optional_float(key):
+            text = (variables[key].get() or "").strip()
+            return None if not text else float(text)
+
+        analysis = {
+            "crop_min_v": float(variables["crop_min_v"].get()),
+            "crop_max_v": float(variables["crop_max_v"].get()),
+            "smooth_window": int(variables["smooth_window"].get()),
+            "smooth_polyorder": int(variables["smooth_polyorder"].get()),
+            "minima_search_window_v": float(variables["minima_search_window_v"].get()),
+            "min_peak_height_ua": optional_float("min_peak_height_ua"),
+            "peak_voltage_min_v": optional_float("peak_voltage_min_v"),
+            "peak_voltage_max_v": optional_float("peak_voltage_max_v"),
+            "min_start_voltage_v": float(variables["min_start_voltage_v"].get()),
+            "scan_windows": (variables["scan_windows"].get() or "").strip(),
+            "use_prominent_minima": bool(variables["use_prominent_minima"].get()),
+            "require_local_minima_on_both_sides": bool(variables["require_local_minima_on_both_sides"].get()),
+            "use_double_correction": bool(variables["use_double_correction"].get()),
+            "compute_skew": bool(variables["compute_skew"].get()),
+            "compute_wavelet_energy": bool(variables["compute_wavelet_energy"].get()),
+            "compute_wavelet_denoised_trace": bool(variables["compute_wavelet_denoised_trace"].get()),
+            "use_wavelet_for_correction": bool(variables["use_wavelet_for_correction"].get()),
+        }
+        if analysis["crop_min_v"] >= analysis["crop_max_v"]:
+            raise ValueError("Simulation analysis crop minimum must be below crop maximum.")
+        if analysis["smooth_window"] < 0 or analysis["smooth_polyorder"] < 0:
+            raise ValueError("Simulation smoothing window and polynomial order must be nonnegative.")
+        if analysis["minima_search_window_v"] <= 0:
+            raise ValueError("Simulation minima window must be positive.")
+        if (
+            analysis["peak_voltage_min_v"] is not None
+            and analysis["peak_voltage_max_v"] is not None
+            and analysis["peak_voltage_min_v"] > analysis["peak_voltage_max_v"]
+        ):
+            raise ValueError("Simulation peak V minimum cannot exceed maximum.")
+        return analysis
 
     def _refresh_engine_scoring_formulas(self):
         self._engine_exploration_text_var.set(f"{float(self._engine_exploration_var.get()):.2f}")
         self._refresh_formula_from_vars(self._engine_score_vars, self._engine_score_formula_var)
-        try:
-            weights = {
-                key: max(1e-12, float(var.get() or 0.0))
-                if key == "delta_scale_uA"
-                else max(0.0, float(var.get() or 0.0))
-                for key, var in self._engine_paired_score_vars.items()
-            }
-            total = (
-                weights["buffer_classic_Q"]
-                + weights["target_classic_Q"]
-                + weights["delta_peak"]
-            )
-            self._engine_paired_formula_var.set(
-                "paired_Q_channel = ("
-                f"{weights['buffer_classic_Q']:g}*buffer_classic_Q + "
-                f"{weights['target_classic_Q']:g}*target_classic_Q + "
-                f"{weights['delta_peak']:g}*log1p(abs(delta_peak)/"
-                f"{weights['delta_scale_uA']:g})) / {max(total, 1e-12):.3g}"
-            )
-        except Exception:
-            self._engine_paired_formula_var.set("Enter numeric paired-Q weights.")
+        self._engine_paired_formula_var.set(
+            "paired_Q_channel = delta_peak / "
+            "(target_channel_noise + buffer_channel_noise)"
+        )
+
+    def _on_engine_bo_type_changed(self):
+        tabs = getattr(self, "_engine_scoring_tabs", None)
+        paired_tab = getattr(self, "_engine_paired_scoring_tab", None)
+        classic_tab = getattr(self, "_engine_classic_scoring_tab", None)
+        if tabs is None or paired_tab is None:
+            return
+        if bool(self._engine_paired_response_var.get()):
+            tabs.add(paired_tab, text="Paired Q Scoring")
+        else:
+            try:
+                if tabs.select() == str(paired_tab) and classic_tab is not None:
+                    tabs.select(classic_tab)
+            except Exception:
+                pass
+            tabs.hide(paired_tab)
 
     def _engine_bo_config(self, sim_cfg=None):
         if self._config is None:
@@ -1645,6 +1873,8 @@ class BayesianOptimizationTab:
             for key, var in self._engine_paired_score_vars.items()
         }
         cfg["scoring"] = scoring
+        if hasattr(self, "_engine_analysis_vars"):
+            cfg["analysis"] = self._engine_analysis_config()
         warmup = max(0, int(self._engine_warmup_iterations_var.get() or 0))
         if bool(sim_cfg.get("paired_response")):
             batch_size = max(1, int(sim_cfg.get("paired_batch_size", 1)))
@@ -1843,6 +2073,108 @@ class BayesianOptimizationTab:
             "low_channel_threshold": self._rescore_low_threshold_var,
         }
 
+    def _build_reanalysis_controls(self, parent):
+        variables = self._rescore_analysis_vars
+        entries = (
+            ("Crop min V", "crop_min_v", "Crop max V", "crop_max_v"),
+            ("Smooth window", "smooth_window", "Polynomial order", "smooth_polyorder"),
+            ("Minima window V", "minima_search_window_v", "Min peak height uA", "min_peak_height_ua"),
+            ("Peak V min", "peak_voltage_min_v", "Peak V max", "peak_voltage_max_v"),
+            ("Min start V", "min_start_voltage_v", "Scan windows", "scan_windows"),
+        )
+        for row, (left_label, left_key, right_label, right_key) in enumerate(entries):
+            ttk.Label(parent, text=f"{left_label}:").grid(row=row, column=0, sticky="w", pady=2)
+            ttk.Entry(parent, textvariable=variables[left_key], width=13).grid(
+                row=row, column=1, sticky="ew", padx=(4, 12), pady=2
+            )
+            ttk.Label(parent, text=f"{right_label}:").grid(row=row, column=2, sticky="w", pady=2)
+            ttk.Entry(parent, textvariable=variables[right_key], width=16).grid(
+                row=row, column=3, sticky="ew", padx=4, pady=2
+            )
+        checks = (
+            ("Prominent minima", "use_prominent_minima"),
+            ("Require minima both sides", "require_local_minima_on_both_sides"),
+            ("Double correction", "use_double_correction"),
+            ("Compute skew", "compute_skew"),
+            ("Wavelet energy", "compute_wavelet_energy"),
+            ("Wavelet trace", "compute_wavelet_denoised_trace"),
+            ("Wavelet correction", "use_wavelet_for_correction"),
+        )
+        for index, (label, key) in enumerate(checks):
+            row = 5 + index // 2
+            column = (index % 2) * 2
+            ttk.Checkbutton(parent, text=label, variable=variables[key]).grid(
+                row=row, column=column, columnspan=2, sticky="w", pady=2
+            )
+        parent.columnconfigure(1, weight=1)
+        parent.columnconfigure(3, weight=1)
+
+    def _set_reanalysis_vars(self, analysis):
+        values = {
+            "crop_min_v": analysis.get("crop_min_v", -0.61),
+            "crop_max_v": analysis.get("crop_max_v", -0.30),
+            "smooth_window": analysis.get("smooth_window", 15),
+            "smooth_polyorder": analysis.get("smooth_polyorder", 2),
+            "minima_search_window_v": analysis.get("minima_search_window_v", 0.30),
+            "min_peak_height_ua": analysis.get("min_peak_height_ua", 0.001),
+            "peak_voltage_min_v": analysis.get("peak_voltage_min_v"),
+            "peak_voltage_max_v": analysis.get("peak_voltage_max_v"),
+            "min_start_voltage_v": analysis.get("min_start_voltage_v", -0.70),
+            "scan_windows": analysis.get("scan_windows", ""),
+        }
+        for key, value in values.items():
+            self._rescore_analysis_vars[key].set("" if value is None else str(value))
+        for key in (
+            "use_prominent_minima",
+            "require_local_minima_on_both_sides",
+            "use_double_correction",
+            "compute_skew",
+            "compute_wavelet_energy",
+            "compute_wavelet_denoised_trace",
+            "use_wavelet_for_correction",
+        ):
+            self._rescore_analysis_vars[key].set(bool(analysis.get(key, False)))
+
+    def _reanalysis_config(self):
+        variables = self._rescore_analysis_vars
+
+        def optional_float(key):
+            text = (variables[key].get() or "").strip()
+            return None if not text else float(text)
+
+        analysis = {
+            "crop_min_v": float(variables["crop_min_v"].get()),
+            "crop_max_v": float(variables["crop_max_v"].get()),
+            "smooth_window": int(variables["smooth_window"].get()),
+            "smooth_polyorder": int(variables["smooth_polyorder"].get()),
+            "minima_search_window_v": float(variables["minima_search_window_v"].get()),
+            "min_peak_height_ua": optional_float("min_peak_height_ua"),
+            "peak_voltage_min_v": optional_float("peak_voltage_min_v"),
+            "peak_voltage_max_v": optional_float("peak_voltage_max_v"),
+            "min_start_voltage_v": float(variables["min_start_voltage_v"].get()),
+            "scan_windows": (variables["scan_windows"].get() or "").strip(),
+            "use_prominent_minima": bool(variables["use_prominent_minima"].get()),
+            "require_local_minima_on_both_sides": bool(variables["require_local_minima_on_both_sides"].get()),
+            "use_double_correction": bool(variables["use_double_correction"].get()),
+            "compute_skew": bool(variables["compute_skew"].get()),
+            "compute_wavelet_energy": bool(variables["compute_wavelet_energy"].get()),
+            "compute_wavelet_denoised_trace": bool(variables["compute_wavelet_denoised_trace"].get()),
+            "use_wavelet_for_correction": bool(variables["use_wavelet_for_correction"].get()),
+        }
+        if analysis["crop_min_v"] >= analysis["crop_max_v"]:
+            raise ValueError("Reanalysis crop minimum must be below crop maximum.")
+        if analysis["smooth_window"] < 0 or analysis["smooth_polyorder"] < 0:
+            raise ValueError("Reanalysis smoothing window and polynomial order must be nonnegative.")
+        if analysis["minima_search_window_v"] <= 0:
+            raise ValueError("Reanalysis minima window must be positive.")
+        if (
+            analysis["peak_voltage_min_v"] is not None
+            and analysis["peak_voltage_max_v"] is not None
+            and analysis["peak_voltage_min_v"] > analysis["peak_voltage_max_v"]
+        ):
+            raise ValueError("Reanalysis peak V minimum cannot exceed maximum.")
+        return analysis
+
     def _build_q_scoring_controls(self, scoring_box, vars_by_name, formula_var, on_change, preset_command=None):
         for idx in range(6):
             scoring_box.columnconfigure(idx, weight=1 if idx in (1, 3, 5) else 0)
@@ -1907,42 +2239,25 @@ class BayesianOptimizationTab:
         formula_var=None,
         on_change=None,
     ):
-        vars_by_name = vars_by_name or self._paired_scoring_vars()
         formula_var = formula_var or self._paired_formula_var
-        on_change = on_change or (lambda: self._sync_scoring_config(show_error=False))
-        for idx in range(6):
-            scoring_box.columnconfigure(idx, weight=1 if idx in (1, 3, 5) else 0)
+        scoring_box.columnconfigure(0, weight=1)
         ttk.Label(
             scoring_box,
             textvariable=formula_var,
             foreground=self.ACCENT,
             wraplength=760,
             justify="left",
-        ).grid(row=0, column=0, columnspan=6, sticky="w", pady=(0, 8))
+        ).grid(row=0, column=0, sticky="w", pady=(0, 8))
         ttk.Label(
             scoring_box,
             text=(
-                "Paired Q first computes classic Q for the buffer trace and classic Q for the target trace "
-                "using the Classic Trace Q controls, then combines buffer classic Q, target classic Q, "
-                "and the target-buffer peak-height change with these weights."
+                "This is the sensing signal-to-noise ratio for each channel. "
+                "delta_peak is signed: target_peak_height_uA - buffer_peak_height_uA. "
+                "The denominator uses the measured background RMS noise from both traces."
             ),
             wraplength=760,
             justify="left",
-        ).grid(row=1, column=0, columnspan=6, sticky="w", pady=(0, 8))
-        entries = [
-            ("Buffer classic Q weight:", "buffer_classic_Q"),
-            ("Target classic Q weight:", "target_classic_Q"),
-            ("Delta peak weight:", "delta_peak"),
-            ("Delta scale (uA):", "delta_scale_uA"),
-        ]
-        for idx, (label, key) in enumerate(entries):
-            row = 2 + idx // 2
-            base_col = (idx % 2) * 3
-            ttk.Label(scoring_box, text=label).grid(row=row, column=base_col, sticky="w", pady=2)
-            entry = ttk.Entry(scoring_box, textvariable=vars_by_name[key], width=9)
-            entry.grid(row=row, column=base_col + 1, sticky="w", padx=(4, 10), pady=2)
-            entry.bind("<FocusOut>", lambda _e: on_change())
-            entry.bind("<Return>", lambda _e: on_change())
+        ).grid(row=1, column=0, sticky="w", pady=(0, 8))
 
     def _set_scoring_vars_from_config(self, cfg: dict):
         scoring = dict((cfg or {}).get("scoring") or {})
@@ -2005,22 +2320,16 @@ class BayesianOptimizationTab:
 
     def _refresh_paired_score_formula(self):
         try:
-            weights = self._paired_scoring_from_vars()
-            buffer_q_w = float(weights.get("buffer_classic_Q", 0.25))
-            target_q_w = float(weights.get("target_classic_Q", 0.25))
-            delta_w = float(weights.get("delta_peak", 1.0))
-            delta_scale = float(weights.get("delta_scale_uA", 1.0))
-            total = buffer_q_w + target_q_w + delta_w
             self._paired_formula_var.set(
                 "delta_peak = target_peak_height_uA - buffer_peak_height_uA; "
-                f"delta_peak_score = log1p(abs(delta_peak)/{delta_scale:g}); "
-                "Q_channel = paired_Q_channel = ("
-                f"{buffer_q_w:g}*buffer_classic_Q + "
-                f"{target_q_w:g}*target_classic_Q + "
-                f"{delta_w:g}*delta_peak_score) / {max(total, 1e-12):.3g}"
+                "Q_channel = paired_Q_channel = delta_peak / "
+                "(target_channel_noise + buffer_channel_noise)"
             )
         except Exception:
-            self._paired_formula_var.set("Q_channel = paired_Q_channel = weighted paired response score. Enter numeric weights.")
+            self._paired_formula_var.set(
+                "Q_channel = paired_Q_channel = delta_peak / "
+                "(target_channel_noise + buffer_channel_noise)"
+            )
 
     def _on_bo_type_changed(self, sync=True):
         paired = self._bo_objective_var.get() == "paired_response"
@@ -2139,6 +2448,7 @@ class BayesianOptimizationTab:
 
     def _set_rescore_vars_from_config(self, cfg):
         self._set_scoring_vars(cfg, self._rescore_scoring_vars(), self._rescore_formula_var)
+        self._set_reanalysis_vars(dict((cfg or {}).get("analysis") or {}))
         self._refresh_current_q_equation(cfg)
 
     def _preview_rescore_equation(self):
@@ -2181,15 +2491,26 @@ class BayesianOptimizationTab:
             rescored = 0
             rebuilt_metrics = 0
             for obs in self._bo_session.observations:
-                channel_metrics = self._rebuilt_channel_metrics_for_observation(obs)
-                if isinstance(channel_metrics, dict):
-                    obs["channel_metrics"] = channel_metrics
-                    rebuilt_metrics += 1
+                if self._is_paired_observation(obs):
+                    buffer_metrics = obs.get("buffer_channel_metrics")
+                    target_metrics = obs.get("target_channel_metrics")
+                    if not isinstance(buffer_metrics, dict) or not isinstance(target_metrics, dict):
+                        continue
+                    quality = compute_paired_response_quality(
+                        buffer_metrics,
+                        target_metrics,
+                        scoring,
+                    )
                 else:
-                    channel_metrics = obs.get("channel_metrics")
-                if not isinstance(channel_metrics, dict):
-                    continue
-                quality = compute_run_quality(channel_metrics, scoring)
+                    channel_metrics = self._rebuilt_channel_metrics_for_observation(obs)
+                    if isinstance(channel_metrics, dict):
+                        obs["channel_metrics"] = channel_metrics
+                        rebuilt_metrics += 1
+                    else:
+                        channel_metrics = obs.get("channel_metrics")
+                    if not isinstance(channel_metrics, dict):
+                        continue
+                    quality = compute_run_quality(channel_metrics, scoring)
                 obs["quality"] = quality
                 obs["Q_run"] = quality["Q_run"]
                 for record in self._bo_session.suggestions:
@@ -2216,6 +2537,94 @@ class BayesianOptimizationTab:
             self._rescore_status_var.set(f"Rescore failed: {exc}")
             if show_error:
                 messagebox.showerror("Rescore Q Scores", str(exc))
+
+    def _reanalyze_and_rescore_loaded_session(self):
+        if self._bo_session is None:
+            self._rescore_status_var.set("Load a BO session before reanalyzing.")
+            return
+        if getattr(self, "_reanalyze_rescore_running", False):
+            return
+        try:
+            scoring = self._scoring_from_vars(self._rescore_scoring_vars())
+            analysis = self._reanalysis_config()
+        except Exception as exc:
+            messagebox.showerror("Reanalyze & Rescore", str(exc))
+            return
+        observations = list(self._bo_session.observations)
+        if not observations:
+            self._rescore_status_var.set("The loaded BO session has no observations.")
+            return
+        self._reanalyze_rescore_running = True
+        self._reanalyze_rescore_button.configure(state="disabled")
+        output_dir = (
+            Path(self._bo_session.record_dir)
+            / "reanalysis"
+            / datetime.now().strftime("%Y%m%d_%H%M%S")
+        )
+        self._rescore_status_var.set(
+            f"Reanalyzing 0/{len(observations)} iteration(s) with the external worker..."
+        )
+        selection = self._history_tree.selection() if hasattr(self, "_history_tree") else ()
+        selected_iteration = selection[0] if selection else None
+
+        def update_progress(done, iteration):
+            self._frame.after(
+                0,
+                lambda: self._rescore_status_var.set(
+                    f"Reanalyzing {done}/{len(observations)} iteration(s); completed iteration {iteration}."
+                ),
+            )
+
+        def work():
+            updates = []
+            try:
+                for index, observation in enumerate(observations, start=1):
+                    rebuilt = self._bo_session.reanalyze_observation(
+                        observation,
+                        analysis=analysis,
+                        scoring=scoring,
+                        output_dir=output_dir,
+                    )
+                    updates.append((observation, rebuilt))
+                    update_progress(index, observation.get("iteration"))
+            except Exception as exc:
+                self._frame.after(0, lambda err=exc: finish_error(err))
+                return
+            self._frame.after(0, lambda: finish_success(updates))
+
+        def finish_error(exc):
+            self._reanalyze_rescore_running = False
+            self._reanalyze_rescore_button.configure(state="normal")
+            self._rescore_status_var.set(f"Reanalysis stopped without applying changes: {exc}")
+            messagebox.showerror("Reanalyze & Rescore", str(exc))
+
+        def finish_success(updates):
+            for observation, rebuilt in updates:
+                observation.update(rebuilt)
+                for record in self._bo_session.suggestions:
+                    if record.get("method_id") == observation.get("method_id"):
+                        record["Q_run"] = observation["Q_run"]
+            self._bo_session.config["scoring"] = dict(scoring)
+            self._bo_session.config["analysis"] = dict(analysis)
+            if self._config is not None:
+                self._config["scoring"] = dict(scoring)
+                self._config["analysis"] = dict(analysis)
+            self._reanalyze_rescore_running = False
+            self._reanalyze_rescore_button.configure(state="normal")
+            self._refresh_history()
+            self._refresh_record_files()
+            if selected_iteration and selected_iteration in self._history_rows:
+                self._history_tree.selection_set(selected_iteration)
+                self._history_tree.focus(selected_iteration)
+                self._select_history_iteration(selected_iteration)
+            else:
+                self._select_latest_history_iteration()
+            self._rescore_status_var.set(
+                f"Reanalyzed and rescored {len(updates)} iteration(s). "
+                "Use Save Rescored Session to persist the updated session."
+            )
+
+        threading.Thread(target=work, daemon=True).start()
 
     def _reset_rescore_to_original(self):
         source = self._loaded_original_config or self._bo_session.config if self._bo_session else self._config
@@ -3864,6 +4273,13 @@ class BayesianOptimizationTab:
         record_dir = str(payload.get("record_dir") or "").strip()
         if not record_dir:
             return
+        selected_iteration = None
+        if self._selected_history_observation is not None:
+            selected_iteration = self._selected_history_observation.get("iteration")
+        if selected_iteration is None:
+            selection = self._history_tree.selection()
+            if selection:
+                selected_iteration = selection[0]
         try:
             loaded = BOIntegrationSession.load(record_dir)
         except Exception:
@@ -3880,8 +4296,15 @@ class BayesianOptimizationTab:
         if self._measurement_priority_active():
             self._results_render_deferred = True
         else:
-            self._render_best()
-            self._select_latest_history_iteration()
+            self._results_render_deferred = False
+            if selected_iteration is not None and str(selected_iteration) in self._history_rows:
+                self._history_tree.selection_set(str(selected_iteration))
+                self._history_tree.focus(str(selected_iteration))
+                self._history_tree.see(str(selected_iteration))
+                self._select_history_iteration(str(selected_iteration))
+            else:
+                self._render_best()
+                self._select_latest_history_iteration()
             self._refresh_surrogate_view()
         iteration = payload.get("iteration")
         completed = len(self._bo_session.observations)
@@ -4035,32 +4458,136 @@ class BayesianOptimizationTab:
         step_var = tk.StringVar(value="" if current.get("step") in (None, "") else str(current.get("step")))
         scale_var = tk.StringVar(value=str(current.get("scale", current.get("encoding", "linear"))))
         sigma_var = tk.StringVar(value=str(current.get("proposal_sigma", "")))
+        gp_falloff_var = tk.StringVar(value=self._gp_length_scale_vars[name].get())
 
         ttk.Label(box, text="Mode:").grid(row=0, column=0, sticky="w", pady=4)
-        ttk.Combobox(box, textvariable=mode_var, values=("active", "locked", "tied"), state="readonly", width=16).grid(
-            row=0, column=1, sticky="w", pady=4
+        mode_combo = ttk.Combobox(
+            box, textvariable=mode_var, values=("active", "locked", "tied"), state="readonly", width=16
         )
-        ttk.Label(box, text="Space:").grid(row=1, column=0, sticky="w", pady=4)
-        ttk.Combobox(box, textvariable=space_var, values=("discrete", "continuous"), state="readonly", width=16).grid(
-            row=1, column=1, sticky="w", pady=4
+        mode_combo.grid(row=0, column=1, sticky="w", pady=4)
+        space_label = ttk.Label(box, text="Space:")
+        space_label.grid(row=1, column=0, sticky="w", pady=4)
+        space_combo = ttk.Combobox(
+            box,
+            textvariable=space_var,
+            values=("discrete", "continuous"),
+            state="readonly",
+            width=16,
         )
-        ttk.Label(box, text="Active values:").grid(row=2, column=0, sticky="w", pady=4)
-        ttk.Entry(box, textvariable=values_var, width=48).grid(row=2, column=1, columnspan=3, sticky="ew", pady=4)
-        ttk.Label(box, text="Continuous min/max:").grid(row=3, column=0, sticky="w", pady=4)
-        ttk.Entry(box, textvariable=min_var, width=12).grid(row=3, column=1, sticky="w", pady=4)
-        ttk.Entry(box, textvariable=max_var, width=12).grid(row=3, column=1, padx=(96, 0), sticky="w", pady=4)
-        ttk.Label(box, text="Scale / sigma:").grid(row=4, column=0, sticky="w", pady=4)
-        ttk.Combobox(box, textvariable=scale_var, values=("linear", "log"), width=12).grid(row=4, column=1, sticky="w", pady=4)
-        ttk.Entry(box, textvariable=sigma_var, width=12).grid(row=4, column=1, padx=(96, 0), sticky="w", pady=4)
-        ttk.Label(box, text="Optional step:").grid(row=5, column=0, sticky="w", pady=4)
-        ttk.Entry(box, textvariable=step_var, width=12).grid(row=5, column=1, sticky="w", pady=4)
-        ttk.Label(box, text="Locked value:").grid(row=6, column=0, sticky="w", pady=4)
-        ttk.Entry(box, textvariable=value_var, width=18).grid(row=6, column=1, sticky="w", pady=4)
-        ttk.Label(box, text="Tie to:").grid(row=7, column=0, sticky="w", pady=4)
-        ttk.Combobox(box, textvariable=tie_var, values=PARAMETER_ORDER, width=24).grid(row=7, column=1, sticky="w", pady=4)
+        space_combo.grid(row=1, column=1, sticky="w", pady=4)
+        active_values_label = ttk.Label(box, text="Discrete values:")
+        active_values_label.grid(row=2, column=0, sticky="w", pady=4)
+        active_values_entry = ttk.Entry(box, textvariable=values_var, width=48)
+        active_values_entry.grid(row=2, column=1, columnspan=3, sticky="ew", pady=4)
+
+        continuous_range_label = ttk.Label(box, text="Continuous min/max:")
+        continuous_range_label.grid(row=3, column=0, sticky="w", pady=4)
+        continuous_min_entry = ttk.Entry(box, textvariable=min_var, width=12)
+        continuous_min_entry.grid(row=3, column=1, sticky="w", pady=4)
+        continuous_max_entry = ttk.Entry(box, textvariable=max_var, width=12)
+        continuous_max_entry.grid(row=3, column=1, padx=(96, 0), sticky="w", pady=4)
+        system_range = DEFAULT_PARAMETER_RANGES[name]
+        unit = str(current.get("unit") or "").strip()
+        unit_text = f" {unit}" if unit else ""
+        system_bounds_label = ttk.Label(
+            box,
+            text=(
+                f"System bounds: {system_range['min']:g} to "
+                f"{system_range['max']:g}{unit_text}"
+            ),
+            foreground="#666666",
+        )
+        system_bounds_label.grid(row=3, column=2, sticky="w", padx=(8, 0), pady=4)
+        quantization_label = ttk.Label(box, text="Continuous quantization:")
+        quantization_label.grid(row=4, column=0, sticky="w", pady=4)
+        quantization_entry = ttk.Entry(box, textvariable=step_var, width=12)
+        quantization_entry.grid(row=4, column=1, sticky="w", pady=4)
+        potential_parameters = {
+            "begin_potential",
+            "end_potential",
+            "step_potential",
+            "amplitude",
+            "conditioning_potential",
+        }
+        hardware_quantization_min = 0.000932 if name in potential_parameters else None
+        if hardware_quantization_min is not None:
+            quantization_help = (
+                f"Instrument minimum (PGStat mode 3): "
+                f"{hardware_quantization_min:g} V; blank = unquantized"
+            )
+        else:
+            quantization_help = (
+                "No verified instrument minimum; must be >0 and no larger "
+                "than the selected range; blank = unquantized"
+            )
+        quantization_bounds_label = ttk.Label(
+            box,
+            text=quantization_help,
+            foreground="#666666",
+        )
+        quantization_bounds_label.grid(row=4, column=2, sticky="w", padx=(8, 0), pady=4)
+        scale_label = ttk.Label(box, text="Scale:")
+        scale_label.grid(row=5, column=0, sticky="w", pady=4)
+        scale_combo = ttk.Combobox(box, textvariable=scale_var, values=("linear", "log"), width=12)
+        scale_combo.grid(row=5, column=1, sticky="w", pady=4)
+        sigma_label = ttk.Label(box, text="Proposal sigma:")
+        sigma_label.grid(row=6, column=0, sticky="w", pady=4)
+        sigma_entry = ttk.Entry(box, textvariable=sigma_var, width=12)
+        sigma_entry.grid(row=6, column=1, sticky="w", pady=4)
+        gp_falloff_label = ttk.Label(box, text="GP falloff:")
+        gp_falloff_label.grid(row=7, column=0, sticky="w", pady=4)
+        gp_falloff_entry = ttk.Entry(box, textvariable=gp_falloff_var, width=12)
+        gp_falloff_entry.grid(row=7, column=1, sticky="w", pady=4)
+        gp_falloff_help = ttk.Label(
+            box,
+            text="fraction of range; blank = learn all GP falloffs",
+            foreground="#666666",
+        )
+        gp_falloff_help.grid(row=7, column=2, sticky="w", padx=(8, 0), pady=4)
+        locked_value_label = ttk.Label(box, text="Locked value:")
+        locked_value_label.grid(row=8, column=0, sticky="w", pady=4)
+        locked_value_entry = ttk.Entry(box, textvariable=value_var, width=18)
+        locked_value_entry.grid(row=8, column=1, sticky="w", pady=4)
+        tie_to_label = ttk.Label(box, text="Tie to:")
+        tie_to_label.grid(row=9, column=0, sticky="w", pady=4)
+        tie_to_combo = ttk.Combobox(box, textvariable=tie_var, values=PARAMETER_ORDER, width=24)
+        tie_to_combo.grid(row=9, column=1, sticky="w", pady=4)
+
+        def set_visible(widgets, visible):
+            for widget in widgets:
+                widget.grid() if visible else widget.grid_remove()
+
+        def refresh_relevant_fields(*_args):
+            active = mode_var.get() == "active"
+            continuous = active and space_var.get() == "continuous"
+            discrete = active and space_var.get() == "discrete"
+            set_visible((space_label, space_combo), active)
+            set_visible((active_values_label, active_values_entry), discrete)
+            set_visible(
+                (
+                    continuous_range_label,
+                    continuous_min_entry,
+                    continuous_max_entry,
+                    system_bounds_label,
+                ),
+                continuous,
+            )
+            set_visible(
+                (quantization_label, quantization_entry, quantization_bounds_label),
+                continuous,
+            )
+            set_visible((scale_label, scale_combo), active)
+            set_visible((sigma_label, sigma_entry), continuous)
+            set_visible((gp_falloff_label, gp_falloff_entry, gp_falloff_help), active)
+            set_visible((locked_value_label, locked_value_entry), mode_var.get() == "locked")
+            set_visible((tie_to_label, tie_to_combo), mode_var.get() == "tied")
+
+        mode_combo.bind("<<ComboboxSelected>>", refresh_relevant_fields)
+        space_combo.bind("<<ComboboxSelected>>", refresh_relevant_fields)
+        refresh_relevant_fields()
 
         buttons = ttk.Frame(box)
-        buttons.grid(row=8, column=0, columnspan=2, pady=(10, 0))
+        buttons.grid(row=10, column=0, columnspan=2, pady=(10, 0))
 
         def save():
             try:
@@ -4072,14 +4599,65 @@ class BayesianOptimizationTab:
                     updated["min"] = float(min_var.get())
                 if max_var.get().strip():
                     updated["max"] = float(max_var.get())
+                if space_var.get() == "continuous":
+                    system_min = float(system_range["min"])
+                    system_max = float(system_range["max"])
+                    continuous_min = float(updated["min"])
+                    continuous_max = float(updated["max"])
+                    if continuous_min < system_min or continuous_max > system_max:
+                        raise ValueError(
+                            f"{name} continuous range must stay within the system bounds "
+                            f"{system_min:g} to {system_max:g}{unit_text}."
+                        )
+                    if continuous_min > continuous_max:
+                        raise ValueError("Continuous minimum cannot exceed continuous maximum.")
                 updated["scale"] = scale_var.get()
                 updated["proposal_sigma"] = float(sigma_var.get() or 0.15)
-                updated["step"] = None if not step_var.get().strip() else float(step_var.get())
+                updated["step"] = (
+                    None
+                    if space_var.get() != "continuous" or not step_var.get().strip()
+                    else float(step_var.get())
+                )
+                if updated["step"] is not None:
+                    continuous_span = float(updated["max"]) - float(updated["min"])
+                    if updated["step"] <= 0:
+                        raise ValueError("Continuous quantization must be greater than zero.")
+                    if (
+                        hardware_quantization_min is not None
+                        and updated["step"] < hardware_quantization_min
+                    ):
+                        raise ValueError(
+                            f"{name} continuous quantization cannot be smaller than the "
+                            f"PGStat mode 3 applied-potential resolution "
+                            f"({hardware_quantization_min:g} V)."
+                        )
+                    if updated["step"] > continuous_span:
+                        raise ValueError(
+                            "Continuous quantization cannot be larger "
+                            f"than the selected range span ({continuous_span:g}{unit_text})."
+                        )
                 if value_var.get().strip():
                     updated["value"] = float(value_var.get())
                 updated["tie_to"] = tie_var.get()
+                falloff_text = gp_falloff_var.get().strip()
+                if falloff_text:
+                    falloff = float(falloff_text)
+                    if falloff <= 0:
+                        raise ValueError("GP falloff must be greater than zero.")
+                    self._gp_length_scale_vars[name].set(str(falloff))
+                    for other_name, falloff_setting in self._gp_length_scale_vars.items():
+                        if not falloff_setting.get().strip():
+                            falloff_setting.set("0.2")
+                else:
+                    for falloff_var in self._gp_length_scale_vars.values():
+                        falloff_var.set("")
+                falloffs = self._gp_length_scales_from_vars()
+                acquisition = self._config.setdefault("acquisition", {})
+                acquisition["gp_falloff_fractions"] = falloffs
+                acquisition["gp_length_scales"] = falloffs
                 params[name] = updated
                 self._config["parameters"] = params
+                self._refresh_gp_falloff_summary()
                 self._refresh_parameter_table()
                 self._refresh_initial_parameters_table()
                 self._validate_config(show_dialog=False)
@@ -5030,6 +5608,44 @@ class BayesianOptimizationTab:
         rows = []
         diagnostics = []
         seen = set()
+        external_results = self._external_analysis_results(observation)
+        if external_results:
+            for result in external_results:
+                channel = result.get("channel")
+                scan = result.get("scan_number", result.get("scan_id_from_name"))
+                label = str(result.get("file_name") or Path(str(result.get("file_path") or "trace")).name)
+                voltage = self._to_float_list(result.get("voltage"))
+                current = self._to_float_list(result.get("smoothed_corrected_current"))
+                stage = "smoothed corrected"
+                if not current:
+                    current = self._to_float_list(result.get("corrected_current"))
+                    stage = "corrected"
+                if not voltage or not current:
+                    diagnostics.append(
+                        {
+                            "label": label,
+                            "channel": channel,
+                            "scan": scan,
+                            "reason": result.get("error") or result.get("partial_error") or "External analysis returned no corrected trace.",
+                        }
+                    )
+                    continue
+                n = min(len(voltage), len(current))
+                rows.append(
+                    {
+                        "voltage": voltage[:n],
+                        "current": current[:n],
+                        "channel": channel,
+                        "scan": scan,
+                        "label": label,
+                        "phase": result.get("_bo_phase"),
+                        "trace_stage": stage,
+                        "left_min_idx": result.get("left_min_idx"),
+                        "right_min_idx": result.get("right_min_idx"),
+                        "peak_idx_corr": result.get("peak_idx_corr"),
+                    }
+                )
+            return self._sort_corrected_trace_rows(rows, diagnostics)
         analysis_cfg = self._current_analysis_settings()
         for raw_row in self._raw_trace_rows_for_observation(observation):
             file_path = self._resolve_observation_file_path(raw_row.get("path"), observation)
@@ -5123,6 +5739,9 @@ class BayesianOptimizationTab:
                     "peak_idx_corr": result.get("peak_idx_corr"),
                 }
             )
+        return self._sort_corrected_trace_rows(rows, diagnostics)
+
+    def _sort_corrected_trace_rows(self, rows, diagnostics):
         return sorted(
             rows,
             key=lambda row: (
@@ -5136,6 +5755,36 @@ class BayesianOptimizationTab:
             diagnostics,
             key=lambda row: (self._channel_sort_key(row.get("channel")), str(row.get("scan") or ""), str(row.get("label") or "")),
         )
+
+    def _external_analysis_results(self, observation):
+        sources = (
+            (observation.get("analysis_results_json"), None),
+            (observation.get("buffer_analysis_results_json"), "buffer"),
+            (observation.get("target_analysis_results_json"), "target"),
+        )
+        rows = []
+        seen = set()
+        for raw_path, phase in sources:
+            if not raw_path:
+                continue
+            path = self._resolve_observation_file_path(raw_path, observation)
+            key = str(path)
+            if key in seen or not path.exists():
+                continue
+            seen.add(key)
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    payload = json.load(fh)
+            except Exception:
+                continue
+            if not isinstance(payload, list):
+                continue
+            for item in payload:
+                if isinstance(item, dict):
+                    row = dict(item)
+                    row["_bo_phase"] = phase
+                    rows.append(row)
+        return rows
 
     def _scroll_history_horizontally(self, event):
         if not hasattr(self, "_history_tree"):
@@ -5700,26 +6349,14 @@ class BayesianOptimizationTab:
             "",
         ]
         if objective == "paired_response":
-            if "standard_quality" in paired_weights and "buffer_classic_Q" not in paired_weights and "target_classic_Q" not in paired_weights:
-                legacy_quality_weight = max(0.0, float(paired_weights.get("standard_quality", 0.0) or 0.0))
-                paired_weights["buffer_classic_Q"] = legacy_quality_weight / 2.0
-                paired_weights["target_classic_Q"] = legacy_quality_weight / 2.0
-            buffer_q_w = float(paired_weights.get("buffer_classic_Q", 0.25))
-            target_q_w = float(paired_weights.get("target_classic_Q", 0.25))
-            delta_w = float(paired_weights.get("delta_peak", 1.0))
-            delta_scale = float(paired_weights.get("delta_scale_uA", 1.0))
-            total = buffer_q_w + target_q_w + delta_w
             lines.extend(
                 [
                     "Paired-response Q_channel terms:",
-                    (
-                        "  "
-                        f"Q_channel = paired_Q_channel = ({buffer_q_w:g}*buffer_classic_Q + "
-                        f"{target_q_w:g}*target_classic_Q + "
-                        f"{delta_w:g}*delta_peak_score) / {max(total, 1e-12):g}"
-                    ),
+                    "  Q_channel = paired_Q_channel = delta_peak / "
+                    "(target_channel_noise + buffer_channel_noise)",
                     f"  delta_peak = target_peak_height_uA - buffer_peak_height_uA",
-                    f"  delta_peak_score = log1p(abs(delta_peak) / {delta_scale:g} uA)",
+                    f"  Mean buffer channel noise: {float(quality.get('mean_buffer_channel_noise', 0.0) or 0.0):.4g} uA",
+                    f"  Mean target channel noise: {float(quality.get('mean_target_channel_noise', 0.0) or 0.0):.4g} uA",
                     f"  Mean buffer classic Q: {float(quality.get('mean_buffer_classic_Q', 0.0) or 0.0):.4f}",
                     f"  Mean target classic Q: {float(quality.get('mean_target_classic_Q', 0.0) or 0.0):.4f}",
                     f"  Mean signed delta peak: {float(quality.get('mean_delta_peak_height_uA', 0.0) or 0.0):.4g} uA",
@@ -5770,33 +6407,14 @@ class BayesianOptimizationTab:
         objective = str((source_config or {}).get("objective") or "").strip().lower()
 
         if objective == "paired_response":
-            if "standard_quality" in paired_weights and "buffer_classic_Q" not in paired_weights and "target_classic_Q" not in paired_weights:
-                legacy_quality_weight = max(0.0, float(paired_weights.get("standard_quality", 0.0) or 0.0))
-                paired_weights["buffer_classic_Q"] = legacy_quality_weight / 2.0
-                paired_weights["target_classic_Q"] = legacy_quality_weight / 2.0
-            buffer_q_w = float(paired_weights.get("buffer_classic_Q", 0.25))
-            target_q_w = float(paired_weights.get("target_classic_Q", 0.25))
-            delta_w = float(paired_weights.get("delta_peak", 1.0))
-            delta_scale = float(paired_weights.get("delta_scale_uA", 1.0))
-            paired_terms = [
-                ("Buffer classic Q weight", "buffer_classic_Q", buffer_q_w),
-                ("Target classic Q weight", "target_classic_Q", target_q_w),
-                ("Delta peak weight", "delta_peak_score", delta_w),
-            ]
-            total = sum(weight for _label, _metric, weight in paired_terms)
-            numerator = " + ".join(
-                f"{label}({weight:g})*{metric}"
-                for label, metric, weight in paired_terms
-                if weight
-            ) or "0"
             lambda_var = float(run_weights.get("lambda_variability", 0.20))
             lambda_failed = float(run_weights.get("lambda_failed", 0.40))
             lambda_low = float(run_weights.get("lambda_low", 0.20))
             threshold = float(run_weights.get("low_channel_threshold", 0.50))
             return [
                 "delta_peak = target_peak_height_uA - buffer_peak_height_uA",
-                f"delta_peak_score = log1p(abs(delta_peak)/{delta_scale:g})",
-                f"Q_channel = paired_Q_channel = ({numerator}) / {max(total, 1e-12):g}",
+                "Q_channel = paired_Q_channel = delta_peak / "
+                "(target_channel_noise + buffer_channel_noise)",
                 (
                     "Q_run = mean(Q_channel) "
                     f"- Run std penalty({lambda_var:g})*std(Q_channel) "
@@ -6065,11 +6683,22 @@ class BayesianOptimizationTab:
 
     def _load_surrogate_gp_model(self):
         path = self._surrogate_gp_model_path()
-        if path is None:
+        if path is not None:
+            try:
+                with open(path, "rb") as fh:
+                    return pickle.load(fh)
+            except Exception:
+                pass
+        # Older/incomplete real-session artifacts may lack a usable pickle.
+        # Refit from only the observations available at the selected iteration
+        # so historical views do not leak later measurements.
+        if self._bo_session is None:
             return None
         try:
-            with open(path, "rb") as fh:
-                return pickle.load(fh)
+            historical_session = copy.copy(self._bo_session)
+            historical_session.observations = self._surrogate_observations_so_far()
+            gp, _train = historical_session._fit_gp_surrogate()
+            return gp
         except Exception:
             return None
 
@@ -6399,7 +7028,7 @@ class BayesianOptimizationTab:
     def _surrogate_2d_prediction_grid(self, rows, value_key, x_name, y_name, grid_size=75):
         gp = self._load_surrogate_gp_model()
         cfg = self._bo_session.config if self._bo_session is not None else self._config
-        if gp is None or not cfg or x_name == y_name:
+        if not cfg or x_name == y_name:
             return None
         if x_name not in OPTIMIZER_ORDER or y_name not in OPTIMIZER_ORDER:
             return None
@@ -6428,7 +7057,25 @@ class BayesianOptimizationTab:
             encoded_points = np.repeat(base_encoded[None, :], size * size, axis=0)
             encoded_points[:, OPTIMIZER_ORDER.index(x_name)] = x_mesh_encoded.ravel()
             encoded_points[:, OPTIMIZER_ORDER.index(y_name)] = y_mesh_encoded.ravel()
-            means, stds = gp.predict(encoded_points, return_std=True)
+            if gp is not None:
+                means, stds = gp.predict(encoded_points, return_std=True)
+            else:
+                observed_points = [
+                    (encode_candidate(obs["params"], cfg), float(obs["Q_run"]))
+                    for obs in observations
+                    if obs.get("params") is not None and obs.get("Q_run") is not None
+                ]
+                if not observed_points:
+                    return None
+                train_x = np.asarray([point for point, _q in observed_points], dtype=float)
+                train_y = np.asarray([q for _point, q in observed_points], dtype=float)
+                distances = np.linalg.norm(
+                    encoded_points[:, None, :] - train_x[None, :, :],
+                    axis=2,
+                )
+                weights = 1.0 / (distances + 0.05)
+                means = (weights @ train_y) / np.maximum(weights.sum(axis=1), 1e-12)
+                stds = distances.min(axis=1)
 
             if value_key == "predicted_mean_Q":
                 values = means

@@ -31,8 +31,19 @@ def _savgol_coefficients(window_length: int, polyorder: int) -> np.ndarray:
 def _savgol_numpy(signal: np.ndarray, window_length: int, polyorder: int) -> np.ndarray:
     coeffs = _savgol_coefficients(window_length, polyorder)
     half = window_length // 2
-    padded = np.pad(np.asarray(signal, dtype=float), (half, half), mode="edge")
-    return np.convolve(padded, coeffs[::-1], mode="valid")
+    values = np.asarray(signal, dtype=float)
+    # Match scipy.signal.savgol_filter's default mode="interp": use the
+    # convolution in the interior and polynomial fits at both boundaries.
+    result = np.convolve(values, coeffs[::-1], mode="same")
+    x_window = np.arange(window_length, dtype=float)
+    left_fit = np.polyfit(x_window, values[:window_length], polyorder)
+    result[:half] = np.polyval(left_fit, np.arange(half, dtype=float))
+    right_fit = np.polyfit(x_window, values[-window_length:], polyorder)
+    result[-half:] = np.polyval(
+        right_fit,
+        np.arange(window_length - half, window_length, dtype=float),
+    )
+    return result
 
 
 def fallback_find_peaks(
@@ -84,15 +95,10 @@ def fallback_find_peaks(
 
         prominences[i] = peak_val - max(left_min, right_min)
 
-    keep = prominences >= float(prominence)
-    peaks = peaks[keep]
-    prominences = prominences[keep]
-
-    if peaks.size == 0:
-        return np.array([], dtype=int), {"prominences": np.array([], dtype=float)}
-
+    # SciPy enforces distance before evaluating prominence and retains the
+    # taller peak when two candidates are too close.
     if distance > 1 and peaks.size > 1:
-        order = np.argsort(prominences)[::-1]
+        order = np.argsort(y[peaks], kind="stable")[::-1]
         selected = []
         for order_idx in order:
             peak_idx = int(peaks[order_idx])
@@ -102,6 +108,10 @@ def fallback_find_peaks(
         prom_map = {int(idx): float(prom) for idx, prom in zip(peaks, prominences)}
         peaks = selected
         prominences = np.asarray([prom_map[int(idx)] for idx in peaks], dtype=float)
+
+    keep = prominences >= float(prominence)
+    peaks = peaks[keep]
+    prominences = prominences[keep]
 
     return peaks.astype(int), {"prominences": prominences.astype(float)}
 

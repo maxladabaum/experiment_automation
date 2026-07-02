@@ -23,6 +23,7 @@ import math
 import os
 import pickle
 import random
+import re
 import shutil
 import warnings
 from dataclasses import dataclass
@@ -83,6 +84,107 @@ class BOSuggestion:
     params: Dict[str, float]
     created_at: str
     status: str = "suggested"
+
+
+class Matern:
+    """Minimal kernel metadata compatible with the surrogate UI."""
+
+    def __init__(self, length_scale, nu: float = 2.5):
+        self.length_scale = length_scale
+        self.nu = nu
+
+    def __str__(self):
+        return f"Matern(length_scale={self.length_scale}, nu={self.nu})"
+
+
+class WhiteKernel:
+    """Minimal kernel metadata compatible with the surrogate UI."""
+
+    def __init__(self, noise_level: float):
+        self.noise_level = float(noise_level)
+
+    def __str__(self):
+        return f"WhiteKernel(noise_level={self.noise_level:g})"
+
+
+class _KernelSum:
+    def __init__(self, k1, k2):
+        self.k1 = k1
+        self.k2 = k2
+
+    def __str__(self):
+        return f"{self.k1} + {self.k2}"
+
+
+class NumpyGaussianProcessRegressor:
+    """Small Matérn-5/2 GP for environments without scikit-learn."""
+
+    backend = "numpy_gaussian_process"
+
+    def __init__(self, x_train, y_train, length_scales, noise_level: float = 1e-4):
+        import numpy as np
+
+        self.x_train = np.asarray(x_train, dtype=float)
+        self.y_train = np.asarray(y_train, dtype=float)
+        self.length_scales = np.maximum(np.asarray(length_scales, dtype=float), 1e-9)
+        self.noise_level = max(float(noise_level), 1e-10)
+        self.y_mean = float(self.y_train.mean())
+        self.y_scale = float(self.y_train.std())
+        if self.y_scale < 1e-12:
+            self.y_scale = 1.0
+        normalized_y = (self.y_train - self.y_mean) / self.y_scale
+        covariance = self._kernel(self.x_train, self.x_train)
+        identity = np.eye(len(self.x_train), dtype=float)
+        jitter = self.noise_level
+        for _attempt in range(8):
+            try:
+                self._cholesky = np.linalg.cholesky(covariance + identity * jitter)
+                break
+            except np.linalg.LinAlgError:
+                jitter *= 10.0
+        else:
+            raise np.linalg.LinAlgError("NumPy GP covariance is not positive definite")
+        self.noise_level = jitter
+        self._alpha = np.linalg.solve(
+            self._cholesky.T,
+            np.linalg.solve(self._cholesky, normalized_y),
+        )
+        self.kernel_ = _KernelSum(
+            Matern(self.length_scales.tolist(), nu=2.5),
+            WhiteKernel(self.noise_level),
+        )
+
+    def _kernel(self, left, right):
+        import numpy as np
+
+        scaled = (
+            np.asarray(left, dtype=float)[:, None, :]
+            - np.asarray(right, dtype=float)[None, :, :]
+        ) / self.length_scales[None, None, :]
+        distance = np.sqrt(np.sum(scaled * scaled, axis=2))
+        root5_distance = math.sqrt(5.0) * distance
+        return (
+            1.0
+            + root5_distance
+            + (root5_distance * root5_distance) / 3.0
+        ) * np.exp(-root5_distance)
+
+    def predict(self, points, return_std: bool = False):
+        import numpy as np
+
+        points = np.asarray(points, dtype=float)
+        cross_covariance = self._kernel(points, self.x_train)
+        normalized_mean = cross_covariance @ self._alpha
+        mean = self.y_mean + self.y_scale * normalized_mean
+        if not return_std:
+            return mean
+        projected = np.linalg.solve(self._cholesky, cross_covariance.T)
+        normalized_variance = np.maximum(
+            1.0 + self.noise_level - np.sum(projected * projected, axis=0),
+            1e-12,
+        )
+        std = self.y_scale * np.sqrt(normalized_variance)
+        return mean, std
 
 
 def load_bo_config(path: Optional[str | Path] = None) -> dict:
@@ -547,16 +649,6 @@ def compute_run_quality(channel_metrics: dict, scoring: dict) -> dict:
 
 
 def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, scoring: dict) -> dict:
-    weights = dict(scoring.get("paired_response_weights") or {})
-    if "standard_quality" in weights and "buffer_classic_Q" not in weights and "target_classic_Q" not in weights:
-        legacy_quality_weight = max(0.0, float(weights.get("standard_quality", 0.0) or 0.0))
-        weights["buffer_classic_Q"] = legacy_quality_weight / 2.0
-        weights["target_classic_Q"] = legacy_quality_weight / 2.0
-    buffer_q_weight = max(0.0, float(weights.get("buffer_classic_Q", 0.25)))
-    target_q_weight = max(0.0, float(weights.get("target_classic_Q", 0.25)))
-    delta_peak_weight = max(0.0, float(weights.get("delta_peak", 1.0)))
-    delta_scale = max(1e-12, float(weights.get("delta_scale_uA", 1.0)))
-    paired_weight_total = max(buffer_q_weight + target_q_weight + delta_peak_weight, 1e-12)
     channels = sorted(
         {str(ch) for ch, _ in _channel_items(buffer_metrics)}
         & {str(ch) for ch, _ in _channel_items(target_metrics)},
@@ -574,8 +666,11 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
         delta_peak = target_peak - buffer_peak
         abs_delta_peak = abs(delta_peak)
         fractional_delta = abs_delta_peak / max(abs(buffer_peak), 1e-12)
+        buffer_noise = float(buffer_q.get("noise_raw", 0.0) or 0.0)
+        target_noise = float(target_q.get("noise_raw", 0.0) or 0.0)
+        combined_noise = buffer_noise + target_noise
         success = min(float(buffer_q.get("success_score", 1.0) or 0.0), float(target_q.get("success_score", 1.0) or 0.0))
-        delta_score = math.log1p(abs_delta_peak / delta_scale)
+        delta_score = delta_peak / max(combined_noise, 1e-12)
         fractional_score = math.log1p(max(0.0, fractional_delta))
         snr_saturation = max(1e-12, float(scoring.get("channel_weights", {}).get("snr_saturation", 20.0)))
         target_snr_score = _clip01(float(target_q.get("snr_raw", 0.0) or 0.0) / snr_saturation)
@@ -587,24 +682,10 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
         if not valid_classic_pair:
             success = 0.0
         standard_quality_score = 0.5 * (buffer_classic_q + target_classic_q)
-        weighted = (
-            buffer_q_weight * buffer_classic_q
-            + target_q_weight * target_classic_q
-            + delta_peak_weight * delta_score
-        )
-        if valid_classic_pair:
-            buffer_q_contribution = buffer_q_weight * buffer_classic_q / paired_weight_total
-            target_q_contribution = target_q_weight * target_classic_q / paired_weight_total
-            delta_peak_contribution = delta_peak_weight * delta_score / paired_weight_total
-        else:
-            buffer_q_contribution = 0.0
-            target_q_contribution = 0.0
-            delta_peak_contribution = 0.0
-        q_channel = (
-            buffer_q_contribution
-            + target_q_contribution
-            + delta_peak_contribution
-        )
+        buffer_q_contribution = 0.0
+        target_q_contribution = 0.0
+        delta_peak_contribution = delta_score
+        q_channel = delta_score
         per_channel[channel] = {
             "Q_channel": q_channel,
             "paired_Q_channel": q_channel,
@@ -615,12 +696,15 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
             "buffer_classic_Q_contribution": buffer_q_contribution,
             "target_classic_Q_contribution": target_q_contribution,
             "delta_peak_contribution": delta_peak_contribution,
-            "buffer_classic_Q_weight": buffer_q_weight,
-            "target_classic_Q_weight": target_q_weight,
-            "delta_peak_weight": delta_peak_weight,
-            "paired_weight_total": paired_weight_total,
+            "buffer_classic_Q_weight": 0.0,
+            "target_classic_Q_weight": 0.0,
+            "delta_peak_weight": 1.0,
+            "paired_weight_total": 1.0,
             "buffer_peak_height_raw": buffer_peak,
             "target_peak_height_raw": target_peak,
+            "buffer_channel_noise": buffer_noise,
+            "target_channel_noise": target_noise,
+            "combined_channel_noise": combined_noise,
             "delta_peak_height_uA": delta_peak,
             "abs_delta_peak_height_uA": abs_delta_peak,
             "fractional_delta_peak": fractional_delta,
@@ -688,6 +772,9 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
         "mean_fractional_delta_peak_score": _mean_component("fractional_delta_peak_score"),
         "mean_buffer_snr_raw": _mean_component("buffer_snr_raw"),
         "mean_target_snr_raw": _mean_component("target_snr_raw"),
+        "mean_buffer_channel_noise": _mean_component("buffer_channel_noise"),
+        "mean_target_channel_noise": _mean_component("target_channel_noise"),
+        "mean_combined_channel_noise": _mean_component("combined_channel_noise"),
         "mean_buffer_snr_score": _mean_component("buffer_snr_score"),
         "mean_target_snr_score": _mean_component("target_snr_score"),
         "mean_target_shape_score": _mean_component("target_shape_score"),
@@ -960,6 +1047,12 @@ class BOIntegrationSession:
             "notes": notes,
             "completed_at": datetime.now().isoformat(timespec="seconds"),
         }
+        if payload.get("results_json"):
+            observation["analysis_results_json"] = str(payload["results_json"])
+        if payload.get("results_csv"):
+            observation["analysis_results_csv"] = str(payload["results_csv"])
+        if payload.get("analysis_engine"):
+            observation["analysis_engine"] = str(payload["analysis_engine"])
         archived_measurements = self._archive_iteration_measurements(iteration, self.pending["method_id"])
         if archived_measurements:
             observation["archived_measurements"] = archived_measurements
@@ -1049,6 +1142,21 @@ class BOIntegrationSession:
             "notes": notes,
             "completed_at": datetime.now().isoformat(timespec="seconds"),
         }
+        if buffer_payload.get("results_json"):
+            observation["buffer_analysis_results_json"] = str(buffer_payload["results_json"])
+        if target_payload.get("results_json"):
+            observation["target_analysis_results_json"] = str(target_payload["results_json"])
+        if buffer_payload.get("results_csv"):
+            observation["buffer_analysis_results_csv"] = str(buffer_payload["results_csv"])
+        if target_payload.get("results_csv"):
+            observation["target_analysis_results_csv"] = str(target_payload["results_csv"])
+        engines = {
+            str(payload.get("analysis_engine"))
+            for payload in (buffer_payload, target_payload)
+            if payload.get("analysis_engine")
+        }
+        if engines:
+            observation["analysis_engine"] = ", ".join(sorted(engines))
         archived_buffer = self._archive_iteration_measurements(iteration, method_id, phase="buffer")
         archived_target = self._archive_iteration_measurements(iteration, method_id, phase="target")
         archived_measurements = archived_buffer + archived_target
@@ -1254,7 +1362,7 @@ class BOIntegrationSession:
     ) -> Path:
         if suggestion is None and self.pending is None:
             raise RuntimeError("No pending BO suggestion is waiting for analysis")
-        from core.bo_analysis import run_request
+        from core.analysis_worker import run_analysis
 
         suggestion_data = suggestion if isinstance(suggestion, dict) else (suggestion.__dict__ if suggestion is not None else self.pending)
         iteration = int(suggestion_data["iteration"])
@@ -1271,12 +1379,174 @@ class BOIntegrationSession:
             "analysis": dict(analysis if analysis is not None else self.config.get("analysis") or {}),
         }
         request_name = f"iter_{iteration:03d}" + (f"_{phase_label}" if phase_label else "") + "_analysis_request.json"
-        self._write_json(self.analysis_dir / request_name, request)
-        summary = run_request(request)
+        request_path = self.analysis_dir / request_name
+        self._write_json(request_path, request)
+        summary = run_analysis(request_path, request)
         path = Path(summary["summary_path"])
         if not path.exists():
             raise FileNotFoundError(path)
         return path
+
+    def reanalyze_observation(
+        self,
+        observation: dict,
+        *,
+        analysis: dict,
+        scoring: dict,
+        output_dir: str | Path,
+    ) -> dict:
+        """Run archived raw traces through the external worker and rebuild Q."""
+        from core.analysis_worker import run_analysis
+
+        iteration = int(observation.get("iteration", 0) or 0)
+        if iteration < 1:
+            raise ValueError("Observation has no valid BO iteration")
+        raw_paths = []
+        for raw_path in observation.get("archived_measurements") or []:
+            path = Path(str(raw_path))
+            if not path.is_absolute():
+                path = self.experiment_dir / path
+            if path.exists() and path.is_file() and path not in raw_paths:
+                raw_paths.append(path)
+        if not raw_paths:
+            raw_paths = self._discover_archived_measurements(iteration)
+        if not raw_paths:
+            raise FileNotFoundError(
+                f"No archived raw CSV files were found for BO iteration {iteration}"
+            )
+
+        output = Path(output_dir)
+        output.mkdir(parents=True, exist_ok=True)
+
+        def analyze(paths: List[Path], phase: str = "") -> tuple[dict, Path]:
+            suffix = f"_{phase}" if phase else ""
+            stem = f"bo_iter_{iteration:03d}_reanalyzed{suffix}"
+            request = {
+                "folders": [str(path.resolve()) for path in paths],
+                "output_dir": str(output.resolve()),
+                "output_stem": stem,
+                "analysis": dict(analysis),
+                "source": "experiment_automation_reanalysis",
+            }
+            request_path = output / f"{stem}_request.json"
+            self._write_json(request_path, request)
+            summary = run_analysis(request_path, request)
+            summary_path = Path(summary["summary_path"])
+            self._require_successful_reanalysis(summary, iteration, phase)
+            return summary, summary_path
+
+        detected_phases = {_measurement_phase_from_path(path) for path in raw_paths}
+        paired = (
+            str(observation.get("objective") or "").lower() == "paired_response"
+            or bool(observation.get("buffer_analysis_record"))
+            or {"buffer", "target"}.issubset(detected_phases)
+        )
+        if paired:
+            buffer_paths = [path for path in raw_paths if _measurement_phase_from_path(path) == "buffer"]
+            target_paths = [path for path in raw_paths if _measurement_phase_from_path(path) == "target"]
+            if not buffer_paths or not target_paths:
+                raise ValueError(
+                    f"Iteration {iteration} cannot be reanalyzed as paired BO because "
+                    "its archived raw files are not separated into buffer and target phases"
+                )
+            buffer_summary, buffer_summary_path = analyze(buffer_paths, "buffer")
+            target_summary, target_summary_path = analyze(target_paths, "target")
+            buffer_metrics = extract_channel_metrics(buffer_summary)
+            target_metrics = extract_channel_metrics(target_summary)
+            quality = compute_paired_response_quality(buffer_metrics, target_metrics, scoring)
+            return {
+                "buffer_channel_metrics": buffer_metrics,
+                "target_channel_metrics": target_metrics,
+                "channel_metrics": target_metrics,
+                "quality": quality,
+                "Q_run": quality["Q_run"],
+                "buffer_analysis_source": str(buffer_summary_path),
+                "buffer_analysis_record": str(buffer_summary_path),
+                "target_analysis_source": str(target_summary_path),
+                "target_analysis_record": str(target_summary_path),
+                "analysis_source": str(target_summary_path),
+                "analysis_record": str(target_summary_path),
+                "buffer_analysis_results_json": str(buffer_summary["results_json"]),
+                "target_analysis_results_json": str(target_summary["results_json"]),
+                "analysis_engine": str(target_summary.get("analysis_engine") or ""),
+            }
+
+        summary, summary_path = analyze(raw_paths)
+        channel_metrics = extract_channel_metrics(summary)
+        quality = compute_run_quality(channel_metrics, scoring)
+        return {
+            "channel_metrics": channel_metrics,
+            "quality": quality,
+            "Q_run": quality["Q_run"],
+            "analysis_source": str(summary_path),
+            "analysis_record": str(summary_path),
+            "analysis_results_json": str(summary["results_json"]),
+            "analysis_results_csv": str(summary.get("results_csv") or ""),
+            "analysis_engine": str(summary.get("analysis_engine") or ""),
+        }
+
+    def _require_successful_reanalysis(self, summary: dict, iteration: int, phase: str = "") -> None:
+        metrics = extract_channel_metrics(summary)
+        successful = sum(
+            int(data.get("ok_scan_count", 0) or 0)
+            for _, data in _channel_items(metrics)
+        )
+        # Older/local workers may not expose scan counts. In that case,
+        # success_score is the portable indication that at least one result
+        # produced usable peak metrics.
+        if successful <= 0:
+            successful = sum(
+                1
+                for _, data in _channel_items(metrics)
+                if float(data.get("success_score", 0.0) or 0.0) > 0.0
+            )
+        if successful > 0:
+            return
+
+        reasons = []
+        results_path = summary.get("results_json")
+        if results_path:
+            try:
+                with open(results_path, "r", encoding="utf-8") as fh:
+                    rows = json.load(fh)
+                for row in rows if isinstance(rows, list) else []:
+                    if not isinstance(row, dict):
+                        continue
+                    reason = str(row.get("error") or row.get("partial_error") or "").strip()
+                    if reason and reason not in reasons:
+                        reasons.append(reason)
+            except Exception:
+                pass
+        phase_text = f" {phase}" if phase else ""
+        detail = "; ".join(reasons[:4]) or "the analysis worker returned no usable peak metrics"
+        raise ValueError(
+            f"Iteration {iteration}{phase_text} produced corrected traces but no successfully "
+            f"analyzed peaks, so its Q score was not replaced. {detail}"
+        )
+
+    def _discover_archived_measurements(self, iteration: int) -> List[Path]:
+        """Find raw CSVs in legacy iteration folders used by older sessions."""
+        legacy = self.experiment_dir / "legacy"
+        stems = (
+            f"iter_{iteration:03d}",
+            f"iter_{iteration:03d}_buffer",
+            f"iter_{iteration:03d}_target",
+        )
+        paths: List[Path] = []
+        for stem in stems:
+            folder = legacy / stem
+            if not folder.is_dir():
+                continue
+            for path in sorted(folder.rglob("*.csv")):
+                lowered = path.name.lower()
+                if (
+                    path.is_file()
+                    and "analysis" not in lowered
+                    and "result" not in lowered
+                    and path not in paths
+                ):
+                    paths.append(path)
+        return paths
 
     def best_observation(self) -> Optional[dict]:
         if not self.observations:
@@ -1392,28 +1662,37 @@ class BOIntegrationSession:
     def _fit_gp_surrogate(self, pending_params: Optional[List[dict]] = None):
         try:
             import numpy as np
-            from sklearn.gaussian_process import GaussianProcessRegressor
-            from sklearn.exceptions import ConvergenceWarning
-            from sklearn.gaussian_process.kernels import ConstantKernel, Matern, WhiteKernel
         except Exception:
             return None, None
         if len(self.observations) < 2:
             return None, None
         x_train = np.asarray([encode_candidate(obs["params"], self.config) for obs in self.observations], dtype=float)
         y_train = np.asarray([float(obs["Q_run"]) for obs in self.observations], dtype=float)
+        acquisition = dict(self.config.get("acquisition", {}) or {})
+        fixed_length_scales = _fixed_gp_length_scales(acquisition)
+        numpy_length_scales = fixed_length_scales or [1.0] * x_train.shape[1]
+        numpy_noise = max(1e-10, float(acquisition.get("gp_noise_level", 1e-4) or 1e-4))
+
+        gp = None
+        sklearn_available = False
         try:
-            acquisition = dict(self.config.get("acquisition", {}) or {})
-            fixed_length_scales = _fixed_gp_length_scales(acquisition)
+            from sklearn.gaussian_process import GaussianProcessRegressor
+            from sklearn.exceptions import ConvergenceWarning
+            from sklearn.gaussian_process.kernels import ConstantKernel
+            from sklearn.gaussian_process.kernels import Matern as SklearnMatern
+            from sklearn.gaussian_process.kernels import WhiteKernel as SklearnWhiteKernel
+
+            sklearn_available = True
             if fixed_length_scales is None:
-                matern = Matern(length_scale=np.ones(x_train.shape[1]), nu=2.5)
+                matern = SklearnMatern(length_scale=np.ones(x_train.shape[1]), nu=2.5)
                 gp_optimizer_restarts = max(0, int(acquisition.get("gp_optimizer_restarts", 2)))
             else:
-                matern = Matern(length_scale=fixed_length_scales, length_scale_bounds="fixed", nu=2.5)
+                matern = SklearnMatern(length_scale=fixed_length_scales, length_scale_bounds="fixed", nu=2.5)
                 gp_optimizer_restarts = 0
             kernel = (
                 ConstantKernel(1.0, constant_value_bounds="fixed")
                 * matern
-                + WhiteKernel(noise_level=1e-4, noise_level_bounds=(1e-8, 1e-1))
+                + SklearnWhiteKernel(noise_level=numpy_noise, noise_level_bounds=(1e-8, 1e-1))
             )
             gp = GaussianProcessRegressor(
                 kernel=kernel,
@@ -1424,28 +1703,48 @@ class BOIntegrationSession:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", ConvergenceWarning)
                 gp.fit(x_train, y_train)
+        except Exception:
+            gp = None
 
-            # Kriging believer for batched BO: condition the surrogate on each
-            # already-selected batch point using its current posterior mean as a
-            # fantasy observation. This leaves the expected response largely
-            # unchanged while reducing posterior uncertainty near pending points.
-            # Freeze the kernel learned from real observations so fantasies do not
-            # alter fitted length scales or the estimated measurement noise.
+        if gp is None:
+            try:
+                gp = NumpyGaussianProcessRegressor(
+                    x_train,
+                    y_train,
+                    numpy_length_scales,
+                    noise_level=numpy_noise,
+                )
+                sklearn_available = False
+            except Exception:
+                return None, None
+
+        # Kriging believer for batched BO: condition the surrogate on each
+        # already-selected batch point using its current posterior mean as a
+        # fantasy observation.
+        try:
             for params in pending_params or []:
                 x_pending = np.asarray([encode_candidate(params, self.config)], dtype=float)
                 y_pending = float(gp.predict(x_pending)[0])
                 x_train = np.vstack((x_train, x_pending))
                 y_train = np.append(y_train, y_pending)
-                fantasy_gp = GaussianProcessRegressor(
-                    kernel=gp.kernel_,
-                    optimizer=None,
-                    normalize_y=True,
-                    random_state=int(self.config.get("random_seed", 42)),
-                )
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", ConvergenceWarning)
-                    fantasy_gp.fit(x_train, y_train)
-                gp = fantasy_gp
+                if sklearn_available:
+                    fantasy_gp = GaussianProcessRegressor(
+                        kernel=gp.kernel_,
+                        optimizer=None,
+                        normalize_y=True,
+                        random_state=int(self.config.get("random_seed", 42)),
+                    )
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", ConvergenceWarning)
+                        fantasy_gp.fit(x_train, y_train)
+                    gp = fantasy_gp
+                else:
+                    gp = NumpyGaussianProcessRegressor(
+                        x_train,
+                        y_train,
+                        numpy_length_scales,
+                        noise_level=numpy_noise,
+                    )
             return gp, {"x_train": x_train, "y_train": y_train}
         except Exception:
             return None, None
@@ -1673,7 +1972,11 @@ class BOIntegrationSession:
         best_q = max((float(obs["Q_run"]) for obs in self.observations), default=0.0)
         rows = []
         metadata = {
-            "backend": "gaussian_process" if gp is not None else "distance_weighted_fallback",
+            "backend": (
+                getattr(gp, "backend", "scikit_learn_gaussian_process")
+                if gp is not None
+                else "distance_weighted_fallback"
+            ),
             "observation_count": len(self.observations),
             "candidate_count": len(self.candidates),
             "active_parameters": active_parameters(self.config),
@@ -2057,6 +2360,16 @@ def _std(values: List[float]) -> float:
 
 def _distance(a: List[float], b: List[float]) -> float:
     return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))
+
+
+def _measurement_phase_from_path(path: str | Path) -> str:
+    text = "/".join(part.lower() for part in Path(path).parts)
+    name = Path(path).name.lower()
+    if re.search(r"(?:^|[/_\\-])buffer(?:[/_\\-]|$)", text) or "buffer" in name:
+        return "buffer"
+    if re.search(r"(?:^|[/_\\-])target(?:[/_\\-]|$)", text) or "target" in name:
+        return "target"
+    return ""
 
 
 def _expected_improvement(mean: float, std: float, best_score: float, xi: float = 0.01) -> float:

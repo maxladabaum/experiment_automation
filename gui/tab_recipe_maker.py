@@ -319,28 +319,10 @@ class RecipeMakerTab:
 
     @staticmethod
     def _paired_response_equation_text(weights: dict) -> str:
-        if "standard_quality" in weights and "buffer_classic_Q" not in weights and "target_classic_Q" not in weights:
-            legacy_quality_weight = max(0.0, float(weights.get("standard_quality", 0.0) or 0.0))
-            weights = dict(weights)
-            weights["buffer_classic_Q"] = legacy_quality_weight / 2.0
-            weights["target_classic_Q"] = legacy_quality_weight / 2.0
-        buffer_q_w = float(weights.get("buffer_classic_Q", 0.25))
-        target_q_w = float(weights.get("target_classic_Q", 0.25))
-        delta_w = float(weights.get("delta_peak", 1.0))
-        delta_scale = float(weights.get("delta_scale_uA", 1.0))
-        total = (
-            buffer_q_w
-            + target_q_w
-            + delta_w
-        )
         return (
             "delta_peak = target_peak_height_uA - buffer_peak_height_uA; "
-            f"delta_peak_score = log1p(abs(delta_peak)/{delta_scale:g}); "
-            "Q_channel = paired_Q_channel = ("
-            f"{buffer_q_w:g}*buffer_classic_Q + "
-            f"{target_q_w:g}*target_classic_Q + "
-            f"{delta_w:g}*delta_peak_score) / "
-            f"{max(total, 1e-12):.4g}. "
+            "Q_channel = paired_Q_channel = delta_peak / "
+            "(target_channel_noise + buffer_channel_noise). "
             "Q_run = mean(Q_channel) - run variability/failed/low-channel penalties."
         )
 
@@ -1439,53 +1421,21 @@ class RecipeMakerTab:
             saved_paired_weights["buffer_classic_Q"] = legacy_quality_weight / 2.0
             saved_paired_weights["target_classic_Q"] = legacy_quality_weight / 2.0
         paired_weights.update(saved_paired_weights)
-        weight_box = ttk.LabelFrame(win, text="Paired Response Q Weights", padding=6)
+        weight_box = ttk.LabelFrame(win, text="Paired Response Q Scoring", padding=6)
         weight_box.grid(row=8, column=0, columnspan=5, padx=6, pady=(6, 4), sticky="we")
-        for col in range(6):
-            weight_box.columnconfigure(col, weight=1 if col in (1, 3, 5) else 0)
-        paired_weight_vars = {
-            "buffer_classic_Q": tk.StringVar(value=str(paired_weights.get("buffer_classic_Q", 0.25))),
-            "target_classic_Q": tk.StringVar(value=str(paired_weights.get("target_classic_Q", 0.25))),
-            "delta_peak": tk.StringVar(value=str(paired_weights.get("delta_peak", 1.0))),
-            "delta_scale_uA": tk.StringVar(value=str(paired_weights.get("delta_scale_uA", 1.0))),
-        }
+        weight_box.columnconfigure(0, weight=1)
         paired_formula_var = tk.StringVar(value=self._paired_response_equation_text(paired_weights))
 
         def _paired_weights_from_vars():
-            return {
-                "buffer_classic_Q": max(0.0, float(paired_weight_vars["buffer_classic_Q"].get() or 0.0)),
-                "target_classic_Q": max(0.0, float(paired_weight_vars["target_classic_Q"].get() or 0.0)),
-                "delta_peak": max(0.0, float(paired_weight_vars["delta_peak"].get() or 0.0)),
-                "delta_scale_uA": max(1e-12, float(paired_weight_vars["delta_scale_uA"].get() or 1.0)),
-            }
+            return dict(paired_weights)
 
-        def _refresh_paired_formula(_event=None):
-            try:
-                paired_formula_var.set(self._paired_response_equation_text(_paired_weights_from_vars()))
-            except Exception:
-                paired_formula_var.set("Q_channel = paired response weighted score. Enter numeric weights.")
-
-        paired_entries = [
-            ("Buffer classic Q weight:", "buffer_classic_Q"),
-            ("Target classic Q weight:", "target_classic_Q"),
-            ("Delta peak weight:", "delta_peak"),
-            ("Delta scale (uA):", "delta_scale_uA"),
-        ]
-        for idx, (label, key) in enumerate(paired_entries):
-            row = idx // 2
-            base_col = (idx % 2) * 3
-            ttk.Label(weight_box, text=label).grid(row=row, column=base_col, sticky="w", pady=2)
-            entry = ttk.Entry(weight_box, width=9, textvariable=paired_weight_vars[key])
-            entry.grid(row=row, column=base_col + 1, sticky="w", padx=(4, 10), pady=2)
-            entry.bind("<FocusOut>", _refresh_paired_formula)
-            entry.bind("<Return>", _refresh_paired_formula)
         ttk.Label(
             weight_box,
             textvariable=paired_formula_var,
             foreground="#155e63",
             wraplength=760,
             justify="left",
-        ).grid(row=5, column=0, columnspan=6, sticky="w", pady=(6, 0))
+        ).grid(row=0, column=0, sticky="w", pady=(6, 0))
 
         analysis = block.get("analysis") or {}
         ttk.Label(win, text="Crop min/max (V):").grid(row=9, column=0, **pad, sticky="e")

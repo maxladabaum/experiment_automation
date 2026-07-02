@@ -1609,6 +1609,38 @@ class QueueTab:
             phase=phase,
         )
 
+    def _run_bo_render_break(self, bo_session: BOIntegrationSession, iteration: int | None) -> None:
+        """Give the GUI an acquisition-free window to load BO results."""
+        callback = getattr(self._session, "_bo_live_refresh_callback", None)
+        if not callable(callback):
+            return
+        self._session.update_queue_status(
+            state="render_break",
+            current_label=f"BO iteration {iteration} render break",
+            active_step_type="RENDER_BREAK",
+            active_step_details="Loading Bayesian optimization results and records",
+            active_step_started_at=datetime.now().isoformat(timespec="seconds"),
+            active_step_estimated_seconds=None,
+        )
+        rendered = threading.Event()
+
+        def refresh():
+            try:
+                callback({
+                    "record_dir": str(bo_session.record_dir),
+                    "session_id": bo_session.session_id,
+                    "iteration": iteration,
+                    "event": "observation_imported",
+                })
+            finally:
+                rendered.set()
+
+        self._root.after(0, refresh)
+        # Rendering runs on Tk's thread. Waiting here prevents the next device
+        # acquisition from overlapping that work; stop requests remain responsive.
+        while self._session.is_running and not rendered.wait(timeout=0.05):
+            pass
+
     def _run_bo_queue_items(self, queue_items: list, label: str, progress: dict | None = None):
         completed = 0
         failed = 0
@@ -2104,15 +2136,7 @@ class QueueTab:
                         f"mean delta={float(obs['quality'].get('mean_delta_peak_height_uA', 0.0)):.4g} uA"
                     )
                     if callable(live_refresh):
-                        self._root.after(
-                            0,
-                            lambda cb=live_refresh, data={
-                                "record_dir": str(bo_session.record_dir),
-                                "session_id": bo_session.session_id,
-                                "iteration": obs.get("iteration"),
-                                "event": "paired_imported",
-                            }: cb(dict(data)),
-                        )
+                        self._run_bo_render_break(bo_session, obs.get("iteration"))
                 completed_cycles = cycle_end
                 self._update_bo_progress(
                     cycle_progress_record,
@@ -2233,6 +2257,7 @@ class QueueTab:
             summary_path = self._run_bo_analysis(bo_session, block)
             obs = bo_session.import_analysis(summary_path, notes="Imported from recipe BO block")
             self.log(f"BO iteration {obs['iteration']} complete: Q_run={obs['Q_run']:.3f}")
+            self._run_bo_render_break(bo_session, obs.get("iteration"))
             if session_mgr is not None and not halfway_notified and int(obs["iteration"]) >= halfway_iteration:
                 halfway_notified = True
                 session_mgr.notify_slack(

@@ -213,12 +213,33 @@ an ignored optimizer/bo_configs/local_paths.json for machine-specific path setti
 
 {
   "analysis_output_dir": "analysis_outputs",
-  "analysis_file_glob": "*.json"
+  "analysis_file_glob": "*.json",
+  "analysis_mode": "external",
+  "analysis_project": ".",
+  "analysis_script": "analysis_worker/bo_headless.py",
+  "analysis_python": "C:\\Path\\To\\64-bit-Python\\python.exe",
+  "analysis_timeout_seconds": 900
 }
 
 The Setup subtab can create or update this local file with the Save Paths
 button. The tracked optimizer/bo_configs/local_paths.example.json file documents the
 expected shape without forcing one machine's paths onto everyone else.
+
+Real BO analysis runs as a blocking external worker. The 32-bit controller
+writes a request, launches `bo_headless.py` with the configured 64-bit Python,
+and waits for the returned summary and full trace-results JSON before the next
+BO measurement begins. Set `analysis_mode` to `local` only for development.
+
+The headless worker is included in this repository under `analysis_worker/`;
+the separate Electrochemistry-Analysis-Scripts checkout is no longer required.
+The process boundary remains unchanged: run the application with its 32-bit
+environment and install the worker dependencies into a separate 64-bit
+environment:
+
+    C:\Path\To\64-bit-Python\python.exe -m pip install -r requirements-analysis-64bit.txt
+
+Set `analysis_python` to that 64-bit interpreter. A `.venv64` environment in
+the repository root is also detected automatically.
 
 BAYESIAN OPTIMIZATION INTUITION
 

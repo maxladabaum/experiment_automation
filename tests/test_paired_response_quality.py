@@ -1,7 +1,7 @@
 from core.bo_session import compute_paired_response_quality
 
 
-def test_zero_buffer_classic_q_invalidates_paired_q():
+def test_paired_q_is_delta_peak_over_combined_noise():
     scoring = {
         "mode": "classic",
         "channel_weights": {
@@ -29,13 +29,15 @@ def test_zero_buffer_classic_q_invalidates_paired_q():
     }
     buffer_metrics = {
         "1": {
-            "mean_peak_current_uA": 0.0,
-            "success_score": 0.0,
+            "mean_peak_current_uA": 2.0,
+            "mean_background_rms_uA": 0.5,
+            "success_score": 1.0,
         }
     }
     target_metrics = {
         "1": {
-            "mean_peak_current_uA": 100.0,
+            "mean_peak_current_uA": 8.0,
+            "mean_background_rms_uA": 1.5,
             "success_score": 1.0,
         }
     }
@@ -43,15 +45,15 @@ def test_zero_buffer_classic_q_invalidates_paired_q():
     quality = compute_paired_response_quality(buffer_metrics, target_metrics, scoring)
     channel = quality["channel_components"]["1"]
 
-    assert channel["buffer_classic_Q"] == 0.0
-    assert channel["target_classic_Q"] > 0.0
-    assert channel["delta_peak_score"] > 0.0
-    assert channel["valid_classic_pair"] is False
+    assert channel["delta_peak_height_uA"] == 6.0
+    assert channel["buffer_channel_noise"] == 0.5
+    assert channel["target_channel_noise"] == 1.5
+    assert channel["combined_channel_noise"] == 2.0
     assert channel["buffer_classic_Q_contribution"] == 0.0
     assert channel["target_classic_Q_contribution"] == 0.0
-    assert channel["delta_peak_contribution"] == 0.0
-    assert channel["paired_Q_channel"] == 0.0
-    assert quality["Q_run"] == 0.0
+    assert channel["delta_peak_contribution"] == 3.0
+    assert channel["paired_Q_channel"] == 3.0
+    assert quality["Q_run"] == 3.0
 
 
 def test_paired_q_contribution_terms_sum_to_paired_q():
@@ -83,12 +85,14 @@ def test_paired_q_contribution_terms_sum_to_paired_q():
     buffer_metrics = {
         "1": {
             "mean_peak_current_uA": 1.0,
+            "mean_background_rms_uA": 0.25,
             "success_score": 1.0,
         }
     }
     target_metrics = {
         "1": {
             "mean_peak_current_uA": 4.0,
+            "mean_background_rms_uA": 0.75,
             "success_score": 1.0,
         }
     }

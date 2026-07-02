@@ -16,7 +16,7 @@ from pathlib import Path
 import random
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from core.bo_analysis import run_request
+from core.analysis_worker import run_analysis
 from core.bo_session import (
     BOIntegrationSession,
     PARAMETER_ORDER,
@@ -548,13 +548,13 @@ def run_optimizer_simulation(
             suggestion.params,
             suggestion.iteration,
         )
-        summary = run_request(
-            {
-                "folders": [str(raw_dir)],
-                "output_dir": str(analysis_output),
-                "output_stem": f"bo_iter_{suggestion.iteration:03d}",
-                "analysis": dict(cfg.get("analysis") or {}),
-            }
+        summary = _run_simulated_analysis(
+            session,
+            raw_dir,
+            analysis_output,
+            f"bo_iter_{suggestion.iteration:03d}",
+            dict(cfg.get("analysis") or {}),
+            request_name=f"iter_{suggestion.iteration:03d}_simulation_analysis_request.json",
         )
         path = _augment_analysis_summary(Path(summary["summary_path"]), simulation_payload)
         obs = session.import_analysis(path, notes="Simulation engine")
@@ -619,8 +619,22 @@ def run_paired_response_optimizer_simulation(
             buffer_trace_number = (cycle_idx * batch_size * 2) + batch_idx
             buffer_payload = engine.paired_analysis_payload(suggestion.params, suggestion.iteration, "buffer")
             _annotate_paired_payload(buffer_payload, cycle_number, batch_idx, buffer_trace_number, "buffer")
-            buffer_path = _write_simulated_analysis_summary(
-                analysis_output / f"bo_iter_{suggestion.iteration:03d}_buffer_simulated.json",
+            buffer_raw_dir = _write_paired_simulated_raw_measurements(
+                output_root,
+                suggestion.iteration,
+                "buffer",
+                buffer_payload,
+            )
+            buffer_summary = _run_simulated_analysis(
+                session,
+                buffer_raw_dir,
+                analysis_output,
+                f"bo_iter_{suggestion.iteration:03d}_buffer",
+                dict(cfg.get("analysis") or {}),
+                request_name=f"iter_{suggestion.iteration:03d}_buffer_simulation_analysis_request.json",
+            )
+            buffer_path = _augment_analysis_summary(
+                Path(buffer_summary["summary_path"]),
                 buffer_payload,
             )
             buffered.append((batch_idx, suggestion, buffer_payload, buffer_path, buffer_trace_number))
@@ -652,8 +666,22 @@ def run_paired_response_optimizer_simulation(
             target_trace_number = (cycle_idx * batch_size * 2) + batch_size + batch_idx
             target_payload = engine.paired_analysis_payload(suggestion.params, suggestion.iteration, "target")
             _annotate_paired_payload(target_payload, cycle_number, batch_idx, target_trace_number, "target")
-            target_path = _write_simulated_analysis_summary(
-                analysis_output / f"bo_iter_{suggestion.iteration:03d}_target_simulated.json",
+            target_raw_dir = _write_paired_simulated_raw_measurements(
+                output_root,
+                suggestion.iteration,
+                "target",
+                target_payload,
+            )
+            target_summary = _run_simulated_analysis(
+                session,
+                target_raw_dir,
+                analysis_output,
+                f"bo_iter_{suggestion.iteration:03d}_target",
+                dict(cfg.get("analysis") or {}),
+                request_name=f"iter_{suggestion.iteration:03d}_target_simulation_analysis_request.json",
+            )
+            target_path = _augment_analysis_summary(
+                Path(target_summary["summary_path"]),
                 target_payload,
             )
             targeted.append((batch_idx, suggestion, buffer_payload, buffer_path, target_payload, target_path, buffer_trace_number, target_trace_number))
@@ -744,7 +772,7 @@ def _write_simulated_raw_measurements(
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "simulation_engine": {
             "version": 2,
-            "analysis_mode": "headless_from_raw_csv",
+            "analysis_mode": "external_64bit_from_raw_csv",
             "iteration": int(iteration),
             "parameters": dict(params),
             "dimensions": [dim.__dict__ for dim in engine.dimensions],
@@ -757,14 +785,40 @@ def _write_simulated_raw_measurements(
     return legacy_dir, payload
 
 
-def _write_simulated_analysis_summary(path: Path, payload: dict) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    summary = dict(payload)
-    summary["headless_analysis_from_simulated_raw"] = False
-    summary["direct_simulated_analysis_summary"] = True
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(summary, fh, indent=2)
-    return path
+def _run_simulated_analysis(
+    session: BOIntegrationSession,
+    raw_dir: Path,
+    output_dir: Path,
+    output_stem: str,
+    analysis: dict,
+    request_name: str,
+) -> dict:
+    request = {
+        "folders": [str(raw_dir.resolve())],
+        "output_dir": str(output_dir.resolve()),
+        "output_stem": output_stem,
+        "analysis": analysis,
+        "source": "experiment_automation_simulation",
+    }
+    request_path = session.analysis_dir / request_name
+    session._write_json(request_path, request)
+    return run_analysis(request_path, request)
+
+
+def _write_paired_simulated_raw_measurements(
+    experiment_dir: Path,
+    iteration: int,
+    phase: str,
+    payload: dict,
+) -> Path:
+    raw_dir = experiment_dir / "legacy" / f"iter_{int(iteration):03d}" / str(phase)
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    for channel, trace in dict(payload.get("swv_traces") or {}).items():
+        voltage = [float(value) for value in trace.get("voltage_v") or []]
+        current = [float(value) for value in trace.get("current_uA") or []]
+        raw_path = raw_dir / f"ch{int(channel):03d}_meas_001_{phase}_simulated_swv.csv"
+        _write_raw_swv_csv(raw_path, voltage, current)
+    return raw_dir
 
 
 def _annotate_paired_payload(payload: dict, cycle: int, parameter_set: int, trace_number: int, phase: str) -> None:

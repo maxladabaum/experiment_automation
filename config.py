@@ -59,6 +59,38 @@ BO_ANALYSIS_FILE_GLOB = os.getenv(
     "EA_BO_ANALYSIS_FILE_GLOB",
     str(_BO_LOCAL_PATHS.get("analysis_file_glob", "*.json")),
 )
+_DEFAULT_ANALYSIS_PROJECT = Path(__file__).resolve().parent
+BO_EXTERNAL_ANALYSIS_PROJECT = Path(
+    os.getenv(
+        "EA_BO_ANALYSIS_PROJECT",
+        str(_BO_LOCAL_PATHS.get("analysis_project", _DEFAULT_ANALYSIS_PROJECT)),
+    )
+)
+BO_EXTERNAL_ANALYSIS_SCRIPT = Path(
+    os.getenv(
+        "EA_BO_ANALYSIS_SCRIPT",
+        str(
+            _BO_LOCAL_PATHS.get(
+                "analysis_script",
+                BO_EXTERNAL_ANALYSIS_PROJECT / "analysis_worker" / "bo_headless.py",
+            )
+        ),
+    )
+)
+BO_EXTERNAL_ANALYSIS_PYTHON = os.getenv(
+    "EA_BO_ANALYSIS_PYTHON",
+    str(_BO_LOCAL_PATHS.get("analysis_python", "")),
+).strip()
+BO_EXTERNAL_ANALYSIS_TIMEOUT_SECONDS = float(
+    os.getenv(
+        "EA_BO_ANALYSIS_TIMEOUT_SECONDS",
+        str(_BO_LOCAL_PATHS.get("analysis_timeout_seconds", 900)),
+    )
+)
+BO_EXTERNAL_ANALYSIS_MODE = os.getenv(
+    "EA_BO_ANALYSIS_MODE",
+    str(_BO_LOCAL_PATHS.get("analysis_mode", "external")),
+).strip().lower()
 #keep in mind that methods are already double saved under library and the experiments where they are used
 
 # ── Serial device detection keywords ─────────────────────────────────────────

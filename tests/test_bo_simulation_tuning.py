@@ -44,6 +44,25 @@ def test_simulation_tuning_builds_independent_paired_bo_config():
         "delta_peak": _var(master, 2.0),
         "delta_scale_uA": _var(master, 0.5),
     }
+    tab._engine_analysis_vars = {
+        "crop_min_v": _var(master, -0.55),
+        "crop_max_v": _var(master, -0.20),
+        "smooth_window": _var(master, 11),
+        "smooth_polyorder": _var(master, 3),
+        "minima_search_window_v": _var(master, 0.18),
+        "min_peak_height_ua": _var(master, 0.02),
+        "peak_voltage_min_v": _var(master, -0.50),
+        "peak_voltage_max_v": _var(master, -0.25),
+        "min_start_voltage_v": _var(master, -0.70),
+        "scan_windows": _var(master, ""),
+        "use_prominent_minima": tk.BooleanVar(master=master, value=True),
+        "require_local_minima_on_both_sides": tk.BooleanVar(master=master, value=True),
+        "use_double_correction": tk.BooleanVar(master=master, value=False),
+        "compute_skew": tk.BooleanVar(master=master, value=True),
+        "compute_wavelet_energy": tk.BooleanVar(master=master, value=False),
+        "compute_wavelet_denoised_trace": tk.BooleanVar(master=master, value=False),
+        "use_wavelet_for_correction": tk.BooleanVar(master=master, value=False),
+    }
 
     tuned = tab._engine_bo_config(
         {"paired_response": True, "paired_batch_size": 5}
@@ -57,6 +76,9 @@ def test_simulation_tuning_builds_independent_paired_bo_config():
     assert tuned["n_initial_points"] == 10
     assert tuned["scoring"]["channel_weights"]["noise_penalty"] == 5.0
     assert tuned["scoring"]["paired_response_weights"]["delta_peak"] == 2.0
+    assert tuned["analysis"]["crop_min_v"] == -0.55
+    assert tuned["analysis"]["smooth_window"] == 11
+    assert tuned["analysis"]["require_local_minima_on_both_sides"] is True
 
     assert tab._config["acquisition"]["exploration"] == original_exploration
     assert tab._config["scoring"]["paired_response_weights"] == original_scoring

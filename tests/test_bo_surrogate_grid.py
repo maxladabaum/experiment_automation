@@ -49,3 +49,29 @@ def test_surrogate_2d_grid_uses_encoded_regular_mesh_and_log_frequency_axis():
     ratios = frequency[1:] / frequency[:-1]
     assert np.allclose(ratios, ratios[0])
     assert np.all(np.diff(amplitude) > 0)
+
+
+def test_surrogate_2d_grid_is_smooth_without_saved_gp():
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    tab._bo_session = None
+    tab._config = load_bo_config("optimizer/bo_configs/default_swv_bo.json")
+    tab._load_surrogate_gp_model = lambda: None
+    observation = {
+        "params": dict(tab._config["initial_parameters"]),
+        "Q_run": 2.5,
+    }
+    tab._surrogate_observations_so_far = lambda: [observation]
+    tab._selected_surrogate_observation = lambda: observation
+
+    grid = tab._surrogate_2d_prediction_grid(
+        [{"best_observed_Q": 2.5}],
+        "predicted_std_Q",
+        "frequency",
+        "amplitude",
+        grid_size=24,
+    )
+
+    assert grid is not None
+    _frequency, _amplitude, values, _frequency_is_log, _amplitude_is_log = grid
+    assert values.shape == (24, 24)
+    assert np.unique(values).size > 24
