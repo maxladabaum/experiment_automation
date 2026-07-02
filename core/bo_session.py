@@ -84,6 +84,9 @@ class BOSuggestion:
     params: Dict[str, float]
     created_at: str
     status: str = "suggested"
+    group_id: int = 1
+    group_name: str = "Group 1"
+    channels: Optional[List[int]] = None
 
 
 class Matern:
@@ -203,6 +206,20 @@ def normalize_bo_config(config: dict) -> dict:
     cfg.setdefault("n_initial_points", 8)
     cfg.setdefault("random_seed", 42)
     cfg.setdefault("channels", list(range(1, 11)))
+    channels = parse_channels(cfg.get("channels", []))
+    raw_groups = cfg.get("channel_groups")
+    if not isinstance(raw_groups, list) or not raw_groups:
+        raw_groups = [{"name": "Group 1", "channels": channels}]
+    groups = []
+    for index, raw in enumerate(raw_groups[:10], 1):
+        raw = raw if isinstance(raw, dict) else {"channels": raw}
+        groups.append({
+            "id": index,
+            "name": str(raw.get("name") or f"Group {index}"),
+            "channels": parse_channels(raw.get("channels", [])),
+        })
+    cfg["channel_groups"] = groups
+    cfg["channels"] = [ch for group in groups for ch in group["channels"]]
     cfg.setdefault("method_options", {})
     cfg["method_options"].setdefault("bandwidth", "4k")
     cfg["method_options"].setdefault(
@@ -334,6 +351,15 @@ def validate_bo_config(config: dict) -> List[str]:
         channels = parse_channels(cfg.get("channels", []))
         if not channels:
             errors.append("At least one mux channel is required")
+        groups = cfg.get("channel_groups", [])
+        if not 1 <= len(groups) <= 10:
+            errors.append("Number of channel groups must be between 1 and 10")
+        grouped = [ch for group in groups for ch in parse_channels(group.get("channels", []))]
+        if any(not group.get("channels") for group in groups):
+            errors.append("Every channel group must contain at least one channel")
+        duplicates = sorted({ch for ch in grouped if grouped.count(ch) > 1})
+        if duplicates:
+            errors.append(f"Mux channels may only belong to one group: {duplicates}")
     except ValueError as exc:
         errors.append(str(exc))
     try:
@@ -367,6 +393,11 @@ def parse_channels(value: Any) -> List[int]:
             ordered.append(ch)
             seen.add(ch)
     return ordered
+
+
+def channel_groups(config: dict) -> List[dict]:
+    """Return normalized, non-overlapping channel group definitions."""
+    return [dict(group) for group in normalize_bo_config(config).get("channel_groups", [])]
 
 
 def active_parameters(config: dict) -> List[str]:
@@ -894,29 +925,91 @@ class BOIntegrationSession:
         return session
 
     def ask_next(self) -> BOSuggestion:
+        return self.ask_next_for_group(1)
+
+    def ask_next_for_group(self, group_id: int) -> BOSuggestion:
+        group = self._group(group_id)
         if self.pending is not None:
-            return BOSuggestion(**self.pending)
-        tried = {candidate_key(obs["params"]) for obs in self.observations}
+            if int(self.pending.get("group_id", 1)) == int(group_id):
+                return BOSuggestion(**self.pending)
+            raise RuntimeError("Another channel group suggestion is waiting for analysis")
+        existing = self._group_observations(group_id)
+        pending = self._pending_for_group(group_id)
+        if pending is not None:
+            return BOSuggestion(**pending)
+        tried = {candidate_key(obs["params"]) for obs in existing}
         available = self._available_candidates(tried)
         if not available:
             raise RuntimeError("All valid candidates have been evaluated")
-        iteration = len(self.observations) + 1
-        params = self._choose_candidate(available)
-        method_id = f"{self.session_id}_iter_{iteration:03d}"
+        iteration = len(existing) + 1
+        params = self._choose_candidate(available, observations=existing)
+        method_id = f"{self.session_id}_g{group_id:02d}_iter_{iteration:03d}"
         suggestion = {
             "iteration": iteration,
             "method_id": method_id,
             "params": params,
             "created_at": datetime.now().isoformat(timespec="seconds"),
             "status": "suggested",
+            "group_id": group_id,
+            "group_name": group["name"],
+            "channels": list(group["channels"]),
         }
         self.pending = suggestion
         self.suggestions.append(dict(suggestion))
-        self._write_json(self.methods_dir / f"iter_{iteration:03d}_suggested_method.json", suggestion)
+        self._write_json(self.methods_dir / f"group_{group_id:02d}_iter_{iteration:03d}_suggested_method.json", suggestion)
         self.save_state()
         return BOSuggestion(**suggestion)
 
+    def ask_next_groups(self) -> List[BOSuggestion]:
+        """Propose one independently optimized method for every channel group."""
+        return self.ask_batch(1)
+
     def ask_batch(self, count: int) -> List[BOSuggestion]:
+        groups = channel_groups(self.config)
+        if len(groups) > 1:
+            if self.pending is not None:
+                raise RuntimeError("A single pending BO suggestion is already waiting for analysis")
+            if self.pending_batch:
+                return [BOSuggestion(**record) for record in self.pending_batch]
+            suggestions = []
+            count = max(1, int(count))
+            for group in groups:
+                observed = self._group_observations(group["id"])
+                tried = {candidate_key(obs["params"]) for obs in observed}
+                pending_params = []
+                for offset in range(count):
+                    available = self._available_candidates(tried)
+                    if not available:
+                        break
+                    iteration = len(observed) + offset + 1
+                    params = self._choose_candidate(
+                        available,
+                        pending_params=pending_params,
+                        observations=observed,
+                    )
+                    record = {
+                        "iteration": iteration,
+                        "method_id": f"{self.session_id}_g{group['id']:02d}_iter_{iteration:03d}",
+                        "params": params,
+                        "created_at": datetime.now().isoformat(timespec="seconds"),
+                        "status": "suggested",
+                        "group_id": group["id"],
+                        "group_name": group["name"],
+                        "channels": list(group["channels"]),
+                    }
+                    suggestions.append(record)
+                    pending_params.append(dict(params))
+                    tried.add(candidate_key(params))
+                    self.suggestions.append(dict(record))
+                    self._write_json(
+                        self.methods_dir / f"group_{group['id']:02d}_iter_{iteration:03d}_suggested_method.json",
+                        record,
+                    )
+            if not suggestions:
+                raise RuntimeError("All valid candidates have been evaluated")
+            self.pending_batch = suggestions
+            self.save_state()
+            return [BOSuggestion(**record) for record in suggestions]
         if self.pending is not None:
             raise RuntimeError("A single pending BO suggestion is already waiting for analysis")
         if self.pending_batch:
@@ -963,14 +1056,14 @@ class BOIntegrationSession:
         return available
 
     def build_queue_items(self, registry, suggestion: BOSuggestion, phase: Optional[str] = None) -> List[dict]:
-        channels = parse_channels(self.config.get("channels", []))
+        channels = list(suggestion.channels or self._group(suggestion.group_id)["channels"])
         base_script = build_swv_methodscript(suggestion.params, self.config.get("method_options", {}))
         items = []
         params_for_hash = self._params_for_method_ref(suggestion.params)
         phase_label = str(phase or "").strip().lower()
         for channel in channels:
             script = wrap_mux(base_script, channel)
-            note = f"BO {suggestion.method_id} | MUX ch {channel}"
+            note = f"BO {suggestion.method_id} | {suggestion.group_name} | MUX ch {channel}"
             if phase_label:
                 note = f"{note} | {phase_label}"
             saved_path, saved_name = registry.save_script(
@@ -989,7 +1082,7 @@ class BOIntegrationSession:
                 "type": "SWV",
                 "script_path": str(saved_path),
                 "status": "pending",
-                "details": f"BO iter {suggestion.iteration:03d} | {saved_name} (MUX ch {channel})"
+                "details": f"BO {suggestion.group_name} iter {suggestion.iteration:03d} | {saved_name} (MUX ch {channel})"
                 + (f" | {phase_label}" if phase_label else ""),
                 "method_ref": {
                     "hash_key": hash_key,
@@ -1002,13 +1095,15 @@ class BOIntegrationSession:
                     "iteration": suggestion.iteration,
                     "method_id": suggestion.method_id,
                     "record_dir": str(self.record_dir),
+                    "group_id": suggestion.group_id,
+                    "group_name": suggestion.group_name,
                 },
             }
             if phase_label:
                 item["bo_ref"]["phase"] = phase_label
             items.append(item)
         self._write_json(
-            self.methods_dir / f"iter_{suggestion.iteration:03d}_queue_items.json",
+            self.methods_dir / f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_queue_items.json",
             {"method_id": suggestion.method_id, "items": items},
         )
         return items
@@ -1023,8 +1118,18 @@ class BOIntegrationSession:
                 record["queue_item_count"] = len(items)
         self.save_state()
 
-    def import_analysis(self, path: str | Path, notes: str = "") -> dict:
-        if self.pending is None:
+    def import_analysis(
+        self,
+        path: str | Path,
+        notes: str = "",
+        suggestion: Optional[BOSuggestion | dict] = None,
+    ) -> dict:
+        suggestion_data = (
+            suggestion if isinstance(suggestion, dict)
+            else suggestion.__dict__ if suggestion is not None
+            else self.pending
+        )
+        if suggestion_data is None:
             raise RuntimeError("No pending BO suggestion is waiting for analysis")
         source = Path(path)
         if not source.exists():
@@ -1032,13 +1137,16 @@ class BOIntegrationSession:
         with open(source, "r", encoding="utf-8") as fh:
             payload = json.load(fh)
         channel_metrics = extract_channel_metrics(payload)
+        group_id = int(suggestion_data.get("group_id", 1))
+        group = self._group(group_id)
+        channel_metrics = self._filter_metrics(channel_metrics, group["channels"])
         quality = compute_run_quality(channel_metrics, self.config.get("scoring", {}))
-        iteration = int(self.pending["iteration"])
+        iteration = int(suggestion_data["iteration"])
         retained_path = self._retain_analysis_file(source, iteration)
         observation = {
             "iteration": iteration,
-            "method_id": self.pending["method_id"],
-            "params": dict(self.pending["params"]),
+            "method_id": suggestion_data["method_id"],
+            "params": dict(suggestion_data["params"]),
             "analysis_source": str(source),
             "analysis_record": str(retained_path),
             "channel_metrics": channel_metrics,
@@ -1046,6 +1154,9 @@ class BOIntegrationSession:
             "Q_run": quality["Q_run"],
             "notes": notes,
             "completed_at": datetime.now().isoformat(timespec="seconds"),
+            "group_id": group_id,
+            "group_name": group["name"],
+            "channels": list(group["channels"]),
         }
         if payload.get("results_json"):
             observation["analysis_results_json"] = str(payload["results_json"])
@@ -1053,19 +1164,27 @@ class BOIntegrationSession:
             observation["analysis_results_csv"] = str(payload["results_csv"])
         if payload.get("analysis_engine"):
             observation["analysis_engine"] = str(payload["analysis_engine"])
-        archived_measurements = self._archive_iteration_measurements(iteration, self.pending["method_id"])
+        archived_measurements = self._archive_iteration_measurements(iteration, suggestion_data["method_id"])
         if archived_measurements:
             observation["archived_measurements"] = archived_measurements
         self.observations.append(observation)
         for record in self.suggestions:
-            if record.get("method_id") == self.pending["method_id"]:
+            if record.get("method_id") == suggestion_data["method_id"]:
                 record["status"] = "completed"
                 record["completed_at"] = observation["completed_at"]
                 record["Q_run"] = observation["Q_run"]
                 if archived_measurements:
                     record["archived_measurements"] = list(archived_measurements)
-        self.pending = None
-        self._write_json(self.analysis_dir / f"iter_{iteration:03d}_quality.json", observation)
+        if self.pending and self.pending.get("method_id") == suggestion_data["method_id"]:
+            self.pending = None
+        self.pending_batch = [
+            record for record in self.pending_batch
+            if record.get("method_id") != suggestion_data["method_id"]
+        ]
+        self._write_json(
+            self.analysis_dir / f"group_{group_id:02d}_iter_{iteration:03d}_quality.json",
+            observation,
+        )
         self._write_history_csv()
         self.save_state()
         self._write_optional_iteration_artifacts(iteration, observation)
@@ -1084,12 +1203,14 @@ class BOIntegrationSession:
         target_trace_number: Optional[int] = None,
     ) -> dict:
         suggestion_data = suggestion if isinstance(suggestion, dict) else suggestion.__dict__
+        group_id = int(suggestion_data.get("group_id", 1))
+        group = self._group(group_id)
         iteration = int(suggestion_data["iteration"])
         method_id = str(suggestion_data["method_id"])
         buffer_payload = self._load_json_file(buffer_path)
         target_payload = self._load_json_file(target_path)
-        buffer_metrics = extract_channel_metrics(buffer_payload)
-        target_metrics = extract_channel_metrics(target_payload)
+        buffer_metrics = self._filter_metrics(extract_channel_metrics(buffer_payload), group["channels"])
+        target_metrics = self._filter_metrics(extract_channel_metrics(target_payload), group["channels"])
         quality = compute_paired_response_quality(buffer_metrics, target_metrics, self.config.get("scoring", {}))
         retained_buffer = self._retain_analysis_file(Path(buffer_path), iteration, suffix="buffer")
         retained_target = self._retain_analysis_file(Path(target_path), iteration, suffix="target")
@@ -1141,6 +1262,9 @@ class BOIntegrationSession:
             "Q_run": quality["Q_run"],
             "notes": notes,
             "completed_at": datetime.now().isoformat(timespec="seconds"),
+            "group_id": group_id,
+            "group_name": group["name"],
+            "channels": list(group["channels"]),
         }
         if buffer_payload.get("results_json"):
             observation["buffer_analysis_results_json"] = str(buffer_payload["results_json"])
@@ -1175,8 +1299,11 @@ class BOIntegrationSession:
             record for record in getattr(self, "pending_batch", [])
             if str(record.get("method_id") or "") != method_id
         ]
-        self._write_json(self.analysis_dir / f"iter_{iteration:03d}_paired_quality.json", observation)
-        self._write_paired_components_csv(iteration, quality)
+        self._write_json(
+            self.analysis_dir / f"group_{group_id:02d}_iter_{iteration:03d}_paired_quality.json",
+            observation,
+        )
+        self._write_paired_components_csv(iteration, quality, group_id=group_id)
         self._write_history_csv()
         self.save_state()
         self._write_optional_iteration_artifacts(iteration, observation)
@@ -1200,7 +1327,7 @@ class BOIntegrationSession:
                 return value
         return None
 
-    def _write_paired_components_csv(self, iteration: int, quality: dict) -> None:
+    def _write_paired_components_csv(self, iteration: int, quality: dict, group_id: int = 1) -> None:
         rows = []
         for channel, data in sorted(
             dict(quality.get("channel_components") or {}).items(),
@@ -1209,7 +1336,10 @@ class BOIntegrationSession:
             row = {"channel": channel}
             row.update(dict(data or {}))
             rows.append(row)
-        self._write_csv(self.analysis_dir / f"iter_{int(iteration):03d}_paired_components.csv", rows)
+        self._write_csv(
+            self.analysis_dir / f"group_{int(group_id):02d}_iter_{int(iteration):03d}_paired_components.csv",
+            rows,
+        )
 
     def record_queue_completion(self, summary: dict) -> Optional[Path]:
         """Retain queue completion details for BO-owned queue items."""
@@ -1564,6 +1694,7 @@ class BOIntegrationSession:
             "analysis_output_dir": str(self.analysis_output_dir),
             "candidate_count": len(self.candidates),
             "active_parameters": active_parameters(self.config),
+            "channel_groups": channel_groups(self.config),
             "pending": self.pending,
             "pending_batch": getattr(self, "pending_batch", []),
             "suggestions": self.suggestions,
@@ -1576,6 +1707,20 @@ class BOIntegrationSession:
         return path
 
     def _choose_candidate(
+        self,
+        available: List[Dict[str, float]],
+        pending_params: Optional[List[dict]] = None,
+        observations: Optional[List[dict]] = None,
+    ) -> Dict[str, float]:
+        original_observations = self.observations
+        if observations is not None:
+            self.observations = observations
+        try:
+            return self._choose_candidate_current(available, pending_params)
+        finally:
+            self.observations = original_observations
+
+    def _choose_candidate_current(
         self,
         available: List[Dict[str, float]],
         pending_params: Optional[List[dict]] = None,
@@ -1597,6 +1742,31 @@ class BOIntegrationSession:
             if gp_choice is not None:
                 return gp_choice
         return self._distance_surrogate_candidate(available)
+
+    def _group(self, group_id: int) -> dict:
+        for group in channel_groups(self.config):
+            if int(group["id"]) == int(group_id):
+                return group
+        raise ValueError(f"Unknown channel group {group_id}")
+
+    def _group_observations(self, group_id: int) -> List[dict]:
+        return [
+            obs for obs in self.observations
+            if int(obs.get("group_id", 1)) == int(group_id)
+        ]
+
+    def _pending_for_group(self, group_id: int) -> Optional[dict]:
+        if self.pending and int(self.pending.get("group_id", 1)) == int(group_id):
+            return self.pending
+        return next(
+            (record for record in self.pending_batch if int(record.get("group_id", 1)) == int(group_id)),
+            None,
+        )
+
+    @staticmethod
+    def _filter_metrics(metrics: dict, channels: List[int]) -> dict:
+        allowed = {str(int(ch)) for ch in channels}
+        return {str(key): value for key, value in metrics.items() if str(key) in allowed}
 
     def _maximin_candidate(
         self,
@@ -1840,6 +2010,9 @@ class BOIntegrationSession:
                 paired_batch_index = self._paired_batch_index_for_observation(obs)
             row = {
                 "iteration": obs["iteration"],
+                "group_id": obs.get("group_id", 1),
+                "group_name": obs.get("group_name", "Group 1"),
+                "channels": ",".join(str(ch) for ch in obs.get("channels", [])),
                 "method_id": obs["method_id"],
                 "objective": obs.get("objective", ""),
                 "paired_cycle": "" if paired_cycle is None else paired_cycle,
@@ -2122,16 +2295,21 @@ class BOIntegrationSession:
             plt.close(fig)
 
         if self.observations:
-            iterations = [int(obs["iteration"]) for obs in self.observations]
-            scores = [float(obs["Q_run"]) for obs in self.observations]
-            best_so_far = []
-            running_best = 0.0
-            for score in scores:
-                running_best = max(running_best, score)
-                best_so_far.append(running_best)
             fig, ax = plt.subplots(figsize=(7.0, 3.6))
-            ax.plot(iterations, scores, marker="o", color="#155e63", label="Q_run")
-            ax.plot(iterations, best_so_far, color="#d67b32", label="Best so far")
+            grouped = {}
+            for obs in self.observations:
+                grouped.setdefault(
+                    (int(obs.get("group_id", 1)), str(obs.get("group_name", "Group 1"))),
+                    [],
+                ).append(obs)
+            for (_group_id, group_name), rows in sorted(grouped.items()):
+                rows.sort(key=lambda obs: int(obs["iteration"]))
+                ax.plot(
+                    [int(obs["iteration"]) for obs in rows],
+                    [float(obs["Q_run"]) for obs in rows],
+                    marker="o",
+                    label=group_name,
+                )
             ax.set_ylim(0.0, 1.0)
             ax.set_xlabel("BO iteration")
             ax.set_ylabel("Score")

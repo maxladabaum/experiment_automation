@@ -45,6 +45,7 @@ from core.bo_session import (
     load_bo_config,
     normalize_bo_config,
     parse_channels,
+    channel_groups,
     resolve_initial_parameters,
     save_bo_config,
     validate_bo_config,
@@ -103,6 +104,8 @@ class BayesianOptimizationTab:
         self._analysis_wavelet_trace_var = tk.BooleanVar(value=False)
         self._analysis_wavelet_correction_var = tk.BooleanVar(value=False)
         self._channels_var = tk.StringVar(value="")
+        self._channel_group_count_var = tk.StringVar(value="1")
+        self._channel_group_vars = []
         self._bo_bandwidth_var = tk.StringVar(value="4k")
         self._bo_ba_range_mode_var = tk.StringVar(value="fixed")
         self._bo_ba_fixed_range_var = tk.StringVar(value="100 nA")
@@ -188,6 +191,8 @@ class BayesianOptimizationTab:
         self._surrogate_color_min_var = tk.StringVar(value="")
         self._surrogate_color_max_var = tk.StringVar(value="")
         self._engine_iterations_var = tk.StringVar(value="20")
+        self._engine_channel_group_count_var = tk.StringVar(value="1")
+        self._engine_channel_group_vars = []
         self._engine_paired_response_var = tk.BooleanVar(value=False)
         self._engine_paired_batch_size_var = tk.StringVar(value="4")
         self._engine_exploration_var = tk.DoubleVar(value=0.35)
@@ -471,14 +476,25 @@ class BayesianOptimizationTab:
         ttk.Label(cfg, text="Analysis glob:").grid(row=4, column=0, sticky="w", pady=2)
         ttk.Entry(cfg, textvariable=self._analysis_glob_var, width=14).grid(row=4, column=1, sticky="w", padx=4)
 
-        ttk.Label(cfg, text="Mux channels:").grid(row=5, column=0, sticky="w", pady=2)
-        channels = ttk.Entry(cfg, textvariable=self._channels_var)
-        channels.grid(row=5, column=1, sticky="ew", padx=4)
-        channels.bind("<FocusOut>", lambda _e: self._sync_channels_from_entry())
-        channels.bind("<Return>", lambda _e: self._sync_channels_from_entry())
+        ttk.Label(cfg, text="Channel groups:").grid(row=5, column=0, sticky="nw", pady=2)
+        group_controls = ttk.Frame(cfg)
+        group_controls.grid(row=5, column=1, sticky="ew", padx=4)
+        ttk.Label(group_controls, text="Number of groups").pack(side="left")
+        group_count = ttk.Combobox(
+            group_controls,
+            textvariable=self._channel_group_count_var,
+            values=[str(value) for value in range(1, 11)],
+            state="readonly",
+            width=4,
+        )
+        group_count.pack(side="left", padx=6)
+        group_count.bind("<<ComboboxSelected>>", lambda _e: self._rebuild_channel_group_entries())
+        self._channel_groups_frame = ttk.Frame(cfg)
+        self._channel_groups_frame.grid(row=6, column=1, columnspan=4, sticky="ew", padx=4, pady=(0, 4))
         ttk.Button(cfg, text="Validate", command=self._validate_config).grid(row=5, column=2, padx=2)
         ttk.Button(cfg, text="Load BO Session", command=self._load_bo_session).grid(row=5, column=3, padx=2)
         ttk.Button(cfg, text="Start BO Session", command=self._start_bo_session).grid(row=5, column=4, padx=2)
+        self._rebuild_channel_group_entries()
 
         clue = ttk.LabelFrame(left, text="Setup Cues", padding=8)
         clue.pack(fill="x", pady=(0, 8))
@@ -894,6 +910,32 @@ class BayesianOptimizationTab:
         ttk.Entry(schedule_box, textvariable=self._engine_iterations_var, width=10).grid(row=0, column=1, sticky="w", padx=(6, 18), pady=3)
         ttk.Label(schedule_box, text="Batch size:").grid(row=0, column=2, sticky="w", pady=3)
         ttk.Entry(schedule_box, textvariable=self._engine_paired_batch_size_var, width=10).grid(row=0, column=3, sticky="w", padx=(6, 18), pady=3)
+
+        groups_box = ttk.LabelFrame(setup_box, text="Simulation Channel Groups", padding=8)
+        groups_box.pack(fill="x", pady=(0, 8))
+        group_header = ttk.Frame(groups_box)
+        group_header.pack(fill="x")
+        ttk.Label(group_header, text="Number of groups:").pack(side="left")
+        engine_group_count = ttk.Combobox(
+            group_header,
+            textvariable=self._engine_channel_group_count_var,
+            values=[str(value) for value in range(1, 11)],
+            state="readonly",
+            width=4,
+        )
+        engine_group_count.pack(side="left", padx=6)
+        engine_group_count.bind(
+            "<<ComboboxSelected>>",
+            lambda _e: self._rebuild_engine_channel_group_entries(),
+        )
+        self._engine_channel_groups_frame = ttk.Frame(groups_box)
+        self._engine_channel_groups_frame.pack(fill="x", pady=(4, 0))
+        self._rebuild_engine_channel_group_entries()
+        ttk.Label(
+            groups_box,
+            text="Each group runs an independent optimizer using only its simulated channel results.",
+            foreground=self.ACCENT,
+        ).pack(fill="x", pady=(4, 0))
         ttk.Label(
             setup_box,
             text=(
@@ -1171,7 +1213,7 @@ class BayesianOptimizationTab:
         self._engine_q_plot_frame = ttk.Frame(q_tab)
         self._engine_q_plot_frame.pack(fill="both", expand=True)
 
-        result_cols = ("Set", "BO Iter", "Buffer Trace", "Target Trace", "Q_run", "True Q", "Paired Q", "Delta Peak", "Distance", "Peak uA", "Raw SNR", "Begin", "End", "Step", "Amp", "Freq")
+        result_cols = ("Group", "Set", "BO Iter", "Buffer Trace", "Target Trace", "Q_run", "True Q", "Paired Q", "Delta Peak", "Distance", "Peak uA", "Raw SNR", "Begin", "End", "Step", "Amp", "Freq")
         self._engine_result_tree = ttk.Treeview(detail_box, columns=result_cols, show="tree headings", height=9, style="BO.Treeview")
         self._engine_result_tree.heading("#0", text="Iter")
         self._engine_result_tree.column("#0", width=62, anchor="center")
@@ -1297,7 +1339,7 @@ class BayesianOptimizationTab:
         self._corrected_trace_frame = ttk.Frame(corrected_box)
         self._corrected_trace_frame.pack(fill="both", expand=True)
         hist_cols = (
-            "Q_run", "Mean", "Std", "Failed", "Low",
+            "Group", "Q_run", "Mean", "Std", "Failed", "Low",
             "Peak uA", "Noise uA", "Raw SNR", "SNR Score", "Shape", "Baseline", "Replicate", "Success",
             "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t",
         )
@@ -1565,6 +1607,7 @@ class BayesianOptimizationTab:
                 self._set_rescore_vars_from_config(self._config)
             self._engine_seed_var.set(str(self._config.get("random_seed", 42)))
             self._channels_var.set(", ".join(str(ch) for ch in self._config.get("channels", [])))
+            self._set_channel_group_vars(self._config)
             self._refresh_parameter_table()
             self._refresh_initial_parameters_table()
             self._engine_load_active_dimensions()
@@ -1580,7 +1623,7 @@ class BayesianOptimizationTab:
     def _save_config(self):
         if self._config is None:
             return
-        self._sync_channels_from_entry(show_error=False)
+        self._sync_channel_groups(show_error=False)
         self._config["objective"] = self._bo_objective_var.get()
         analysis_cfg = self._config.setdefault("analysis", {})
         analysis_cfg["file_glob"] = self._analysis_glob_var.get().strip() or "*.json"
@@ -1731,6 +1774,12 @@ class BayesianOptimizationTab:
         else:
             warmup = int((cfg or {}).get("n_initial_points", 8) or 0)
         self._engine_warmup_iterations_var.set(str(warmup))
+        if hasattr(self, "_engine_channel_group_count_var"):
+            groups = channel_groups(cfg)
+            self._engine_channel_group_count_var.set(str(len(groups)))
+            self._rebuild_engine_channel_group_entries(
+                [", ".join(str(ch) for ch in group["channels"]) for group in groups]
+            )
         length_scales = dict(
             acquisition.get("gp_falloff_fractions")
             or acquisition.get("gp_length_scales")
@@ -1844,6 +1893,12 @@ class BayesianOptimizationTab:
             raise ValueError("Load a BO config first.")
         sim_cfg = sim_cfg or self._engine_sim_config()
         cfg = json.loads(json.dumps(self._config))
+        if hasattr(self, "_engine_channel_group_vars"):
+            groups = self._engine_channel_groups_from_vars()
+            cfg["channel_groups"] = groups
+            cfg["channels"] = [
+                channel for group in groups for channel in group["channels"]
+            ]
         acquisition = cfg.setdefault("acquisition", {})
         acquisition["exploration"] = max(0.0, min(1.0, float(self._engine_exploration_var.get())))
         acquisition["candidate_pool_size"] = max(50, int(self._engine_candidate_pool_var.get() or 600))
@@ -2672,10 +2727,131 @@ class BayesianOptimizationTab:
             if show_error:
                 messagebox.showerror("Mux Channels", str(exc))
 
+    def _set_channel_group_vars(self, config):
+        groups = channel_groups(config)
+        self._channel_group_count_var.set(str(len(groups)))
+        self._rebuild_channel_group_entries(
+            [", ".join(str(ch) for ch in group["channels"]) for group in groups]
+        )
+
+    def _rebuild_channel_group_entries(self, values=None):
+        old_values = [var.get() for var in self._channel_group_vars]
+        requested = max(1, min(10, int(self._channel_group_count_var.get() or 1)))
+        if values is None:
+            channels = []
+            for value in old_values:
+                try:
+                    channels.extend(parse_channels(value))
+                except Exception:
+                    pass
+            if not channels:
+                channels = list(range(1, 11))
+            sizes = [len(channels) // requested + (1 if i < len(channels) % requested else 0) for i in range(requested)]
+            values = []
+            offset = 0
+            for size in sizes:
+                values.append(", ".join(str(ch) for ch in channels[offset:offset + size]))
+                offset += size
+        for child in self._channel_groups_frame.winfo_children():
+            child.destroy()
+        self._channel_group_vars = []
+        for index in range(requested):
+            var = tk.StringVar(value=values[index] if index < len(values) else "")
+            self._channel_group_vars.append(var)
+            ttk.Label(self._channel_groups_frame, text=f"Group {index + 1}").grid(
+                row=index, column=0, sticky="w", pady=2
+            )
+            entry = ttk.Entry(self._channel_groups_frame, textvariable=var)
+            entry.grid(row=index, column=1, sticky="ew", padx=(6, 0), pady=2)
+            entry.bind("<FocusOut>", lambda _e: self._sync_channel_groups(show_error=False))
+        self._channel_groups_frame.columnconfigure(1, weight=1)
+        self._sync_channel_groups(show_error=False)
+
+    def _sync_channel_groups(self, show_error=True):
+        if self._config is None:
+            return
+        try:
+            groups = []
+            all_channels = []
+            for index, var in enumerate(self._channel_group_vars, 1):
+                channels = parse_channels(var.get())
+                if not channels:
+                    raise ValueError(f"Group {index} must contain at least one channel")
+                groups.append({"id": index, "name": f"Group {index}", "channels": channels})
+                all_channels.extend(channels)
+            duplicates = sorted({ch for ch in all_channels if all_channels.count(ch) > 1})
+            if duplicates:
+                raise ValueError(f"Channels may only appear in one group: {duplicates}")
+            self._config["channel_groups"] = groups
+            self._config["channels"] = all_channels
+            self._channels_var.set(", ".join(str(ch) for ch in all_channels))
+        except Exception as exc:
+            if show_error:
+                messagebox.showerror("Channel Groups", str(exc))
+
+    def _rebuild_engine_channel_group_entries(self, values=None):
+        old_values = [var.get() for var in self._engine_channel_group_vars]
+        requested = max(1, min(10, int(self._engine_channel_group_count_var.get() or 1)))
+        if values is None:
+            channels = []
+            for value in old_values:
+                try:
+                    channels.extend(parse_channels(value))
+                except Exception:
+                    pass
+            if not channels:
+                source = self._config or {}
+                channels = parse_channels(source.get("channels", list(range(1, 11))))
+            sizes = [
+                len(channels) // requested + (1 if index < len(channels) % requested else 0)
+                for index in range(requested)
+            ]
+            values = []
+            offset = 0
+            for size in sizes:
+                values.append(", ".join(str(ch) for ch in channels[offset:offset + size]))
+                offset += size
+        for child in self._engine_channel_groups_frame.winfo_children():
+            child.destroy()
+        self._engine_channel_group_vars = []
+        for index in range(requested):
+            var = tk.StringVar(value=values[index] if index < len(values) else "")
+            self._engine_channel_group_vars.append(var)
+            ttk.Label(
+                self._engine_channel_groups_frame,
+                text=f"Group {index + 1}",
+            ).grid(row=index, column=0, sticky="w", pady=2)
+            ttk.Entry(
+                self._engine_channel_groups_frame,
+                textvariable=var,
+            ).grid(row=index, column=1, sticky="ew", padx=(6, 0), pady=2)
+        self._engine_channel_groups_frame.columnconfigure(1, weight=1)
+
+    def _engine_channel_groups_from_vars(self):
+        groups = []
+        assigned = []
+        for index, var in enumerate(self._engine_channel_group_vars, 1):
+            channels = parse_channels(var.get())
+            if not channels:
+                raise ValueError(f"Simulation group {index} must contain at least one channel.")
+            groups.append({
+                "id": index,
+                "name": f"Group {index}",
+                "channels": channels,
+            })
+            assigned.extend(channels)
+        duplicates = sorted({channel for channel in assigned if assigned.count(channel) > 1})
+        if duplicates:
+            raise ValueError(
+                "Simulation channels may only belong to one group: "
+                + ", ".join(str(channel) for channel in duplicates)
+            )
+        return groups
+
     def _validate_config(self, show_dialog=True):
         if self._config is None:
             return
-        self._sync_channels_from_entry(show_error=False)
+        self._sync_channel_groups(show_error=False)
         self._config["objective"] = self._bo_objective_var.get()
         self._sync_scoring_config(show_error=False)
         errors = validate_bo_config(self._config)
@@ -2757,6 +2933,7 @@ class BayesianOptimizationTab:
             self._set_engine_tuning_vars_from_config(self._config)
             self._set_rescore_vars_from_config(self._config)
             self._channels_var.set(", ".join(str(ch) for ch in self._config.get("channels", [])))
+            self._set_channel_group_vars(self._config)
             self._refresh_parameter_table()
             self._refresh_initial_parameters_table()
             self._suggestion = None
@@ -2819,7 +2996,15 @@ class BayesianOptimizationTab:
             if self._bo_session is None:
                 return
         try:
-            self._suggestion = self._bo_session.ask_next()
+            groups = channel_groups(self._bo_session.config)
+            group = min(
+                groups,
+                key=lambda candidate: sum(
+                    1 for obs in self._bo_session.observations
+                    if int(obs.get("group_id", 1)) == int(candidate["id"])
+                ),
+            )
+            self._suggestion = self._bo_session.ask_next_for_group(group["id"])
             self._render_suggestion()
             self._status_var.set(
                 f"Suggested BO iteration {self._suggestion.iteration}. Send it to queue when ready."
@@ -3190,7 +3375,7 @@ class BayesianOptimizationTab:
             messagebox.showwarning("Simulation Engine", "Load a BO config first.")
             return
         try:
-            self._sync_channels_from_entry(show_error=False)
+            self._sync_channel_groups(show_error=False)
             sim_cfg = self._engine_sim_config()
             sim_bo_config = self._engine_bo_config(sim_cfg)
             session_mgr = getattr(self._session, "session_manager", None)
@@ -3263,10 +3448,12 @@ class BayesianOptimizationTab:
                         f"Best computed Q={best['Q_run']:.3f}, true Q={best['true_Q']:.3f}."
                     )
                 else:
-                    expected_rows = sim_cfg["iterations"]
+                    group_count = len(channel_groups(sim_bo_config))
+                    expected_rows = sim_cfg["iterations"] * group_count
                     self._engine_progress_text_var.set(f"{len(result['rows'])}/{expected_rows}")
                     self._engine_status_var.set(
-                        f"Completed {len(result['rows'])} simulated BO iteration(s). "
+                        f"Completed {sim_cfg['iterations']} iteration(s) for {group_count} group(s), "
+                        f"{len(result['rows'])} group observation(s). "
                         f"Closest distance={best['distance']:.3f}, computed Q={best['Q_run']:.3f}, true Q={best['true_Q']:.3f}."
                     )
             else:
@@ -3299,6 +3486,7 @@ class BayesianOptimizationTab:
                 iid=str(idx),
                 text=str(cycle if paired_result else row.get("iteration", idx + 1)),
                 values=(
+                    str(row.get("group_name") or obs.get("group_name") or "Group 1"),
                     str(parameter_set) if paired_result else "",
                     str(row.get("iteration", idx + 1)) if paired_result else "",
                     str(buffer_trace) if paired_result else "",
@@ -3871,51 +4059,61 @@ class BayesianOptimizationTab:
 
         fig = Figure(figsize=(6.2, 2.8), dpi=100)
         ax = fig.add_subplot(111)
-        values = []
-        x_values = []
-        point_ids = []
-        paired_rows = any(str((row or {}).get("objective") or "").lower() == "paired_response" for row in rows)
-        for idx, row in enumerate(rows):
-            value = self._analysis_trend_value(row, metric)
-            if value is None:
-                continue
-            try:
-                values.append(float(value))
-                point_ids.append(str(row.get("iteration", idx + 1)))
-                if paired_rows:
-                    x_values.append(idx + 1)
-                else:
-                    x_values.append(int(row.get("iteration", idx + 1)))
-            except (TypeError, ValueError):
-                continue
+        series = self._grouped_trend_series(rows, metric)
+        all_points = []
 
-        if not values:
+        if not series:
             ax.text(0.5, 0.5, empty_text, ha="center", va="center")
             ax.set_axis_off()
         else:
-            ax.plot(x_values, values, marker="o", color=self.ACCENT_DARK, linewidth=1.8, label=metric)
+            for group_name, points in series:
+                x_values = [point[1] for point in points]
+                values = [point[2] for point in points]
+                all_points.extend(points)
+                ax.plot(
+                    x_values,
+                    values,
+                    marker="o",
+                    linewidth=1.8,
+                    label=group_name,
+                )
             if metric == "Q_run":
-                best_so_far = []
-                running_best = 0.0
-                for value in values:
-                    running_best = max(running_best, value)
-                    best_so_far.append(running_best)
-                ax.plot(x_values, best_so_far, color="#d67b32", linewidth=1.6, label="Best so far")
                 ax.set_ylim(bottom=0.0)
-            ax.set_xlabel("Paired comparison" if paired_rows else "BO iteration")
+            ax.set_xlabel("BO iteration")
             ax.set_ylabel(metric)
-            ax.set_title(f"{metric} over {'paired comparisons' if paired_rows else 'BO iterations'}")
+            ax.set_title(f"{metric} over BO iterations")
             ax.grid(alpha=0.25)
             ax.legend(loc="best", fontsize=8)
         fig.tight_layout()
         canvas = FigureCanvasTkAgg(fig, master=parent)
-        if values:
+        if all_points:
             canvas.mpl_connect(
                 "button_press_event",
-                lambda event, points=list(zip(point_ids, x_values, values)): self._on_analysis_trend_click(event, points),
+                lambda event, points=all_points: self._on_analysis_trend_click(event, points),
             )
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def _grouped_trend_series(self, rows, metric):
+        grouped = {}
+        for index, row in enumerate(rows):
+            value = self._analysis_trend_value(row, metric)
+            if value is None:
+                continue
+            try:
+                group_id = int(row.get("group_id", 1))
+                group_name = str(row.get("group_name") or f"Group {group_id}")
+                iteration = int(row.get("iteration", index + 1))
+                history_key = f"g{group_id}:i{iteration}"
+                grouped.setdefault((group_id, group_name), []).append(
+                    (history_key, iteration, float(value))
+                )
+            except (TypeError, ValueError):
+                continue
+        return [
+            (group_name, sorted(points, key=lambda point: point[1]))
+            for (_group_id, group_name), points in sorted(grouped.items())
+        ]
 
     def _on_analysis_trend_click(self, event, points):
         if event.inaxes is None or not points:
@@ -3958,31 +4156,38 @@ class BayesianOptimizationTab:
             ax.text(0.5, 0.5, empty_text, ha="center", va="center")
             ax.set_axis_off()
         else:
-            iterations = [int(row.get("iteration", idx + 1)) for idx, row in enumerate(rows)]
-            q_values = [float(row.get("Q_run", 0.0) or 0.0) for row in rows]
-            best_so_far = []
-            running_best = 0.0
-            for value in q_values:
-                running_best = max(running_best, value)
-                best_so_far.append(running_best)
-            ax.plot(iterations, q_values, marker="o", color=self.ACCENT_DARK, linewidth=1.8, label="Q_run")
-            ax.plot(iterations, best_so_far, color="#d67b32", linewidth=1.6, label="Best so far")
-            if include_true_q:
-                true_rows = [(iteration, row.get("true_Q")) for iteration, row in zip(iterations, rows) if row.get("true_Q") is not None]
+            grouped = {}
+            for row in rows:
+                grouped.setdefault(
+                    (int(row.get("group_id", 1)), str(row.get("group_name", "Group 1"))),
+                    [],
+                ).append(row)
+            for (_group_id, group_name), group_rows in sorted(grouped.items()):
+                group_rows.sort(key=lambda row: int(row.get("iteration", 0)))
+                iterations = [int(row.get("iteration", idx + 1)) for idx, row in enumerate(group_rows)]
+                q_values = [float(row.get("Q_run", 0.0) or 0.0) for row in group_rows]
+                line, = ax.plot(iterations, q_values, marker="o", linewidth=1.8, label=group_name)
+                true_rows = [
+                    (int(row.get("iteration", index + 1)), row.get("true_Q"))
+                    for index, row in enumerate(group_rows)
+                    if include_true_q and row.get("true_Q") is not None
+                ]
                 if true_rows:
                     ax.plot(
                         [iteration for iteration, _value in true_rows],
                         [float(value) for _iteration, value in true_rows],
-                        color="#2f7d32",
+                        color=line.get_color(),
                         linewidth=1.2,
                         linestyle="--",
-                        label="True Q",
+                        alpha=0.65,
+                        label=f"{group_name} true Q",
                     )
             if selected_index is not None and 0 <= int(selected_index) < len(rows):
                 idx = int(selected_index)
+                selected_row = rows[idx]
                 ax.scatter(
-                    [iterations[idx]],
-                    [q_values[idx]],
+                    [int(selected_row.get("iteration", idx + 1))],
+                    [float(selected_row.get("Q_run", 0.0) or 0.0)],
                     color="#ffd166",
                     edgecolors="black",
                     linewidths=0.8,
@@ -4196,10 +4401,12 @@ class BayesianOptimizationTab:
         if not self._auto_running:
             return
         target = int(self._auto_target_var.get())
+        groups = channel_groups(self._bo_session.config) if self._bo_session else []
         completed = len(self._bo_session.observations) if self._bo_session else 0
-        if completed >= target:
+        expected = target * max(1, len(groups))
+        if completed >= expected:
             self._auto_running = False
-            self._auto_status_var.set(f"Auto loop complete: {completed}/{target} iteration(s).")
+            self._auto_status_var.set(f"Auto loop complete: {completed}/{expected} group iteration(s).")
             return
         if self._session.is_running:
             return
@@ -4209,7 +4416,14 @@ class BayesianOptimizationTab:
                 self._auto_status_var.set("Auto loop stopped: queue contains non-BO items.")
                 return
         try:
-            self._suggestion = self._bo_session.ask_next()
+            group = min(
+                groups,
+                key=lambda candidate: sum(
+                    1 for obs in self._bo_session.observations
+                    if int(obs.get("group_id", 1)) == int(candidate["id"])
+                ),
+            )
+            self._suggestion = self._bo_session.ask_next_for_group(group["id"])
             self._render_suggestion()
             items = self._bo_session.build_queue_items(self._session.registry, self._suggestion)
             for item in items:
@@ -4373,11 +4587,12 @@ class BayesianOptimizationTab:
         self._refresh_history()
         self._refresh_model_artifacts()
         self._refresh_record_files()
-        if selected_iteration is not None and str(selected_iteration) in self._history_rows:
-            self._history_tree.selection_set(str(selected_iteration))
-            self._history_tree.focus(str(selected_iteration))
-            self._history_tree.see(str(selected_iteration))
-            self._select_history_iteration(str(selected_iteration))
+        history_key = self._resolve_history_key(selected_iteration)
+        if history_key is not None:
+            self._history_tree.selection_set(history_key)
+            self._history_tree.focus(history_key)
+            self._history_tree.see(history_key)
+            self._select_history_iteration(history_key)
         else:
             self._select_latest_history_iteration()
         self._refresh_surrogate_view()
@@ -4971,7 +5186,7 @@ class BayesianOptimizationTab:
             return
         if paired:
             columns = (
-                "Set", "BO Iter", "Buffer Trace", "Target Trace",
+                "Group", "Set", "BO Iter", "Buffer Trace", "Target Trace",
                 "Q_run", "Paired Q", "Buffer Q", "Target Q", "Classic Pair Q",
                 "Buffer Term", "Target Term", "Delta Term",
                 "Delta Peak", "Frac Delta", "Distance",
@@ -4982,6 +5197,7 @@ class BayesianOptimizationTab:
             self._history_tree.heading("#0", text="Cycle")
             self._history_tree.column("#0", width=62, anchor="center", stretch=False)
             widths = {
+                "Group": 90,
                 "Buffer Trace": 96,
                 "Target Trace": 96,
                 "Paired Q": 82,
@@ -4996,14 +5212,14 @@ class BayesianOptimizationTab:
             }
         else:
             columns = (
-                "Q_run", "Mean", "Std", "Failed", "Low",
+                "Group", "Q_run", "Mean", "Std", "Failed", "Low",
                 "Peak uA", "Noise uA", "Raw SNR", "SNR Score", "Shape", "Baseline", "Replicate", "Success",
                 "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t",
             )
             self._history_tree.configure(columns=columns)
             self._history_tree.heading("#0", text="Iter")
             self._history_tree.column("#0", width=55, anchor="center", stretch=False)
-            widths = {}
+            widths = {"Group": 90}
         for col in columns:
             self._history_tree.heading(col, text=col)
             self._history_tree.column(col, width=widths.get(col, 76), anchor="center", stretch=False)
@@ -5017,6 +5233,7 @@ class BayesianOptimizationTab:
         batch_size = self._paired_batch_size_for_observation(obs)
         paired_batch_index = self._paired_batch_index_for_observation(obs, batch_size=batch_size)
         return (
+            str(obs.get("group_name") or f"Group {int(obs.get('group_id', 1))}"),
             str(paired_batch_index) if paired_batch_index is not None else "",
             str(obs.get("iteration") or ""),
             self._string_or_empty(obs.get("buffer_trace_number")),
@@ -5114,6 +5331,7 @@ class BayesianOptimizationTab:
             q = obs.get("quality", {})
             params = obs.get("params", {})
             iteration = str(obs.get("iteration"))
+            history_key = f"g{int(obs.get('group_id', 1))}:i{iteration}"
             peak_uA, rms_uA = self._observation_peak_rms(obs)
             snr_raw = self._observation_component_mean(obs, "snr_raw")
             snr_score = self._observation_component_mean(obs, "normalized_SNR")
@@ -5121,13 +5339,14 @@ class BayesianOptimizationTab:
             baseline_score = self._observation_component_mean(obs, "baseline_stability_score")
             replicate_score = self._observation_component_mean(obs, "replicate_consistency_score")
             success_score = self._observation_component_mean(obs, "success_score")
-            self._history_rows[iteration] = obs
+            self._history_rows[history_key] = obs
             if paired_history:
                 values = self._paired_history_values(obs, peak_uA, snr_raw)
                 cycle = self._paired_cycle_for_observation(obs)
                 text = str(cycle) if cycle is not None else ""
             else:
                 values = (
+                    str(obs.get("group_name") or f"Group {int(obs.get('group_id', 1))}"),
                     self._fmt(obs.get("Q_run")),
                     self._fmt(q.get("mean_Q_channel")),
                     self._fmt(q.get("std_Q_channel")),
@@ -5153,7 +5372,7 @@ class BayesianOptimizationTab:
             self._history_tree.insert(
                 "",
                 "end",
-                iid=iteration,
+                iid=history_key,
                 text=text,
                 values=values,
             )
@@ -5215,11 +5434,25 @@ class BayesianOptimizationTab:
     def _select_latest_history_iteration(self):
         if not self._history_rows:
             return
-        latest = max(self._history_rows, key=lambda value: int(value))
+        latest = next(reversed(self._history_rows))
         self._history_tree.selection_set(latest)
         self._history_tree.focus(latest)
         self._history_tree.see(latest)
         self._select_history_iteration(latest)
+
+    def _resolve_history_key(self, value):
+        """Resolve either an opaque tree row ID or a legacy numeric iteration."""
+        if value is None:
+            return None
+        key = str(value)
+        if key in self._history_rows:
+            return key
+        matches = [
+            row_key
+            for row_key, observation in self._history_rows.items()
+            if str(observation.get("iteration")) == key
+        ]
+        return matches[-1] if matches else None
 
     def _move_history_selection(self, direction, event=None):
         if self._bo_session is None:

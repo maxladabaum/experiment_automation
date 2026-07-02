@@ -1896,11 +1896,13 @@ class QueueTab:
         halfway_notified = False
 
         if paired_mode:
+            group_count = len(config.get("channel_groups") or [{"channels": config.get("channels", [])}])
             batch_size = max(1, int(block.get("batch_size", 1) or 1))
             target_cycles = target_iterations
-            target_observations = target_cycles * batch_size
+            target_parameter_sets = target_cycles * batch_size
+            target_observations = target_parameter_sets * group_count
             warmup_observations = min(
-                target_observations,
+                target_parameter_sets,
                 max(0, int(config.get("n_initial_points", 0) or 0)),
             )
             halfway_cycle = max(1, int(math.ceil(target_cycles / 2.0)))
@@ -1919,8 +1921,8 @@ class QueueTab:
             )
             while self._session.is_running and completed_cycles < target_cycles:
                 suggestion_count, cycle_span = self._paired_bo_batch_span(
-                    len(bo_session.observations),
-                    target_observations,
+                    len(bo_session.observations) // group_count,
+                    target_parameter_sets,
                     batch_size,
                     warmup_observations,
                 )
@@ -1929,7 +1931,7 @@ class QueueTab:
                 cycle_index = completed_cycles + 1
                 cycle_end = min(target_cycles, completed_cycles + cycle_span)
                 is_consolidated_warmup = (
-                    len(bo_session.observations) < warmup_observations
+                    len(bo_session.observations) // group_count < warmup_observations
                     and suggestion_count > batch_size
                 )
                 cycle_label = (
@@ -2210,9 +2212,24 @@ class QueueTab:
                 )
             return self._session.is_running and completed_cycles >= target_cycles
 
-        while self._session.is_running and len(bo_session.observations) < target_iterations:
-            suggestion = bo_session.ask_next()
-            self.log(f"BO iteration {suggestion.iteration}: generating queue items")
+        classic_groups = config.get("channel_groups") or [
+            {"id": 1, "name": "Group 1", "channels": config.get("channels", [])}
+        ]
+        def group_completed(group):
+            group_id = int(group.get("id", 1))
+            return sum(
+                1 for obs in bo_session.observations
+                if int(obs.get("group_id", 1)) == group_id
+            )
+
+        while self._session.is_running and any(
+            group_completed(group) < target_iterations for group in classic_groups
+        ):
+            group = min(classic_groups, key=group_completed)
+            suggestion = bo_session.ask_next_for_group(int(group.get("id", 1)))
+            self.log(
+                f"BO {suggestion.group_name} iteration {suggestion.iteration}: generating queue items"
+            )
             queue_items = bo_session.build_queue_items(self._session.registry, suggestion)
             bo_session.record_queued(suggestion, queue_items)
 
@@ -2272,9 +2289,16 @@ class QueueTab:
                     )
                 return False
 
-            summary_path = self._run_bo_analysis(bo_session, block)
-            obs = bo_session.import_analysis(summary_path, notes="Imported from recipe BO block")
-            self.log(f"BO iteration {obs['iteration']} complete: Q_run={obs['Q_run']:.3f}")
+            summary_path = self._run_bo_analysis(bo_session, block, suggestion=suggestion)
+            obs = bo_session.import_analysis(
+                summary_path,
+                notes="Imported from recipe BO block",
+                suggestion=suggestion,
+            )
+            self.log(
+                f"BO {obs['group_name']} iteration {obs['iteration']} complete: "
+                f"Q_run={obs['Q_run']:.3f}"
+            )
             self._run_bo_render_break(bo_session, obs.get("iteration"))
             if session_mgr is not None and not halfway_notified and int(obs["iteration"]) >= halfway_iteration:
                 halfway_notified = True
@@ -2285,20 +2309,24 @@ class QueueTab:
                 )
 
         completed_iterations = len(bo_session.observations)
-        item["details"] = f"{self._format_bo_block_details(block)} | done {completed_iterations}/{target_iterations}"
+        expected_observations = target_iterations * len(classic_groups)
+        item["details"] = (
+            f"{self._format_bo_block_details(block)} | done "
+            f"{completed_iterations}/{expected_observations} group iterations"
+        )
         best = bo_session.best_observation()
         if best is not None:
             item["bo_best_q"] = float(best.get("Q_run", 0.0))
             self.log(f"BO block best Q_run={item['bo_best_q']:.3f}")
-        if session_mgr is not None and completed_iterations >= target_iterations:
+        if session_mgr is not None and completed_iterations >= expected_observations:
             best_text = ""
             if best is not None:
                 best_text = f" Best Q_run={float(best.get('Q_run', 0.0)):.3f} at iter {int(best.get('iteration', 0) or 0)}."
             session_mgr.notify_slack(
-                f"BO session completed: {completed_iterations}/{target_iterations} iterations. "
+                f"BO session completed: {completed_iterations}/{expected_observations} group iterations. "
                 f"Session={bo_session.session_id}; Experiment={Path(exp_path).name}.{best_text}"
             )
-        return self._session.is_running and completed_iterations >= target_iterations
+        return self._session.is_running and completed_iterations >= expected_observations
 
     def _execute_queue(self, start_index: int = 0):
         queue = list(self._session.measurement_queue)

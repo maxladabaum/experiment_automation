@@ -23,6 +23,10 @@ def test_simulation_tuning_builds_independent_paired_bo_config():
     tab._engine_gp_length_scale_vars = {
         name: _var(master, 0.35) for name in tab._config["parameters"]
     }
+    tab._engine_channel_group_vars = [
+        _var(master, "1, 2, 3"),
+        _var(master, "4, 5"),
+    ]
     tab._engine_score_vars = {
         "mode": _var(master, "classic"),
         "snr": _var(master, 0.5),
@@ -79,6 +83,10 @@ def test_simulation_tuning_builds_independent_paired_bo_config():
     assert tuned["analysis"]["crop_min_v"] == -0.55
     assert tuned["analysis"]["smooth_window"] == 11
     assert tuned["analysis"]["require_local_minima_on_both_sides"] is True
+    assert tuned["channel_groups"] == [
+        {"id": 1, "name": "Group 1", "channels": [1, 2, 3]},
+        {"id": 2, "name": "Group 2", "channels": [4, 5]},
+    ]
 
     assert tab._config["acquisition"]["exploration"] == original_exploration
     assert tab._config["scoring"]["paired_response_weights"] == original_scoring

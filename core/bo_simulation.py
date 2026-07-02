@@ -22,6 +22,7 @@ from core.bo_session import (
     PARAMETER_ORDER,
     normalize_bo_config,
     parse_channels,
+    channel_groups,
     resolve_initial_parameters,
 )
 
@@ -537,35 +538,53 @@ def run_optimizer_simulation(
         analysis_output_dir=analysis_output,
     )
     rows = []
-    total_iterations = max(1, int(iterations))
-    for _idx in range(total_iterations):
-        suggestion = session.ask_next()
-        if progress_callback:
-            progress_callback(_idx, total_iterations, f"Analyzing simulated iteration {suggestion.iteration}")
-        raw_dir, simulation_payload = _write_simulated_raw_measurements(
-            engine,
-            output_root,
-            suggestion.params,
-            suggestion.iteration,
-        )
-        summary = _run_simulated_analysis(
-            session,
-            raw_dir,
-            analysis_output,
-            f"bo_iter_{suggestion.iteration:03d}",
-            dict(cfg.get("analysis") or {}),
-            request_name=f"iter_{suggestion.iteration:03d}_simulation_analysis_request.json",
-        )
-        path = _augment_analysis_summary(Path(summary["summary_path"]), simulation_payload)
-        obs = session.import_analysis(path, notes="Simulation engine")
-        obs["simulation_truth"] = simulation_payload["simulation_truth"]
-        obs["swv_trace_preview"] = simulation_payload.get("swv_traces", {})
-        session.observations[-1] = obs
-        session._write_json(session.analysis_dir / f"iter_{suggestion.iteration:03d}_quality.json", obs)
-        session.save_state()
-        rows.append(_row_from_observation(obs))
-        if progress_callback:
-            progress_callback(_idx + 1, total_iterations, f"Completed simulated iteration {suggestion.iteration}")
+    iterations_per_group = max(1, int(iterations))
+    groups = channel_groups(cfg)
+    total_iterations = iterations_per_group * len(groups)
+    completed = 0
+    for _iteration_index in range(iterations_per_group):
+        for group in groups:
+            suggestion = session.ask_next_for_group(group["id"])
+            if progress_callback:
+                progress_callback(
+                    completed,
+                    total_iterations,
+                    f"Analyzing {suggestion.group_name} iteration {suggestion.iteration}",
+                )
+            raw_dir, simulation_payload = _write_simulated_raw_measurements(
+                engine,
+                output_root,
+                suggestion.params,
+                suggestion.iteration,
+                group_id=suggestion.group_id,
+                channels=suggestion.channels,
+            )
+            summary = _run_simulated_analysis(
+                session,
+                raw_dir,
+                analysis_output,
+                f"bo_g{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}",
+                dict(cfg.get("analysis") or {}),
+                request_name=f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_simulation_analysis_request.json",
+            )
+            path = _augment_analysis_summary(Path(summary["summary_path"]), simulation_payload)
+            obs = session.import_analysis(path, notes="Simulation engine", suggestion=suggestion)
+            obs["simulation_truth"] = simulation_payload["simulation_truth"]
+            obs["swv_trace_preview"] = simulation_payload.get("swv_traces", {})
+            session.observations[-1] = obs
+            session._write_json(
+                session.analysis_dir / f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_quality.json",
+                obs,
+            )
+            session.save_state()
+            rows.append(_row_from_observation(obs))
+            completed += 1
+            if progress_callback:
+                progress_callback(
+                    completed,
+                    total_iterations,
+                    f"Completed {suggestion.group_name} iteration {suggestion.iteration}",
+                )
     return {
         "session": session,
         "engine": engine,
@@ -600,7 +619,9 @@ def run_paired_response_optimizer_simulation(
     rows = []
     total_cycles = max(1, int(cycles))
     batch_size = max(1, int(batch_size))
-    total_observations = total_cycles * batch_size
+    groups = channel_groups(cfg)
+    group_count = len(groups)
+    total_observations = total_cycles * batch_size * group_count
     total_traces = total_observations * 2
     completed_observations = 0
     completed_traces = 0
@@ -615,23 +636,27 @@ def run_paired_response_optimizer_simulation(
                 f"Simulating paired cycle {cycle_number}/{total_cycles}: buffer batch",
             )
         buffered = []
-        for batch_idx, suggestion in enumerate(suggestions, start=1):
-            buffer_trace_number = (cycle_idx * batch_size * 2) + batch_idx
+        for suggestion_index, suggestion in enumerate(suggestions, start=1):
+            batch_idx = ((int(suggestion.iteration) - 1) % batch_size) + 1
+            buffer_trace_number = (cycle_idx * batch_size * group_count * 2) + suggestion_index
             buffer_payload = engine.paired_analysis_payload(suggestion.params, suggestion.iteration, "buffer")
+            _filter_simulation_payload_channels(buffer_payload, suggestion.channels)
             _annotate_paired_payload(buffer_payload, cycle_number, batch_idx, buffer_trace_number, "buffer")
             buffer_raw_dir = _write_paired_simulated_raw_measurements(
                 output_root,
                 suggestion.iteration,
                 "buffer",
                 buffer_payload,
+                group_id=suggestion.group_id,
+                channels=suggestion.channels,
             )
             buffer_summary = _run_simulated_analysis(
                 session,
                 buffer_raw_dir,
                 analysis_output,
-                f"bo_iter_{suggestion.iteration:03d}_buffer",
+                f"bo_g{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_buffer",
                 dict(cfg.get("analysis") or {}),
-                request_name=f"iter_{suggestion.iteration:03d}_buffer_simulation_analysis_request.json",
+                request_name=f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_buffer_simulation_analysis_request.json",
             )
             buffer_path = _augment_analysis_summary(
                 Path(buffer_summary["summary_path"]),
@@ -645,6 +670,8 @@ def run_paired_response_optimizer_simulation(
                     "parameter_set": batch_idx,
                     "phase": "buffer",
                     "bo_iteration": suggestion.iteration,
+                    "group_id": suggestion.group_id,
+                    "group_name": suggestion.group_name,
                     "path": str(buffer_path),
                 }
             )
@@ -663,22 +690,30 @@ def run_paired_response_optimizer_simulation(
                 f"Simulating paired cycle {cycle_number}/{total_cycles}: target batch",
             )
         for batch_idx, suggestion, buffer_payload, buffer_path, buffer_trace_number in buffered:
-            target_trace_number = (cycle_idx * batch_size * 2) + batch_size + batch_idx
+            target_trace_number = (
+                cycle_idx * batch_size * group_count * 2
+                + len(suggestions)
+                + len(targeted)
+                + 1
+            )
             target_payload = engine.paired_analysis_payload(suggestion.params, suggestion.iteration, "target")
+            _filter_simulation_payload_channels(target_payload, suggestion.channels)
             _annotate_paired_payload(target_payload, cycle_number, batch_idx, target_trace_number, "target")
             target_raw_dir = _write_paired_simulated_raw_measurements(
                 output_root,
                 suggestion.iteration,
                 "target",
                 target_payload,
+                group_id=suggestion.group_id,
+                channels=suggestion.channels,
             )
             target_summary = _run_simulated_analysis(
                 session,
                 target_raw_dir,
                 analysis_output,
-                f"bo_iter_{suggestion.iteration:03d}_target",
+                f"bo_g{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_target",
                 dict(cfg.get("analysis") or {}),
-                request_name=f"iter_{suggestion.iteration:03d}_target_simulation_analysis_request.json",
+                request_name=f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_target_simulation_analysis_request.json",
             )
             target_path = _augment_analysis_summary(
                 Path(target_summary["summary_path"]),
@@ -692,6 +727,8 @@ def run_paired_response_optimizer_simulation(
                     "parameter_set": batch_idx,
                     "phase": "target",
                     "bo_iteration": suggestion.iteration,
+                    "group_id": suggestion.group_id,
+                    "group_name": suggestion.group_name,
                     "path": str(target_path),
                 }
             )
@@ -719,7 +756,10 @@ def run_paired_response_optimizer_simulation(
             obs["buffer_trace_number"] = buffer_trace_number
             obs["target_trace_number"] = target_trace_number
             session.observations[-1] = obs
-            session._write_json(session.analysis_dir / f"iter_{suggestion.iteration:03d}_paired_quality.json", obs)
+            session._write_json(
+                session.analysis_dir / f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_paired_quality.json",
+                obs,
+            )
             session._write_history_csv()
             session.save_state()
             rows.append(_row_from_observation(obs))
@@ -739,6 +779,7 @@ def run_paired_response_optimizer_simulation(
         "paired_response": True,
         "cycles": total_cycles,
         "batch_size": batch_size,
+        "group_count": group_count,
         "total_swv_traces": total_traces,
         "trace_schedule": trace_schedule,
     }
@@ -749,15 +790,17 @@ def _write_simulated_raw_measurements(
     experiment_dir: Path,
     params: dict,
     iteration: int,
+    group_id: int = 1,
+    channels: List[int] | None = None,
 ) -> Tuple[Path, dict]:
     """Write measurement-like CSVs; headless analysis computes all derived outputs."""
-    legacy_dir = experiment_dir / "legacy" / f"iter_{int(iteration):03d}"
+    legacy_dir = experiment_dir / "legacy" / f"group_{int(group_id):02d}" / f"iter_{int(iteration):03d}"
     legacy_dir.mkdir(parents=True, exist_ok=True)
     truth = engine.evaluate_truth(params)
     traces = {}
     synthetic_metrics = {}
     scan_count = 1
-    for channel in parse_channels(engine.bo_config.get("channels", [])):
+    for channel in (channels or parse_channels(engine.bo_config.get("channels", []))):
         for scan in range(1, scan_count + 1):
             metrics, trace = engine._channel_measurement(params, truth, iteration, channel, scan=scan)
             if scan == 1:
@@ -774,6 +817,7 @@ def _write_simulated_raw_measurements(
             "version": 2,
             "analysis_mode": "external_64bit_from_raw_csv",
             "iteration": int(iteration),
+            "group_id": int(group_id),
             "parameters": dict(params),
             "dimensions": [dim.__dict__ for dim in engine.dimensions],
             "scan_count_per_channel": scan_count,
@@ -810,15 +854,36 @@ def _write_paired_simulated_raw_measurements(
     iteration: int,
     phase: str,
     payload: dict,
+    group_id: int = 1,
+    channels: List[int] | None = None,
 ) -> Path:
-    raw_dir = experiment_dir / "legacy" / f"iter_{int(iteration):03d}" / str(phase)
+    raw_dir = (
+        experiment_dir / "legacy" / f"group_{int(group_id):02d}"
+        / f"iter_{int(iteration):03d}" / str(phase)
+    )
     raw_dir.mkdir(parents=True, exist_ok=True)
     for channel, trace in dict(payload.get("swv_traces") or {}).items():
+        if channels and int(channel) not in {int(ch) for ch in channels}:
+            continue
         voltage = [float(value) for value in trace.get("voltage_v") or []]
         current = [float(value) for value in trace.get("current_uA") or []]
         raw_path = raw_dir / f"ch{int(channel):03d}_meas_001_{phase}_simulated_swv.csv"
         _write_raw_swv_csv(raw_path, voltage, current)
     return raw_dir
+
+
+def _filter_simulation_payload_channels(payload: dict, channels: List[int] | None) -> None:
+    if not channels:
+        return
+    allowed = {str(int(channel)) for channel in channels}
+    for key in ("channel_metrics", "synthetic_channel_metrics_preview", "swv_traces"):
+        values = payload.get(key)
+        if isinstance(values, dict):
+            payload[key] = {
+                str(channel): value
+                for channel, value in values.items()
+                if str(channel) in allowed
+            }
 
 
 def _annotate_paired_payload(payload: dict, cycle: int, parameter_set: int, trace_number: int, phase: str) -> None:
@@ -864,6 +929,8 @@ def _row_from_observation(obs: dict) -> dict:
     quality = dict(obs.get("quality") or {})
     row = {
         "iteration": int(obs.get("iteration", 0)),
+        "group_id": int(obs.get("group_id", 1)),
+        "group_name": str(obs.get("group_name", "Group 1")),
         "paired_cycle": int(obs.get("paired_cycle", truth.get("paired_cycle", 0)) or 0),
         "paired_batch_index": int(obs.get("paired_batch_index", truth.get("paired_batch_index", 0)) or 0),
         "buffer_trace_number": int(obs.get("buffer_trace_number", 0) or 0),
