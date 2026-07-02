@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "Default SWV mux Bayesian optimization",
   "description": "Editable default search space for closed-loop SWV method optimization across a mux batch.",
-  "n_initial_points": 30,
+  "n_initial_points": 0,
   "random_seed": 42,
   "channels": [
     1,
@@ -22,16 +22,16 @@
       "mode": "auto",
       "fixed": "100 nA",
       "auto_min": "100 nA",
-      "auto_max": "50 uA"
+      "auto_max": "25 uA"
     }
   },
   "initial_parameters": {
-    "begin_potential": -0.5,
+    "begin_potential": -0.6,
     "end_potential": 0.0,
     "step_potential": 0.002,
-    "amplitude": 0.02,
-    "frequency": 60.0,
-    "conditioning_potential": -0.5,
+    "amplitude": 0.036,
+    "frequency": 200.0,
+    "conditioning_potential": -0.6,
     "conditioning_time": 0.1
   },
   "parameters": {
@@ -53,7 +53,7 @@
         -0.6,
         -0.5
       ],
-      "value": -0.5,
+      "value": -0.6,
       "tie_to": "begin_potential"
     },
     "end_potential": {
@@ -188,10 +188,10 @@
     "conditioning_potential_tied_by_default": true
   },
   "acquisition": {
-    "exploration": 0.0,
+    "exploration": 0.5040871934604905,
     "candidate_pool_size": 1000,
     "local_candidate_pool_size": 100,
-    "initial_point_mode": "random",
+    "initial_point_mode": "specific",
     "use_gp": true,
     "gp_optimizer_restarts": 2,
     "gp_falloff_fractions": {
@@ -241,9 +241,9 @@
   "analysis": {
     "file_glob": "*.json",
     "copy_outputs_into_record": true,
-    "crop_min_v": -0.45,
+    "crop_min_v": -0.5,
     "crop_max_v": 0.0,
-    "smooth_window": 3,
+    "smooth_window": 15,
     "smooth_polyorder": 2,
     "minima_search_window_v": 0.3,
     "use_prominent_minima": false,
@@ -262,7 +262,5 @@
   "records": {
     "folder_prefix": "bo_session"
   },
-  "objective": "paired_response",
-  "paired_warmup_cycles": 3,
-  "paired_batch_size": 10
+  "objective": "quality"
 }

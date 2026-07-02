@@ -1197,6 +1197,24 @@ class QueueTab:
                     break
 
         self._session.is_running = False
+        self._session.update_queue_status(
+            state="idle",
+            current_label="Queue Complete",
+            active_queue_index=None,
+            next_queue_index=None,
+            active_step_started_at=None,
+            active_step_estimated_seconds=None,
+            active_step_type=None,
+            active_step_details=None,
+            bo_mode=None,
+            bo_cycle_current=None,
+            bo_cycle_total=None,
+            bo_phase=None,
+            bo_completed_measurements=None,
+            bo_total_measurements=None,
+            bo_observed_sets=None,
+            bo_total_sets=None,
+        )
         self.log("Queue completed.")
         self._root.after(0, self.set_status, "Queue Complete")
         self._announce_queue_end(start_index=start_index)
@@ -2375,6 +2393,14 @@ class QueueTab:
 
         self._session.is_running = False
         self._session.update_queue_status(
+            state="idle",
+            current_label="Queue Complete",
+            active_queue_index=None,
+            next_queue_index=None,
+            active_step_started_at=None,
+            active_step_estimated_seconds=None,
+            active_step_type=None,
+            active_step_details=None,
             bo_mode=None,
             bo_cycle_current=None,
             bo_cycle_total=None,

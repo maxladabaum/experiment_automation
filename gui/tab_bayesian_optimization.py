@@ -293,6 +293,7 @@ class BayesianOptimizationTab:
         self._active_results_tree = None
         self._results_trace_panes_balanced = False
         self._results_render_deferred = False
+        self._results_render_flush_job = None
 
         self._build()
         self._load_config(initial=True)
@@ -4067,6 +4068,8 @@ class BayesianOptimizationTab:
                     messagebox.showwarning("Import BO Analysis", message)
             else:
                 self._status_var.set(status)
+            if self._results_render_deferred and not self._measurement_priority_active():
+                self._flush_deferred_results_render(preferred_iteration=obs.get("iteration"))
             return obs
         except Exception as exc:
             if not prompt:
@@ -4238,12 +4241,7 @@ class BayesianOptimizationTab:
                 self._sync_suggestion_from_session()
                 self._set_rescore_vars_from_config(self._config)
                 self._record_dir_var.set(f"Record folder: {self._bo_session.record_dir}")
-                self._refresh_history()
-                self._render_best()
-                self._refresh_model_artifacts()
-                self._refresh_record_files()
-                self._select_latest_history_iteration()
-                self._refresh_surrogate_view()
+                self._flush_deferred_results_render()
                 self._auto_status_var.set(
                     f"Paired BO complete: {len(self._bo_session.observations)} paired comparison(s)."
                 )
@@ -4290,22 +4288,14 @@ class BayesianOptimizationTab:
         self._sync_suggestion_from_session()
         self._set_rescore_vars_from_config(self._config)
         self._record_dir_var.set(f"Record folder: {self._bo_session.record_dir}")
-        self._refresh_history()
-        self._refresh_model_artifacts()
-        self._refresh_record_files()
         if self._measurement_priority_active():
             self._results_render_deferred = True
+            self._refresh_history()
+            self._refresh_model_artifacts()
+            self._refresh_record_files()
+            self._schedule_deferred_results_render()
         else:
-            self._results_render_deferred = False
-            if selected_iteration is not None and str(selected_iteration) in self._history_rows:
-                self._history_tree.selection_set(str(selected_iteration))
-                self._history_tree.focus(str(selected_iteration))
-                self._history_tree.see(str(selected_iteration))
-                self._select_history_iteration(str(selected_iteration))
-            else:
-                self._render_best()
-                self._select_latest_history_iteration()
-            self._refresh_surrogate_view()
+            self._flush_deferred_results_render(preferred_iteration=selected_iteration)
         iteration = payload.get("iteration")
         completed = len(self._bo_session.observations)
         if iteration is not None:
@@ -4338,6 +4328,59 @@ class BayesianOptimizationTab:
                 justify="center",
             ).pack(fill="both", expand=True)
         self._status_var.set("Measurement is collecting data; heavy BO result plots are deferred until acquisition finishes.")
+        return True
+
+    def _schedule_deferred_results_render(self, delay_ms: int = 250) -> None:
+        if self._results_render_flush_job is not None:
+            return
+
+        def retry():
+            self._results_render_flush_job = None
+            self._flush_deferred_results_render()
+
+        try:
+            self._results_render_flush_job = self._frame.after(int(delay_ms), retry)
+        except Exception:
+            self._results_render_flush_job = None
+
+    def _flush_deferred_results_render(self, preferred_iteration=None) -> bool:
+        if self._measurement_priority_active():
+            if self._results_render_deferred:
+                self._schedule_deferred_results_render()
+            return False
+        if self._results_render_flush_job is not None:
+            try:
+                self._frame.after_cancel(self._results_render_flush_job)
+            except Exception:
+                pass
+            self._results_render_flush_job = None
+        if self._bo_session is None:
+            self._results_render_deferred = False
+            return False
+
+        selected_iteration = preferred_iteration
+        if selected_iteration is None and self._selected_history_observation is not None:
+            selected_iteration = self._selected_history_observation.get("iteration")
+        if selected_iteration is None:
+            try:
+                selection = self._history_tree.selection()
+            except Exception:
+                selection = ()
+            if selection:
+                selected_iteration = selection[0]
+
+        self._results_render_deferred = False
+        self._refresh_history()
+        self._refresh_model_artifacts()
+        self._refresh_record_files()
+        if selected_iteration is not None and str(selected_iteration) in self._history_rows:
+            self._history_tree.selection_set(str(selected_iteration))
+            self._history_tree.focus(str(selected_iteration))
+            self._history_tree.see(str(selected_iteration))
+            self._select_history_iteration(str(selected_iteration))
+        else:
+            self._select_latest_history_iteration()
+        self._refresh_surrogate_view()
         return True
 
     def _load_latest_paired_queue_session(self):
