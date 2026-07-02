@@ -78,6 +78,42 @@ def test_group_suggestions_have_independent_histories(tmp_path):
     }
 
 
+def test_groups_use_distinct_optimizer_settings_and_starting_parameters(tmp_path):
+    config = _config()
+    config["channel_groups"][0].update({
+        "exploration": 0.3,
+        "n_initial_points": 1,
+        "candidate_pool_size": 700,
+        "local_candidate_pool_size": 70,
+        "initial_point_mode": "specific",
+        "gp_falloff_fractions": {name: 0.15 for name in config["parameters"]},
+        "initial_parameters": {"amplitude": 0.02},
+    })
+    config["channel_groups"][1].update({
+        "exploration": 0.5,
+        "n_initial_points": 4,
+        "candidate_pool_size": 900,
+        "local_candidate_pool_size": 90,
+        "initial_point_mode": "specific",
+        "gp_falloff_fractions": {name: 0.35 for name in config["parameters"]},
+        "initial_parameters": {"amplitude": 0.05},
+    })
+    session = BOIntegrationSession(config, tmp_path)
+
+    suggestions = session.ask_next_groups()
+
+    assert suggestions[0].params["amplitude"] == pytest.approx(0.02)
+    assert suggestions[1].params["amplitude"] == pytest.approx(0.05)
+    assert session._config_for_group(1)["acquisition"]["exploration"] == 0.3
+    assert session._config_for_group(2)["acquisition"]["exploration"] == 0.5
+    assert session._config_for_group(1)["n_initial_points"] == 1
+    assert session._config_for_group(2)["n_initial_points"] == 4
+    assert session._config_for_group(1)["acquisition"]["candidate_pool_size"] == 700
+    assert session._config_for_group(2)["acquisition"]["local_candidate_pool_size"] == 90
+    assert session._config_for_group(1)["acquisition"]["gp_falloff_fractions"]["frequency"] == 0.15
+    assert session._config_for_group(2)["acquisition"]["gp_falloff_fractions"]["frequency"] == 0.35
+
+
 def test_legacy_channels_become_one_group():
     config = normalize_bo_config({"channels": [2, 5]})
     assert channel_groups(config) == [{"id": 1, "name": "Group 1", "channels": [2, 5]}]

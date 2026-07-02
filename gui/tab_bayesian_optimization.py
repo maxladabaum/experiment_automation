@@ -106,6 +106,7 @@ class BayesianOptimizationTab:
         self._channels_var = tk.StringVar(value="")
         self._channel_group_count_var = tk.StringVar(value="1")
         self._channel_group_vars = []
+        self._channel_group_settings = []
         self._bo_bandwidth_var = tk.StringVar(value="4k")
         self._bo_ba_range_mode_var = tk.StringVar(value="fixed")
         self._bo_ba_fixed_range_var = tk.StringVar(value="100 nA")
@@ -193,6 +194,7 @@ class BayesianOptimizationTab:
         self._engine_iterations_var = tk.StringVar(value="20")
         self._engine_channel_group_count_var = tk.StringVar(value="1")
         self._engine_channel_group_vars = []
+        self._engine_channel_group_settings = []
         self._engine_paired_response_var = tk.BooleanVar(value=False)
         self._engine_paired_batch_size_var = tk.StringVar(value="4")
         self._engine_exploration_var = tk.DoubleVar(value=0.35)
@@ -440,8 +442,24 @@ class BayesianOptimizationTab:
         pane.pack(fill="both", expand=True, padx=4, pady=4)
         left = ttk.Frame(pane)
         right = ttk.Frame(pane)
-        pane.add(left, weight=2)
-        pane.add(right, weight=3)
+        pane.add(left, weight=1)
+        pane.add(right, weight=1)
+        split_initialized = {"done": False}
+        def initialize_equal_split():
+            try:
+                pane.update_idletasks()
+                width = pane.winfo_width()
+                if width > 100:
+                    self._set_paned_sash_position(pane, 0, width // 2)
+                    split_initialized["done"] = True
+            except Exception:
+                pass
+        def initialize_when_visible(_event=None):
+            if not split_initialized["done"]:
+                pane.after_idle(initialize_equal_split)
+        pane.after_idle(initialize_equal_split)
+        pane.after(150, initialize_equal_split)
+        pane.bind("<Map>", initialize_when_visible, add="+")
 
         right_pane = ttk.PanedWindow(right, orient=tk.VERTICAL)
         right_pane.pack(fill="both", expand=True)
@@ -651,6 +669,12 @@ class BayesianOptimizationTab:
             text="`specific` uses Initial Parameters. `random` chooses one valid candidate as the first BO point. In paired mode, warmup cycles are consolidated into one buffer block and one target block.",
             foreground=self.ACCENT,
         ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(2, 0))
+        for child in algo_box.winfo_children():
+            child.destroy()
+        algo_box.configure(text="Optimizer Behavior by Group")
+        self._bo_group_optimizer_panels_frame = ttk.Frame(algo_box)
+        self._bo_group_optimizer_panels_frame.pack(fill="x")
+        self._rebuild_bo_group_optimizer_panels()
 
         paired_box = ttk.LabelFrame(left, text="Paired BO Fluid Exchange", padding=8)
         self._paired_behavior_frame = paired_box
@@ -685,30 +709,6 @@ class BayesianOptimizationTab:
             wraplength=460,
             justify="left",
         ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(4, 0))
-
-        init_box = ttk.LabelFrame(left, text="Initial Parameters", padding=8)
-        self._initial_parameters_frame = init_box
-        init_box.pack(fill="both", expand=True)
-        init_toolbar = ttk.Frame(init_box)
-        init_toolbar.pack(fill="x", pady=(0, 6))
-        ttk.Button(init_toolbar, text="Edit Initial Parameters", command=self._edit_initial_parameters).pack(side="left", padx=2)
-        ttk.Label(
-            init_toolbar,
-            text="Specific mode starts here. Random mode ignores this as the first BO point, but keeps it as the editable reference method.",
-            foreground=self.ACCENT,
-        ).pack(side="left", padx=8)
-
-        init_cols = ("Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t")
-        self._initial_tree = ttk.Treeview(
-            init_box, columns=init_cols, show="tree headings", height=8, style="BO.Treeview"
-        )
-        self._initial_tree.heading("#0", text="#")
-        self._initial_tree.column("#0", width=38, anchor="center")
-        for col in init_cols:
-            self._initial_tree.heading(col, text=col)
-            self._initial_tree.column(col, width=70, anchor="center")
-        self._initial_tree.pack(fill="both", expand=True)
-        self._initial_tree.bind("<Double-1>", lambda _e: self._edit_initial_parameters())
 
         params = ttk.LabelFrame(params_host, text="Parameter Space", padding=8)
         params.pack(fill="both", expand=True)
@@ -992,6 +992,12 @@ class BayesianOptimizationTab:
             foreground=self.ACCENT,
             justify="left",
         ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        for child in optimizer_box.winfo_children():
+            child.destroy()
+        optimizer_box.configure(text="Optimizer Behavior by Group")
+        self._engine_group_optimizer_panels_frame = ttk.Frame(optimizer_box)
+        self._engine_group_optimizer_panels_frame.pack(fill="x")
+        self._rebuild_engine_group_optimizer_panels()
 
         analysis_box = ttk.LabelFrame(setup_box, text="External Analysis Settings", padding=8)
         analysis_box.pack(fill="x", pady=(0, 8))
@@ -1778,7 +1784,8 @@ class BayesianOptimizationTab:
             groups = channel_groups(cfg)
             self._engine_channel_group_count_var.set(str(len(groups)))
             self._rebuild_engine_channel_group_entries(
-                [", ".join(str(ch) for ch in group["channels"]) for group in groups]
+                [", ".join(str(ch) for ch in group["channels"]) for group in groups],
+                group_configs=groups,
             )
         length_scales = dict(
             acquisition.get("gp_falloff_fractions")
@@ -2391,13 +2398,14 @@ class BayesianOptimizationTab:
         paired = self._bo_objective_var.get() == "paired_response"
         if hasattr(self, "_paired_behavior_frame"):
             if paired:
-                self._paired_behavior_frame.pack(fill="x", pady=(0, 8), before=self._initial_parameters_frame)
+                self._paired_behavior_frame.pack(fill="x", pady=(0, 8))
             else:
                 self._paired_behavior_frame.pack_forget()
         if hasattr(self, "_optimizer_behavior_frame"):
-            self._optimizer_behavior_frame.configure(text="Optimizer Behavior (paired cycles)" if paired else "Optimizer Behavior")
-        if hasattr(self, "_initial_parameters_frame"):
-            self._initial_parameters_frame.configure(text="Initial Parameters (classic trace method)" if paired else "Initial Parameters")
+            self._optimizer_behavior_frame.configure(
+                text="Optimizer Behavior by Group (paired cycles)"
+                if paired else "Optimizer Behavior by Group"
+            )
         if hasattr(self, "_paired_scoring_frame") and hasattr(self, "_normal_scoring_frame"):
             if paired:
                 self._paired_scoring_frame.pack(fill="both", expand=True, pady=(0, 8), padx=2)
@@ -2735,11 +2743,13 @@ class BayesianOptimizationTab:
         groups = channel_groups(config)
         self._channel_group_count_var.set(str(len(groups)))
         self._rebuild_channel_group_entries(
-            [", ".join(str(ch) for ch in group["channels"]) for group in groups]
+            [", ".join(str(ch) for ch in group["channels"]) for group in groups],
+            group_configs=groups,
         )
 
-    def _rebuild_channel_group_entries(self, values=None):
+    def _rebuild_channel_group_entries(self, values=None, group_configs=None):
         old_values = [var.get() for var in self._channel_group_vars]
+        old_settings = list(self._channel_group_settings)
         requested = max(1, min(10, int(self._channel_group_count_var.get() or 1)))
         if values is None:
             channels = []
@@ -2759,9 +2769,57 @@ class BayesianOptimizationTab:
         for child in self._channel_groups_frame.winfo_children():
             child.destroy()
         self._channel_group_vars = []
+        self._channel_group_settings = []
         for index in range(requested):
             var = tk.StringVar(value=values[index] if index < len(values) else "")
             self._channel_group_vars.append(var)
+            source = (
+                group_configs[index] if group_configs and index < len(group_configs)
+                else old_settings[index] if index < len(old_settings)
+                else {}
+            )
+            def source_value(key, variable_key, default):
+                if source.get(key) is not None:
+                    return source[key]
+                variable = source.get(variable_key)
+                return variable.get() if variable is not None else default
+            exploration_var = tk.StringVar(
+                value=str(source_value("exploration", "exploration_var", self._exploration_var.get()))
+            )
+            warmup_var = tk.StringVar(
+                value=str(source_value("n_initial_points", "warmup_var", self._gp_warmup_iterations_var.get()))
+            )
+            candidate_pool_var = tk.StringVar(
+                value=str(source_value("candidate_pool_size", "candidate_pool_var", self._candidate_pool_var.get()))
+            )
+            local_pool_var = tk.StringVar(
+                value=str(source_value("local_candidate_pool_size", "local_pool_var", self._local_pool_var.get()))
+            )
+            start_mode_var = tk.StringVar(
+                value=str(source_value("initial_point_mode", "start_mode_var", self._initial_point_mode_var.get()))
+            )
+            initial_parameters = dict(
+                source.get("initial_parameters")
+                or resolve_initial_parameters(self._config or {})
+            )
+            gp_falloffs = dict(
+                source.get("gp_falloff_fractions")
+                or source.get("gp_length_scales")
+                or {
+                    name: float(variable.get() or 0.2)
+                    for name, variable in self._gp_length_scale_vars.items()
+                }
+            )
+            settings = {
+                "exploration_var": exploration_var,
+                "warmup_var": warmup_var,
+                "candidate_pool_var": candidate_pool_var,
+                "local_pool_var": local_pool_var,
+                "start_mode_var": start_mode_var,
+                "initial_parameters": initial_parameters,
+                "gp_falloff_fractions": gp_falloffs,
+            }
+            self._channel_group_settings.append(settings)
             ttk.Label(self._channel_groups_frame, text=f"Group {index + 1}").grid(
                 row=index, column=0, sticky="w", pady=2
             )
@@ -2769,6 +2827,7 @@ class BayesianOptimizationTab:
             entry.grid(row=index, column=1, sticky="ew", padx=(6, 0), pady=2)
             entry.bind("<FocusOut>", lambda _e: self._sync_channel_groups(show_error=False))
         self._channel_groups_frame.columnconfigure(1, weight=1)
+        self._rebuild_bo_group_optimizer_panels()
         self._sync_channel_groups(show_error=False)
 
     def _sync_channel_groups(self, show_error=True):
@@ -2781,7 +2840,27 @@ class BayesianOptimizationTab:
                 channels = parse_channels(var.get())
                 if not channels:
                     raise ValueError(f"Group {index} must contain at least one channel")
-                groups.append({"id": index, "name": f"Group {index}", "channels": channels})
+                settings = self._channel_group_settings[index - 1]
+                exploration = float(settings["exploration_var"].get())
+                warmup = int(settings["warmup_var"].get())
+                if not 0.0 <= exploration <= 1.0:
+                    raise ValueError(f"Group {index} exploration must be between 0 and 1")
+                if warmup < 0:
+                    raise ValueError(f"Group {index} warmup must be zero or greater")
+                groups.append({
+                    "id": index,
+                    "name": f"Group {index}",
+                    "channels": channels,
+                    "exploration": exploration,
+                    "n_initial_points": warmup,
+                    "candidate_pool_size": max(50, int(settings["candidate_pool_var"].get())),
+                    "local_candidate_pool_size": max(0, int(settings["local_pool_var"].get())),
+                    "initial_point_mode": (
+                        "random" if settings["start_mode_var"].get() == "random" else "specific"
+                    ),
+                    "initial_parameters": dict(settings["initial_parameters"]),
+                    "gp_falloff_fractions": dict(settings.get("gp_falloff_fractions") or {}),
+                })
                 all_channels.extend(channels)
             duplicates = sorted({ch for ch in all_channels if all_channels.count(ch) > 1})
             if duplicates:
@@ -2793,8 +2872,89 @@ class BayesianOptimizationTab:
             if show_error:
                 messagebox.showerror("Channel Groups", str(exc))
 
-    def _rebuild_engine_channel_group_entries(self, values=None):
+    def _edit_bo_group_initial_parameters(self, group_index):
+        settings = self._channel_group_settings[group_index]
+
+        def save(updated):
+            temp_config = json.loads(json.dumps(self._config or {}))
+            temp_config["channel_groups"] = [{
+                "name": f"Group {group_index + 1}",
+                "channels": [1],
+                "initial_parameters": updated,
+            }]
+            temp_config["channels"] = [1]
+            errors = validate_bo_config(temp_config)
+            if errors:
+                raise ValueError("; ".join(errors))
+            settings["initial_parameters"] = {
+                name: float(updated[name]) for name in PARAMETER_ORDER
+            }
+            self._sync_channel_groups(show_error=False)
+            self._status_var.set(
+                f"Updated starting parameters for Group {group_index + 1}."
+            )
+
+        self._open_method_editor(
+            f"Group {group_index + 1} Starting Parameters",
+            settings["initial_parameters"],
+            save,
+        )
+
+    def _rebuild_bo_group_optimizer_panels(self):
+        parent = getattr(self, "_bo_group_optimizer_panels_frame", None)
+        if parent is None:
+            return
+        for child in parent.winfo_children():
+            child.destroy()
+        for index, settings in enumerate(self._channel_group_settings):
+            panel = ttk.LabelFrame(parent, text=f"Group {index + 1}", padding=6)
+            panel.pack(fill="x", pady=(0, 6))
+            panel.columnconfigure(1, weight=1)
+            ttk.Label(panel, text="Exploit ↔ Explore:").grid(row=0, column=0, sticky="w")
+            ttk.Scale(
+                panel,
+                from_=0.0,
+                to=1.0,
+                orient=tk.HORIZONTAL,
+                variable=settings["exploration_var"],
+            ).grid(row=0, column=1, sticky="ew", padx=6)
+            ttk.Label(panel, textvariable=settings["exploration_var"], width=5).grid(
+                row=0, column=2, sticky="e"
+            )
+            ttk.Label(panel, text="Global pool:").grid(row=1, column=0, sticky="w", pady=2)
+            ttk.Entry(panel, textvariable=settings["candidate_pool_var"], width=8).grid(
+                row=1, column=1, sticky="w", padx=6
+            )
+            ttk.Label(panel, text="Local pool:").grid(row=1, column=2, sticky="e", pady=2)
+            ttk.Entry(panel, textvariable=settings["local_pool_var"], width=8).grid(
+                row=1, column=3, sticky="w", padx=6
+            )
+            ttk.Label(panel, text="GP warmup iterations:").grid(row=2, column=0, sticky="w", pady=2)
+            ttk.Entry(panel, textvariable=settings["warmup_var"], width=8).grid(
+                row=2, column=1, sticky="w", padx=6
+            )
+            ttk.Label(panel, text="Start point:").grid(row=2, column=2, sticky="e", pady=2)
+            ttk.Combobox(
+                panel,
+                textvariable=settings["start_mode_var"],
+                values=("specific", "random"),
+                state="readonly",
+                width=10,
+            ).grid(row=2, column=3, sticky="w", padx=6)
+            ttk.Button(
+                panel,
+                text="Edit Starting Parameters…",
+                command=lambda group_index=index: self._edit_bo_group_initial_parameters(group_index),
+            ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(4, 0))
+            ttk.Button(
+                panel,
+                text="Edit GP Falloff…",
+                command=lambda group_index=index: self._edit_group_gp_falloff(group_index, simulator=False),
+            ).grid(row=3, column=2, columnspan=2, sticky="w", pady=(4, 0))
+
+    def _rebuild_engine_channel_group_entries(self, values=None, group_configs=None):
         old_values = [var.get() for var in self._engine_channel_group_vars]
+        old_settings = list(self._engine_channel_group_settings)
         requested = max(1, min(10, int(self._engine_channel_group_count_var.get() or 1)))
         if values is None:
             channels = []
@@ -2818,9 +2978,57 @@ class BayesianOptimizationTab:
         for child in self._engine_channel_groups_frame.winfo_children():
             child.destroy()
         self._engine_channel_group_vars = []
+        self._engine_channel_group_settings = []
         for index in range(requested):
             var = tk.StringVar(value=values[index] if index < len(values) else "")
             self._engine_channel_group_vars.append(var)
+            source = (
+                group_configs[index] if group_configs and index < len(group_configs)
+                else old_settings[index] if index < len(old_settings)
+                else {}
+            )
+            def source_value(key, variable_key, default):
+                if source.get(key) is not None:
+                    return source[key]
+                variable = source.get(variable_key)
+                return variable.get() if variable is not None else default
+            exploration_var = tk.StringVar(
+                value=str(source_value("exploration", "exploration_var", self._engine_exploration_var.get()))
+            )
+            warmup_var = tk.StringVar(
+                value=str(source_value("n_initial_points", "warmup_var", self._engine_warmup_iterations_var.get()))
+            )
+            candidate_pool_var = tk.StringVar(
+                value=str(source_value("candidate_pool_size", "candidate_pool_var", self._engine_candidate_pool_var.get()))
+            )
+            local_pool_var = tk.StringVar(
+                value=str(source_value("local_candidate_pool_size", "local_pool_var", self._engine_local_pool_var.get()))
+            )
+            start_mode_var = tk.StringVar(
+                value=str(source_value("initial_point_mode", "start_mode_var", self._engine_initial_point_mode_var.get()))
+            )
+            initial_parameters = dict(
+                source.get("initial_parameters")
+                or resolve_initial_parameters(self._config or {})
+            )
+            gp_falloffs = dict(
+                source.get("gp_falloff_fractions")
+                or source.get("gp_length_scales")
+                or {
+                    name: float(variable.get() or 0.2)
+                    for name, variable in self._engine_gp_length_scale_vars.items()
+                }
+            )
+            settings = {
+                "exploration_var": exploration_var,
+                "warmup_var": warmup_var,
+                "candidate_pool_var": candidate_pool_var,
+                "local_pool_var": local_pool_var,
+                "start_mode_var": start_mode_var,
+                "initial_parameters": initial_parameters,
+                "gp_falloff_fractions": gp_falloffs,
+            }
+            self._engine_channel_group_settings.append(settings)
             ttk.Label(
                 self._engine_channel_groups_frame,
                 text=f"Group {index + 1}",
@@ -2830,6 +3038,7 @@ class BayesianOptimizationTab:
                 textvariable=var,
             ).grid(row=index, column=1, sticky="ew", padx=(6, 0), pady=2)
         self._engine_channel_groups_frame.columnconfigure(1, weight=1)
+        self._rebuild_engine_group_optimizer_panels()
 
     def _engine_channel_groups_from_vars(self):
         groups = []
@@ -2838,10 +3047,26 @@ class BayesianOptimizationTab:
             channels = parse_channels(var.get())
             if not channels:
                 raise ValueError(f"Simulation group {index} must contain at least one channel.")
+            settings = self._engine_channel_group_settings[index - 1]
+            exploration = float(settings["exploration_var"].get())
+            warmup = int(settings["warmup_var"].get())
+            if not 0.0 <= exploration <= 1.0:
+                raise ValueError(f"Simulation group {index} exploration must be between 0 and 1.")
+            if warmup < 0:
+                raise ValueError(f"Simulation group {index} warmup must be zero or greater.")
             groups.append({
                 "id": index,
                 "name": f"Group {index}",
                 "channels": channels,
+                "exploration": exploration,
+                "n_initial_points": warmup,
+                "candidate_pool_size": max(50, int(settings["candidate_pool_var"].get())),
+                "local_candidate_pool_size": max(0, int(settings["local_pool_var"].get())),
+                "initial_point_mode": (
+                    "random" if settings["start_mode_var"].get() == "random" else "specific"
+                ),
+                "initial_parameters": dict(settings["initial_parameters"]),
+                "gp_falloff_fractions": dict(settings.get("gp_falloff_fractions") or {}),
             })
             assigned.extend(channels)
         duplicates = sorted({channel for channel in assigned if assigned.count(channel) > 1})
@@ -2851,6 +3076,132 @@ class BayesianOptimizationTab:
                 + ", ".join(str(channel) for channel in duplicates)
             )
         return groups
+
+    def _edit_engine_group_initial_parameters(self, group_index):
+        settings = self._engine_channel_group_settings[group_index]
+
+        def save(updated):
+            config = self._engine_bo_config(self._engine_sim_config())
+            resolved = resolve_initial_parameters({
+                **config,
+                "initial_parameters": updated,
+            })
+            errors = validate_bo_config({
+                **config,
+                "channel_groups": [{
+                    "name": "Preview",
+                    "channels": [1],
+                    "initial_parameters": resolved,
+                }],
+            })
+            if errors:
+                raise ValueError("; ".join(errors))
+            settings["initial_parameters"] = resolved
+            self._engine_status_var.set(
+                f"Updated starting parameters for Group {group_index + 1}."
+            )
+
+        self._open_method_editor(
+            f"Group {group_index + 1} Starting Parameters",
+            settings["initial_parameters"],
+            save,
+        )
+
+    def _rebuild_engine_group_optimizer_panels(self):
+        parent = getattr(self, "_engine_group_optimizer_panels_frame", None)
+        if parent is None:
+            return
+        for child in parent.winfo_children():
+            child.destroy()
+        for index, settings in enumerate(self._engine_channel_group_settings):
+            panel = ttk.LabelFrame(parent, text=f"Group {index + 1}", padding=6)
+            panel.pack(fill="x", pady=(0, 6))
+            panel.columnconfigure(1, weight=1)
+            ttk.Label(panel, text="Exploit ↔ Explore:").grid(row=0, column=0, sticky="w")
+            ttk.Scale(
+                panel,
+                from_=0.0,
+                to=1.0,
+                orient=tk.HORIZONTAL,
+                variable=settings["exploration_var"],
+            ).grid(row=0, column=1, sticky="ew", padx=6)
+            ttk.Label(panel, textvariable=settings["exploration_var"], width=5).grid(
+                row=0, column=2, sticky="e"
+            )
+            ttk.Label(panel, text="Global pool:").grid(row=1, column=0, sticky="w", pady=2)
+            ttk.Entry(panel, textvariable=settings["candidate_pool_var"], width=8).grid(
+                row=1, column=1, sticky="w", padx=6
+            )
+            ttk.Label(panel, text="Local pool:").grid(row=1, column=2, sticky="e", pady=2)
+            ttk.Entry(panel, textvariable=settings["local_pool_var"], width=8).grid(
+                row=1, column=3, sticky="w", padx=6
+            )
+            ttk.Label(panel, text="GP warmup iterations:").grid(row=2, column=0, sticky="w", pady=2)
+            ttk.Entry(panel, textvariable=settings["warmup_var"], width=8).grid(
+                row=2, column=1, sticky="w", padx=6
+            )
+            ttk.Label(panel, text="Start point:").grid(row=2, column=2, sticky="e", pady=2)
+            ttk.Combobox(
+                panel,
+                textvariable=settings["start_mode_var"],
+                values=("specific", "random"),
+                state="readonly",
+                width=10,
+            ).grid(row=2, column=3, sticky="w", padx=6)
+            ttk.Button(
+                panel,
+                text="Edit Starting Parameters…",
+                command=lambda group_index=index: self._edit_engine_group_initial_parameters(group_index),
+            ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(4, 0))
+            ttk.Button(
+                panel,
+                text="Edit GP Falloff…",
+                command=lambda group_index=index: self._edit_group_gp_falloff(group_index, simulator=True),
+            ).grid(row=3, column=2, columnspan=2, sticky="w", pady=(4, 0))
+
+    def _edit_group_gp_falloff(self, group_index, simulator=False):
+        settings_list = (
+            self._engine_channel_group_settings
+            if simulator else self._channel_group_settings
+        )
+        settings = settings_list[group_index]
+        current = dict(settings.get("gp_falloff_fractions") or {})
+        win = tk.Toplevel(self._frame)
+        win.title(f"Group {group_index + 1} GP Falloff")
+        win.transient(self._frame)
+        box = ttk.Frame(win, padding=12)
+        box.pack(fill="both", expand=True)
+        variables = {}
+        for row, name in enumerate(PARAMETER_ORDER):
+            ttk.Label(box, text=name.replace("_", " ").title()).grid(
+                row=row, column=0, sticky="w", pady=3
+            )
+            variable = tk.StringVar(value=str(current.get(name, 0.2)))
+            variables[name] = variable
+            ttk.Entry(box, textvariable=variable, width=12).grid(
+                row=row, column=1, sticky="w", padx=(8, 0), pady=3
+            )
+
+        def save():
+            try:
+                values = {name: float(variable.get()) for name, variable in variables.items()}
+                if any(value <= 0 for value in values.values()):
+                    raise ValueError("Every GP falloff fraction must be greater than zero.")
+                settings["gp_falloff_fractions"] = values
+                if not simulator:
+                    self._sync_channel_groups(show_error=False)
+                status = self._engine_status_var if simulator else self._status_var
+                status.set(f"Updated GP falloff settings for Group {group_index + 1}.")
+                win.destroy()
+            except Exception as exc:
+                messagebox.showerror("GP Falloff", str(exc), parent=win)
+
+        buttons = ttk.Frame(box)
+        buttons.grid(row=len(PARAMETER_ORDER), column=0, columnspan=2, pady=(10, 0))
+        ttk.Button(buttons, text="Save", command=save).pack(side="left", padx=4)
+        ttk.Button(buttons, text="Cancel", command=win.destroy).pack(side="left", padx=4)
+        win.grab_set()
+        win.focus_force()
 
     def _validate_config(self, show_dialog=True):
         if self._config is None:
@@ -4947,6 +5298,8 @@ class BayesianOptimizationTab:
         self._validate_config(show_dialog=False)
 
     def _refresh_initial_parameters_table(self):
+        if not hasattr(self, "_initial_tree"):
+            return
         for row in self._initial_tree.get_children():
             self._initial_tree.delete(row)
         if self._config is None:
@@ -5022,7 +5375,7 @@ class BayesianOptimizationTab:
             var = tk.StringVar(value=str(values.get(name, "")))
             vars_by_name[name] = var
             entry_state = "normal"
-            if title == "Edit Initial Parameters":
+            if title == "Edit Initial Parameters" or "Starting Parameters" in title:
                 param_cfg = (self._config or {}).get("parameters", {}).get(name, {})
                 if str(param_cfg.get("mode", "")).lower() == "tied":
                     entry_state = "disabled"
