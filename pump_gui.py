@@ -415,12 +415,12 @@ class PumpGUI(tk.Tk):
         self.btn_init.grid(row=0, column=0, **pad)
 
         ttk.Label(f_act, text="Volume (µL):").grid(row=0, column=1, **pad, sticky="e")
-        self.var_vol = tk.DoubleVar(value=50.0)
+        self.var_vol = tk.DoubleVar(value=250.0)
         self.ent_vol = ttk.Entry(f_act, width=10, textvariable=self.var_vol)
         self.ent_vol.grid(row=0, column=2, **pad)
 
         ttk.Label(f_act, text="Plunger speed (SnnR):").grid(row=0, column=3, **pad, sticky="e")
-        self.var_speed = tk.IntVar(value=20)
+        self.var_speed = tk.IntVar(value=15)
         self.ent_speed = ttk.Spinbox(f_act, from_=SPEED_MIN, to=SPEED_MAX, width=6, textvariable=self.var_speed)
         self.ent_speed.grid(row=0, column=4, **pad)
         self.btn_setspeed = ttk.Button(f_act, text="Set Speed", command=lambda: self.threaded(self.do_set_speed))

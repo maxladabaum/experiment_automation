@@ -122,10 +122,10 @@ class MethodTab:
         self._lsv_fixed_range = tk.StringVar(value="16 uA")
         self._lsv_auto_min = tk.StringVar(value="100 nA")
         self._lsv_auto_max = tk.StringVar(value="16 uA")
-        self._swv_range_mode = tk.StringVar(value="fixed")
+        self._swv_range_mode = tk.StringVar(value="auto")
         self._swv_fixed_range = tk.StringVar(value="100 nA")
         self._swv_auto_min = tk.StringVar(value="100 nA")
-        self._swv_auto_max = tk.StringVar(value="100 nA")
+        self._swv_auto_max = tk.StringVar(value="25 uA")
         self._swv_bandwidth = tk.StringVar(value="4k")
         self._device_port_var = tk.StringVar(value="Auto (detect)")
         self._device_port_choices = []
@@ -399,16 +399,16 @@ class MethodTab:
         self.current_technique = "SWV"
         self.swv_params = {}
         params = [
-            ("Begin Potential (V):",                "begin_potential", "-0.5"),
-            ("End Potential (V):",                  "end_potential",   "0.5"),
+            ("Begin Potential (V):",                "begin_potential", "-0.6"),
+            ("End Potential (V):",                  "end_potential",   "0"),
             ("Step Potential (V):",                 "step_potential",  "0.002"),
-            ("Amplitude (V):",                      "amplitude",       "0.02"),
-            ("Frequency (Hz):",                     "frequency",       "15"),
+            ("Amplitude (V):",                      "amplitude",       "0.36"),
+            ("Frequency (Hz):",                     "frequency",       "200"),
             ("Number of Scans:",                    "n_scans",         "1"),
             ("Delay Between Scans (s):",            "cycle_delay",     "0"),
-            ("Conditioning Potential (V):",         "cond_potential",  "0"),
-            ("Conditioning Time (s):",              "cond_time",       "0"),
-            ("MUX16 Channels (1-16, 0=off):",       "mux_channel",     "0"),
+            ("Conditioning Potential (V):",         "cond_potential",  "-0.6"),
+            ("Conditioning Time (s):",              "cond_time",       "0.2"),
+            ("MUX16 Channels (1-16, 0=off):",       "mux_channel",     "1-10"),
         ]
         for i, (label, key, default) in enumerate(params):
             ttk.Label(self._params_frame, text=label).grid(

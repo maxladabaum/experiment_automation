@@ -246,6 +246,7 @@ class ElectrochemGUI:
                 notifier=self._session_mgr._slack,
                 status_provider=_status_provider,
                 command_handler=_slack_command_handler,
+                status_image_provider=self._bo_tab.get_slack_q_trend_image,
                 log_callback=self._session_mgr.log,
             )
             if not SLACK_ONLY_WHEN_EXPERIMENT:
