@@ -889,13 +889,11 @@ class BOIntegrationSession:
         self.queue_dir = self.record_dir / "queue"
         self.surrogate_dir = self.record_dir / "surrogate"
         self.acquisition_dir = self.record_dir / "acquisition"
-        self.plots_dir = self.record_dir / "plots"
         self.methods_dir.mkdir(parents=True, exist_ok=True)
         self.analysis_dir.mkdir(parents=True, exist_ok=True)
         self.queue_dir.mkdir(parents=True, exist_ok=True)
         self.surrogate_dir.mkdir(parents=True, exist_ok=True)
         self.acquisition_dir.mkdir(parents=True, exist_ok=True)
-        self.plots_dir.mkdir(parents=True, exist_ok=True)
         self.candidates = generate_candidates(self.config)
         self.observations: List[dict] = []
         self.suggestions: List[dict] = []
@@ -951,7 +949,6 @@ class BOIntegrationSession:
         session.queue_dir = record_path / "queue"
         session.surrogate_dir = record_path / "surrogate"
         session.acquisition_dir = record_path / "acquisition"
-        session.plots_dir = record_path / "plots"
         session.candidates = generate_candidates(session.config)
         session.observations = list(state.get("observations") or [])
         session.suggestions = list(state.get("suggestions") or [])
@@ -1369,11 +1366,6 @@ class BOIntegrationSession:
             self._write_surrogate_and_acquisition_artifacts(iteration)
         except Exception as exc:
             warnings.warn(f"BO surrogate/acquisition artifact write failed for iter {iteration}: {exc}")
-        try:
-            self._write_plots(observation)
-        except Exception as exc:
-            warnings.warn(f"BO plot write failed for iter {iteration}: {exc}")
-
     @staticmethod
     def _first_present(*values):
         for value in values:
@@ -2221,9 +2213,6 @@ class BOIntegrationSession:
                 metadata["gp_pickle_error"] = str(exc)
                 self._write_json(self.surrogate_dir / f"iter_{iteration:03d}_surrogate_metadata.json", metadata)
 
-        self._write_surrogate_projection_plot(iteration, rows, value_key="predicted_mean_Q")
-        self._write_surrogate_projection_plot(iteration, rows, value_key="acquisition_value")
-
     def _candidate_prediction_rows(self) -> Tuple[List[dict], dict, Any]:
         gp, train = self._fit_gp_surrogate()
         observed_keys = {candidate_key(obs["params"]) for obs in self.observations}
@@ -2303,42 +2292,6 @@ class BOIntegrationSession:
             stds.append(nearest)
         return means, stds
 
-    def _write_surrogate_projection_plot(self, iteration: int, rows: List[dict], value_key: str) -> None:
-        try:
-            import matplotlib
-            matplotlib.use("Agg")
-            import matplotlib.pyplot as plt
-        except Exception:
-            return
-        if not rows:
-            return
-        params = active_parameters(self.config)
-        if len(params) < 2:
-            params = [name for name in OPTIMIZER_ORDER if name in PARAMETER_ORDER][:2]
-        x_name = params[0]
-        y_name = params[1] if len(params) > 1 else params[0]
-        x = [float(row[x_name]) for row in rows]
-        y = [float(row[y_name]) for row in rows]
-        values = [float(row.get(value_key, 0.0)) for row in rows]
-        tested_x = [float(row[x_name]) for row in rows if row.get("already_tested")]
-        tested_y = [float(row[y_name]) for row in rows if row.get("already_tested")]
-
-        fig, ax = plt.subplots(figsize=(6.8, 4.6))
-        scatter = ax.scatter(x, y, c=values, cmap="viridis", s=36, alpha=0.85)
-        if tested_x:
-            ax.scatter(tested_x, tested_y, facecolors="none", edgecolors="#d67b32", s=90, linewidths=1.5, label="Tested")
-            ax.legend(loc="best")
-        ax.set_xlabel(x_name)
-        ax.set_ylabel(y_name)
-        title = "Predicted Q surface" if value_key == "predicted_mean_Q" else "Acquisition surface"
-        ax.set_title(f"Iteration {iteration:03d} {title}")
-        fig.colorbar(scatter, ax=ax, label=value_key)
-        ax.grid(alpha=0.2)
-        fig.tight_layout()
-        suffix = "surrogate_projection" if value_key == "predicted_mean_Q" else "acquisition_projection"
-        fig.savefig(self.plots_dir / f"iter_{iteration:03d}_{suffix}.png", dpi=160)
-        plt.close(fig)
-
     @staticmethod
     def _write_csv(path: Path, rows: List[dict]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -2355,55 +2308,6 @@ class BOIntegrationSession:
             fh.flush()
             os.fsync(fh.fileno())
         os.replace(tmp_path, path)
-
-    def _write_plots(self, observation: dict) -> None:
-        try:
-            import matplotlib
-            matplotlib.use("Agg")
-            import matplotlib.pyplot as plt
-        except Exception:
-            return
-
-        q_channels = observation.get("quality", {}).get("Q_channels", {})
-        if q_channels:
-            channels = sorted(q_channels, key=lambda ch: int(ch))
-            values = [float(q_channels[ch]) for ch in channels]
-            fig, ax = plt.subplots(figsize=(7.0, 3.6))
-            ax.bar(channels, values, color="#155e63")
-            ax.set_ylim(0.0, 1.0)
-            ax.set_xlabel("Mux channel")
-            ax.set_ylabel("Q_channel")
-            ax.set_title(f"Iteration {observation['iteration']:03d} channel scores")
-            ax.grid(axis="y", alpha=0.25)
-            fig.tight_layout()
-            fig.savefig(self.plots_dir / f"iter_{observation['iteration']:03d}_channel_scores.png", dpi=160)
-            plt.close(fig)
-
-        if self.observations:
-            fig, ax = plt.subplots(figsize=(7.0, 3.6))
-            grouped = {}
-            for obs in self.observations:
-                grouped.setdefault(
-                    (int(obs.get("group_id", 1)), str(obs.get("group_name", "Group 1"))),
-                    [],
-                ).append(obs)
-            for (_group_id, group_name), rows in sorted(grouped.items()):
-                rows.sort(key=lambda obs: int(obs["iteration"]))
-                ax.plot(
-                    [int(obs["iteration"]) for obs in rows],
-                    [float(obs["Q_run"]) for obs in rows],
-                    marker="o",
-                    label=group_name,
-                )
-            ax.set_ylim(0.0, 1.0)
-            ax.set_xlabel("BO iteration")
-            ax.set_ylabel("Score")
-            ax.set_title("Bayesian optimization history")
-            ax.grid(alpha=0.25)
-            ax.legend(loc="best")
-            fig.tight_layout()
-            fig.savefig(self.plots_dir / "bo_history.png", dpi=160)
-            plt.close(fig)
 
     def _build_session_id(self) -> str:
         stem = str(self.config.get("name", "bo")).strip().lower().replace(" ", "_")

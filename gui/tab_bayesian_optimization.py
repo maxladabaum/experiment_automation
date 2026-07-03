@@ -11,6 +11,7 @@ from __future__ import annotations
 import ast
 import copy
 import csv
+import io
 import json
 import math
 import pickle
@@ -4398,6 +4399,39 @@ class BayesianOptimizationTab:
             empty_text="Import analysis results to see trends over iterations.",
         )
 
+    def get_slack_q_trend_image(self):
+        """Return a PNG Q-score trend while a BO auto loop is active."""
+        if not (self._auto_running or self._paired_queue_running):
+            return None
+        rows = list(self._bo_session.observations) if self._bo_session is not None else []
+        series = self._grouped_trend_series(rows, "Q_run")
+        if not series:
+            return None
+
+        from matplotlib.figure import Figure
+
+        fig = Figure(figsize=(7.2, 4.0), dpi=120)
+        ax = fig.add_subplot(111)
+        for group_name, points in series:
+            ax.plot(
+                [point[1] for point in points],
+                [point[2] for point in points],
+                marker="o",
+                linewidth=2,
+                label=group_name,
+            )
+        ax.set_ylim(bottom=0.0)
+        ax.set_xlabel("BO iteration")
+        ax.set_ylabel("Q_run")
+        ax.set_title("BO Q-score trend")
+        ax.grid(alpha=0.25)
+        ax.legend(loc="best", fontsize=8)
+        fig.tight_layout()
+
+        output = io.BytesIO()
+        fig.savefig(output, format="png")
+        return output.getvalue(), "bo_q_score_trend.png", "BO Q-score trend"
+
     def _render_metric_trend_plot(self, parent, rows, metric, empty_text):
         for child in parent.winfo_children():
             child.destroy()
@@ -4758,6 +4792,25 @@ class BayesianOptimizationTab:
         if completed >= expected:
             self._auto_running = False
             self._auto_status_var.set(f"Auto loop complete: {completed}/{expected} group iteration(s).")
+            session_mgr = getattr(self._session, "session_manager", None)
+            if session_mgr is not None:
+                best = self._bo_session.best_observation()
+                best_text = ""
+                if best is not None:
+                    best_text = (
+                        f" Best Q_run={float(best.get('Q_run', 0.0)):.3f} "
+                        f"at iter {int(best.get('iteration', 0) or 0)}."
+                    )
+                experiment_name = (
+                    session_mgr.current_experiment_path.name
+                    if session_mgr.current_experiment_path is not None
+                    else "(none)"
+                )
+                session_mgr.notify_slack(
+                    f"BO auto loop completed: {completed}/{expected} group iterations. "
+                    f"Session={self._bo_session.session_id}; "
+                    f"Experiment={experiment_name}.{best_text}"
+                )
             return
         if self._session.is_running:
             return
@@ -7112,7 +7165,6 @@ class BayesianOptimizationTab:
         roots = [
             ("surrogate", self._bo_session.surrogate_dir),
             ("acquisition", self._bo_session.acquisition_dir),
-            ("plot", self._bo_session.plots_dir),
         ]
         idx = 1
         for kind, folder in roots:

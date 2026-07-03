@@ -41,6 +41,7 @@ def test_channel_group_validation_rejects_overlap():
 
 def test_group_suggestions_have_independent_histories(tmp_path):
     session = BOIntegrationSession(_config(), tmp_path)
+    assert not (session.record_dir / "plots").exists()
     first = session.ask_next_groups()
     assert [(item.group_name, item.channels) for item in first] == [
         ("Left", [1, 2]),
@@ -75,6 +76,7 @@ def test_group_suggestions_have_independent_histories(tmp_path):
         ("Left", "1,2"),
         ("Right", "3,4"),
     }
+    assert not (session.record_dir / "plots").exists()
 
 
 def test_groups_use_distinct_optimizer_settings_and_starting_parameters(tmp_path):

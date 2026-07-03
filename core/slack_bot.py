@@ -8,7 +8,7 @@ import json
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, Tuple
 
 from .slack_notifier import SlackNotifier
 
@@ -24,6 +24,7 @@ class SlackBotServer:
         notifier: SlackNotifier,
         status_provider: Callable[[], Dict[str, Optional[str]]],
         command_handler: Optional[Callable[[str], Optional[str]]] = None,
+        status_image_provider: Optional[Callable[[], Optional[Tuple[bytes, str, str]]]] = None,
         log_callback: Callable[[str], None] = print,
     ):
         self._host = host
@@ -32,6 +33,7 @@ class SlackBotServer:
         self._notifier = notifier
         self._status_provider = status_provider
         self._command_handler = command_handler
+        self._status_image_provider = status_image_provider
         self._log = log_callback
         self._server: Optional[HTTPServer] = None
         self._thread: Optional[threading.Thread] = None
@@ -92,6 +94,7 @@ class SlackBotServer:
                         if channel:
                             text = parent._handle_mention(event)
                             parent._notifier.send_message(text, target=channel)
+                            parent._send_status_image(event, channel)
 
                 self.send_response(200)
                 self.end_headers()
@@ -150,6 +153,20 @@ class SlackBotServer:
             if response:
                 return response
         return self._format_status_text()
+
+    def _send_status_image(self, event: Dict[str, str], channel: str) -> None:
+        if self._status_image_provider is None:
+            return
+        command = self._strip_mention_prefix((event.get("text") or "").strip()).lower()
+        if command != "status":
+            return
+        try:
+            image = self._status_image_provider()
+            if image is not None:
+                content, filename, title = image
+                self._notifier.send_image(content, filename, target=channel, title=title)
+        except Exception as exc:
+            self._log(f"Slack status image failed: {type(exc).__name__}: {exc}")
 
     @staticmethod
     def _strip_mention_prefix(text: str) -> str:

@@ -149,12 +149,12 @@ class PumpTab:
             command=self._queue_init).grid(row=0, column=1, **pad)
 
         ttk.Label(act, text="Volume (µL):").grid(row=0, column=2, **pad, sticky="e")
-        self._var_vol   = tk.DoubleVar(value=50.0)
+        self._var_vol   = tk.DoubleVar(value=250.0)
         ttk.Entry(act, width=10,
                   textvariable=self._var_vol).grid(row=0, column=3, **pad)
 
         ttk.Label(act, text="Speed (SnnR):").grid(row=0, column=4, **pad, sticky="e")
-        self._var_speed = tk.IntVar(value=20)
+        self._var_speed = tk.IntVar(value=15)
         ttk.Spinbox(act, from_=PUMP_SPEED_MIN, to=PUMP_SPEED_MAX, width=6,
                     textvariable=self._var_speed).grid(row=0, column=5, **pad)
 

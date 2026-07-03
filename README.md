@@ -426,13 +426,12 @@ bo_sessions/<bo_session_id>/
   analysis/
   surrogate/
   acquisition/
-  plots/
 
 Current records include suggested methods, queued BO items, imported external
 analysis outputs, per-channel metrics, Q_channel, Q_run, the best method so far,
 queue completion manifests with measurement tags and CSV paths when available,
-channel-score plots, BO history plots, candidate prediction tables, acquisition
-value tables, top-candidate tables, and surrogate/acquisition projection plots.
+candidate prediction tables, acquisition value tables, and top-candidate
+tables. Plotting is handled by the separate analysis application.
 
 When scikit-learn is available and at least two completed BO observations exist,
 the BO session also saves the fitted Gaussian-process model:
