@@ -402,7 +402,7 @@ class MethodTab:
             ("Begin Potential (V):",                "begin_potential", "-0.6"),
             ("End Potential (V):",                  "end_potential",   "0"),
             ("Step Potential (V):",                 "step_potential",  "0.002"),
-            ("Amplitude (V):",                      "amplitude",       "0.36"),
+            ("Amplitude (V):",                      "amplitude",       "0.036"),
             ("Frequency (Hz):",                     "frequency",       "200"),
             ("Number of Scans:",                    "n_scans",         "1"),
             ("Delay Between Scans (s):",            "cycle_delay",     "0"),

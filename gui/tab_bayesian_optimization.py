@@ -3497,7 +3497,7 @@ class BayesianOptimizationTab:
         initial = resolve_initial_parameters(cfg)
         p_cfg = dict((cfg.get("parameters") or {}).get("frequency") or {})
         values = [float(v) for v in p_cfg.get("values", []) if v not in (None, "")]
-        minimum = float(p_cfg.get("min", min(values) if values else 20.0))
+        minimum = float(p_cfg.get("min", min(values) if values else 1.0))
         maximum = float(p_cfg.get("max", max(values) if values else 1000.0))
         if maximum <= minimum:
             minimum, maximum = min(minimum, maximum), max(minimum, maximum) + 1.0

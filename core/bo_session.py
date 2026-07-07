@@ -70,9 +70,9 @@ DEFAULT_INITIAL_METHOD = {
 DEFAULT_PARAMETER_RANGES = {
     "begin_potential": {"min": -0.9, "max": -0.4, "scale": "linear", "step": None, "proposal_sigma": 0.12},
     "end_potential": {"min": -0.35, "max": 0.05, "scale": "linear", "step": None, "proposal_sigma": 0.10},
-    "step_potential": {"min": 0.001, "max": 0.010, "scale": "linear", "step": None, "proposal_sigma": 0.20},
-    "amplitude": {"min": 0.010, "max": 0.080, "scale": "linear", "step": None, "proposal_sigma": 0.18},
-    "frequency": {"min": 25.0, "max": 1000.0, "scale": "log", "step": None, "proposal_sigma": 0.25},
+    "step_potential": {"min": 0.001, "max": 0.020, "scale": "linear", "step": None, "proposal_sigma": 0.20},
+    "amplitude": {"min": 0.010, "max": 0.500, "scale": "linear", "step": None, "proposal_sigma": 0.18},
+    "frequency": {"min": 1.0, "max": 1000.0, "scale": "log", "step": None, "proposal_sigma": 0.25},
     "conditioning_potential": {"min": -0.9, "max": 0.05, "scale": "linear", "step": None, "proposal_sigma": 0.12},
     "conditioning_time": {"min": 0.0, "max": 10.0, "scale": "linear", "step": None, "proposal_sigma": 0.20},
 }
@@ -291,7 +291,7 @@ def normalize_bo_config(config: dict) -> dict:
     cfg.setdefault("constraints", {})
     cfg["constraints"].setdefault("min_scan_window", 0.4)
     cfg["constraints"].setdefault("max_effective_scan_rate", 1.0)
-    cfg["constraints"].setdefault("max_amplitude", 0.10)
+    cfg["constraints"].setdefault("max_amplitude", 0.50)
     cfg["constraints"].setdefault("conditioning_must_be_in_scan_window", False)
     cfg["constraints"].setdefault("require_end_after_begin", True)
     cfg["constraints"].setdefault("conditioning_potential_tied_by_default", True)
@@ -591,7 +591,7 @@ def validate_candidate(candidate: Dict[str, float], config: dict) -> List[str]:
     max_scan_rate = float(constraints.get("max_effective_scan_rate", 1.0))
     if step * frequency > max_scan_rate + 1e-12:
         errors.append(f"step_potential * frequency must be <= {max_scan_rate:g} V/s")
-    max_amplitude = float(constraints.get("max_amplitude", 0.10))
+    max_amplitude = float(constraints.get("max_amplitude", 0.50))
     if amplitude > max_amplitude + 1e-12:
         errors.append(f"amplitude must be <= {max_amplitude:g} V")
     if constraints.get("conditioning_must_be_in_scan_window", False):
@@ -890,11 +890,8 @@ class BOIntegrationSession:
         self.queue_dir = self.record_dir / "queue"
         self.surrogate_dir = self.record_dir / "surrogate"
         self.acquisition_dir = self.record_dir / "acquisition"
-        self.methods_dir.mkdir(parents=True, exist_ok=True)
-        self.analysis_dir.mkdir(parents=True, exist_ok=True)
-        self.queue_dir.mkdir(parents=True, exist_ok=True)
-        self.surrogate_dir.mkdir(parents=True, exist_ok=True)
-        self.acquisition_dir.mkdir(parents=True, exist_ok=True)
+        self.plots_dir = self.record_dir / "plots"
+        self._ensure_record_dirs()
         self.candidates = generate_candidates(self.config)
         self.observations: List[dict] = []
         self.suggestions: List[dict] = []
@@ -950,6 +947,8 @@ class BOIntegrationSession:
         session.queue_dir = record_path / "queue"
         session.surrogate_dir = record_path / "surrogate"
         session.acquisition_dir = record_path / "acquisition"
+        session.plots_dir = record_path / "plots"
+        session._ensure_record_dirs()
         session.candidates = generate_candidates(session.config)
         session.observations = list(state.get("observations") or [])
         session.suggestions = list(state.get("suggestions") or [])
@@ -958,6 +957,14 @@ class BOIntegrationSession:
         session._rng = random.Random(int(session.config.get("random_seed", 42)))
         session._start_candidate = session._resolve_start_candidate()
         return session
+
+    def _ensure_record_dirs(self) -> None:
+        self.methods_dir.mkdir(parents=True, exist_ok=True)
+        self.analysis_dir.mkdir(parents=True, exist_ok=True)
+        self.queue_dir.mkdir(parents=True, exist_ok=True)
+        self.surrogate_dir.mkdir(parents=True, exist_ok=True)
+        self.acquisition_dir.mkdir(parents=True, exist_ok=True)
+        self.plots_dir.mkdir(parents=True, exist_ok=True)
 
     def ask_next(self) -> BOSuggestion:
         return self.ask_next_for_group(1)
