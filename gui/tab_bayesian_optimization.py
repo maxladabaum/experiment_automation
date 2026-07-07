@@ -2848,7 +2848,8 @@ class BayesianOptimizationTab:
                     raise ValueError(f"Group {index} exploration must be between 0 and 1")
                 if warmup < 0:
                     raise ValueError(f"Group {index} warmup must be zero or greater")
-                groups.append({
+                start_mode = "random" if settings["start_mode_var"].get() == "random" else "specific"
+                group_payload = {
                     "id": index,
                     "name": f"Group {index}",
                     "channels": channels,
@@ -2856,12 +2857,12 @@ class BayesianOptimizationTab:
                     "n_initial_points": warmup,
                     "candidate_pool_size": max(50, int(settings["candidate_pool_var"].get())),
                     "local_candidate_pool_size": max(0, int(settings["local_pool_var"].get())),
-                    "initial_point_mode": (
-                        "random" if settings["start_mode_var"].get() == "random" else "specific"
-                    ),
-                    "initial_parameters": dict(settings["initial_parameters"]),
+                    "initial_point_mode": start_mode,
                     "gp_falloff_fractions": dict(settings.get("gp_falloff_fractions") or {}),
-                })
+                }
+                if start_mode != "random":
+                    group_payload["initial_parameters"] = dict(settings["initial_parameters"])
+                groups.append(group_payload)
                 all_channels.extend(channels)
             duplicates = sorted({ch for ch in all_channels if all_channels.count(ch) > 1})
             if duplicates:
@@ -2899,6 +2900,8 @@ class BayesianOptimizationTab:
             f"Group {group_index + 1} Starting Parameters",
             settings["initial_parameters"],
             save,
+            start_mode_var=settings["start_mode_var"],
+            on_mode_change=lambda _mode: self._sync_channel_groups(show_error=False),
         )
 
     def _rebuild_bo_group_optimizer_panels(self):
@@ -2912,16 +2915,28 @@ class BayesianOptimizationTab:
             panel.pack(fill="x", pady=(0, 6))
             panel.columnconfigure(1, weight=1)
             ttk.Label(panel, text="Exploit ↔ Explore:").grid(row=0, column=0, sticky="w")
+
+            def update_exploration(value, variable=settings["exploration_var"]):
+                try:
+                    variable.set(f"{float(value):.3f}")
+                    self._sync_channel_groups(show_error=False)
+                except Exception:
+                    pass
+
             ttk.Scale(
                 panel,
                 from_=0.0,
                 to=1.0,
                 orient=tk.HORIZONTAL,
                 variable=settings["exploration_var"],
+                command=update_exploration,
             ).grid(row=0, column=1, sticky="ew", padx=6)
-            ttk.Label(panel, textvariable=settings["exploration_var"], width=5).grid(
+            exploration_entry = ttk.Entry(panel, textvariable=settings["exploration_var"], width=6)
+            exploration_entry.grid(
                 row=0, column=2, sticky="e"
             )
+            exploration_entry.bind("<FocusOut>", lambda _e: self._sync_channel_groups(show_error=False))
+            exploration_entry.bind("<Return>", lambda _e: self._sync_channel_groups(show_error=False))
             ttk.Label(panel, text="Global pool:").grid(row=1, column=0, sticky="w", pady=2)
             ttk.Entry(panel, textvariable=settings["candidate_pool_var"], width=8).grid(
                 row=1, column=1, sticky="w", padx=6
@@ -2935,13 +2950,15 @@ class BayesianOptimizationTab:
                 row=2, column=1, sticky="w", padx=6
             )
             ttk.Label(panel, text="Start point:").grid(row=2, column=2, sticky="e", pady=2)
-            ttk.Combobox(
+            start_mode = ttk.Combobox(
                 panel,
                 textvariable=settings["start_mode_var"],
                 values=("specific", "random"),
                 state="readonly",
                 width=10,
-            ).grid(row=2, column=3, sticky="w", padx=6)
+            )
+            start_mode.grid(row=2, column=3, sticky="w", padx=6)
+            start_mode.bind("<<ComboboxSelected>>", lambda _e: self._sync_channel_groups(show_error=False))
             ttk.Button(
                 panel,
                 text="Edit Starting Parameters…",
@@ -3055,7 +3072,8 @@ class BayesianOptimizationTab:
                 raise ValueError(f"Simulation group {index} exploration must be between 0 and 1.")
             if warmup < 0:
                 raise ValueError(f"Simulation group {index} warmup must be zero or greater.")
-            groups.append({
+            start_mode = "random" if settings["start_mode_var"].get() == "random" else "specific"
+            group_payload = {
                 "id": index,
                 "name": f"Group {index}",
                 "channels": channels,
@@ -3063,12 +3081,12 @@ class BayesianOptimizationTab:
                 "n_initial_points": warmup,
                 "candidate_pool_size": max(50, int(settings["candidate_pool_var"].get())),
                 "local_candidate_pool_size": max(0, int(settings["local_pool_var"].get())),
-                "initial_point_mode": (
-                    "random" if settings["start_mode_var"].get() == "random" else "specific"
-                ),
-                "initial_parameters": dict(settings["initial_parameters"]),
+                "initial_point_mode": start_mode,
                 "gp_falloff_fractions": dict(settings.get("gp_falloff_fractions") or {}),
-            })
+            }
+            if start_mode != "random":
+                group_payload["initial_parameters"] = dict(settings["initial_parameters"])
+            groups.append(group_payload)
             assigned.extend(channels)
         duplicates = sorted({channel for channel in assigned if assigned.count(channel) > 1})
         if duplicates:
@@ -3106,6 +3124,7 @@ class BayesianOptimizationTab:
             f"Group {group_index + 1} Starting Parameters",
             settings["initial_parameters"],
             save,
+            start_mode_var=settings["start_mode_var"],
         )
 
     def _rebuild_engine_group_optimizer_panels(self):
@@ -3119,14 +3138,22 @@ class BayesianOptimizationTab:
             panel.pack(fill="x", pady=(0, 6))
             panel.columnconfigure(1, weight=1)
             ttk.Label(panel, text="Exploit ↔ Explore:").grid(row=0, column=0, sticky="w")
+
+            def update_exploration(value, variable=settings["exploration_var"]):
+                try:
+                    variable.set(f"{float(value):.3f}")
+                except Exception:
+                    pass
+
             ttk.Scale(
                 panel,
                 from_=0.0,
                 to=1.0,
                 orient=tk.HORIZONTAL,
                 variable=settings["exploration_var"],
+                command=update_exploration,
             ).grid(row=0, column=1, sticky="ew", padx=6)
-            ttk.Label(panel, textvariable=settings["exploration_var"], width=5).grid(
+            ttk.Entry(panel, textvariable=settings["exploration_var"], width=6).grid(
                 row=0, column=2, sticky="e"
             )
             ttk.Label(panel, text="Global pool:").grid(row=1, column=0, sticky="w", pady=2)
@@ -3142,13 +3169,14 @@ class BayesianOptimizationTab:
                 row=2, column=1, sticky="w", padx=6
             )
             ttk.Label(panel, text="Start point:").grid(row=2, column=2, sticky="e", pady=2)
-            ttk.Combobox(
+            start_mode = ttk.Combobox(
                 panel,
                 textvariable=settings["start_mode_var"],
                 values=("specific", "random"),
                 state="readonly",
                 width=10,
-            ).grid(row=2, column=3, sticky="w", padx=6)
+            )
+            start_mode.grid(row=2, column=3, sticky="w", padx=6)
             ttk.Button(
                 panel,
                 text="Edit Starting Parameters…",
@@ -5385,6 +5413,8 @@ class BayesianOptimizationTab:
             "Edit Initial Parameters",
             current,
             lambda updated: self._save_initial_parameters(updated),
+            start_mode_var=self._initial_point_mode_var,
+            on_mode_change=lambda _mode: self._sync_algorithm_config(show_error=False),
         )
 
     def _save_initial_parameters(self, updated):
@@ -5406,7 +5436,7 @@ class BayesianOptimizationTab:
         self._refresh_initial_parameters_table()
         self._validate_config(show_dialog=False)
 
-    def _open_method_editor(self, title, values, on_save):
+    def _open_method_editor(self, title, values, on_save, start_mode_var=None, on_mode_change=None):
         win = tk.Toplevel(self._frame)
         win.title(title)
         win.transient(self._frame)
@@ -5414,6 +5444,7 @@ class BayesianOptimizationTab:
         box = ttk.Frame(win, padding=12)
         box.pack(fill="both", expand=True)
         vars_by_name = {}
+        entries_by_name = {}
         labels = {
             "begin_potential": "Begin potential (V)",
             "end_potential": "End potential (V)",
@@ -5423,21 +5454,58 @@ class BayesianOptimizationTab:
             "conditioning_potential": "Conditioning potential (V)",
             "conditioning_time": "Conditioning time (s)",
         }
-        for row, name in enumerate(PARAMETER_ORDER):
-            ttk.Label(box, text=labels.get(name, name)).grid(row=row, column=0, sticky="w", pady=3)
-            var = tk.StringVar(value=str(values.get(name, "")))
-            vars_by_name[name] = var
-            entry_state = "normal"
+        row_offset = 0
+        dialog_start_mode_var = None
+        if start_mode_var is not None:
+            row_offset = 1
+            ttk.Label(box, text="Start point").grid(row=0, column=0, sticky="w", pady=3)
+            dialog_start_mode_var = tk.StringVar(
+                value="random" if str(start_mode_var.get()).strip().lower() == "random" else "specific"
+            )
+            start_mode_combo = ttk.Combobox(
+                box,
+                textvariable=dialog_start_mode_var,
+                values=("specific", "random"),
+                state="readonly",
+                width=16,
+            )
+            start_mode_combo.grid(row=0, column=1, sticky="w", pady=3)
+
+        def entry_state_for(name):
+            if dialog_start_mode_var is not None and dialog_start_mode_var.get() == "random":
+                return "disabled"
             if title == "Edit Initial Parameters" or "Starting Parameters" in title:
                 param_cfg = (self._config or {}).get("parameters", {}).get(name, {})
                 if str(param_cfg.get("mode", "")).lower() == "tied":
-                    entry_state = "disabled"
-            ttk.Entry(box, textvariable=var, width=18, state=entry_state).grid(row=row, column=1, sticky="w", pady=3)
+                    return "disabled"
+            return "normal"
+
+        def refresh_entry_states(*_args):
+            for param_name, entry in entries_by_name.items():
+                entry.configure(state=entry_state_for(param_name))
+
+        for row, name in enumerate(PARAMETER_ORDER, start=row_offset):
+            ttk.Label(box, text=labels.get(name, name)).grid(row=row, column=0, sticky="w", pady=3)
+            var = tk.StringVar(value=str(values.get(name, "")))
+            vars_by_name[name] = var
+            entry = ttk.Entry(box, textvariable=var, width=18, state=entry_state_for(name))
+            entries_by_name[name] = entry
+            entry.grid(row=row, column=1, sticky="w", pady=3)
+        if dialog_start_mode_var is not None:
+            dialog_start_mode_var.trace_add("write", refresh_entry_states)
         buttons = ttk.Frame(box)
-        buttons.grid(row=len(PARAMETER_ORDER), column=0, columnspan=2, pady=(10, 0))
+        buttons.grid(row=len(PARAMETER_ORDER) + row_offset, column=0, columnspan=2, pady=(10, 0))
 
         def save():
             try:
+                if dialog_start_mode_var is not None:
+                    mode = "random" if dialog_start_mode_var.get() == "random" else "specific"
+                    start_mode_var.set(mode)
+                    if on_mode_change is not None:
+                        on_mode_change(mode)
+                    if mode == "random":
+                        win.destroy()
+                        return
                 updated = {name: float(var.get()) for name, var in vars_by_name.items()}
                 on_save(updated)
                 win.destroy()

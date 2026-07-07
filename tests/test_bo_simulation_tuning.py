@@ -146,4 +146,5 @@ def test_main_setup_persists_per_group_optimizer_settings():
     assert tab._config["channel_groups"][0]["initial_parameters"]["amplitude"] == 0.02
     assert tab._config["channel_groups"][1]["exploration"] == 0.5
     assert tab._config["channel_groups"][1]["n_initial_points"] == 6
-    assert tab._config["channel_groups"][1]["initial_parameters"]["amplitude"] == 0.05
+    assert tab._config["channel_groups"][1]["initial_point_mode"] == "random"
+    assert "initial_parameters" not in tab._config["channel_groups"][1]

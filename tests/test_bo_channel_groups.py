@@ -116,6 +116,25 @@ def test_groups_use_distinct_optimizer_settings_and_starting_parameters(tmp_path
     assert session._config_for_group(2)["acquisition"]["gp_falloff_fractions"]["frequency"] == 0.35
 
 
+def test_random_group_starts_do_not_require_group_initial_parameters(tmp_path):
+    config = _config()
+    for group in config["channel_groups"]:
+        group["initial_point_mode"] = "random"
+        group.pop("initial_parameters", None)
+
+    assert validate_bo_config(config) == []
+
+    session = BOIntegrationSession(config, tmp_path)
+    suggestions = session.ask_next_groups()
+
+    assert len(suggestions) == 2
+    assert {suggestion.group_id for suggestion in suggestions} == {1, 2}
+    assert all(
+        suggestion.params["amplitude"] in {0.02, 0.036, 0.05}
+        for suggestion in suggestions
+    )
+
+
 def test_legacy_channels_become_one_group():
     config = normalize_bo_config({"channels": [2, 5]})
     assert channel_groups(config) == [{"id": 1, "name": "Group 1", "channels": [2, 5]}]

@@ -390,7 +390,8 @@ def validate_bo_config(config: dict) -> List[str]:
         if duplicates:
             errors.append(f"Mux channels may only belong to one group: {duplicates}")
         for group in groups:
-            if isinstance(group.get("initial_parameters"), dict):
+            group_start_mode = str(group.get("initial_point_mode") or cfg.get("acquisition", {}).get("initial_point_mode", "specific")).strip().lower()
+            if group_start_mode != "random" and isinstance(group.get("initial_parameters"), dict):
                 initial = resolve_method_payload(cfg, group["initial_parameters"])
                 group_errors = validate_candidate(initial, cfg)
                 if group_errors:
@@ -407,9 +408,11 @@ def validate_bo_config(config: dict) -> List[str]:
     except Exception as exc:
         errors.append(f"Candidate generation failed: {exc}")
     try:
-        candidate_errors = validate_candidate(resolve_initial_parameters(cfg), cfg)
-        if candidate_errors:
-            errors.append(f"Initial parameters are invalid: {'; '.join(candidate_errors)}")
+        start_mode = str(cfg.get("acquisition", {}).get("initial_point_mode", "specific")).strip().lower()
+        if start_mode != "random":
+            candidate_errors = validate_candidate(resolve_initial_parameters(cfg), cfg)
+            if candidate_errors:
+                errors.append(f"Initial parameters are invalid: {'; '.join(candidate_errors)}")
     except Exception as exc:
         errors.append(f"Initial parameter validation failed: {exc}")
     return errors
@@ -1822,7 +1825,7 @@ class BOIntegrationSession:
             self.observations = observations
         if config is not None:
             self.config = config
-            self._start_candidate = resolve_initial_parameters(config)
+            self._start_candidate = self._resolve_start_candidate(config)
         try:
             return self._choose_candidate_current(available, pending_params)
         finally:
@@ -2137,13 +2140,14 @@ class BOIntegrationSession:
             },
         )
 
-    def _resolve_start_candidate(self) -> Dict[str, float]:
-        mode = str(self.config.get("acquisition", {}).get("initial_point_mode", "specific")).strip().lower()
+    def _resolve_start_candidate(self, config: Optional[dict] = None) -> Dict[str, float]:
+        config = normalize_bo_config(config or self.config)
+        mode = str(config.get("acquisition", {}).get("initial_point_mode", "specific")).strip().lower()
         if mode == "random":
             if not self.candidates:
                 raise ValueError("No valid BO candidates available for random start")
             return dict(self._rng.choice(self.candidates))
-        return resolve_initial_parameters(self.config)
+        return resolve_initial_parameters(config)
 
     def _write_history_csv(self) -> None:
         path = self.record_dir / "history.csv"
