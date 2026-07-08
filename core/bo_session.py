@@ -758,8 +758,9 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
         buffer_classic_weight = float(paired_weights.get("buffer_classic_Q", 0.0) or 0.0)
         target_classic_weight = float(paired_weights.get("target_classic_Q", 0.0) or 0.0)
         standard_quality_score = 0.5 * (buffer_classic_q + target_classic_q)
-        buffer_q_contribution = buffer_classic_weight * buffer_classic_q
-        target_q_contribution = target_classic_weight * target_classic_q
+        classic_q_sign = -1.0 if delta_score < 0.0 else 1.0
+        buffer_q_contribution = classic_q_sign * buffer_classic_weight * buffer_classic_q
+        target_q_contribution = classic_q_sign * target_classic_weight * target_classic_q
         if success <= 0.0:
             buffer_q_contribution = 0.0
             target_q_contribution = 0.0

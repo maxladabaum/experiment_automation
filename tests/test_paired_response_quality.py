@@ -205,3 +205,52 @@ def test_paired_q_preserves_negative_delta_score():
     assert channel["delta_peak_height_uA"] == -6.0
     assert channel["paired_Q_channel"] == -3.0
     assert quality["Q_run"] == -3.0
+
+
+def test_negative_paired_delta_subtracts_weighted_classic_q_terms():
+    scoring = {
+        "mode": "classic",
+        "channel_weights": {
+            "snr": 0.0,
+            "peak_height": 0.0,
+            "peak_shape": 0.0,
+            "baseline": 0.0,
+            "replicate_consistency": 0.0,
+            "success": 1.0,
+            "noise_penalty": 0.0,
+            "snr_saturation": 20.0,
+        },
+        "paired_response_weights": {
+            "buffer_classic_Q": 0.25,
+            "target_classic_Q": 0.25,
+        },
+        "run_weights": {
+            "low_channel_threshold": -10.0,
+            "lambda_variability": 0.0,
+            "lambda_failed": 0.0,
+            "lambda_low": 0.0,
+        },
+    }
+    buffer_metrics = {
+        "1": {
+            "mean_peak_current_uA": 8.0,
+            "mean_background_rms_uA": 1.5,
+            "success_score": 1.0,
+        }
+    }
+    target_metrics = {
+        "1": {
+            "mean_peak_current_uA": 2.0,
+            "mean_background_rms_uA": 0.5,
+            "success_score": 1.0,
+        }
+    }
+
+    quality = compute_paired_response_quality(buffer_metrics, target_metrics, scoring)
+    channel = quality["channel_components"]["1"]
+
+    assert channel["delta_peak_contribution"] == -3.0
+    assert channel["buffer_classic_Q_contribution"] == -0.25
+    assert channel["target_classic_Q_contribution"] == -0.25
+    assert channel["paired_Q_channel"] == -3.5
+    assert quality["Q_run"] == -3.5

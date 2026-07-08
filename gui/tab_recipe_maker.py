@@ -322,7 +322,8 @@ class RecipeMakerTab:
         return (
             "delta_peak = target_peak_height_uA - buffer_peak_height_uA; "
             "Q_channel = paired_Q_channel = delta_peak / "
-            "(target_channel_noise + buffer_channel_noise). "
+            "(target_channel_noise + buffer_channel_noise) "
+            "+ sign(delta_peak)*(buffer_weight*buffer_classic_Q + target_weight*target_classic_Q). "
             "Q_run = mean(Q_channel) - run variability/failed/low-channel penalties."
         )
 

@@ -2461,7 +2461,7 @@ class BayesianOptimizationTab:
             "delta_peak = target_peak_height_uA - buffer_peak_height_uA; "
             "Q_channel = paired_Q_channel = delta_peak / "
             "(target_channel_noise + buffer_channel_noise) "
-            "+ buffer_weight*buffer_classic_Q + target_weight*target_classic_Q; "
+            "+ sign(delta_peak)*(buffer_weight*buffer_classic_Q + target_weight*target_classic_Q); "
             "paired Q_run preserves negative values."
         )
 
@@ -2469,7 +2469,7 @@ class BayesianOptimizationTab:
     def _paired_formula_fallback_text():
         return (
             "Q_channel = paired_Q_channel = delta_peak / (target_channel_noise + buffer_channel_noise) "
-            "+ buffer_weight*buffer_classic_Q + target_weight*target_classic_Q; "
+            "+ sign(delta_peak)*(buffer_weight*buffer_classic_Q + target_weight*target_classic_Q); "
             "paired Q_run preserves negative values."
         )
 
@@ -7343,7 +7343,7 @@ class BayesianOptimizationTab:
                 [
                     "Paired-response Q_channel terms:",
                     "  Q_channel = paired_Q_channel = delta_peak / (target_channel_noise + buffer_channel_noise) "
-                    "+ buffer_weight*buffer_classic_Q + target_weight*target_classic_Q",
+                    "+ sign(delta_peak)*(buffer_weight*buffer_classic_Q + target_weight*target_classic_Q)",
                     f"  delta_peak = target_peak_height_uA - buffer_peak_height_uA",
                     f"  Mean buffer channel noise: {float(quality.get('mean_buffer_channel_noise', 0.0) or 0.0):.4g} uA",
                     f"  Mean target channel noise: {float(quality.get('mean_target_channel_noise', 0.0) or 0.0):.4g} uA",
@@ -7404,7 +7404,7 @@ class BayesianOptimizationTab:
             return [
                 "delta_peak = target_peak_height_uA - buffer_peak_height_uA",
                 "Q_channel = paired_Q_channel = delta_peak / (target_channel_noise + buffer_channel_noise) "
-                "+ buffer_weight*buffer_classic_Q + target_weight*target_classic_Q",
+                "+ sign(delta_peak)*(buffer_weight*buffer_classic_Q + target_weight*target_classic_Q)",
                 (
                     "Q_run = mean(Q_channel) "
                     f"- Run std penalty({lambda_var:g})*std(Q_channel) "
