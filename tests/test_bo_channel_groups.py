@@ -42,7 +42,7 @@ def test_channel_group_validation_rejects_overlap():
 
 def test_group_suggestions_have_independent_histories(tmp_path):
     session = BOIntegrationSession(_config(), tmp_path)
-    assert not (session.record_dir / "plots").exists()
+    assert not list(session.plots_dir.glob("*.png"))
     first = session.ask_next_groups()
     assert [(item.group_name, item.channels) for item in first] == [
         ("Left", [1, 2]),
@@ -77,7 +77,9 @@ def test_group_suggestions_have_independent_histories(tmp_path):
         ("Left", "1,2"),
         ("Right", "3,4"),
     }
-    assert not (session.record_dir / "plots").exists()
+    plot_names = [path.name for path in session.plots_dir.glob("*.png")]
+    assert plot_names
+    assert all(name.startswith(("group_01_", "group_02_")) for name in plot_names)
 
 
 def test_groups_use_distinct_optimizer_settings_and_starting_parameters(tmp_path):
@@ -247,6 +249,127 @@ def test_external_corrected_rows_are_filtered_to_observation_channels():
 
     assert diagnostics == []
     assert [row["channel"] for row in rows] == ["3"]
+
+
+def test_paired_external_results_skip_duplicate_analysis_results_json(tmp_path):
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    buffer_results = tmp_path / "buffer_results.json"
+    target_results = tmp_path / "target_results.json"
+    buffer_results.write_text(
+        json.dumps([{"channel": 2, "voltage": [0, 1], "smoothed_corrected_current": [0.1, 0.2]}]),
+        encoding="utf-8",
+    )
+    target_results.write_text(
+        json.dumps([{"channel": 2, "voltage": [0, 1], "smoothed_corrected_current": [0.3, 0.4]}]),
+        encoding="utf-8",
+    )
+    tab._resolve_observation_file_path = lambda raw_path, observation=None: Path(raw_path)
+    observation = {
+        "objective": "paired_response",
+        "analysis_results_json": str(target_results),
+        "buffer_analysis_results_json": str(buffer_results),
+        "target_analysis_results_json": str(target_results),
+    }
+
+    rows = tab._external_analysis_results(observation)
+
+    assert [row["_bo_phase"] for row in rows] == ["buffer", "target"]
+
+
+def test_paired_analysis_records_skip_duplicate_analysis_record(tmp_path):
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    buffer_record = tmp_path / "buffer_summary.json"
+    target_record = tmp_path / "target_summary.json"
+    buffer_record.write_text("{}", encoding="utf-8")
+    target_record.write_text("{}", encoding="utf-8")
+    tab._resolve_observation_file_path = lambda raw_path, observation=None: Path(raw_path)
+    tab._infer_measurement_phase_from_path = lambda path: ""
+    observation = {
+        "objective": "paired_response",
+        "analysis_record": str(target_record),
+        "buffer_analysis_record": str(buffer_record),
+        "target_analysis_record": str(target_record),
+    }
+
+    rows = tab._analysis_record_paths_with_phase(observation)
+
+    assert rows == [(buffer_record, "buffer"), (target_record, "target")]
+
+
+def test_paired_raw_trace_rows_collapse_archived_and_results_scan_duplicates(tmp_path):
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    tab._bo_session = None
+    buffer_csv = tmp_path / "buffer_ch4.csv"
+    target_csv = tmp_path / "target_ch4.csv"
+    buffer_csv.write_text("Voltage,Current\n0,1\n", encoding="utf-8")
+    target_csv.write_text("Voltage,Current\n0,2\n", encoding="utf-8")
+    buffer_results = tmp_path / "buffer_results.csv"
+    target_results = tmp_path / "target_results.csv"
+    buffer_results.write_text(f"file_path,channel,scan_number\n{buffer_csv},4,2\n", encoding="utf-8")
+    target_results.write_text(f"file_path,channel,scan_number\n{target_csv},4,2\n", encoding="utf-8")
+    buffer_record = tmp_path / "buffer_summary.json"
+    target_record = tmp_path / "target_summary.json"
+    buffer_record.write_text(json.dumps({"results_csv": str(buffer_results)}), encoding="utf-8")
+    target_record.write_text(json.dumps({"results_csv": str(target_results)}), encoding="utf-8")
+
+    rows = tab._raw_trace_rows_for_observation(
+        {
+            "objective": "paired_response",
+            "channels": [4],
+            "archived_measurements": [str(buffer_csv), str(target_csv)],
+            "buffer_analysis_record": str(buffer_record),
+            "target_analysis_record": str(target_record),
+        }
+    )
+
+    assert [(row["phase"], row["channel"], row.get("scan")) for row in rows] == [
+        ("buffer", "4", None),
+        ("target", "4", None),
+    ]
+
+
+def test_paired_corrected_trace_rows_collapse_external_scan_duplicates():
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    tab._external_analysis_results = lambda observation: [
+        {
+            "_bo_phase": "buffer",
+            "channel": 4,
+            "scan_number": 1,
+            "voltage": [0.0, 1.0],
+            "smoothed_corrected_current": [0.1, 0.2],
+        },
+        {
+            "_bo_phase": "buffer",
+            "channel": 4,
+            "scan_number": 2,
+            "voltage": [0.0, 1.0],
+            "smoothed_corrected_current": [0.11, 0.21],
+        },
+        {
+            "_bo_phase": "target",
+            "channel": 4,
+            "scan_number": 1,
+            "voltage": [0.0, 1.0],
+            "smoothed_corrected_current": [0.3, 0.4],
+        },
+        {
+            "_bo_phase": "target",
+            "channel": 4,
+            "scan_number": 2,
+            "voltage": [0.0, 1.0],
+            "smoothed_corrected_current": [0.31, 0.41],
+        },
+    ]
+
+    rows, diagnostics = tab._corrected_trace_rows_for_observation(
+        {"objective": "paired_response", "channels": [4]}
+    )
+
+    assert diagnostics == []
+    assert [(row["phase"], row["channel"], row.get("scan")) for row in rows] == [
+        ("buffer", "4", 1),
+        ("target", "4", 1),
+    ]
 
 
 def test_grouped_analysis_records_are_namespaced(tmp_path):

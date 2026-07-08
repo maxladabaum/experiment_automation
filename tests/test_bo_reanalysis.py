@@ -90,7 +90,7 @@ def test_reanalyze_discovers_raw_files_for_legacy_observation(monkeypatch, tmp_p
     assert calls[0]["folders"] == [str(raw_path.resolve())]
 
 
-def test_reanalyze_does_not_replace_q_when_all_peak_analyses_failed(monkeypatch, tmp_path):
+def test_reanalyze_sets_q_zero_when_all_peak_analyses_failed(monkeypatch, tmp_path):
     config = load_bo_config("optimizer/bo_configs/default_swv_bo.json")
     session = BOIntegrationSession(config, tmp_path / "experiment")
     raw_path = _raw(tmp_path / "experiment" / "legacy" / "iter_001" / "ch001.csv")
@@ -119,17 +119,19 @@ def test_reanalyze_does_not_replace_q_when_all_peak_analyses_failed(monkeypatch,
 
     monkeypatch.setattr("core.analysis_worker.run_analysis", failed_worker)
 
-    with pytest.raises(ValueError, match="peak below cutoff"):
-        session.reanalyze_observation(
-            {
-                "iteration": 1,
-                "method_id": "method-1",
-                "archived_measurements": [raw_path],
-            },
-            analysis=dict(config["analysis"]),
-            scoring=dict(config["scoring"]),
-            output_dir=tmp_path / "reanalyzed",
-        )
+    rebuilt = session.reanalyze_observation(
+        {
+            "iteration": 1,
+            "method_id": "method-1",
+            "archived_measurements": [raw_path],
+        },
+        analysis=dict(config["analysis"]),
+        scoring=dict(config["scoring"]),
+        output_dir=tmp_path / "reanalyzed",
+    )
+
+    assert rebuilt["Q_run"] == 0.0
+    assert rebuilt["quality"]["Q_channels"]["1"] == 0.0
 
 
 def test_reanalyze_paired_observation_routes_phases_and_rebuilds_paired_q(monkeypatch, tmp_path):
@@ -159,4 +161,6 @@ def test_reanalyze_paired_observation_routes_phases_and_rebuilds_paired_q(monkey
     assert len(calls) == 2
     assert {call["output_stem"].rsplit("_", 1)[-1] for call in calls} == {"buffer", "target"}
     assert rebuilt["quality"]["channel_components"]["1"]["delta_peak_height_uA"] == 3.0
-    assert rebuilt["Q_run"] == pytest.approx(2.0)
+    assert rebuilt["quality"]["channel_components"]["1"]["buffer_classic_Q_contribution"] > 0.0
+    assert rebuilt["quality"]["channel_components"]["1"]["target_classic_Q_contribution"] > 0.0
+    assert rebuilt["Q_run"] == pytest.approx(2.2)

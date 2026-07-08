@@ -191,6 +191,7 @@
     "candidate_pool_size": 1000,
     "local_candidate_pool_size": 100,
     "initial_point_mode": "specific",
+    "optimization_direction": "maximize",
     "use_gp": true,
     "gp_optimizer_restarts": 2,
     "gp_falloff_fractions": {

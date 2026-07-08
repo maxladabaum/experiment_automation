@@ -119,6 +119,7 @@ class BayesianOptimizationTab:
         self._candidate_pool_var = tk.StringVar(value="600")
         self._local_pool_var = tk.StringVar(value="120")
         self._initial_point_mode_var = tk.StringVar(value="specific")
+        self._optimization_direction_var = tk.StringVar(value="maximize")
         self._gp_length_scale_vars = {name: tk.StringVar(value="0.2") for name in PARAMETER_ORDER}
         self._gp_falloff_summary_var = tk.StringVar(value="GP falloff: fixed fractions of search range (0.2 each)")
         self._score_mode_var = tk.StringVar(value="classic")
@@ -149,6 +150,16 @@ class BayesianOptimizationTab:
         self._rescore_low_penalty_var = tk.StringVar(value="0.20")
         self._rescore_low_threshold_var = tk.StringVar(value="0.50")
         self._rescore_formula_var = tk.StringVar(value="")
+        self._rescore_paired_score_vars = {
+            key: tk.StringVar(value=value)
+            for key, value in {
+                "buffer_classic_Q": "0.25",
+                "target_classic_Q": "0.25",
+                "delta_peak": "1.0",
+                "delta_scale_uA": "1.0",
+            }.items()
+        }
+        self._rescore_paired_formula_var = tk.StringVar(value="")
         self._rescore_status_var = tk.StringVar(value="Load a BO session to rescore recorded data.")
         self._rescore_analysis_vars = {
             "crop_min_v": tk.StringVar(value="-0.61"),
@@ -204,6 +215,7 @@ class BayesianOptimizationTab:
         self._engine_candidate_pool_var = tk.StringVar(value="600")
         self._engine_local_pool_var = tk.StringVar(value="120")
         self._engine_initial_point_mode_var = tk.StringVar(value="specific")
+        self._engine_optimization_direction_var = tk.StringVar(value="maximize")
         self._engine_gp_length_scale_vars = {
             name: tk.StringVar(value="0.2") for name in PARAMETER_ORDER
         }
@@ -772,7 +784,12 @@ class BayesianOptimizationTab:
         paired_scoring_box = ttk.LabelFrame(scoring_content, text="Paired Q Scoring", padding=8)
         self._paired_scoring_frame = paired_scoring_box
         scoring_scroll._bind_mousewheel(paired_scoring_box)
-        self._build_paired_q_scoring_controls(paired_scoring_box)
+        self._build_paired_q_scoring_controls(
+            paired_scoring_box,
+            vars_by_name=self._paired_scoring_vars(),
+            formula_var=self._paired_formula_var,
+            on_change=lambda: self._sync_scoring_config(show_error=False),
+        )
         self._refresh_paired_score_formula()
 
         analysis_box = ttk.LabelFrame(analysis_tab, text="Headless Analysis Settings", padding=8)
@@ -1463,6 +1480,14 @@ class BayesianOptimizationTab:
             self._preview_rescore_equation,
             preset_command=self._apply_rescore_signal_priority_preset,
         )
+        paired_rescore_controls = ttk.LabelFrame(rescore_content, text="Paired Q Scoring", padding=6)
+        paired_rescore_controls.pack(fill="x", pady=(6, 0))
+        self._build_paired_q_scoring_controls(
+            paired_rescore_controls,
+            vars_by_name=self._rescore_paired_scoring_vars(),
+            formula_var=self._rescore_paired_formula_var,
+            on_change=self._preview_rescore_equation,
+        )
         def bind_rescore_wheel(widget):
             widget.bind(
                 "<MouseWheel>",
@@ -1758,6 +1783,7 @@ class BayesianOptimizationTab:
         self._candidate_pool_var.set(str(acquisition.get("candidate_pool_size", 600)))
         self._local_pool_var.set(str(acquisition.get("local_candidate_pool_size", 120)))
         self._initial_point_mode_var.set(str(acquisition.get("initial_point_mode", "specific")))
+        self._optimization_direction_var.set(self._display_optimization_direction(acquisition.get("optimization_direction", "maximize")))
         length_scales = dict(acquisition.get("gp_falloff_fractions") or acquisition.get("gp_length_scales") or {})
         if not length_scales:
             length_scales = {name: 0.2 for name in PARAMETER_ORDER}
@@ -1773,6 +1799,9 @@ class BayesianOptimizationTab:
         self._engine_candidate_pool_var.set(str(acquisition.get("candidate_pool_size", 600)))
         self._engine_local_pool_var.set(str(acquisition.get("local_candidate_pool_size", 120)))
         self._engine_initial_point_mode_var.set(str(acquisition.get("initial_point_mode", "specific")))
+        self._engine_optimization_direction_var.set(
+            self._display_optimization_direction(acquisition.get("optimization_direction", "maximize"))
+        )
         paired = str((cfg or {}).get("objective") or "").lower() == "paired_response"
         if paired:
             warmup = int((cfg or {}).get("paired_warmup_cycles", 0) or 0)
@@ -1798,10 +1827,7 @@ class BayesianOptimizationTab:
 
         scoring = dict((cfg or {}).get("scoring") or {})
         self._set_scoring_vars(cfg, self._engine_score_vars, self._engine_score_formula_var)
-        paired_weights = self._default_paired_response_weights()
-        paired_weights.update(dict(scoring.get("paired_response_weights") or {}))
-        for key, var in self._engine_paired_score_vars.items():
-            var.set(str(paired_weights.get(key, self._default_paired_response_weights()[key])))
+        self._set_paired_scoring_vars(scoring, self._engine_paired_score_vars)
         if hasattr(self, "_engine_analysis_vars"):
             self._set_engine_analysis_vars(dict((cfg or {}).get("analysis") or {}))
         self._refresh_engine_scoring_formulas()
@@ -1875,10 +1901,7 @@ class BayesianOptimizationTab:
     def _refresh_engine_scoring_formulas(self):
         self._engine_exploration_text_var.set(f"{float(self._engine_exploration_var.get()):.2f}")
         self._refresh_formula_from_vars(self._engine_score_vars, self._engine_score_formula_var)
-        self._engine_paired_formula_var.set(
-            "paired_Q_channel = delta_peak / "
-            "(target_channel_noise + buffer_channel_noise)"
-        )
+        self._engine_paired_formula_var.set(self._paired_formula_text())
 
     def _on_engine_bo_type_changed(self):
         tabs = getattr(self, "_engine_scoring_tabs", None)
@@ -1913,6 +1936,10 @@ class BayesianOptimizationTab:
         acquisition["local_candidate_pool_size"] = max(0, int(self._engine_local_pool_var.get() or 120))
         mode = str(self._engine_initial_point_mode_var.get() or "specific").strip().lower()
         acquisition["initial_point_mode"] = "random" if mode == "random" else "specific"
+        engine_direction_var = getattr(self, "_engine_optimization_direction_var", None)
+        acquisition["optimization_direction"] = self._display_optimization_direction(
+            engine_direction_var.get() if engine_direction_var is not None else "maximize"
+        )
         falloffs = {
             name: (var.get() or "").strip()
             for name, var in self._engine_gp_length_scale_vars.items()
@@ -1975,6 +2002,10 @@ class BayesianOptimizationTab:
             acquisition["local_candidate_pool_size"] = max(0, int(self._local_pool_var.get() or 120))
             mode = str(self._initial_point_mode_var.get() or "specific").strip().lower()
             acquisition["initial_point_mode"] = "random" if mode == "random" else "specific"
+            direction_var = getattr(self, "_optimization_direction_var", None)
+            acquisition["optimization_direction"] = self._display_optimization_direction(
+                direction_var.get() if direction_var is not None else "maximize"
+            )
             falloff_fractions = self._gp_length_scales_from_vars()
             acquisition["gp_falloff_fractions"] = falloff_fractions
             acquisition["gp_length_scales"] = falloff_fractions
@@ -2120,6 +2151,18 @@ class BayesianOptimizationTab:
         mode_text = str(mode or "classic").strip().lower()
         return "signal_priority_unbounded" if mode_text == "signal_priority_unbounded" else "classic"
 
+    @staticmethod
+    def _display_optimization_direction(direction) -> str:
+        text = str(direction or "maximize").strip().lower()
+        return "minimize" if text in {"minimize", "min", "more_negative", "negative"} else "maximize"
+
+    def _optimization_objective_value(self, q_run, config=None) -> float:
+        direction = self._display_optimization_direction(
+            dict((config or self._config or {}).get("acquisition") or {}).get("optimization_direction", "maximize")
+        )
+        value = float(q_run or 0.0)
+        return -value if direction == "minimize" else value
+
     def _rescore_scoring_vars(self):
         return {
             "mode": self._rescore_mode_var,
@@ -2136,6 +2179,9 @@ class BayesianOptimizationTab:
             "lambda_low": self._rescore_low_penalty_var,
             "low_channel_threshold": self._rescore_low_threshold_var,
         }
+
+    def _rescore_paired_scoring_vars(self):
+        return self._rescore_paired_score_vars
 
     def _build_reanalysis_controls(self, parent):
         variables = self._rescore_analysis_vars
@@ -2303,15 +2349,30 @@ class BayesianOptimizationTab:
         formula_var=None,
         on_change=None,
     ):
+        vars_by_name = vars_by_name or self._paired_scoring_vars()
         formula_var = formula_var or self._paired_formula_var
-        scoring_box.columnconfigure(0, weight=1)
+        on_change = on_change or (lambda: None)
+        for idx in range(4):
+            scoring_box.columnconfigure(idx, weight=1 if idx in (1, 3) else 0)
+        entries = (
+            ("Buffer classic Q weight:", "buffer_classic_Q"),
+            ("Target classic Q weight:", "target_classic_Q"),
+        )
+        for idx, (label, key) in enumerate(entries):
+            row = idx // 2
+            base_col = (idx % 2) * 2
+            ttk.Label(scoring_box, text=label).grid(row=row, column=base_col, sticky="w", pady=2)
+            entry = ttk.Entry(scoring_box, textvariable=vars_by_name[key], width=9)
+            entry.grid(row=row, column=base_col + 1, sticky="w", padx=(4, 12), pady=2)
+            entry.bind("<FocusOut>", lambda _e: on_change())
+            entry.bind("<Return>", lambda _e: on_change())
         ttk.Label(
             scoring_box,
             textvariable=formula_var,
             foreground=self.ACCENT,
             wraplength=760,
             justify="left",
-        ).grid(row=0, column=0, sticky="w", pady=(0, 8))
+        ).grid(row=2, column=0, columnspan=4, sticky="w", pady=(6, 8))
         ttk.Label(
             scoring_box,
             text=(
@@ -2321,7 +2382,7 @@ class BayesianOptimizationTab:
             ),
             wraplength=760,
             justify="left",
-        ).grid(row=1, column=0, sticky="w", pady=(0, 8))
+        ).grid(row=3, column=0, columnspan=4, sticky="w", pady=(0, 8))
 
     def _set_scoring_vars_from_config(self, cfg: dict):
         scoring = dict((cfg or {}).get("scoring") or {})
@@ -2341,18 +2402,21 @@ class BayesianOptimizationTab:
         self._score_failed_penalty_var.set(str(run.get("lambda_failed", 0.40)))
         self._score_low_penalty_var.set(str(run.get("lambda_low", 0.20)))
         self._score_low_threshold_var.set(str(run.get("low_channel_threshold", 0.50)))
+        self._set_paired_scoring_vars(scoring, self._paired_scoring_vars())
+        self._refresh_score_formula()
+        self._refresh_paired_score_formula()
+        self._on_bo_type_changed(sync=False)
+
+    def _set_paired_scoring_vars(self, scoring: dict, vars_by_name: dict):
         paired = self._default_paired_response_weights()
-        saved_paired = dict(scoring.get("paired_response_weights") or {})
+        saved_paired = dict((scoring or {}).get("paired_response_weights") or {})
         if "standard_quality" in saved_paired and "buffer_classic_Q" not in saved_paired and "target_classic_Q" not in saved_paired:
             legacy_quality_weight = max(0.0, float(saved_paired.get("standard_quality", 0.0) or 0.0))
             saved_paired["buffer_classic_Q"] = legacy_quality_weight / 2.0
             saved_paired["target_classic_Q"] = legacy_quality_weight / 2.0
         paired.update(saved_paired)
-        for key, var in self._paired_scoring_vars().items():
+        for key, var in vars_by_name.items():
             var.set(str(paired.get(key, self._default_paired_response_weights().get(key, 0.0))))
-        self._refresh_score_formula()
-        self._refresh_paired_score_formula()
-        self._on_bo_type_changed(sync=False)
 
     def _sync_scoring_config(self, show_error=True):
         if self._config is None:
@@ -2377,23 +2441,37 @@ class BayesianOptimizationTab:
             self._normal_scoring_frame.configure(text="Q Score Decomposition")
 
     def _paired_scoring_from_vars(self):
+        return self._paired_scoring_from_var_map(self._paired_scoring_vars())
+
+    def _paired_scoring_from_var_map(self, vars_by_name):
         return {
             key: max(1e-12, float(var.get() or 0.0)) if key == "delta_scale_uA" else max(0.0, float(var.get() or 0.0))
-            for key, var in self._paired_scoring_vars().items()
+            for key, var in vars_by_name.items()
         }
 
     def _refresh_paired_score_formula(self):
         try:
-            self._paired_formula_var.set(
-                "delta_peak = target_peak_height_uA - buffer_peak_height_uA; "
-                "Q_channel = paired_Q_channel = delta_peak / "
-                "(target_channel_noise + buffer_channel_noise)"
-            )
+            self._paired_formula_var.set(self._paired_formula_text())
         except Exception:
-            self._paired_formula_var.set(
-                "Q_channel = paired_Q_channel = delta_peak / "
-                "(target_channel_noise + buffer_channel_noise)"
-            )
+            self._paired_formula_var.set(self._paired_formula_fallback_text())
+
+    @staticmethod
+    def _paired_formula_text():
+        return (
+            "delta_peak = target_peak_height_uA - buffer_peak_height_uA; "
+            "Q_channel = paired_Q_channel = delta_peak / "
+            "(target_channel_noise + buffer_channel_noise) "
+            "+ buffer_weight*buffer_classic_Q + target_weight*target_classic_Q; "
+            "paired Q_run preserves negative values."
+        )
+
+    @staticmethod
+    def _paired_formula_fallback_text():
+        return (
+            "Q_channel = paired_Q_channel = delta_peak / (target_channel_noise + buffer_channel_noise) "
+            "+ buffer_weight*buffer_classic_Q + target_weight*target_classic_Q; "
+            "paired Q_run preserves negative values."
+        )
 
     def _on_bo_type_changed(self, sync=True):
         paired = self._bo_objective_var.get() == "paired_response"
@@ -2512,14 +2590,21 @@ class BayesianOptimizationTab:
         self._refresh_formula_from_vars(vars_by_name, formula_var)
 
     def _set_rescore_vars_from_config(self, cfg):
+        scoring = dict((cfg or {}).get("scoring") or {})
         self._set_scoring_vars(cfg, self._rescore_scoring_vars(), self._rescore_formula_var)
+        self._set_paired_scoring_vars(scoring, self._rescore_paired_scoring_vars())
+        self._rescore_paired_formula_var.set(self._paired_formula_text())
         self._set_reanalysis_vars(dict((cfg or {}).get("analysis") or {}))
         self._refresh_current_q_equation(cfg)
 
     def _preview_rescore_equation(self):
         try:
             scoring = self._scoring_from_vars(self._rescore_scoring_vars())
+            scoring["paired_response_weights"] = self._paired_scoring_from_var_map(
+                self._rescore_paired_scoring_vars()
+            )
             self._refresh_formula_from_vars(self._rescore_scoring_vars(), self._rescore_formula_var)
+            self._rescore_paired_formula_var.set(self._paired_formula_text())
             self._refresh_current_q_equation(self._config_with_scoring(scoring))
             if self._bo_session is not None:
                 self._rescore_status_var.set("Edited scoring values. Click Apply Rescore to update recorded data.")
@@ -2545,7 +2630,11 @@ class BayesianOptimizationTab:
     def _apply_rescore_to_loaded_session(self, show_error=True):
         try:
             scoring = self._scoring_from_vars(self._rescore_scoring_vars())
+            scoring["paired_response_weights"] = self._paired_scoring_from_var_map(
+                self._rescore_paired_scoring_vars()
+            )
             self._refresh_formula_from_vars(self._rescore_scoring_vars(), self._rescore_formula_var)
+            self._rescore_paired_formula_var.set(self._paired_formula_text())
             self._refresh_current_q_equation(self._config_with_scoring(scoring))
             if self._bo_session is None:
                 self._rescore_status_var.set("Load a BO session to rescore recorded data.")
@@ -2611,6 +2700,9 @@ class BayesianOptimizationTab:
             return
         try:
             scoring = self._scoring_from_vars(self._rescore_scoring_vars())
+            scoring["paired_response_weights"] = self._paired_scoring_from_var_map(
+                self._rescore_paired_scoring_vars()
+            )
             analysis = self._reanalysis_config()
         except Exception as exc:
             messagebox.showerror("Reanalyze & Rescore", str(exc))
@@ -2640,22 +2732,59 @@ class BayesianOptimizationTab:
                 ),
             )
 
+        def failed_reanalysis_update(observation, exc):
+            channels = observation.get("channels") or []
+            if not channels:
+                metrics = observation.get("channel_metrics")
+                if isinstance(metrics, dict):
+                    channels = list(metrics.keys())
+            failed_metrics = {
+                str(channel): {
+                    "snr": 0.0,
+                    "peak_shape_score": 0.0,
+                    "baseline_stability_score": 0.0,
+                    "replicate_consistency_score": 0.0,
+                    "success_score": 0.0,
+                    "ok_scan_count": 0,
+                    "total_scan_count": 1,
+                }
+                for channel in channels
+            }
+            if self._is_paired_observation(observation):
+                quality = compute_paired_response_quality(failed_metrics, failed_metrics, scoring)
+                return {
+                    "buffer_channel_metrics": failed_metrics,
+                    "target_channel_metrics": failed_metrics,
+                    "channel_metrics": failed_metrics,
+                    "quality": quality,
+                    "Q_run": 0.0,
+                    "reanalysis_error": str(exc),
+                }
+            quality = compute_run_quality(failed_metrics, scoring)
+            return {
+                "channel_metrics": failed_metrics,
+                "quality": quality,
+                "Q_run": 0.0,
+                "reanalysis_error": str(exc),
+            }
+
         def work():
             updates = []
-            try:
-                for index, observation in enumerate(observations, start=1):
+            failures = []
+            for index, observation in enumerate(observations, start=1):
+                try:
                     rebuilt = self._bo_session.reanalyze_observation(
                         observation,
                         analysis=analysis,
                         scoring=scoring,
                         output_dir=output_dir,
                     )
-                    updates.append((observation, rebuilt))
-                    update_progress(index, observation.get("iteration"))
-            except Exception as exc:
-                self._frame.after(0, lambda err=exc: finish_error(err))
-                return
-            self._frame.after(0, lambda: finish_success(updates))
+                except Exception as exc:
+                    rebuilt = failed_reanalysis_update(observation, exc)
+                    failures.append((observation.get("iteration"), str(exc)))
+                updates.append((observation, rebuilt))
+                update_progress(index, observation.get("iteration"))
+            self._frame.after(0, lambda: finish_success(updates, failures))
 
         def finish_error(exc):
             self._reanalyze_rescore_running = False
@@ -2663,7 +2792,7 @@ class BayesianOptimizationTab:
             self._rescore_status_var.set(f"Reanalysis stopped without applying changes: {exc}")
             messagebox.showerror("Reanalyze & Rescore", str(exc))
 
-        def finish_success(updates):
+        def finish_success(updates, failures):
             for observation, rebuilt in updates:
                 observation.update(rebuilt)
                 for record in self._bo_session.suggestions:
@@ -2684,8 +2813,9 @@ class BayesianOptimizationTab:
                 self._select_history_iteration(selected_iteration)
             else:
                 self._select_latest_history_iteration()
+            failure_text = f" {len(failures)} failed iteration(s) were assigned Q=0." if failures else ""
             self._rescore_status_var.set(
-                f"Reanalyzed and rescored {len(updates)} iteration(s). "
+                f"Reanalyzed and rescored {len(updates)} iteration(s).{failure_text} "
                 "Use Save Rescored Session to persist the updated session."
             )
 
@@ -2799,6 +2929,11 @@ class BayesianOptimizationTab:
             start_mode_var = tk.StringVar(
                 value=str(source_value("initial_point_mode", "start_mode_var", self._initial_point_mode_var.get()))
             )
+            optimization_direction_var = tk.StringVar(
+                value=self._display_optimization_direction(
+                    source_value("optimization_direction", "optimization_direction_var", self._optimization_direction_var.get())
+                )
+            )
             initial_parameters = dict(
                 source.get("initial_parameters")
                 or resolve_initial_parameters(self._config or {})
@@ -2817,6 +2952,7 @@ class BayesianOptimizationTab:
                 "candidate_pool_var": candidate_pool_var,
                 "local_pool_var": local_pool_var,
                 "start_mode_var": start_mode_var,
+                "optimization_direction_var": optimization_direction_var,
                 "initial_parameters": initial_parameters,
                 "gp_falloff_fractions": gp_falloffs,
             }
@@ -2849,6 +2985,10 @@ class BayesianOptimizationTab:
                 if warmup < 0:
                     raise ValueError(f"Group {index} warmup must be zero or greater")
                 start_mode = "random" if settings["start_mode_var"].get() == "random" else "specific"
+                direction_var = settings.get("optimization_direction_var")
+                optimization_direction = self._display_optimization_direction(
+                    direction_var.get() if direction_var is not None else "maximize"
+                )
                 group_payload = {
                     "id": index,
                     "name": f"Group {index}",
@@ -2858,6 +2998,7 @@ class BayesianOptimizationTab:
                     "candidate_pool_size": max(50, int(settings["candidate_pool_var"].get())),
                     "local_candidate_pool_size": max(0, int(settings["local_pool_var"].get())),
                     "initial_point_mode": start_mode,
+                    "optimization_direction": optimization_direction,
                     "gp_falloff_fractions": dict(settings.get("gp_falloff_fractions") or {}),
                 }
                 if start_mode != "random":
@@ -2959,16 +3100,26 @@ class BayesianOptimizationTab:
             )
             start_mode.grid(row=2, column=3, sticky="w", padx=6)
             start_mode.bind("<<ComboboxSelected>>", lambda _e: self._sync_channel_groups(show_error=False))
+            ttk.Label(panel, text="Optimize:").grid(row=3, column=0, sticky="w", pady=2)
+            direction = ttk.Combobox(
+                panel,
+                textvariable=settings["optimization_direction_var"],
+                values=("maximize", "minimize"),
+                state="readonly",
+                width=10,
+            )
+            direction.grid(row=3, column=1, sticky="w", padx=6)
+            direction.bind("<<ComboboxSelected>>", lambda _e: self._sync_channel_groups(show_error=False))
             ttk.Button(
                 panel,
                 text="Edit Starting Parameters…",
                 command=lambda group_index=index: self._edit_bo_group_initial_parameters(group_index),
-            ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(4, 0))
+            ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(4, 0))
             ttk.Button(
                 panel,
                 text="Edit GP Falloff…",
                 command=lambda group_index=index: self._edit_group_gp_falloff(group_index, simulator=False),
-            ).grid(row=3, column=2, columnspan=2, sticky="w", pady=(4, 0))
+            ).grid(row=4, column=2, columnspan=2, sticky="w", pady=(4, 0))
 
     def _rebuild_engine_channel_group_entries(self, values=None, group_configs=None):
         old_values = [var.get() for var in self._engine_channel_group_vars]
@@ -3025,6 +3176,15 @@ class BayesianOptimizationTab:
             start_mode_var = tk.StringVar(
                 value=str(source_value("initial_point_mode", "start_mode_var", self._engine_initial_point_mode_var.get()))
             )
+            optimization_direction_var = tk.StringVar(
+                value=self._display_optimization_direction(
+                    source_value(
+                        "optimization_direction",
+                        "optimization_direction_var",
+                        self._engine_optimization_direction_var.get(),
+                    )
+                )
+            )
             initial_parameters = dict(
                 source.get("initial_parameters")
                 or resolve_initial_parameters(self._config or {})
@@ -3043,6 +3203,7 @@ class BayesianOptimizationTab:
                 "candidate_pool_var": candidate_pool_var,
                 "local_pool_var": local_pool_var,
                 "start_mode_var": start_mode_var,
+                "optimization_direction_var": optimization_direction_var,
                 "initial_parameters": initial_parameters,
                 "gp_falloff_fractions": gp_falloffs,
             }
@@ -3073,6 +3234,10 @@ class BayesianOptimizationTab:
             if warmup < 0:
                 raise ValueError(f"Simulation group {index} warmup must be zero or greater.")
             start_mode = "random" if settings["start_mode_var"].get() == "random" else "specific"
+            direction_var = settings.get("optimization_direction_var")
+            optimization_direction = self._display_optimization_direction(
+                direction_var.get() if direction_var is not None else "maximize"
+            )
             group_payload = {
                 "id": index,
                 "name": f"Group {index}",
@@ -3082,6 +3247,7 @@ class BayesianOptimizationTab:
                 "candidate_pool_size": max(50, int(settings["candidate_pool_var"].get())),
                 "local_candidate_pool_size": max(0, int(settings["local_pool_var"].get())),
                 "initial_point_mode": start_mode,
+                "optimization_direction": optimization_direction,
                 "gp_falloff_fractions": dict(settings.get("gp_falloff_fractions") or {}),
             }
             if start_mode != "random":
@@ -3177,16 +3343,24 @@ class BayesianOptimizationTab:
                 width=10,
             )
             start_mode.grid(row=2, column=3, sticky="w", padx=6)
+            ttk.Label(panel, text="Optimize:").grid(row=3, column=0, sticky="w", pady=2)
+            ttk.Combobox(
+                panel,
+                textvariable=settings["optimization_direction_var"],
+                values=("maximize", "minimize"),
+                state="readonly",
+                width=10,
+            ).grid(row=3, column=1, sticky="w", padx=6)
             ttk.Button(
                 panel,
                 text="Edit Starting Parameters…",
                 command=lambda group_index=index: self._edit_engine_group_initial_parameters(group_index),
-            ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(4, 0))
+            ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(4, 0))
             ttk.Button(
                 panel,
                 text="Edit GP Falloff…",
                 command=lambda group_index=index: self._edit_group_gp_falloff(group_index, simulator=True),
-            ).grid(row=3, column=2, columnspan=2, sticky="w", pady=(4, 0))
+            ).grid(row=4, column=2, columnspan=2, sticky="w", pady=(4, 0))
 
     def _edit_group_gp_falloff(self, group_index, simulator=False):
         settings_list = (
@@ -3937,7 +4111,7 @@ class BayesianOptimizationTab:
         if self._config is None or not rows:
             messagebox.showwarning("Simulation Engine", "Run an optimizer simulation first.")
             return
-        best = max(rows, key=lambda row: float(row.get("Q_run", 0.0)))
+        best = max(rows, key=lambda row: self._optimization_objective_value(row.get("Q_run", 0.0), self._config))
         if not messagebox.askyesno(
             "Apply Simulated Best",
             "Use the best simulated parameter set as the Setup initial parameters?",
@@ -5668,7 +5842,8 @@ class BayesianOptimizationTab:
                 "Q_run", "Paired Q", "Buffer Q", "Target Q", "Classic Pair Q",
                 "Buffer Term", "Target Term", "Delta Term",
                 "Delta Peak", "Frac Delta", "Distance",
-                "Buffer SNR", "Target SNR", "Target Shape", "Success",
+                "Buffer SNR", "Target SNR", "Buffer Noise", "Target Noise", "Combined Noise",
+                "Target Shape", "Success",
                 "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t",
             )
             self._history_tree.configure(columns=columns)
@@ -5686,6 +5861,9 @@ class BayesianOptimizationTab:
                 "Classic Pair Q": 104,
                 "Buffer SNR": 86,
                 "Target SNR": 86,
+                "Buffer Noise": 94,
+                "Target Noise": 94,
+                "Combined Noise": 106,
                 "BO Iter": 78,
             }
         else:
@@ -5729,6 +5907,9 @@ class BayesianOptimizationTab:
             self._fmt(truth.get("normalized_distance")),
             self._fmt(quality.get("mean_buffer_snr_raw")),
             self._fmt(quality.get("mean_target_snr_raw")),
+            self._fmt(quality.get("mean_buffer_channel_noise")),
+            self._fmt(quality.get("mean_target_channel_noise")),
+            self._fmt(quality.get("mean_combined_channel_noise")),
             self._fmt(quality.get("mean_target_shape_score")),
             self._fmt(quality.get("mean_success_score")),
             self._fmt_raw(params.get("begin_potential")),
@@ -6402,6 +6583,8 @@ class BayesianOptimizationTab:
                         "peak_idx_corr": result.get("peak_idx_corr"),
                     }
                 )
+            if str((observation or {}).get("objective") or "").lower() == "paired_response":
+                rows = self._collapse_paired_rows_to_one_trace_per_phase_channel(rows)
             return self._sort_corrected_trace_rows(rows, diagnostics)
         analysis_cfg = self._current_analysis_settings()
         for raw_row in self._raw_trace_rows_for_observation(observation):
@@ -6516,10 +6699,14 @@ class BayesianOptimizationTab:
         )
 
     def _external_analysis_results(self, observation):
-        sources = (
-            (observation.get("analysis_results_json"), None),
+        paired = str((observation or {}).get("objective") or "").lower() == "paired_response"
+        paired_sources = [
             (observation.get("buffer_analysis_results_json"), "buffer"),
             (observation.get("target_analysis_results_json"), "target"),
+        ]
+        sources = paired_sources if paired and any(path for path, _phase in paired_sources) else (
+            (observation.get("analysis_results_json"), None),
+            *paired_sources,
         )
         rows = []
         seen = set()
@@ -6757,9 +6944,13 @@ class BayesianOptimizationTab:
     def _analysis_record_paths_with_phase(self, observation):
         paths = []
         seen = set()
-        key_phase_pairs = (
+        paired = str((observation or {}).get("objective") or "").lower() == "paired_response"
+        paired_pairs = (
             ("buffer_analysis_record", "buffer"),
             ("target_analysis_record", "target"),
+        )
+        key_phase_pairs = paired_pairs if paired and any((observation or {}).get(key) for key, _phase in paired_pairs) else (
+            *paired_pairs,
             ("analysis_record", ""),
         )
         for key, phase_hint in key_phase_pairs:
@@ -6912,6 +7103,7 @@ class BayesianOptimizationTab:
 
         if paired:
             rows = self._filter_paired_rows_to_matching_measurements(rows)
+            rows = self._collapse_paired_rows_to_one_trace_per_phase_channel(rows)
 
         return sorted(
             rows,
@@ -7067,6 +7259,31 @@ class BayesianOptimizationTab:
             collapsed.append(chosen)
         return collapsed
 
+    def _collapse_paired_rows_to_one_trace_per_phase_channel(self, rows):
+        grouped = {}
+        passthrough = []
+        for index, row in enumerate(rows):
+            phase = str(row.get("phase") or "").strip().lower()
+            channel = self._normalize_observation_channel(row.get("channel"))
+            if phase not in {"buffer", "target"} or not channel:
+                passthrough.append(row)
+                continue
+            trace_number = str(row.get("trace_number") or "").strip()
+            key = (phase, channel, trace_number)
+            grouped.setdefault(key, []).append((index, row))
+        collapsed = list(passthrough)
+        for group in grouped.values():
+            _index, row = min(group, key=lambda item: self._paired_trace_duplicate_sort_key(item[1], item[0]))
+            collapsed.append(row)
+        return collapsed
+
+    @staticmethod
+    def _paired_trace_duplicate_sort_key(row, index):
+        has_path = 0 if str(row.get("path") or "").strip() else 1
+        has_blank_scan = 0 if str(row.get("scan") or "").strip() == "" else 1
+        scan_sort = BayesianOptimizationTab._paired_row_scan_sort_key(row)
+        return (has_path, has_blank_scan, scan_sort, index)
+
     @staticmethod
     def _paired_row_scan_sort_key(row):
         scan = row.get("scan")
@@ -7125,8 +7342,8 @@ class BayesianOptimizationTab:
             lines.extend(
                 [
                     "Paired-response Q_channel terms:",
-                    "  Q_channel = paired_Q_channel = delta_peak / "
-                    "(target_channel_noise + buffer_channel_noise)",
+                    "  Q_channel = paired_Q_channel = delta_peak / (target_channel_noise + buffer_channel_noise) "
+                    "+ buffer_weight*buffer_classic_Q + target_weight*target_classic_Q",
                     f"  delta_peak = target_peak_height_uA - buffer_peak_height_uA",
                     f"  Mean buffer channel noise: {float(quality.get('mean_buffer_channel_noise', 0.0) or 0.0):.4g} uA",
                     f"  Mean target channel noise: {float(quality.get('mean_target_channel_noise', 0.0) or 0.0):.4g} uA",
@@ -7186,8 +7403,8 @@ class BayesianOptimizationTab:
             threshold = float(run_weights.get("low_channel_threshold", 0.50))
             return [
                 "delta_peak = target_peak_height_uA - buffer_peak_height_uA",
-                "Q_channel = paired_Q_channel = delta_peak / "
-                "(target_channel_noise + buffer_channel_noise)",
+                "Q_channel = paired_Q_channel = delta_peak / (target_channel_noise + buffer_channel_noise) "
+                "+ buffer_weight*buffer_classic_Q + target_weight*target_classic_Q",
                 (
                     "Q_run = mean(Q_channel) "
                     f"- Run std penalty({lambda_var:g})*std(Q_channel) "
@@ -7852,7 +8069,10 @@ class BayesianOptimizationTab:
             observations = self._surrogate_observations_so_far()
             center = self._selected_surrogate_observation()
             if center is None and observations:
-                center = max(observations, key=lambda obs: float(obs.get("Q_run", 0.0)))
+                center = max(
+                    observations,
+                    key=lambda obs: self._optimization_objective_value(obs.get("Q_run", 0.0), cfg),
+                )
             base = dict((center or {}).get("params") or {})
             initial = dict((cfg or {}).get("initial_parameters") or {})
             for name in PARAMETER_ORDER:
@@ -7892,14 +8112,19 @@ class BayesianOptimizationTab:
             elif value_key == "predicted_std_Q":
                 values = stds
             elif value_key == "acquisition_value":
-                best_q = max(
-                    (float(obs.get("Q_run", 0.0)) for obs in observations),
-                    default=float(rows[0].get("best_observed_Q", 0.0)) if rows else 0.0,
+                best_objective = max(
+                    (self._optimization_objective_value(obs.get("Q_run", 0.0), cfg) for obs in observations),
+                    default=self._optimization_objective_value(rows[0].get("best_observed_Q", 0.0), cfg) if rows else 0.0,
                 )
                 exploration = float((cfg.get("acquisition") or {}).get("exploration", 0.35))
                 values = np.asarray(
                     [
-                        _acquisition_score(float(mean), float(std), best_q, exploration)
+                        _acquisition_score(
+                            self._optimization_objective_value(float(mean), cfg),
+                            float(std),
+                            best_objective,
+                            exploration,
+                        )
                         for mean, std in zip(means, stds)
                     ],
                     dtype=float,
@@ -8115,6 +8340,9 @@ class BayesianOptimizationTab:
             "Distance",
             "Buffer raw SNR",
             "Target raw SNR",
+            "Buffer channel noise",
+            "Target channel noise",
+            "Combined channel noise",
             "Buffer SNR score",
             "Target SNR score",
             "Target shape score",
@@ -8167,6 +8395,12 @@ class BayesianOptimizationTab:
             return quality.get("mean_buffer_snr_raw")
         if metric == "Target raw SNR":
             return quality.get("mean_target_snr_raw")
+        if metric == "Buffer channel noise":
+            return quality.get("mean_buffer_channel_noise")
+        if metric == "Target channel noise":
+            return quality.get("mean_target_channel_noise")
+        if metric == "Combined channel noise":
+            return quality.get("mean_combined_channel_noise")
         if metric == "Buffer SNR score":
             return quality.get("mean_buffer_snr_score")
         if metric == "Target SNR score":

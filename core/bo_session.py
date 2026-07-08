@@ -300,6 +300,7 @@ def normalize_bo_config(config: dict) -> dict:
     cfg["acquisition"].setdefault("candidate_pool_size", 600)
     cfg["acquisition"].setdefault("local_candidate_pool_size", 120)
     cfg["acquisition"].setdefault("initial_point_mode", "specific")
+    cfg["acquisition"].setdefault("optimization_direction", "maximize")
     cfg["acquisition"].setdefault("use_gp", True)
     cfg["acquisition"].setdefault("gp_optimizer_restarts", 2)
     default_gp_falloff = {name: 0.2 for name in PARAMETER_ORDER}
@@ -753,11 +754,20 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
         valid_classic_pair = buffer_classic_q > 0.0 and target_classic_q > 0.0
         if not valid_classic_pair:
             success = 0.0
+        paired_weights = dict(scoring.get("paired_response_weights") or {})
+        buffer_classic_weight = float(paired_weights.get("buffer_classic_Q", 0.0) or 0.0)
+        target_classic_weight = float(paired_weights.get("target_classic_Q", 0.0) or 0.0)
         standard_quality_score = 0.5 * (buffer_classic_q + target_classic_q)
-        buffer_q_contribution = 0.0
-        target_q_contribution = 0.0
-        delta_peak_contribution = delta_score
-        q_channel = delta_score
+        buffer_q_contribution = buffer_classic_weight * buffer_classic_q
+        target_q_contribution = target_classic_weight * target_classic_q
+        if success <= 0.0:
+            buffer_q_contribution = 0.0
+            target_q_contribution = 0.0
+            delta_peak_contribution = 0.0
+            q_channel = 0.0
+        else:
+            delta_peak_contribution = delta_score
+            q_channel = delta_peak_contribution + buffer_q_contribution + target_q_contribution
         per_channel[channel] = {
             "Q_channel": q_channel,
             "paired_Q_channel": q_channel,
@@ -768,8 +778,8 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
             "buffer_classic_Q_contribution": buffer_q_contribution,
             "target_classic_Q_contribution": target_q_contribution,
             "delta_peak_contribution": delta_peak_contribution,
-            "buffer_classic_Q_weight": 0.0,
-            "target_classic_Q_weight": 0.0,
+            "buffer_classic_Q_weight": buffer_classic_weight,
+            "target_classic_Q_weight": target_classic_weight,
             "delta_peak_weight": 1.0,
             "paired_weight_total": 1.0,
             "buffer_peak_height_raw": buffer_peak,
@@ -824,7 +834,7 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
             if per_channel else 0.0
         )
     return {
-        "Q_run": max(0.0, q_run),
+        "Q_run": q_run,
         "objective": "paired_response",
         "mean_Q_channel": mean_q,
         "mean_paired_Q_channel": mean_q,
@@ -1665,7 +1675,7 @@ class BOIntegrationSession:
             self._write_json(request_path, request)
             summary = run_analysis(request_path, request)
             summary_path = Path(summary["summary_path"])
-            self._require_successful_reanalysis(summary, iteration, phase)
+            self._annotate_failed_reanalysis(summary, iteration, phase)
             return summary, summary_path
 
         detected_phases = {_measurement_phase_from_path(path) for path in raw_paths}
@@ -1718,7 +1728,7 @@ class BOIntegrationSession:
             "analysis_engine": str(summary.get("analysis_engine") or ""),
         }
 
-    def _require_successful_reanalysis(self, summary: dict, iteration: int, phase: str = "") -> None:
+    def _annotate_failed_reanalysis(self, summary: dict, iteration: int, phase: str = "") -> None:
         metrics = extract_channel_metrics(summary)
         successful = sum(
             int(data.get("ok_scan_count", 0) or 0)
@@ -1752,9 +1762,10 @@ class BOIntegrationSession:
                 pass
         phase_text = f" {phase}" if phase else ""
         detail = "; ".join(reasons[:4]) or "the analysis worker returned no usable peak metrics"
-        raise ValueError(
+        summary["reanalysis_failed"] = True
+        summary["reanalysis_failure_reason"] = (
             f"Iteration {iteration}{phase_text} produced corrected traces but no successfully "
-            f"analyzed peaks, so its Q score was not replaced. {detail}"
+            f"analyzed peaks, so its Q score was set to 0. {detail}"
         )
 
     def _discover_archived_measurements(self, iteration: int, group_id: Optional[int] = None) -> List[Path]:
@@ -1786,7 +1797,7 @@ class BOIntegrationSession:
     def best_observation(self) -> Optional[dict]:
         if not self.observations:
             return None
-        return max(self.observations, key=lambda obs: float(obs.get("Q_run", 0.0)))
+        return max(self.observations, key=lambda obs: self._objective_value(float(obs.get("Q_run", 0.0))))
 
     def should_stop(self) -> bool:
         return False
@@ -1876,6 +1887,8 @@ class BOIntegrationSession:
             acquisition["local_candidate_pool_size"] = int(group["local_candidate_pool_size"])
         if group.get("initial_point_mode") is not None:
             acquisition["initial_point_mode"] = str(group["initial_point_mode"])
+        if group.get("optimization_direction") is not None:
+            acquisition["optimization_direction"] = str(group["optimization_direction"])
         if isinstance(group.get("gp_falloff_fractions"), dict):
             acquisition["gp_falloff_fractions"] = dict(group["gp_falloff_fractions"])
             acquisition["gp_length_scales"] = dict(group["gp_falloff_fractions"])
@@ -1920,8 +1933,11 @@ class BOIntegrationSession:
         )
 
     def _distance_surrogate_candidate(self, available: List[Dict[str, float]]) -> Dict[str, float]:
-        observed = [(encode_candidate(obs["params"], self.config), float(obs["Q_run"])) for obs in self.observations]
-        best_q = max(q for _, q in observed)
+        observed = [
+            (encode_candidate(obs["params"], self.config), self._objective_value(float(obs["Q_run"])))
+            for obs in self.observations
+        ]
+        best_objective = max(q for _, q in observed)
         exploration = _clip01(self.config.get("acquisition", {}).get("exploration", 0.35))
 
         def score(candidate: dict) -> float:
@@ -1935,7 +1951,7 @@ class BOIntegrationSession:
                 weighted_sum += weight * q
                 weight_total += weight
             predicted = weighted_sum / max(weight_total, 1e-12)
-            improvement = max(0.0, predicted - best_q)
+            improvement = max(0.0, predicted - best_objective)
             exploit_score = predicted + 0.05 * improvement
             explore_score = nearest
             return (1.0 - exploration) * exploit_score + exploration * explore_score
@@ -1955,10 +1971,10 @@ class BOIntegrationSession:
 
             x_available = np.asarray([encode_candidate(c, self.config) for c in available], dtype=float)
             mean, std = gp.predict(x_available, return_std=True)
-            best_q = float(max(obs["Q_run"] for obs in self.observations))
+            best_objective = max(self._objective_value(float(obs["Q_run"])) for obs in self.observations)
             exploration = _clip01(self.config.get("acquisition", {}).get("exploration", 0.35))
             scores = [
-                _acquisition_score(float(m), float(s), best_q, exploration)
+                _acquisition_score(self._objective_value(float(m)), float(s), best_objective, exploration)
                 for m, s in zip(mean, std)
             ]
             return available[int(max(range(len(scores)), key=lambda i: scores[i]))]
@@ -2096,6 +2112,14 @@ class BOIntegrationSession:
             seen.add(key)
         return candidates
 
+    def _optimization_direction(self) -> str:
+        raw = str(self.config.get("acquisition", {}).get("optimization_direction", "maximize") or "maximize").strip().lower()
+        return "minimize" if raw in {"minimize", "min", "more_negative", "negative"} else "maximize"
+
+    def _objective_value(self, q_run: float) -> float:
+        value = float(q_run)
+        return -value if self._optimization_direction() == "minimize" else value
+
     def _params_for_method_ref(self, params: dict) -> dict:
         result = {name: _format_float(params[name]) for name in PARAMETER_ORDER}
         result["bandwidth"] = str(self.config.get("method_options", {}).get("bandwidth", "4k"))
@@ -2193,6 +2217,9 @@ class BOIntegrationSession:
                 row["mean_fractional_delta_peak_score"] = quality.get("mean_fractional_delta_peak_score", "")
                 row["mean_buffer_snr_raw"] = quality.get("mean_buffer_snr_raw", "")
                 row["mean_target_snr_raw"] = quality.get("mean_target_snr_raw", "")
+                row["mean_buffer_channel_noise"] = quality.get("mean_buffer_channel_noise", "")
+                row["mean_target_channel_noise"] = quality.get("mean_target_channel_noise", "")
+                row["mean_combined_channel_noise"] = quality.get("mean_combined_channel_noise", "")
                 row["mean_buffer_snr_score"] = quality.get("mean_buffer_snr_score", "")
                 row["mean_target_snr_score"] = quality.get("mean_target_snr_score", "")
                 row["mean_target_shape_score"] = quality.get("mean_target_shape_score", "")
@@ -2217,6 +2244,9 @@ class BOIntegrationSession:
                         "fractional_delta_peak_score",
                         "buffer_snr_raw",
                         "target_snr_raw",
+                        "buffer_channel_noise",
+                        "target_channel_noise",
+                        "combined_channel_noise",
                         "buffer_snr_score",
                         "target_snr_score",
                         "target_shape_score",
@@ -2292,11 +2322,14 @@ class BOIntegrationSession:
 
     def _candidate_prediction_rows(self, group_id: Optional[int] = None) -> Tuple[List[dict], dict, Any]:
         observations = self._group_observations(group_id) if group_id is not None else list(self.observations)
+        effective_config = self._config_for_group(group_id) if group_id is not None else self.config
         historical_session = copy.copy(self)
+        historical_session.config = effective_config
         historical_session.observations = list(observations)
         gp, train = historical_session._fit_gp_surrogate()
         observed_keys = {candidate_key(obs["params"]) for obs in observations}
-        best_q = max((float(obs["Q_run"]) for obs in observations), default=0.0)
+        best_q = historical_session._best_q_for_observations(observations)
+        best_objective = max((historical_session._objective_value(float(obs["Q_run"])) for obs in observations), default=0.0)
         rows = []
         metadata = {
             "backend": (
@@ -2306,9 +2339,11 @@ class BOIntegrationSession:
             ),
             "observation_count": len(observations),
             "candidate_count": len(self.candidates),
-            "active_parameters": active_parameters(self.config),
+            "active_parameters": active_parameters(effective_config),
             "best_Q_run": best_q,
-            "exploration": _clip01(self.config.get("acquisition", {}).get("exploration", 0.35)),
+            "optimization_direction": historical_session._optimization_direction(),
+            "best_objective_value": best_objective,
+            "exploration": _clip01(effective_config.get("acquisition", {}).get("exploration", 0.35)),
             "created_at": datetime.now().isoformat(timespec="seconds"),
         }
         if group_id is not None:
@@ -2320,7 +2355,7 @@ class BOIntegrationSession:
         if gp is not None and train is not None:
             try:
                 import numpy as np
-                x_all = np.asarray([encode_candidate(c, self.config) for c in self.candidates], dtype=float)
+                x_all = np.asarray([encode_candidate(c, effective_config) for c in self.candidates], dtype=float)
                 means, stds = gp.predict(x_all, return_std=True)
             except Exception:
                 means = [0.0] * len(self.candidates)
@@ -2334,10 +2369,10 @@ class BOIntegrationSession:
             mean = float(means[idx])
             std = float(stds[idx])
             acquisition = _acquisition_score(
-                mean,
+                historical_session._objective_value(mean),
                 std,
-                best_q,
-                _clip01(self.config.get("acquisition", {}).get("exploration", 0.35)),
+                best_objective,
+                _clip01(effective_config.get("acquisition", {}).get("exploration", 0.35)),
             )
             key = candidate_key(candidate)
             row = {
@@ -2347,6 +2382,8 @@ class BOIntegrationSession:
                 "predicted_std_Q": std,
                 "acquisition_value": acquisition,
                 "best_observed_Q": best_q,
+                "optimization_objective_mean": historical_session._objective_value(mean),
+                "best_objective_value": best_objective,
             }
             for name, value in zip(OPTIMIZER_ORDER, encoded):
                 row[f"encoded_{name}"] = value
@@ -2354,6 +2391,12 @@ class BOIntegrationSession:
                 row[name] = candidate.get(name)
             rows.append(row)
         return rows, metadata, gp
+
+    def _best_q_for_observations(self, observations: List[dict]) -> float:
+        if not observations:
+            return 0.0
+        best = max(observations, key=lambda obs: self._objective_value(float(obs.get("Q_run", 0.0))))
+        return float(best.get("Q_run", 0.0))
 
     def _fallback_predictions(self, observations: Optional[List[dict]] = None) -> Tuple[List[float], List[float]]:
         observations = list(self.observations if observations is None else observations)
