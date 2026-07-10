@@ -197,7 +197,7 @@ constraints
 
   end_potential > begin_potential
   end_potential - begin_potential >= 0.4 V
-  step_potential * frequency <= 1.0 V/s
+  step_potential * frequency <= 5.0 V/s
   conditioning_potential = begin_potential unless it is unlocked
 
 scoring

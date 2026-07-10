@@ -290,7 +290,7 @@ def normalize_bo_config(config: dict) -> dict:
         cfg["parameters"][name] = p
     cfg.setdefault("constraints", {})
     cfg["constraints"].setdefault("min_scan_window", 0.4)
-    cfg["constraints"].setdefault("max_effective_scan_rate", 1.0)
+    cfg["constraints"].setdefault("max_effective_scan_rate", 5.0)
     cfg["constraints"].setdefault("max_amplitude", 0.50)
     cfg["constraints"].setdefault("conditioning_must_be_in_scan_window", False)
     cfg["constraints"].setdefault("require_end_after_begin", True)
@@ -507,12 +507,23 @@ def _generate_mixed_candidates(config: dict) -> List[Dict[str, float]]:
     rng = random.Random(int(cfg.get("random_seed", 42)))
     target = max(50, int(cfg.get("acquisition", {}).get("candidate_pool_size", 600)))
     initial = resolve_initial_parameters(cfg)
+    swv_grid_candidates = _generate_swv_constrained_grid_sample(
+        cfg,
+        rng,
+        target,
+        initial,
+    )
+    if swv_grid_candidates:
+        return swv_grid_candidates
+    grid_candidates = _generate_stepped_grid_sample(cfg, rng, target, initial)
+    if grid_candidates:
+        return grid_candidates
     candidates: List[Dict[str, float]] = []
     seen = set()
 
     def add(candidate: dict) -> None:
-        candidate = _resolve_tied_candidate(candidate, cfg)
-        errors = validate_candidate(candidate, cfg)
+        candidate = _resolve_tied_candidate_normalized(candidate, cfg)
+        errors = _validate_candidate_normalized(candidate, cfg)
         if errors:
             return
         key = candidate_key(candidate)
@@ -522,7 +533,8 @@ def _generate_mixed_candidates(config: dict) -> List[Dict[str, float]]:
         seen.add(key)
 
     add(initial)
-    for _ in range(target * 4):
+    max_attempts = max(target * 25, target + 1000)
+    for _ in range(max_attempts):
         if len(candidates) >= target:
             break
         candidate = {}
@@ -544,6 +556,177 @@ def _generate_mixed_candidates(config: dict) -> List[Dict[str, float]]:
 
     if not candidates:
         raise ValueError("No valid candidates remain after continuous sampling")
+    return candidates
+
+
+def _generate_swv_constrained_grid_sample(
+    cfg: dict,
+    rng: random.Random,
+    target: int,
+    initial: Dict[str, float],
+) -> List[Dict[str, float]]:
+    active = {
+        name for name in PARAMETER_ORDER
+        if str(cfg["parameters"][name].get("mode", "locked")).lower() == "active"
+    }
+    if not {"step_potential", "frequency"}.issubset(active):
+        return []
+    if not active.issubset({"step_potential", "frequency", "amplitude"}):
+        return []
+
+    def values_for(name: str) -> Optional[List[float]]:
+        p_cfg = cfg["parameters"][name]
+        mode = str(p_cfg.get("mode", "locked")).lower()
+        if mode == "locked":
+            return [_float_value(p_cfg.get("value", initial.get(name)), name)]
+        if str(p_cfg.get("space", "discrete")).lower() == "continuous":
+            return _parameter_continuous_grid_values(p_cfg)
+        return _parameter_discrete_values(p_cfg, name)
+
+    step_values = values_for("step_potential")
+    frequency_values = values_for("frequency")
+    amplitude_values = values_for("amplitude")
+    if not step_values or not frequency_values or not amplitude_values:
+        return []
+
+    max_scan_rate = float(cfg["constraints"].get("max_effective_scan_rate", 5.0))
+    valid_pairs: List[tuple[float, float]] = []
+    for step in step_values:
+        max_frequency = max_scan_rate / max(float(step), 1e-12)
+        valid_pairs.extend(
+            (float(step), float(frequency))
+            for frequency in frequency_values
+            if float(frequency) <= max_frequency + 1e-12
+        )
+    if not valid_pairs:
+        return []
+
+    candidates: List[Dict[str, float]] = []
+    seen = set()
+
+    def add(candidate: dict) -> None:
+        candidate = _resolve_tied_candidate_normalized(candidate, cfg)
+        if _validate_candidate_normalized(candidate, cfg):
+            return
+        key = candidate_key(candidate)
+        if key in seen:
+            return
+        candidates.append(candidate)
+        seen.add(key)
+
+    add(dict(initial))
+    slots = max(0, target - len(candidates))
+    if slots <= 0:
+        return candidates[:target]
+
+    total_valid = len(valid_pairs) * len(amplitude_values)
+
+    def candidate_at(index: int) -> Dict[str, float]:
+        pair_index, amplitude_index = divmod(index, len(amplitude_values))
+        step, frequency = valid_pairs[pair_index]
+        candidate = dict(initial)
+        candidate["step_potential"] = step
+        candidate["frequency"] = frequency
+        candidate["amplitude"] = float(amplitude_values[amplitude_index])
+        return candidate
+
+    if total_valid <= slots:
+        for index in range(total_valid):
+            add(candidate_at(index))
+        return candidates
+
+    sampled_indices = set()
+    max_attempts = max(slots * 10, slots + 1000)
+    while len(candidates) < target and len(sampled_indices) < total_valid and max_attempts > 0:
+        max_attempts -= 1
+        index = rng.randrange(total_valid)
+        if index in sampled_indices:
+            continue
+        sampled_indices.add(index)
+        add(candidate_at(index))
+    if len(candidates) < target:
+        for index in range(total_valid):
+            if index in sampled_indices:
+                continue
+            add(candidate_at(index))
+            if len(candidates) >= target:
+                break
+    return candidates
+
+
+def _generate_stepped_grid_sample(
+    cfg: dict,
+    rng: random.Random,
+    target: int,
+    initial: Dict[str, float],
+) -> List[Dict[str, float]]:
+    """Sample uniformly from the full valid quantized grid when it is enumerable."""
+    names_for_product: List[str] = []
+    values_for_product: List[List[float]] = []
+    estimated_grid_size = 1
+    max_enumerated_grid = int(
+        cfg.get("acquisition", {}).get("max_enumerated_candidate_grid", 10_000_000)
+    )
+    for name in PARAMETER_ORDER:
+        p_cfg = cfg["parameters"][name]
+        mode = str(p_cfg.get("mode", "locked")).lower()
+        if mode == "tied":
+            continue
+        if mode == "locked":
+            values = [_float_value(p_cfg.get("value", initial.get(name)), name)]
+        elif str(p_cfg.get("space", "discrete")).lower() == "continuous":
+            values = _parameter_continuous_grid_values(p_cfg)
+            if values is None:
+                return []
+        else:
+            values = _parameter_discrete_values(p_cfg, name)
+        if not values:
+            return []
+        estimated_grid_size *= len(values)
+        if estimated_grid_size > max_enumerated_grid:
+            return []
+        names_for_product.append(name)
+        values_for_product.append(values)
+
+    candidates: List[Dict[str, float]] = []
+    seen = set()
+
+    def add_initial() -> None:
+        candidate = _resolve_tied_candidate_normalized(dict(initial), cfg)
+        if _validate_candidate_normalized(candidate, cfg):
+            return
+        key = candidate_key(candidate)
+        candidates.append(candidate)
+        seen.add(key)
+
+    add_initial()
+    slots = max(0, target - len(candidates))
+    if slots <= 0:
+        return candidates[:target]
+
+    reservoir: List[Dict[str, float]] = []
+    valid_count = 0
+    enumerated_keys = set(seen)
+    for combo in itertools.product(*values_for_product):
+        candidate = dict(zip(names_for_product, combo))
+        for name in PARAMETER_ORDER:
+            candidate.setdefault(name, float(initial[name]))
+        candidate = _resolve_tied_candidate_normalized(candidate, cfg)
+        if _validate_candidate_normalized(candidate, cfg):
+            continue
+        key = candidate_key(candidate)
+        if key in enumerated_keys:
+            continue
+        enumerated_keys.add(key)
+        valid_count += 1
+        if len(reservoir) < slots:
+            reservoir.append(candidate)
+            continue
+        replacement = rng.randrange(valid_count)
+        if replacement < slots:
+            reservoir[replacement] = candidate
+
+    candidates.extend(reservoir)
     return candidates
 
 
@@ -578,6 +761,10 @@ def resolve_initial_design(config: dict) -> List[Dict[str, float]]:
 
 def validate_candidate(candidate: Dict[str, float], config: dict) -> List[str]:
     cfg = normalize_bo_config(config)
+    return _validate_candidate_normalized(candidate, cfg)
+
+
+def _validate_candidate_normalized(candidate: Dict[str, float], cfg: dict) -> List[str]:
     constraints = cfg["constraints"]
     errors: List[str] = []
     begin = float(candidate["begin_potential"])
@@ -592,7 +779,7 @@ def validate_candidate(candidate: Dict[str, float], config: dict) -> List[str]:
     min_window = float(constraints.get("min_scan_window", 0.4))
     if scan_window < min_window - 1e-12:
         errors.append(f"end_potential - begin_potential must be at least {min_window:g} V")
-    max_scan_rate = float(constraints.get("max_effective_scan_rate", 1.0))
+    max_scan_rate = float(constraints.get("max_effective_scan_rate", 5.0))
     if step * frequency > max_scan_rate + 1e-12:
         errors.append(f"step_potential * frequency must be <= {max_scan_rate:g} V/s")
     max_amplitude = float(constraints.get("max_amplitude", 0.50))
@@ -2088,7 +2275,8 @@ class BOIntegrationSession:
         rng = random.Random(int(self.config.get("random_seed", 42)) + 1009 * (len(self.observations) + 1))
         candidates: List[Dict[str, float]] = []
         seen = set(tried)
-        for _ in range(target * 4):
+        max_attempts = max(target * 25, target + 1000)
+        for _ in range(max_attempts):
             if len(candidates) >= target:
                 break
             candidate = dict(center)
@@ -2098,6 +2286,22 @@ class BOIntegrationSession:
                 if mode == "tied":
                     continue
                 if mode == "active" and str(p_cfg.get("space", "discrete")).lower() == "continuous":
+                    if name == "frequency" and candidate.get("step_potential") is not None:
+                        max_scan_rate = float(
+                            self.config.get("constraints", {}).get(
+                                "max_effective_scan_rate",
+                                5.0,
+                            )
+                        )
+                        max_frequency = max_scan_rate / max(
+                            float(candidate["step_potential"]),
+                            1e-12,
+                        )
+                        p_cfg = dict(p_cfg)
+                        p_cfg["max"] = min(
+                            float(p_cfg.get("max", max_frequency)),
+                            max_frequency,
+                        )
                     candidate[name] = _sample_continuous_value(p_cfg, rng, center.get(name))
                 elif mode == "active":
                     candidate[name] = rng.choice(_parameter_discrete_values(p_cfg, name))
@@ -2353,20 +2557,40 @@ class BOIntegrationSession:
         if gp is not None:
             metadata.update(_gp_kernel_metadata(gp))
 
+        global_candidates = list(self.candidates)
+        global_keys = {candidate_key(candidate) for candidate in global_candidates}
+        local_candidates = [
+            candidate
+            for candidate in historical_session._local_continuous_candidates(observed_keys)
+            if candidate_key(candidate) not in global_keys
+        ]
+        prediction_candidates = global_candidates + local_candidates
+        candidate_sources = (
+            ["global"] * len(global_candidates)
+            + ["local"] * len(local_candidates)
+        )
+        metadata["global_candidate_count"] = len(global_candidates)
+        metadata["local_candidate_count"] = len(local_candidates)
+        metadata["candidate_count"] = len(prediction_candidates)
+
         if gp is not None and train is not None:
             try:
                 import numpy as np
-                x_all = np.asarray([encode_candidate(c, effective_config) for c in self.candidates], dtype=float)
+                x_all = np.asarray([encode_candidate(c, effective_config) for c in prediction_candidates], dtype=float)
                 means, stds = gp.predict(x_all, return_std=True)
             except Exception:
-                means = [0.0] * len(self.candidates)
-                stds = [0.0] * len(self.candidates)
+                means = [0.0] * len(prediction_candidates)
+                stds = [0.0] * len(prediction_candidates)
                 metadata["prediction_error"] = "GP prediction failed; wrote zero predictions"
         else:
-            means, stds = self._fallback_predictions(observations=observations)
+            means, stds = self._fallback_predictions(
+                observations=observations,
+                candidates=prediction_candidates,
+                config=effective_config,
+            )
 
-        for idx, candidate in enumerate(self.candidates):
-            encoded = encode_candidate(candidate, self.config)
+        for idx, (candidate, source) in enumerate(zip(prediction_candidates, candidate_sources)):
+            encoded = encode_candidate(candidate, effective_config)
             mean = float(means[idx])
             std = float(stds[idx])
             acquisition = _acquisition_score(
@@ -2378,6 +2602,8 @@ class BOIntegrationSession:
             key = candidate_key(candidate)
             row = {
                 "candidate_index": idx,
+                "pool_source": source,
+                "is_local_candidate": source == "local",
                 "already_tested": key in observed_keys,
                 "predicted_mean_Q": mean,
                 "predicted_std_Q": std,
@@ -2399,15 +2625,22 @@ class BOIntegrationSession:
         best = max(observations, key=lambda obs: self._objective_value(float(obs.get("Q_run", 0.0))))
         return float(best.get("Q_run", 0.0))
 
-    def _fallback_predictions(self, observations: Optional[List[dict]] = None) -> Tuple[List[float], List[float]]:
+    def _fallback_predictions(
+        self,
+        observations: Optional[List[dict]] = None,
+        candidates: Optional[List[Dict[str, float]]] = None,
+        config: Optional[dict] = None,
+    ) -> Tuple[List[float], List[float]]:
+        config = config or self.config
+        candidates = list(self.candidates if candidates is None else candidates)
         observations = list(self.observations if observations is None else observations)
         if not observations:
-            return [0.0] * len(self.candidates), [1.0] * len(self.candidates)
-        observed = [(encode_candidate(obs["params"], self.config), float(obs["Q_run"])) for obs in observations]
+            return [0.0] * len(candidates), [1.0] * len(candidates)
+        observed = [(encode_candidate(obs["params"], config), float(obs["Q_run"])) for obs in observations]
         means = []
         stds = []
-        for candidate in self.candidates:
-            encoded = encode_candidate(candidate, self.config)
+        for candidate in candidates:
+            encoded = encode_candidate(candidate, config)
             distances = [_distance(encoded, point) for point, _ in observed]
             nearest = min(distances) if distances else 1.0
             weighted_sum = 0.0
@@ -2564,6 +2797,10 @@ def encode_candidate(candidate: dict, config: dict) -> List[float]:
 
 def _resolve_tied_candidate(candidate: dict, config: dict) -> Dict[str, float]:
     cfg = normalize_bo_config(config)
+    return _resolve_tied_candidate_normalized(candidate, cfg)
+
+
+def _resolve_tied_candidate_normalized(candidate: dict, cfg: dict) -> Dict[str, float]:
     out = {
         name: float(candidate.get(name, cfg["initial_parameters"].get(name, DEFAULT_INITIAL_METHOD[name])))
         for name in PARAMETER_ORDER
@@ -2586,6 +2823,34 @@ def _parameter_discrete_values(p_cfg: dict, name: str) -> List[float]:
     if step in (None, "", 0, "0"):
         return values
     return [_quantize_value(v, float(step), p_cfg) for v in values]
+
+
+def _parameter_continuous_grid_values(p_cfg: dict) -> Optional[List[float]]:
+    step = p_cfg.get("step")
+    if step in (None, "", 0, "0"):
+        return None
+    step_value = float(step)
+    if step_value <= 0:
+        return None
+    lo = float(p_cfg.get("min", p_cfg.get("value", 0.0)))
+    hi = float(p_cfg.get("max", p_cfg.get("value", lo)))
+    if hi < lo:
+        lo, hi = hi, lo
+    count = int(math.floor((hi - lo) / step_value + 1e-9)) + 1
+    values = [
+        _quantize_value(lo + index * step_value, step_value, p_cfg)
+        for index in range(max(0, count))
+    ]
+    hi_quantized = _quantize_value(hi, step_value, p_cfg)
+    if values and abs(values[-1] - hi_quantized) <= 1e-9:
+        values[-1] = hi_quantized
+    elif hi_quantized <= hi + 1e-9:
+        values.append(hi_quantized)
+    unique_values = sorted({
+        value for value in values
+        if lo - 1e-12 <= value <= hi + 1e-12
+    })
+    return unique_values
 
 
 def _sample_continuous_value(p_cfg: dict, rng: random.Random, center: Optional[float] = None) -> float:
