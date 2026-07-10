@@ -1834,6 +1834,25 @@ class QueueTab:
         cycle_span = max(1, int(math.ceil(count / float(batch_size))))
         return count, cycle_span
 
+    @staticmethod
+    def _paired_bo_warmup_parameter_sets(config: dict) -> int:
+        """Return the common per-group warmup prefix that can run without BO feedback."""
+        groups = config.get("channel_groups") or []
+        if groups:
+            warmups = [
+                max(0, int(group.get("n_initial_points", config.get("n_initial_points", 0)) or 0))
+                for group in groups
+            ]
+            return min(warmups) if warmups else 0
+        return max(0, int(config.get("n_initial_points", 0) or 0))
+
+    @staticmethod
+    def _paired_bo_execution_order(suggestions: list) -> list:
+        return sorted(
+            suggestions,
+            key=lambda suggestion: (int(suggestion.iteration), int(suggestion.group_id)),
+        )
+
     def _exec_bo_auto_loop(self, item: dict) -> bool:
         block = dict(item.get("bo_block") or {})
         config_path = str(block.get("bo_config_path") or "").strip()
@@ -1903,7 +1922,7 @@ class QueueTab:
             target_observations = target_parameter_sets * group_count
             warmup_observations = min(
                 target_parameter_sets,
-                max(0, int(config.get("n_initial_points", 0) or 0)),
+                self._paired_bo_warmup_parameter_sets(config),
             )
             halfway_cycle = max(1, int(math.ceil(target_cycles / 2.0)))
             completed_cycles = 0
@@ -1939,7 +1958,7 @@ class QueueTab:
                     if is_consolidated_warmup
                     else f"Cycle {cycle_index}"
                 )
-                suggestions = bo_session.ask_batch(suggestion_count)
+                suggestions = self._paired_bo_execution_order(bo_session.ask_batch(suggestion_count))
                 self._set_bo_live_details(
                     item,
                     f"{cycle_label}/{target_cycles} | preparing suggestions | iterations {suggestions[0].iteration}-{suggestions[-1].iteration}",
