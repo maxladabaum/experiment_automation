@@ -20,6 +20,7 @@ import serial.tools.list_ports
 
 from core.mscript_parser import to_si_string
 from core.runner import SerialMeasurementRunner, format_port_info
+from core.swv_method import format_swv_frequency_hz
 from config import DEVICE_KEYWORDS
 from core.session import SessionState
 from gui.tab_custom_script import CustomScriptPanel
@@ -798,7 +799,7 @@ class MethodTab:
         end       = to_si_string(p["end_potential"].get(),   "V")
         step      = to_si_string(p["step_potential"].get(),  "V")
         amplitude = to_si_string(p["amplitude"].get(),       "V")
-        frequency = to_si_string(p["frequency"].get(),       "Hz")
+        frequency = format_swv_frequency_hz(freq_hz)
         cond_pot  = to_si_string(p["cond_potential"].get(),  "V")
         cond_time = p["cond_time"].get()
         ba_cfg    = self._get_ba_range_config("SWV")

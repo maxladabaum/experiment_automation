@@ -24,6 +24,13 @@ EMSTAT_PICO_HIGH_SPEED_BA_RANGES = (
 )
 
 
+def format_swv_frequency_hz(value: float) -> str:
+    """MethodSCRIPT `meas_loop_swv` expects an integer Hz token."""
+    if value <= 0:
+        return "0"
+    return str(int(round(value)))
+
+
 def range_labels(profile):
     return [label for label, _selector in profile]
 
@@ -129,7 +136,7 @@ def build_swv_methodscript(params: dict, method_options: Optional[dict] = None) 
     end = to_si_string(str(params["end_potential"]), "V")
     step = to_si_string(str(params["step_potential"]), "V")
     amplitude = to_si_string(str(params["amplitude"]), "V")
-    frequency = to_si_string(str(params["frequency"]), "Hz")
+    frequency = format_swv_frequency_hz(freq_hz)
     cond_pot = to_si_string(str(params["conditioning_potential"]), "V")
     cond_time = str(params["conditioning_time"])
     bandwidth = str(options.get("bandwidth", "4k")).strip().lower()
