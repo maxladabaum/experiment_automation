@@ -2125,6 +2125,8 @@ class BOIntegrationSession:
             (encode_candidate(obs["params"], self.config), self._objective_value(float(obs["Q_run"])))
             for obs in self.observations
         ]
+        if not observed:
+            return self._maximin_candidate(available)
         best_objective = max(q for _, q in observed)
         exploration = _clip01(self.config.get("acquisition", {}).get("exploration", 0.35))
 

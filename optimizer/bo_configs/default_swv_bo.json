@@ -5,8 +5,12 @@
   "n_initial_points": 0,
   "random_seed": 42,
   "channels": [
+    1,
     2,
+    3,
     4,
+    5,
+    6,
     7,
     8,
     10
@@ -258,23 +262,27 @@
   "records": {
     "folder_prefix": "bo_session"
   },
-  "objective": "quality",
+  "objective": "paired_response",
   "channel_groups": [
     {
       "id": 1,
       "name": "Group 1",
       "channels": [
+        1,
         2,
+        3,
         4,
+        5,
+        6,
         7,
         8,
         10
       ],
-      "exploration": 0.8,
-      "n_initial_points": 400,
+      "exploration": 0.5,
+      "n_initial_points": 250,
       "candidate_pool_size": 5000,
       "local_candidate_pool_size": 100,
-      "initial_point_mode": "specific",
+      "initial_point_mode": "random",
       "gp_falloff_fractions": {
         "begin_potential": 0.2,
         "end_potential": 0.2,
@@ -283,16 +291,9 @@
         "frequency": 0.2,
         "conditioning_potential": 0.2,
         "conditioning_time": 0.2
-      },
-      "initial_parameters": {
-        "begin_potential": -0.6,
-        "end_potential": 0.1,
-        "step_potential": 0.002,
-        "amplitude": 0.036,
-        "frequency": 200.0,
-        "conditioning_potential": -0.6,
-        "conditioning_time": 0.1
       }
     }
-  ]
+  ],
+  "paired_warmup_cycles": 0,
+  "paired_batch_size": 1
 }
