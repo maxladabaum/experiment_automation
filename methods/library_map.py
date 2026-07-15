@@ -12,11 +12,14 @@ setup always maps to the same hash.
 
 import json
 import hashlib
+import os
+import time
+import uuid
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-_METHODS_ROOT = Path("methods")
+_METHODS_ROOT = Path(__file__).resolve().parent
 _LIBRARY_DIR = _METHODS_ROOT / "library"
 _MUX_LIBRARY_DIR = _LIBRARY_DIR / "mux_methods"
 _ARCHIVE_DIR = _METHODS_ROOT / "archive"
@@ -63,7 +66,24 @@ def load_map() -> dict:
 
 
 def _persist():
-    _MAP_FILE.write_text(json.dumps(_map, indent=2), encoding="utf-8")
+    payload = json.dumps(_map, indent=2)
+    tmp_path = _MAP_FILE.with_name(f"{_MAP_FILE.stem}.{uuid.uuid4().hex}.tmp")
+    tmp_path.write_text(payload, encoding="utf-8")
+    try:
+        for attempt in range(20):
+            try:
+                os.replace(tmp_path, _MAP_FILE)
+                return
+            except PermissionError:
+                if attempt == 19:
+                    raise
+                time.sleep(0.1)
+    finally:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except TypeError:
+            if tmp_path.exists():
+                tmp_path.unlink()
 
 
 def compute_hash(technique: str, params: dict, mux_channel: Optional[int]) -> str:

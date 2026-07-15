@@ -1,0 +1,23 @@
+{
+  "initial_parameters": {
+    "begin_potential": -0.6,
+    "end_potential": 0.0,
+    "step_potential": 0.002,
+    "amplitude": 0.036,
+    "frequency": 200.0,
+    "conditioning_potential": -0.6,
+    "conditioning_time": 0.0
+  },
+  "initial_point_mode": "specific",
+  "start_candidate": {
+    "begin_potential": -0.6,
+    "end_potential": 0.0,
+    "step_potential": 0.002,
+    "amplitude": 0.036,
+    "frequency": 200.0,
+    "conditioning_potential": -0.6,
+    "conditioning_time": 0.0
+  },
+  "candidate_count": 1000,
+  "initial_candidates": []
+}

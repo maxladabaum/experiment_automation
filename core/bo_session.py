@@ -590,15 +590,17 @@ def _generate_swv_constrained_grid_sample(
         return []
 
     max_scan_rate = float(cfg["constraints"].get("max_effective_scan_rate", 5.0))
-    valid_pairs: List[tuple[float, float]] = []
+    valid_frequencies_by_step: List[tuple[float, List[float]]] = []
     for step in step_values:
         max_frequency = max_scan_rate / max(float(step), 1e-12)
-        valid_pairs.extend(
-            (float(step), float(frequency))
+        allowed = [
+            float(frequency)
             for frequency in frequency_values
             if float(frequency) <= max_frequency + 1e-12
-        )
-    if not valid_pairs:
+        ]
+        if allowed:
+            valid_frequencies_by_step.append((float(step), allowed))
+    if not valid_frequencies_by_step:
         return []
 
     candidates: List[Dict[str, float]] = []
@@ -619,11 +621,11 @@ def _generate_swv_constrained_grid_sample(
     if slots <= 0:
         return candidates[:target]
 
-    total_valid = len(valid_pairs) * len(amplitude_values)
+    total_valid = sum(len(freqs) for _step, freqs in valid_frequencies_by_step) * len(amplitude_values)
 
-    def candidate_at(index: int) -> Dict[str, float]:
-        pair_index, amplitude_index = divmod(index, len(amplitude_values))
-        step, frequency = valid_pairs[pair_index]
+    def candidate_at(step_index: int, amplitude_index: int, frequency_index: int) -> Dict[str, float]:
+        step, frequencies = valid_frequencies_by_step[step_index]
+        frequency = frequencies[frequency_index]
         candidate = dict(initial)
         candidate["step_potential"] = step
         candidate["frequency"] = frequency
@@ -631,24 +633,45 @@ def _generate_swv_constrained_grid_sample(
         return candidate
 
     if total_valid <= slots:
-        for index in range(total_valid):
-            add(candidate_at(index))
+        for step_index, (_step, freqs) in enumerate(valid_frequencies_by_step):
+            for amplitude_index in range(len(amplitude_values)):
+                for frequency_index in range(len(freqs)):
+                    add(candidate_at(step_index, amplitude_index, frequency_index))
         return candidates
 
+    step_shift = rng.random()
+    amplitude_shift = rng.random()
+    frequency_shift = rng.random()
     sampled_indices = set()
-    max_attempts = max(slots * 10, slots + 1000)
-    while len(candidates) < target and len(sampled_indices) < total_valid and max_attempts > 0:
-        max_attempts -= 1
-        index = rng.randrange(total_valid)
-        if index in sampled_indices:
+    max_attempts = max(slots * 20, slots + 2000)
+    sequence_index = 0
+    while len(candidates) < target and len(sampled_indices) < total_valid and sequence_index < max_attempts:
+        step_fraction = ( _van_der_corput(sequence_index, 2) + step_shift ) % 1.0
+        amplitude_fraction = ( _van_der_corput(sequence_index, 3) + amplitude_shift ) % 1.0
+        frequency_fraction = ( _van_der_corput(sequence_index, 5) + frequency_shift ) % 1.0
+        sequence_index += 1
+
+        step_index = min(len(valid_frequencies_by_step) - 1, int(step_fraction * len(valid_frequencies_by_step)))
+        amplitude_index = min(len(amplitude_values) - 1, int(amplitude_fraction * len(amplitude_values)))
+        frequencies = valid_frequencies_by_step[step_index][1]
+        frequency_index = min(len(frequencies) - 1, int(frequency_fraction * len(frequencies)))
+        sample_key = (step_index, amplitude_index, frequency_index)
+        if sample_key in sampled_indices:
             continue
-        sampled_indices.add(index)
-        add(candidate_at(index))
+        sampled_indices.add(sample_key)
+        add(candidate_at(step_index, amplitude_index, frequency_index))
     if len(candidates) < target:
-        for index in range(total_valid):
-            if index in sampled_indices:
-                continue
-            add(candidate_at(index))
+        for step_index, (_step, freqs) in enumerate(valid_frequencies_by_step):
+            for amplitude_index in range(len(amplitude_values)):
+                for frequency_index in range(len(freqs)):
+                    sample_key = (step_index, amplitude_index, frequency_index)
+                    if sample_key in sampled_indices:
+                        continue
+                    add(candidate_at(step_index, amplitude_index, frequency_index))
+                    if len(candidates) >= target:
+                        break
+                if len(candidates) >= target:
+                    break
             if len(candidates) >= target:
                 break
     return candidates
@@ -1260,33 +1283,47 @@ class BOIntegrationSession:
             self.pending_batch = suggestions
             self.save_state()
             return [BOSuggestion(**record) for record in suggestions]
+        group = groups[0]
+        group_config = self._config_for_group(group["id"])
         if self.pending is not None:
             raise RuntimeError("A single pending BO suggestion is already waiting for analysis")
         if self.pending_batch:
             return [BOSuggestion(**record) for record in self.pending_batch]
         count = max(1, int(count))
-        tried = {candidate_key(obs["params"]) for obs in self.observations}
+        observed = self._group_observations(group["id"])
+        tried = {candidate_key(obs["params"]) for obs in observed}
         pending_params: List[dict] = []
         suggestions: List[dict] = []
         for offset in range(count):
-            available = self._available_candidates(tried)
+            available = self._available_candidates(tried, config=group_config)
             if not available:
                 break
-            iteration = len(self.observations) + offset + 1
-            params = self._choose_candidate(available, pending_params=pending_params)
-            method_id = f"{self.session_id}_iter_{iteration:03d}"
+            iteration = len(observed) + offset + 1
+            params = self._choose_candidate(
+                available,
+                pending_params=pending_params,
+                observations=observed,
+                config=group_config,
+            )
+            method_id = f"{self.session_id}_g{group['id']:02d}_iter_{iteration:03d}"
             suggestion = {
                 "iteration": iteration,
                 "method_id": method_id,
                 "params": params,
                 "created_at": datetime.now().isoformat(timespec="seconds"),
                 "status": "suggested",
+                "group_id": group["id"],
+                "group_name": group["name"],
+                "channels": list(group["channels"]),
             }
             suggestions.append(suggestion)
             pending_params.append(dict(params))
             tried.add(candidate_key(params))
             self.suggestions.append(dict(suggestion))
-            self._write_json(self.methods_dir / f"iter_{iteration:03d}_suggested_method.json", suggestion)
+            self._write_json(
+                self.methods_dir / f"group_{group['id']:02d}_iter_{iteration:03d}_suggested_method.json",
+                suggestion,
+            )
         if not suggestions:
             raise RuntimeError("All valid candidates have been evaluated")
         self.pending_batch = suggestions
@@ -1295,7 +1332,8 @@ class BOIntegrationSession:
 
     def _available_candidates(self, tried: set, config: Optional[dict] = None) -> List[Dict[str, float]]:
         config = config or self.config
-        available = [c for c in self.candidates if candidate_key(c) not in tried]
+        base_candidates = self.candidates if config == self.config else generate_candidates(config)
+        available = [c for c in base_candidates if candidate_key(c) not in tried]
         group_initial = resolve_initial_parameters(config)
         if not validate_candidate(group_initial, config) and candidate_key(group_initial) not in tried:
             if all(candidate_key(candidate) != candidate_key(group_initial) for candidate in available):
@@ -2880,6 +2918,19 @@ def _sample_continuous_value(p_cfg: dict, rng: random.Random, center: Optional[f
     if step not in (None, "", 0, "0"):
         value = max(lo, min(hi, _quantize_value(value, float(step), p_cfg)))
     return float(value)
+
+
+def _van_der_corput(index: int, base: int) -> float:
+    if base <= 1:
+        raise ValueError("base must be greater than 1")
+    value = 0.0
+    denom = 1.0
+    current = int(index) + 1
+    while current > 0:
+        current, remainder = divmod(current, base)
+        denom *= base
+        value += remainder / denom
+    return value
 
 
 def _quantize_value(value: float, step: float, p_cfg: dict) -> float:
