@@ -137,6 +137,47 @@ def test_random_group_starts_do_not_require_group_initial_parameters(tmp_path):
     )
 
 
+def test_random_start_mode_uses_acquisition_after_observations(tmp_path):
+    config = _config()
+    config["n_initial_points"] = 0
+    config["acquisition"]["use_gp"] = True
+    config["channel_groups"] = [
+        {
+            "id": 1,
+            "name": "Only",
+            "channels": [1, 2],
+            "initial_point_mode": "random",
+            "n_initial_points": 0,
+        }
+    ]
+    session = BOIntegrationSession(config, tmp_path)
+    group_config = session._config_for_group(1)
+    observations = [
+        {"params": dict(session.candidates[0]), "Q_run": 0.1},
+        {"params": dict(session.candidates[1]), "Q_run": 0.2},
+    ]
+    tried = {tuple(sorted(obs["params"].items())) for obs in observations}
+    available = [
+        candidate for candidate in session.candidates
+        if tuple(sorted(candidate.items())) not in tried
+    ]
+    random_start_candidate = dict(available[0])
+    acquisition_candidate = dict(available[-1])
+
+    session._resolve_start_candidate = lambda _config=None: random_start_candidate
+    session._gp_expected_improvement_candidate = (
+        lambda _available, pending_params=None: acquisition_candidate
+    )
+
+    selected = session._choose_candidate(
+        available,
+        observations=observations,
+        config=group_config,
+    )
+
+    assert selected == acquisition_candidate
+
+
 def test_legacy_channels_become_one_group():
     config = normalize_bo_config({"channels": [2, 5]})
     assert channel_groups(config) == [{"id": 1, "name": "Group 1", "channels": [2, 5]}]

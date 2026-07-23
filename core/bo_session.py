@@ -2078,10 +2078,22 @@ class BOIntegrationSession:
         pending_params = pending_params or []
         tried = {candidate_key(obs["params"]) for obs in self.observations}
         available_keys = {candidate_key(c) for c in available}
+        initial_mode = str(
+            self.config.get("acquisition", {}).get(
+                "initial_point_mode",
+                "specific",
+            )
+        ).strip().lower()
         initial = dict(self._start_candidate)
         key = candidate_key(initial)
-        if key not in tried and key in available_keys:
+        force_start_candidate = (
+            initial_mode != "random"
+            or (not self.observations and not pending_params)
+        )
+        if force_start_candidate and key not in tried and key in available_keys:
             return initial
+        if not self.observations:
+            return self._maximin_candidate(available, extra_anchors=pending_params)
         if len(self.observations) < int(self.config.get("n_initial_points", 8)):
             return self._maximin_candidate(available, extra_anchors=pending_params)
         if bool(self.config.get("acquisition", {}).get("use_gp", True)):
