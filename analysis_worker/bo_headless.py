@@ -152,6 +152,12 @@ def _normalize_scan_windows(raw: str) -> Optional[Tuple[Tuple[int, int], ...]]:
     return tuple(windows) if windows else None
 
 
+def _optional_float(value: Any) -> Optional[float]:
+    if value in (None, "", "none"):
+        return None
+    return float(value)
+
+
 def _analysis_args_from_request(payload: dict) -> dict:
     analysis = dict(payload.get("analysis") or {})
     crop_min = float(analysis.get("crop_min_v", -0.6))
@@ -219,20 +225,33 @@ def run_request(payload: dict) -> dict:
 
 
 def _apply_result_constraints(results: List[dict], analysis: dict) -> None:
-    peak_min = analysis.get("peak_voltage_min_v")
-    peak_max = analysis.get("peak_voltage_max_v")
-    peak_min = None if peak_min in (None, "", "none") else float(peak_min)
-    peak_max = None if peak_max in (None, "", "none") else float(peak_max)
+    peak_min = _optional_float(analysis.get("peak_voltage_min_v"))
+    peak_max = _optional_float(analysis.get("peak_voltage_max_v"))
+    left_min = _optional_float(analysis.get("left_min_voltage_min_v"))
+    left_max = _optional_float(analysis.get("left_min_voltage_max_v"))
+    right_min = _optional_float(analysis.get("right_min_voltage_min_v"))
+    right_max = _optional_float(analysis.get("right_min_voltage_max_v"))
     require_minima = bool(analysis.get("require_local_minima_on_both_sides", False))
     for row in results:
         if str(row.get("status") or "").upper() != "OK":
             continue
         reasons = []
         peak_voltage = row.get("peak_voltage")
-        if peak_min is not None and float(peak_voltage) < peak_min:
-            reasons.append(f"peak voltage {float(peak_voltage):g} V is below {peak_min:g} V")
-        if peak_max is not None and float(peak_voltage) > peak_max:
-            reasons.append(f"peak voltage {float(peak_voltage):g} V is above {peak_max:g} V")
+        _append_voltage_range_reason(reasons, "peak voltage", peak_voltage, peak_min, peak_max)
+        _append_voltage_range_reason(
+            reasons,
+            "left minimum voltage",
+            _indexed_voltage(row, "left_min_idx"),
+            left_min,
+            left_max,
+        )
+        _append_voltage_range_reason(
+            reasons,
+            "right minimum voltage",
+            _indexed_voltage(row, "right_min_idx"),
+            right_min,
+            right_max,
+        )
         if require_minima:
             left = row.get("left_local_min_candidates")
             right = row.get("right_local_min_candidates")
@@ -241,6 +260,40 @@ def _apply_result_constraints(results: List[dict], analysis: dict) -> None:
         if reasons:
             row["status"] = "FAILED"
             row["error"] = "; ".join(reasons)
+
+
+def _indexed_voltage(row: dict, index_key: str) -> Optional[float]:
+    try:
+        idx = int(row.get(index_key))
+        voltages = row.get("voltage")
+        if voltages is None:
+            return None
+        return float(voltages[idx])
+    except Exception:
+        return None
+
+
+def _append_voltage_range_reason(
+    reasons: List[str],
+    label: str,
+    value: Any,
+    minimum: Optional[float],
+    maximum: Optional[float],
+) -> None:
+    if minimum is None and maximum is None:
+        return
+    try:
+        voltage = float(value)
+    except Exception:
+        reasons.append(f"{label} was not found")
+        return
+    if voltage != voltage:
+        reasons.append(f"{label} was not found")
+        return
+    if minimum is not None and voltage < minimum:
+        reasons.append(f"{label} {voltage:g} V is below {minimum:g} V")
+    if maximum is not None and voltage > maximum:
+        reasons.append(f"{label} {voltage:g} V is above {maximum:g} V")
 
 
 def _json_safe(value):

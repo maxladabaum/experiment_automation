@@ -212,6 +212,22 @@ def _analysis_args_from_request(payload: dict) -> dict:
             None if analysis.get("peak_voltage_max_v") in (None, "", "none")
             else float(analysis.get("peak_voltage_max_v"))
         ),
+        "left_min_voltage_min_V": (
+            None if analysis.get("left_min_voltage_min_v") in (None, "", "none")
+            else float(analysis.get("left_min_voltage_min_v"))
+        ),
+        "left_min_voltage_max_V": (
+            None if analysis.get("left_min_voltage_max_v") in (None, "", "none")
+            else float(analysis.get("left_min_voltage_max_v"))
+        ),
+        "right_min_voltage_min_V": (
+            None if analysis.get("right_min_voltage_min_v") in (None, "", "none")
+            else float(analysis.get("right_min_voltage_min_v"))
+        ),
+        "right_min_voltage_max_V": (
+            None if analysis.get("right_min_voltage_max_v") in (None, "", "none")
+            else float(analysis.get("right_min_voltage_max_v"))
+        ),
         "min_start_voltage": float(analysis.get("min_start_voltage_v", -0.70)),
         "scan_windows": _normalize_scan_windows(str(analysis.get("scan_windows", ""))),
         "scan_range": None,

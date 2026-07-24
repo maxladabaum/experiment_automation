@@ -95,6 +95,10 @@ class BayesianOptimizationTab:
         self._analysis_min_peak_height_var = tk.StringVar(value="0.001")
         self._analysis_peak_voltage_min_var = tk.StringVar(value="")
         self._analysis_peak_voltage_max_var = tk.StringVar(value="")
+        self._analysis_left_min_voltage_min_var = tk.StringVar(value="")
+        self._analysis_left_min_voltage_max_var = tk.StringVar(value="")
+        self._analysis_right_min_voltage_min_var = tk.StringVar(value="")
+        self._analysis_right_min_voltage_max_var = tk.StringVar(value="")
         self._analysis_min_start_voltage_var = tk.StringVar(value="-0.70")
         self._analysis_scan_windows_var = tk.StringVar(value="")
         self._analysis_use_prominent_var = tk.BooleanVar(value=False)
@@ -170,6 +174,10 @@ class BayesianOptimizationTab:
             "min_peak_height_ua": tk.StringVar(value="0.001"),
             "peak_voltage_min_v": tk.StringVar(value=""),
             "peak_voltage_max_v": tk.StringVar(value=""),
+            "left_min_voltage_min_v": tk.StringVar(value=""),
+            "left_min_voltage_max_v": tk.StringVar(value=""),
+            "right_min_voltage_min_v": tk.StringVar(value=""),
+            "right_min_voltage_max_v": tk.StringVar(value=""),
             "min_start_voltage_v": tk.StringVar(value="-0.70"),
             "scan_windows": tk.StringVar(value=""),
             "use_prominent_minima": tk.BooleanVar(value=False),
@@ -257,6 +265,10 @@ class BayesianOptimizationTab:
             "min_peak_height_ua": tk.StringVar(value="0.001"),
             "peak_voltage_min_v": tk.StringVar(value=""),
             "peak_voltage_max_v": tk.StringVar(value=""),
+            "left_min_voltage_min_v": tk.StringVar(value=""),
+            "left_min_voltage_max_v": tk.StringVar(value=""),
+            "right_min_voltage_min_v": tk.StringVar(value=""),
+            "right_min_voltage_max_v": tk.StringVar(value=""),
             "min_start_voltage_v": tk.StringVar(value="-0.70"),
             "scan_windows": tk.StringVar(value=""),
             "use_prominent_minima": tk.BooleanVar(value=False),
@@ -811,20 +823,26 @@ class BayesianOptimizationTab:
         ttk.Entry(analysis_box, textvariable=self._analysis_peak_voltage_max_var, width=8).grid(row=2, column=1, sticky="e", padx=(2, 4))
         ttk.Label(analysis_box, text="Min start V:").grid(row=2, column=2, sticky="w", pady=2)
         ttk.Entry(analysis_box, textvariable=self._analysis_min_start_voltage_var, width=10).grid(row=2, column=3, sticky="w", padx=4)
-        ttk.Label(analysis_box, text="Scan windows:").grid(row=3, column=0, sticky="w", pady=2)
-        ttk.Entry(analysis_box, textvariable=self._analysis_scan_windows_var).grid(row=3, column=1, columnspan=3, sticky="ew", padx=4)
-        ttk.Checkbutton(analysis_box, text="Prominent minima", variable=self._analysis_use_prominent_var).grid(row=4, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Require minima both sides", variable=self._analysis_require_minima_var).grid(row=4, column=1, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Double correction", variable=self._analysis_double_correction_var).grid(row=4, column=2, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Compute skew", variable=self._analysis_compute_skew_var).grid(row=4, column=3, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Wavelet energy", variable=self._analysis_compute_wavelet_energy_var).grid(row=5, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Wavelet trace", variable=self._analysis_wavelet_trace_var).grid(row=5, column=1, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Wavelet correction", variable=self._analysis_wavelet_correction_var).grid(row=5, column=2, sticky="w", pady=2)
+        ttk.Label(analysis_box, text="Left min V min/max:").grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=self._analysis_left_min_voltage_min_var, width=8).grid(row=3, column=1, sticky="w", padx=(4, 2))
+        ttk.Entry(analysis_box, textvariable=self._analysis_left_min_voltage_max_var, width=8).grid(row=3, column=1, sticky="e", padx=(2, 4))
+        ttk.Label(analysis_box, text="Right min V min/max:").grid(row=3, column=2, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=self._analysis_right_min_voltage_min_var, width=8).grid(row=3, column=3, sticky="w", padx=(4, 2))
+        ttk.Entry(analysis_box, textvariable=self._analysis_right_min_voltage_max_var, width=8).grid(row=3, column=3, sticky="e", padx=(2, 4))
+        ttk.Label(analysis_box, text="Scan windows:").grid(row=4, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=self._analysis_scan_windows_var).grid(row=4, column=1, columnspan=3, sticky="ew", padx=4)
+        ttk.Checkbutton(analysis_box, text="Prominent minima", variable=self._analysis_use_prominent_var).grid(row=5, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Require minima both sides", variable=self._analysis_require_minima_var).grid(row=5, column=1, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Double correction", variable=self._analysis_double_correction_var).grid(row=5, column=2, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Compute skew", variable=self._analysis_compute_skew_var).grid(row=5, column=3, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet energy", variable=self._analysis_compute_wavelet_energy_var).grid(row=6, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet trace", variable=self._analysis_wavelet_trace_var).grid(row=6, column=1, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet correction", variable=self._analysis_wavelet_correction_var).grid(row=6, column=2, sticky="w", pady=2)
         ttk.Label(
             analysis_box,
             text="These settings are sent to the external 64-bit BO analysis worker.",
             foreground=self.ACCENT,
-        ).grid(row=6, column=0, columnspan=4, sticky="w", pady=(4, 0))
+        ).grid(row=7, column=0, columnspan=4, sticky="w", pady=(4, 0))
         self._on_bo_type_changed(sync=False)
 
     def _build_run_tab(self, parent):
@@ -1037,22 +1055,28 @@ class BayesianOptimizationTab:
         ttk.Entry(analysis_box, textvariable=analysis_vars["peak_voltage_max_v"], width=8).grid(row=2, column=1, sticky="e", padx=(2, 4))
         ttk.Label(analysis_box, text="Min start V:").grid(row=2, column=2, sticky="w", pady=2)
         ttk.Entry(analysis_box, textvariable=analysis_vars["min_start_voltage_v"], width=10).grid(row=2, column=3, sticky="w", padx=4)
-        ttk.Label(analysis_box, text="Scan windows:").grid(row=3, column=0, sticky="w", pady=2)
-        ttk.Entry(analysis_box, textvariable=analysis_vars["scan_windows"]).grid(row=3, column=1, columnspan=3, sticky="ew", padx=4)
-        ttk.Checkbutton(analysis_box, text="Prominent minima", variable=analysis_vars["use_prominent_minima"]).grid(row=4, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Require minima both sides", variable=analysis_vars["require_local_minima_on_both_sides"]).grid(row=4, column=1, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Double correction", variable=analysis_vars["use_double_correction"]).grid(row=4, column=2, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Compute skew", variable=analysis_vars["compute_skew"]).grid(row=4, column=3, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Wavelet energy", variable=analysis_vars["compute_wavelet_energy"]).grid(row=5, column=0, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Wavelet trace", variable=analysis_vars["compute_wavelet_denoised_trace"]).grid(row=5, column=1, sticky="w", pady=2)
-        ttk.Checkbutton(analysis_box, text="Wavelet correction", variable=analysis_vars["use_wavelet_for_correction"]).grid(row=5, column=2, sticky="w", pady=2)
+        ttk.Label(analysis_box, text="Left min V min/max:").grid(row=3, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=analysis_vars["left_min_voltage_min_v"], width=8).grid(row=3, column=1, sticky="w", padx=(4, 2))
+        ttk.Entry(analysis_box, textvariable=analysis_vars["left_min_voltage_max_v"], width=8).grid(row=3, column=1, sticky="e", padx=(2, 4))
+        ttk.Label(analysis_box, text="Right min V min/max:").grid(row=3, column=2, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=analysis_vars["right_min_voltage_min_v"], width=8).grid(row=3, column=3, sticky="w", padx=(4, 2))
+        ttk.Entry(analysis_box, textvariable=analysis_vars["right_min_voltage_max_v"], width=8).grid(row=3, column=3, sticky="e", padx=(2, 4))
+        ttk.Label(analysis_box, text="Scan windows:").grid(row=4, column=0, sticky="w", pady=2)
+        ttk.Entry(analysis_box, textvariable=analysis_vars["scan_windows"]).grid(row=4, column=1, columnspan=3, sticky="ew", padx=4)
+        ttk.Checkbutton(analysis_box, text="Prominent minima", variable=analysis_vars["use_prominent_minima"]).grid(row=5, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Require minima both sides", variable=analysis_vars["require_local_minima_on_both_sides"]).grid(row=5, column=1, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Double correction", variable=analysis_vars["use_double_correction"]).grid(row=5, column=2, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Compute skew", variable=analysis_vars["compute_skew"]).grid(row=5, column=3, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet energy", variable=analysis_vars["compute_wavelet_energy"]).grid(row=6, column=0, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet trace", variable=analysis_vars["compute_wavelet_denoised_trace"]).grid(row=6, column=1, sticky="w", pady=2)
+        ttk.Checkbutton(analysis_box, text="Wavelet correction", variable=analysis_vars["use_wavelet_for_correction"]).grid(row=6, column=2, sticky="w", pady=2)
         ttk.Label(
             analysis_box,
             text="These values are sent with every simulated raw trace to the same 64-bit analysis worker used by real BO.",
             foreground=self.ACCENT,
             wraplength=760,
             justify="left",
-        ).grid(row=6, column=0, columnspan=4, sticky="w", pady=(4, 0))
+        ).grid(row=7, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
         scoring_tabs = ttk.Notebook(setup_box)
         scoring_tabs.pack(fill="both", expand=True, pady=(0, 8))
@@ -1678,6 +1702,10 @@ class BayesianOptimizationTab:
         self._analysis_min_peak_height_var.set("" if analysis_cfg.get("min_peak_height_ua") in (None, "") else str(analysis_cfg.get("min_peak_height_ua")))
         self._analysis_peak_voltage_min_var.set("" if analysis_cfg.get("peak_voltage_min_v") in (None, "") else str(analysis_cfg.get("peak_voltage_min_v")))
         self._analysis_peak_voltage_max_var.set("" if analysis_cfg.get("peak_voltage_max_v") in (None, "") else str(analysis_cfg.get("peak_voltage_max_v")))
+        self._analysis_left_min_voltage_min_var.set("" if analysis_cfg.get("left_min_voltage_min_v") in (None, "") else str(analysis_cfg.get("left_min_voltage_min_v")))
+        self._analysis_left_min_voltage_max_var.set("" if analysis_cfg.get("left_min_voltage_max_v") in (None, "") else str(analysis_cfg.get("left_min_voltage_max_v")))
+        self._analysis_right_min_voltage_min_var.set("" if analysis_cfg.get("right_min_voltage_min_v") in (None, "") else str(analysis_cfg.get("right_min_voltage_min_v")))
+        self._analysis_right_min_voltage_max_var.set("" if analysis_cfg.get("right_min_voltage_max_v") in (None, "") else str(analysis_cfg.get("right_min_voltage_max_v")))
         self._analysis_min_start_voltage_var.set(str(analysis_cfg.get("min_start_voltage_v", -0.6)))
         self._analysis_scan_windows_var.set(str(analysis_cfg.get("scan_windows", "")))
         self._analysis_use_prominent_var.set(bool(analysis_cfg.get("use_prominent_minima", False)))
@@ -1700,12 +1728,17 @@ class BayesianOptimizationTab:
         peak_voltage_max_text = (self._analysis_peak_voltage_max_var.get() or "").strip()
         analysis_cfg["peak_voltage_min_v"] = None if not peak_voltage_min_text else float(peak_voltage_min_text)
         analysis_cfg["peak_voltage_max_v"] = None if not peak_voltage_max_text else float(peak_voltage_max_text)
-        if (
-            analysis_cfg["peak_voltage_min_v"] is not None
-            and analysis_cfg["peak_voltage_max_v"] is not None
-            and analysis_cfg["peak_voltage_min_v"] > analysis_cfg["peak_voltage_max_v"]
-        ):
-            raise ValueError("Peak V min must be less than or equal to Peak V max.")
+        left_min_text = (self._analysis_left_min_voltage_min_var.get() or "").strip()
+        left_max_text = (self._analysis_left_min_voltage_max_var.get() or "").strip()
+        right_min_text = (self._analysis_right_min_voltage_min_var.get() or "").strip()
+        right_max_text = (self._analysis_right_min_voltage_max_var.get() or "").strip()
+        analysis_cfg["left_min_voltage_min_v"] = None if not left_min_text else float(left_min_text)
+        analysis_cfg["left_min_voltage_max_v"] = None if not left_max_text else float(left_max_text)
+        analysis_cfg["right_min_voltage_min_v"] = None if not right_min_text else float(right_min_text)
+        analysis_cfg["right_min_voltage_max_v"] = None if not right_max_text else float(right_max_text)
+        self._validate_voltage_window(analysis_cfg, "peak_voltage_min_v", "peak_voltage_max_v", "Peak V")
+        self._validate_voltage_window(analysis_cfg, "left_min_voltage_min_v", "left_min_voltage_max_v", "Left min V")
+        self._validate_voltage_window(analysis_cfg, "right_min_voltage_min_v", "right_min_voltage_max_v", "Right min V")
         analysis_cfg["min_start_voltage_v"] = float(self._analysis_min_start_voltage_var.get())
         analysis_cfg["scan_windows"] = (self._analysis_scan_windows_var.get() or "").strip()
         analysis_cfg["use_prominent_minima"] = bool(self._analysis_use_prominent_var.get())
@@ -1715,6 +1748,15 @@ class BayesianOptimizationTab:
         analysis_cfg["compute_wavelet_energy"] = bool(self._analysis_compute_wavelet_energy_var.get())
         analysis_cfg["compute_wavelet_denoised_trace"] = bool(self._analysis_wavelet_trace_var.get())
         analysis_cfg["use_wavelet_for_correction"] = bool(self._analysis_wavelet_correction_var.get())
+
+    @staticmethod
+    def _validate_voltage_window(config: dict, min_key: str, max_key: str, label: str):
+        if (
+            config[min_key] is not None
+            and config[max_key] is not None
+            and config[min_key] > config[max_key]
+        ):
+            raise ValueError(f"{label} min must be less than or equal to {label} max.")
 
     def _set_method_option_vars_from_config(self, cfg: dict):
         method_options = dict((cfg or {}).get("method_options") or {})
@@ -1842,6 +1884,10 @@ class BayesianOptimizationTab:
             "min_peak_height_ua": analysis.get("min_peak_height_ua", 0.001),
             "peak_voltage_min_v": analysis.get("peak_voltage_min_v"),
             "peak_voltage_max_v": analysis.get("peak_voltage_max_v"),
+            "left_min_voltage_min_v": analysis.get("left_min_voltage_min_v"),
+            "left_min_voltage_max_v": analysis.get("left_min_voltage_max_v"),
+            "right_min_voltage_min_v": analysis.get("right_min_voltage_min_v"),
+            "right_min_voltage_max_v": analysis.get("right_min_voltage_max_v"),
             "min_start_voltage_v": analysis.get("min_start_voltage_v", -0.70),
             "scan_windows": analysis.get("scan_windows", ""),
         }
@@ -1862,7 +1908,10 @@ class BayesianOptimizationTab:
         variables = self._engine_analysis_vars
 
         def optional_float(key):
-            text = (variables[key].get() or "").strip()
+            variable = variables.get(key)
+            if variable is None:
+                return None
+            text = (variable.get() or "").strip()
             return None if not text else float(text)
 
         analysis = {
@@ -1874,6 +1923,10 @@ class BayesianOptimizationTab:
             "min_peak_height_ua": optional_float("min_peak_height_ua"),
             "peak_voltage_min_v": optional_float("peak_voltage_min_v"),
             "peak_voltage_max_v": optional_float("peak_voltage_max_v"),
+            "left_min_voltage_min_v": optional_float("left_min_voltage_min_v"),
+            "left_min_voltage_max_v": optional_float("left_min_voltage_max_v"),
+            "right_min_voltage_min_v": optional_float("right_min_voltage_min_v"),
+            "right_min_voltage_max_v": optional_float("right_min_voltage_max_v"),
             "min_start_voltage_v": float(variables["min_start_voltage_v"].get()),
             "scan_windows": (variables["scan_windows"].get() or "").strip(),
             "use_prominent_minima": bool(variables["use_prominent_minima"].get()),
@@ -1890,12 +1943,9 @@ class BayesianOptimizationTab:
             raise ValueError("Simulation smoothing window and polynomial order must be nonnegative.")
         if analysis["minima_search_window_v"] <= 0:
             raise ValueError("Simulation minima window must be positive.")
-        if (
-            analysis["peak_voltage_min_v"] is not None
-            and analysis["peak_voltage_max_v"] is not None
-            and analysis["peak_voltage_min_v"] > analysis["peak_voltage_max_v"]
-        ):
-            raise ValueError("Simulation peak V minimum cannot exceed maximum.")
+        self._validate_voltage_window(analysis, "peak_voltage_min_v", "peak_voltage_max_v", "Simulation peak V")
+        self._validate_voltage_window(analysis, "left_min_voltage_min_v", "left_min_voltage_max_v", "Simulation left min V")
+        self._validate_voltage_window(analysis, "right_min_voltage_min_v", "right_min_voltage_max_v", "Simulation right min V")
         return analysis
 
     def _refresh_engine_scoring_formulas(self):
@@ -2190,6 +2240,8 @@ class BayesianOptimizationTab:
             ("Smooth window", "smooth_window", "Polynomial order", "smooth_polyorder"),
             ("Minima window V", "minima_search_window_v", "Min peak height uA", "min_peak_height_ua"),
             ("Peak V min", "peak_voltage_min_v", "Peak V max", "peak_voltage_max_v"),
+            ("Left min V min", "left_min_voltage_min_v", "Left min V max", "left_min_voltage_max_v"),
+            ("Right min V min", "right_min_voltage_min_v", "Right min V max", "right_min_voltage_max_v"),
             ("Min start V", "min_start_voltage_v", "Scan windows", "scan_windows"),
         )
         for row, (left_label, left_key, right_label, right_key) in enumerate(entries):
@@ -2211,7 +2263,7 @@ class BayesianOptimizationTab:
             ("Wavelet correction", "use_wavelet_for_correction"),
         )
         for index, (label, key) in enumerate(checks):
-            row = 5 + index // 2
+            row = 7 + index // 2
             column = (index % 2) * 2
             ttk.Checkbutton(parent, text=label, variable=variables[key]).grid(
                 row=row, column=column, columnspan=2, sticky="w", pady=2
@@ -2229,6 +2281,10 @@ class BayesianOptimizationTab:
             "min_peak_height_ua": analysis.get("min_peak_height_ua", 0.001),
             "peak_voltage_min_v": analysis.get("peak_voltage_min_v"),
             "peak_voltage_max_v": analysis.get("peak_voltage_max_v"),
+            "left_min_voltage_min_v": analysis.get("left_min_voltage_min_v"),
+            "left_min_voltage_max_v": analysis.get("left_min_voltage_max_v"),
+            "right_min_voltage_min_v": analysis.get("right_min_voltage_min_v"),
+            "right_min_voltage_max_v": analysis.get("right_min_voltage_max_v"),
             "min_start_voltage_v": analysis.get("min_start_voltage_v", -0.70),
             "scan_windows": analysis.get("scan_windows", ""),
         }
@@ -2249,7 +2305,10 @@ class BayesianOptimizationTab:
         variables = self._rescore_analysis_vars
 
         def optional_float(key):
-            text = (variables[key].get() or "").strip()
+            variable = variables.get(key)
+            if variable is None:
+                return None
+            text = (variable.get() or "").strip()
             return None if not text else float(text)
 
         analysis = {
@@ -2261,6 +2320,10 @@ class BayesianOptimizationTab:
             "min_peak_height_ua": optional_float("min_peak_height_ua"),
             "peak_voltage_min_v": optional_float("peak_voltage_min_v"),
             "peak_voltage_max_v": optional_float("peak_voltage_max_v"),
+            "left_min_voltage_min_v": optional_float("left_min_voltage_min_v"),
+            "left_min_voltage_max_v": optional_float("left_min_voltage_max_v"),
+            "right_min_voltage_min_v": optional_float("right_min_voltage_min_v"),
+            "right_min_voltage_max_v": optional_float("right_min_voltage_max_v"),
             "min_start_voltage_v": float(variables["min_start_voltage_v"].get()),
             "scan_windows": (variables["scan_windows"].get() or "").strip(),
             "use_prominent_minima": bool(variables["use_prominent_minima"].get()),
@@ -2277,12 +2340,9 @@ class BayesianOptimizationTab:
             raise ValueError("Reanalysis smoothing window and polynomial order must be nonnegative.")
         if analysis["minima_search_window_v"] <= 0:
             raise ValueError("Reanalysis minima window must be positive.")
-        if (
-            analysis["peak_voltage_min_v"] is not None
-            and analysis["peak_voltage_max_v"] is not None
-            and analysis["peak_voltage_min_v"] > analysis["peak_voltage_max_v"]
-        ):
-            raise ValueError("Reanalysis peak V minimum cannot exceed maximum.")
+        self._validate_voltage_window(analysis, "peak_voltage_min_v", "peak_voltage_max_v", "Reanalysis peak V")
+        self._validate_voltage_window(analysis, "left_min_voltage_min_v", "left_min_voltage_max_v", "Reanalysis left min V")
+        self._validate_voltage_window(analysis, "right_min_voltage_min_v", "right_min_voltage_max_v", "Reanalysis right min V")
         return analysis
 
     def _build_q_scoring_controls(self, scoring_box, vars_by_name, formula_var, on_change, preset_command=None):
@@ -6764,6 +6824,10 @@ class BayesianOptimizationTab:
             min_peak_height_uA=analysis_cfg.get("min_peak_height_ua"),
             peak_voltage_min_V=analysis_cfg.get("peak_voltage_min_v"),
             peak_voltage_max_V=analysis_cfg.get("peak_voltage_max_v"),
+            left_min_voltage_min_V=analysis_cfg.get("left_min_voltage_min_v"),
+            left_min_voltage_max_V=analysis_cfg.get("left_min_voltage_max_v"),
+            right_min_voltage_min_V=analysis_cfg.get("right_min_voltage_min_v"),
+            right_min_voltage_max_V=analysis_cfg.get("right_min_voltage_max_v"),
             compute_skew=bool(analysis_cfg.get("compute_skew", True)),
             compute_wavelet_energy=bool(analysis_cfg.get("compute_wavelet_energy", True)),
             compute_wavelet_denoised_trace=bool(analysis_cfg.get("compute_wavelet_denoised_trace", False)),

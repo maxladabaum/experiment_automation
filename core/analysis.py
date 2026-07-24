@@ -120,6 +120,10 @@ def _process_file_cached(
     min_peak_height_uA: Optional[float],
     peak_voltage_min_V: Optional[float],
     peak_voltage_max_V: Optional[float],
+    left_min_voltage_min_V: Optional[float],
+    left_min_voltage_max_V: Optional[float],
+    right_min_voltage_min_V: Optional[float],
+    right_min_voltage_max_V: Optional[float],
     compute_skew: bool,
     compute_wavelet_energy: bool,
     compute_wavelet_denoised_trace: bool,
@@ -146,6 +150,10 @@ def _process_file_cached(
             min_peak_height_uA=min_peak_height_uA,
             peak_voltage_min_V=peak_voltage_min_V,
             peak_voltage_max_V=peak_voltage_max_V,
+            left_min_voltage_min_V=left_min_voltage_min_V,
+            left_min_voltage_max_V=left_min_voltage_max_V,
+            right_min_voltage_min_V=right_min_voltage_min_V,
+            right_min_voltage_max_V=right_min_voltage_max_V,
             compute_skew=compute_skew,
             compute_wavelet_energy=compute_wavelet_energy,
             compute_wavelet_denoised_trace=compute_wavelet_denoised_trace,
@@ -316,6 +324,10 @@ def analyze_swv_file(
     min_peak_height_uA: Optional[float] = None,
     peak_voltage_min_V: Optional[float] = None,
     peak_voltage_max_V: Optional[float] = None,
+    left_min_voltage_min_V: Optional[float] = None,
+    left_min_voltage_max_V: Optional[float] = None,
+    right_min_voltage_min_V: Optional[float] = None,
+    right_min_voltage_max_V: Optional[float] = None,
     compute_skew: bool = True,
     compute_wavelet_energy: bool = True,
     compute_wavelet_denoised_trace: bool = False,
@@ -343,6 +355,10 @@ def analyze_swv_file(
         min_peak_height_uA=min_peak_height_uA,
         peak_voltage_min_V=peak_voltage_min_V,
         peak_voltage_max_V=peak_voltage_max_V,
+        left_min_voltage_min_V=left_min_voltage_min_V,
+        left_min_voltage_max_V=left_min_voltage_max_V,
+        right_min_voltage_min_V=right_min_voltage_min_V,
+        right_min_voltage_max_V=right_min_voltage_max_V,
         compute_skew=compute_skew,
         compute_wavelet_energy=compute_wavelet_energy,
         compute_wavelet_denoised_trace=compute_wavelet_denoised_trace,
@@ -364,6 +380,10 @@ def analyze_swv_arrays(
     min_peak_height_uA: Optional[float] = None,
     peak_voltage_min_V: Optional[float] = None,
     peak_voltage_max_V: Optional[float] = None,
+    left_min_voltage_min_V: Optional[float] = None,
+    left_min_voltage_max_V: Optional[float] = None,
+    right_min_voltage_min_V: Optional[float] = None,
+    right_min_voltage_max_V: Optional[float] = None,
     compute_skew: bool = True,
     compute_wavelet_energy: bool = True,
     compute_wavelet_denoised_trace: bool = False,
@@ -390,12 +410,6 @@ def analyze_swv_arrays(
         file_path=file_path,
     )
 
-    peak_voltage = float(result["peak_voltage"])
-    if peak_voltage_min_V is not None and peak_voltage < float(peak_voltage_min_V):
-        raise ValueError(f"Peak voltage {peak_voltage:.4g} V below minimum {float(peak_voltage_min_V):.4g} V")
-    if peak_voltage_max_V is not None and peak_voltage > float(peak_voltage_max_V):
-        raise ValueError(f"Peak voltage {peak_voltage:.4g} V above maximum {float(peak_voltage_max_V):.4g} V")
-
     wavelet_denoised_current = (
         _wavelet_denoise_trace(np.asarray(result["raw_current"], dtype=float))
         if compute_wavelet_denoised_trace
@@ -404,6 +418,9 @@ def analyze_swv_arrays(
     left_idx = int(result["left_min_idx"])
     right_idx = int(result["right_min_idx"])
     v = np.asarray(result["voltage"], dtype=float)
+    _validate_voltage_value(float(result["peak_voltage"]), peak_voltage_min_V, peak_voltage_max_V, "Peak voltage")
+    _validate_voltage_value(float(v[left_idx]), left_min_voltage_min_V, left_min_voltage_max_V, "Left minimum voltage")
+    _validate_voltage_value(float(v[right_idx]), right_min_voltage_min_V, right_min_voltage_max_V, "Right minimum voltage")
     background_rms = _compute_minima_bracket_rms_noise(result["raw_current"], left_idx, right_idx)
     v_left = float(v[left_idx])
     v_right = float(v[right_idx])
@@ -422,6 +439,18 @@ def analyze_swv_arrays(
         file_path=file_path,
     )
     return result
+
+
+def _validate_voltage_value(
+    voltage: float,
+    minimum: Optional[float],
+    maximum: Optional[float],
+    label: str,
+) -> None:
+    if minimum is not None and voltage < float(minimum):
+        raise ValueError(f"{label} {voltage:.4g} V below minimum {float(minimum):.4g} V")
+    if maximum is not None and voltage > float(maximum):
+        raise ValueError(f"{label} {voltage:.4g} V above maximum {float(maximum):.4g} V")
 
 def partial_traces_for_failure_arrays(
     v_raw: np.ndarray,
@@ -552,6 +581,10 @@ def run_batch(
     min_peak_height_uA: Optional[float] = None,
     peak_voltage_min_V: Optional[float] = None,
     peak_voltage_max_V: Optional[float] = None,
+    left_min_voltage_min_V: Optional[float] = None,
+    left_min_voltage_max_V: Optional[float] = None,
+    right_min_voltage_min_V: Optional[float] = None,
+    right_min_voltage_max_V: Optional[float] = None,
     min_start_voltage: float = -0.6,
     scan_windows: Optional[Tuple[Tuple[int, int], ...]] = None,
     scan_range: Optional[Tuple[int, int]] = None,
@@ -656,6 +689,10 @@ def run_batch(
             min_peak_height_uA=min_peak_height_uA,
             peak_voltage_min_V=peak_voltage_min_V,
             peak_voltage_max_V=peak_voltage_max_V,
+            left_min_voltage_min_V=left_min_voltage_min_V,
+            left_min_voltage_max_V=left_min_voltage_max_V,
+            right_min_voltage_min_V=right_min_voltage_min_V,
+            right_min_voltage_max_V=right_min_voltage_max_V,
             compute_skew=compute_skew,
             compute_wavelet_energy=compute_wavelet_energy,
             compute_wavelet_denoised_trace=compute_wavelet_denoised_trace,
