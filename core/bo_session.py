@@ -1111,8 +1111,13 @@ class BOIntegrationSession:
         self.experiment_dir = Path(experiment_dir)
         self.analysis_output_dir = Path(analysis_output_dir) if analysis_output_dir else (self.experiment_dir / "bo_analysis")
         self.session_id = self._build_session_id()
-        folder_prefix = self.config.get("records", {}).get("folder_prefix", "bo_session")
-        self.record_dir = self._unique_dir(self.experiment_dir / "bo_sessions" / f"{folder_prefix}_{self.session_id}")
+        # Keep the physical folder short because all analysis/model artifacts
+        # are nested below it and Windows commonly enforces MAX_PATH.
+        record_token = self.session_id.rsplit("_", 1)[-1]
+        record_stamp = datetime.now().strftime("%H%M%S")
+        self.record_dir = self._unique_dir(
+            self.experiment_dir / "bo_sessions" / f"bo_{record_stamp}_{record_token}"
+        )
         self.methods_dir = self.record_dir / "methods"
         self.analysis_dir = self.record_dir / "analysis"
         self.queue_dir = self.record_dir / "queue"
@@ -2770,10 +2775,8 @@ class BOIntegrationSession:
         os.replace(tmp_path, path)
 
     def _build_session_id(self) -> str:
-        stem = str(self.config.get("name", "bo")).strip().lower().replace(" ", "_")
-        safe = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in stem).strip("_") or "bo"
         digest = hashlib.sha1(json.dumps(self.config, sort_keys=True).encode("utf-8")).hexdigest()[:6]
-        return f"{safe}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{digest}"
+        return f"bo_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{digest}"
 
     @staticmethod
     def _unique_dir(path: Path) -> Path:

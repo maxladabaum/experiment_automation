@@ -75,7 +75,7 @@ def _as_float(value, default: float) -> float:
 
 def _as_path(value, default) -> Path:
     raw = default if value in (None, "") else value
-    return Path(str(raw)).expanduser()
+    return Path(os.path.expandvars(str(raw))).expanduser()
 
 
 def _as_string_list(value, default):
@@ -125,15 +125,16 @@ PREFERRED_SYRINGE_UL = _as_float(
 )
 
 # ── File / folder paths ───────────────────────────────────────────────────────
+_DEFAULT_DATA_DIR = Path.home() / "Documents" / "Experiment Automation Data"
+
 DATA_DIR = _as_path(  # where measurement CSVs land
     _env_or_local(
         "EA_DATA_DIR",
         "data_dir",
-        r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)",
+        _DEFAULT_DATA_DIR,
     ),
-    r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)",
+    _DEFAULT_DATA_DIR,
 )
-#DATA_DIR        = Path("measurement_data") #for local testing purposes
 METHODS_DIR = _as_path(  # where user-created .ms scripts and library_map.json are saved
     _env_or_local("EA_METHODS_DIR", "methods_dir", DATA_DIR / "methods"),
     DATA_DIR / "methods",
@@ -141,6 +142,14 @@ METHODS_DIR = _as_path(  # where user-created .ms scripts and library_map.json a
 RECIPE_DIR = _as_path(  # where user-created recipes and custom blocks are saved
     _env_or_local("EA_RECIPE_DIR", "recipe_dir", DATA_DIR / "recipe_maker"),
     DATA_DIR / "recipe_maker",
+)
+_SESSION_ARCHIVE_RAW = _env_or_local(
+    "EA_SESSION_ARCHIVE_DIR", "session_archive_dir", ""
+)
+SESSION_ARCHIVE_DIR = (
+    _as_path(_SESSION_ARCHIVE_RAW, _SESSION_ARCHIVE_RAW)
+    if _SESSION_ARCHIVE_RAW not in (None, "")
+    else None
 )
 BLOCKS_DIR      = Path("recipe_maker") / "default_blocks"  # bundled default block definitions
 SAVE_DATED_METHOD_COPIES = False            # if True, also write methods/YYYY-MM-DD/*.ms working copies

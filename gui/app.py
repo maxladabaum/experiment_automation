@@ -20,6 +20,7 @@ from tkinter import ttk
 from config import (
     APP_VERSION, WINDOW_TITLE, WINDOW_GEOMETRY,
     PREFERRED_STEPS_PER_STROKE, PREFERRED_SYRINGE_UL,
+    SESSION_ARCHIVE_DIR,
     SLACK_ENABLE, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_PORT,
     SLACK_ONLY_WHEN_EXPERIMENT,
     NGROK_AUTOSTART, NGROK_PATH, NGROK_DOMAIN,
@@ -27,6 +28,7 @@ from config import (
 from core.session  import SessionState
 from core.runner   import SerialMeasurementRunner
 from core.session_manager import SessionManager
+from core.session_archive import archive_session
 from core.slack_bot import SlackBotServer
 from gui.session_bar import SessionBar
 from gui.tab_script  import ScriptTab
@@ -188,6 +190,8 @@ class ElectrochemGUI:
             on_run_queue      = self._queue_tab.run_queue,
         )
         self._queue_tab.add_completion_callback(self._bo_tab.on_queue_complete)
+        if SESSION_ARCHIVE_DIR is not None:
+            self._queue_tab.add_completion_callback(self._archive_session_after_queue)
 
         if PUMP_AVAILABLE:
             self._pump_tab = PumpTab(
@@ -287,6 +291,25 @@ class ElectrochemGUI:
 
     def _on_session_state_change(self, *_):
         self._apply_session_gate()
+
+    def _archive_session_after_queue(self, _summary):
+        session_path = self._session_mgr.current_session_path
+        if session_path is None or SESSION_ARCHIVE_DIR is None:
+            return
+        session_path = Path(session_path)
+        destination = Path(SESSION_ARCHIVE_DIR)
+
+        def worker():
+            self._session_mgr.log(f"Archiving session after queue: {session_path.name}")
+            try:
+                uploaded = archive_session(session_path, destination)
+                self._session_mgr.log(f"Session archive uploaded: {uploaded}")
+            except Exception as exc:
+                self._session_mgr.log(
+                    f"Session archive upload failed; local data is unchanged: {exc}"
+                )
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _apply_session_gate(self):
         state = "normal" if self._session_mgr.has_session else "hidden"
