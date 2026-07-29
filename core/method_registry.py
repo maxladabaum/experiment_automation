@@ -31,7 +31,7 @@ class MethodRegistry:
     ):
         self._log = log_callback
         self.base_path = Path(base_path) if base_path else Path(METHODS_DIR)
-        self.base_path.mkdir(exist_ok=True)
+        self.base_path.mkdir(parents=True, exist_ok=True)
 
         # hash_key -> (filepath, filename)
         self._registry: Dict[str, Tuple[Path, str]] = {}
@@ -93,7 +93,7 @@ class MethodRegistry:
 
         if SAVE_DATED_METHOD_COPIES:
             date_folder = self.base_path / datetime.now().strftime("%Y-%m-%d")
-            date_folder.mkdir(exist_ok=True)
+            date_folder.mkdir(parents=True, exist_ok=True)
             slug = technique.lower().replace(" ", "_")
             if mux_channel is not None:
                 slug = f"{slug}_ch{mux_channel}"

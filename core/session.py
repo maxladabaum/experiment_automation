@@ -17,6 +17,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 
+from config import DEVICE_DEFAULT_PORT
 from .method_registry import MethodRegistry
 from .runner import SerialMeasurementRunner
 
@@ -96,7 +97,7 @@ class SessionState:
         self.simulate_measurements: bool = False
         self.step_delay: float = 1.0
         # Selected device COM port (None = auto-detect)
-        self.device_port: Optional[str] = None
+        self.device_port: Optional[str] = DEVICE_DEFAULT_PORT or None
 
     # ── Measurement tag ───────────────────────────────────────────────────────
 

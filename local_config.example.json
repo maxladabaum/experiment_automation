@@ -1,0 +1,24 @@
+{
+  "_instructions": "Copy this file to your machine-local config path and edit it there. Do not use this example file as the live config.",
+  "_default_windows_path": "%LOCALAPPDATA%\\ExperimentAutomation\\local_config.json",
+  "_default_macos_linux_path": "~/.experiment_automation/local_config.json",
+  "_override_path_env_var": "EA_LOCAL_CONFIG_PATH",
+  "data_dir": "D:\\ExperimentAutomationData",
+  "methods_dir": "D:\\ExperimentAutomationData\\methods",
+  "recipe_dir": "D:\\ExperimentAutomationData\\recipe_maker",
+  "pump_com_port": 8,
+  "pump_baud": 9600,
+  "pump_dev": 1,
+  "pump_steps": 100000,
+  "pump_syringe_ul": 1250.0,
+  "preferred_steps_per_stroke": 181490,
+  "preferred_syringe_ul": 250.0,
+  "potentiostat_port": "COM5",
+  "device_baudrate": 230400,
+  "device_keywords": [
+    "ESPicoDev",
+    "EmStat",
+    "USB Serial Port",
+    "FTDI"
+  ]
+}

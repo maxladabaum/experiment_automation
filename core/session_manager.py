@@ -52,7 +52,7 @@ class SessionManager:
     def __init__(self, log_callback=None, data_root: Path = None):
         self._log_cb   = log_callback or (lambda m: print(m))
         self._data_root = Path(data_root) if data_root else Path(DATA_DIR)
-        self._data_root.mkdir(exist_ok=True)
+        self._data_root.mkdir(parents=True, exist_ok=True)
         self._slack = SlackNotifier(
             bot_token=SLACK_BOT_TOKEN,
             default_target=SLACK_TARGET,

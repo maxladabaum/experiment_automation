@@ -144,7 +144,7 @@ class SerialMeasurementRunner:
             self.data_folder.mkdir(parents=True, exist_ok=True)
         else:
             self._data_base = Path(DATA_DIR)
-            self._data_base.mkdir(exist_ok=True)
+            self._data_base.mkdir(parents=True, exist_ok=True)
             date_folder = self._data_base / datetime.now().strftime("%Y-%m-%d")
             date_folder.mkdir(exist_ok=True)
             self.data_folder = date_folder

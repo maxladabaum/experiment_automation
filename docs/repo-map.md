@@ -105,6 +105,6 @@ Pump actions (queue types) and handlers:
 - PUMP_DISPENSE -> gui/tab_pump.py:_do_dispense + _queue_dispense, gui/tab_queue.py:_exec_pump -> PumpCtrl.dispense_ul
 
 Method paths:
-- config.py: METHODS_DIR = methods/
-- core/method_registry.py saves to methods/YYYY-MM-DD/ and methods/library/
-- methods/library_map.py handles register/lookup for methods/library/
+- config.py: METHODS_DIR defaults to DATA_DIR/methods unless overridden by local config
+- core/method_registry.py saves user-created methods to the configured local methods dir
+- methods/library_map.py handles register/lookup for the configured local methods library

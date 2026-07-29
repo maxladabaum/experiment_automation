@@ -99,6 +99,45 @@ python -c "import sys,os; print(sys.executable); print(os.getcwd())"
 
 If these differ between shells (or VS Code vs. external Git Bash), your run will differ too.
 
+MACHINE-LOCAL CONFIG
+
+Hardware ports and data directories should not be edited directly in config.py
+for each computer. The app reads machine-specific overrides from a local JSON
+file outside the Git checkout:
+
+Windows:
+%LOCALAPPDATA%\ExperimentAutomation\local_config.json
+
+macOS/Linux:
+~/.experiment_automation/local_config.json
+
+To use a different location, set EA_LOCAL_CONFIG_PATH to the full JSON path.
+The repository includes local_config.example.json as a template. Copy that file
+to the local path above and edit the copy for each computer.
+
+Common local settings:
+
+{
+  "data_dir": "D:\\ExperimentAutomationData",
+  "methods_dir": "D:\\ExperimentAutomationData\\methods",
+  "recipe_dir": "D:\\ExperimentAutomationData\\recipe_maker",
+  "pump_com_port": 8,
+  "pump_baud": 9600,
+  "pump_dev": 1,
+  "potentiostat_port": "COM5"
+}
+
+If methods_dir or recipe_dir are omitted, they default to folders beside the
+measurement data:
+
+methods_dir -> <data_dir>/methods
+recipe_dir  -> <data_dir>/recipe_maker
+
+Environment variables can override individual local-config values:
+EA_DATA_DIR, EA_PUMP_COM_PORT, EA_PUMP_BAUD, EA_PUMP_DEV,
+EA_POTENTIOSTAT_PORT, EA_METHODS_DIR, EA_RECIPE_DIR, EA_DEVICE_BAUDRATE,
+and EA_DEVICE_KEYWORDS.
+
 OPTIONAL BAYESIAN OPTIMIZATION TAB
 
 The app includes an optional Bayesian Optimization tab for closed-loop SWV method

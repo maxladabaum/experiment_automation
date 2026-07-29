@@ -4,7 +4,7 @@ gui/tab_recipe_maker.py — Recipe Maker tab.
 Provides a lightweight recipe builder that mirrors the Queue tab layout:
   - Recipe list (Treeview) with add/remove/reorder controls
   - Pump step editor (speed/volume/port/pause)
-  - Method library browser (from methods/library_map.json) with search/filter
+  - Method library browser (from configured local library_map.json) with search/filter
 
 This tab does not execute; it only composes recipe items for later use.
 """
@@ -22,6 +22,7 @@ from config import (
     BO_ANALYSIS_FILE_GLOB,
     BO_ANALYSIS_OUTPUT_DIR,
     BO_DEFAULT_CONFIG_PATH,
+    RECIPE_DIR,
 )
 from core.bo_session import load_bo_config, normalize_bo_config
 from gui.widgets import FlowFrame
@@ -40,12 +41,11 @@ class RecipeMakerTab:
         self._last_selected = None
         self._style = ttk.Style(self._frame)
         self._repo_root = Path(__file__).resolve().parents[1]
-        self._recipe_root = self._repo_root / "recipe_maker"
+        self._recipe_root = Path(RECIPE_DIR).expanduser().resolve()
         self._default_blocks_dir = (self._repo_root / BLOCKS_DIR).resolve()
-        self._custom_blocks_dir = (self._repo_root / "recipe_maker" / "custom_blocks").resolve()
-        self._saved_blocks_dir = (self._repo_root / "recipe_maker" / "saved_recipes").resolve()
+        self._custom_blocks_dir = (self._recipe_root / "custom_blocks").resolve()
+        self._saved_blocks_dir = (self._recipe_root / "saved_recipes").resolve()
         self._recipe_root.mkdir(parents=True, exist_ok=True)
-        self._default_blocks_dir.mkdir(parents=True, exist_ok=True)
         self._custom_blocks_dir.mkdir(parents=True, exist_ok=True)
         self._saved_blocks_dir.mkdir(parents=True, exist_ok=True)
         self._build()
@@ -1128,8 +1128,8 @@ class RecipeMakerTab:
         hint = ttk.Label(
             parent,
             text=(
-                "Blocks are predefined sequences stored in recipe_maker/default_blocks/, "
-                "recipe_maker/custom_blocks/, and recipe_maker/saved_recipes/."
+                "Blocks are predefined sequences stored in bundled default_blocks "
+                "and local custom_blocks/saved_recipes folders."
             ),
             foreground="#666",
         )
@@ -1191,7 +1191,7 @@ class RecipeMakerTab:
         if not self._blocks:
             self._block_tree.insert(
                 "", "end",
-                values=("No blocks found", "recipe_maker/default_blocks, custom_blocks, or saved_recipes"),
+                values=("No blocks found", "bundled default_blocks or local recipe folders"),
             )
 
     def _add_selected_block(self):

@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .DS_Store
 *.log
+local_config.json
 measurement_data/*
 methods/library/mux_methods/*
 analysis_outputs/

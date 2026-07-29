@@ -3,7 +3,8 @@
 Persistent library of MethodSCRIPT files.
 
 The library_map is a JSON file that survives across sessions. It maps a
-parameter-based hash to a canonical .ms file stored in methods/library/.
+parameter-based hash to a canonical .ms file stored in the configured
+machine-local methods library.
 
 The hash is computed from parameters (technique + raw param values +
 mux channel), NOT from generated script text, so the same experimental
@@ -19,7 +20,9 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-_METHODS_ROOT = Path(__file__).resolve().parent
+from config import METHODS_DIR
+
+_METHODS_ROOT = Path(METHODS_DIR).expanduser()
 _LIBRARY_DIR = _METHODS_ROOT / "library"
 _MUX_LIBRARY_DIR = _LIBRARY_DIR / "mux_methods"
 _ARCHIVE_DIR = _METHODS_ROOT / "archive"
@@ -29,10 +32,10 @@ _map: dict = {}
 
 
 def _ensure_dirs():
-    _METHODS_ROOT.mkdir(exist_ok=True)
-    _LIBRARY_DIR.mkdir(exist_ok=True)
-    _MUX_LIBRARY_DIR.mkdir(exist_ok=True)
-    _ARCHIVE_DIR.mkdir(exist_ok=True)
+    _METHODS_ROOT.mkdir(parents=True, exist_ok=True)
+    _LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
+    _MUX_LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
+    _ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _normalize_mux_channel(mux_channel) -> Optional[int]:

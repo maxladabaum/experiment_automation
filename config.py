@@ -1,7 +1,8 @@
 """
 config.py — Application-wide constants and defaults.
 
-Edit this file to change hardware defaults, paths, and version info.
+Machine-specific hardware ports and data paths can be overridden by a local
+JSON config file outside this repository. See local_config.example.json.
 All other modules import from here — never hardcode constants elsewhere.
 """
 
@@ -9,27 +10,139 @@ from pathlib import Path
 import json
 import os
 
+
+def _default_local_config_path() -> Path:
+    configured = os.getenv("EA_LOCAL_CONFIG_PATH", "").strip()
+    if configured:
+        return Path(configured).expanduser()
+
+    local_app_data = os.getenv("LOCALAPPDATA", "").strip()
+    if local_app_data:
+        return Path(local_app_data) / "ExperimentAutomation" / "local_config.json"
+
+    return Path.home() / ".experiment_automation" / "local_config.json"
+
+
+LOCAL_CONFIG_PATH = _default_local_config_path()
+
+
+def _load_local_config() -> dict:
+    try:
+        with open(LOCAL_CONFIG_PATH, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+_LOCAL_CONFIG = _load_local_config()
+
+
+def _local_value(key: str, default=None):
+    return _LOCAL_CONFIG.get(key, default)
+
+
+def _env_or_local(env_name: str, local_key: str, default=""):
+    value = os.getenv(env_name)
+    if value is not None:
+        return value
+    return _local_value(local_key, default)
+
+
+def _as_int(value, default: int) -> int:
+    try:
+        if value in (None, ""):
+            return default
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_com_port_int(value, default: int) -> int:
+    if isinstance(value, str) and value.strip().upper().startswith("COM"):
+        value = value.strip()[3:].strip()
+    return _as_int(value, default)
+
+
+def _as_float(value, default: float) -> float:
+    try:
+        if value in (None, ""):
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_path(value, default) -> Path:
+    raw = default if value in (None, "") else value
+    return Path(str(raw)).expanduser()
+
+
+def _as_string_list(value, default):
+    if value in (None, ""):
+        return list(default)
+    if isinstance(value, str):
+        return [part.strip() for part in value.split(",") if part.strip()]
+    if isinstance(value, (list, tuple)):
+        return [str(part).strip() for part in value if str(part).strip()]
+    return list(default)
+
+
 # ── Version ──────────────────────────────────────────────────────────────────
 APP_VERSION = "2.1.2"
 
 # ── Pump hardware defaults ────────────────────────────────────────────────────
-PUMP_DEFAULT_COM_PORT   = 8
-PUMP_DEFAULT_BAUD       = 9600
-PUMP_DEFAULT_DEV        = 1
-PUMP_DEFAULT_STEPS      = 100_000   # steps / stroke (generic default)
-PUMP_DEFAULT_SYRINGE    = 1_250.0   # µL (generic default)
+PUMP_DEFAULT_COM_PORT = _as_com_port_int(
+    _env_or_local("EA_PUMP_COM_PORT", "pump_com_port", 8), 8
+)
+PUMP_DEFAULT_BAUD = _as_int(
+    _env_or_local("EA_PUMP_BAUD", "pump_baud", 9600), 9600
+)
+PUMP_DEFAULT_DEV = _as_int(
+    _env_or_local("EA_PUMP_DEV", "pump_dev", 1), 1
+)
+PUMP_DEFAULT_STEPS = _as_int(
+    _env_or_local("EA_PUMP_STEPS", "pump_steps", 100_000), 100_000
+)   # steps / stroke (generic default)
+PUMP_DEFAULT_SYRINGE = _as_float(
+    _env_or_local("EA_PUMP_SYRINGE_UL", "pump_syringe_ul", 1_250.0), 1_250.0
+)   # µL (generic default)
 PUMP_SPEED_MIN          = 1
 PUMP_SPEED_MAX          = 40
 
 # Calibrated values for the Cavro Centris w/ 250 µL syringe
-PREFERRED_STEPS_PER_STROKE  = 181_490
-PREFERRED_SYRINGE_UL        = 250.0
+PREFERRED_STEPS_PER_STROKE = _as_int(
+    _env_or_local(
+        "EA_PREFERRED_STEPS_PER_STROKE",
+        "preferred_steps_per_stroke",
+        181_490,
+    ),
+    181_490,
+)
+PREFERRED_SYRINGE_UL = _as_float(
+    _env_or_local("EA_PREFERRED_SYRINGE_UL", "preferred_syringe_ul", 250.0),
+    250.0,
+)
 
 # ── File / folder paths ───────────────────────────────────────────────────────
-METHODS_DIR     = Path("methods")           # where .ms scripts are saved
-DATA_DIR        = Path(r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)")  # where measurement CSVs land
+DATA_DIR = _as_path(  # where measurement CSVs land
+    _env_or_local(
+        "EA_DATA_DIR",
+        "data_dir",
+        r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)",
+    ),
+    r"C:\Users\Chien Lab\Desktop\Data_Drive\unc(master)",
+)
 #DATA_DIR        = Path("measurement_data") #for local testing purposes
-BLOCKS_DIR      = Path("recipe_maker") / "default_blocks"  # where block definitions are saved
+METHODS_DIR = _as_path(  # where user-created .ms scripts and library_map.json are saved
+    _env_or_local("EA_METHODS_DIR", "methods_dir", DATA_DIR / "methods"),
+    DATA_DIR / "methods",
+)
+RECIPE_DIR = _as_path(  # where user-created recipes and custom blocks are saved
+    _env_or_local("EA_RECIPE_DIR", "recipe_dir", DATA_DIR / "recipe_maker"),
+    DATA_DIR / "recipe_maker",
+)
+BLOCKS_DIR      = Path("recipe_maker") / "default_blocks"  # bundled default block definitions
 SAVE_DATED_METHOD_COPIES = False            # if True, also write methods/YYYY-MM-DD/*.ms working copies
 # Bayesian optimization integration (optional)
 BO_CONFIG_DIR = Path(os.getenv("EA_BO_CONFIG_DIR", str(Path("optimizer") / "bo_configs")))
@@ -94,8 +207,21 @@ BO_EXTERNAL_ANALYSIS_MODE = os.getenv(
 #keep in mind that methods are already double saved under library and the experiments where they are used
 
 # ── Serial device detection keywords ─────────────────────────────────────────
-DEVICE_KEYWORDS = ["ESPicoDev", "EmStat", "USB Serial Port", "FTDI"]
-DEVICE_BAUDRATE = 230_400
+DEVICE_KEYWORDS = _as_string_list(
+    _env_or_local(
+        "EA_DEVICE_KEYWORDS",
+        "device_keywords",
+        ["ESPicoDev", "EmStat", "USB Serial Port", "FTDI"],
+    ),
+    ["ESPicoDev", "EmStat", "USB Serial Port", "FTDI"],
+)
+DEVICE_BAUDRATE = _as_int(
+    _env_or_local("EA_DEVICE_BAUDRATE", "device_baudrate", 230_400),
+    230_400,
+)
+DEVICE_DEFAULT_PORT = str(
+    _env_or_local("EA_POTENTIOSTAT_PORT", "potentiostat_port", "") or ""
+).strip()
 
 # ── GUI geometry ──────────────────────────────────────────────────────────────
 WINDOW_GEOMETRY = "1400x900"
