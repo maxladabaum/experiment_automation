@@ -151,6 +151,15 @@ class PumpCtrl:
         self._plunger_steps = clamped
         self._sync_backend_plunger()
 
+    def _get_last_answer(self):
+        try:
+            return (self._backend.PumpGetLastAnswer(self.dev) or "").strip()
+        except Exception:
+            try:
+                return (self._backend.PumpGetLastAnswer() or "").strip()
+            except Exception:
+                return ""
+
 
     def connect(self, com_port:int, baud:int, dev:int):
         if self.connected: return
@@ -177,6 +186,16 @@ class PumpCtrl:
             except Exception: pass
 
             self._backend.PumpInitComm(self.com_port)
+            try:
+                self._backend.PumpSendCommand("Q", self.dev, "")
+            except Exception as probe_exc:
+                try:
+                    self._backend.PumpExitComm()
+                except Exception:
+                    pass
+                raise RuntimeError(
+                    f"COM{self.com_port} opened, but pump address {self.dev} did not respond: {probe_exc}"
+                )
             self.connected = True
             self._sync_backend_plunger()
             self._log("Connected.")
@@ -199,8 +218,7 @@ class PumpCtrl:
             try: self._backend.PumpSendNoWait(cmd, self.dev)
             except Exception: pass
         time.sleep(wait_s)
-        try: return (self._backend.PumpGetLastAnswer(self.dev) or "").strip()
-        except Exception: return ""
+        return self._get_last_answer()
 
     def initialize(self):
         ans = self._send("ZR", 1.2)
