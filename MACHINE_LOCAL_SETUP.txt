@@ -68,12 +68,16 @@ data tree. Bundled default program resources remain in the Git repository.
 3. COMPLETED-QUEUE ARCHIVES
 ---------------------------
 
-Set session_archive_dir to the shared network destination. Example:
+Set session_archive_dir to that computer's station-specific folder inside the
+shared network destination. Example:
 
-  "session_archive_dir": "\\\\100.82.216.111\\Data_Drive"
+  "session_archive_dir": "\\\\100.82.216.111\\Data_Drive\\young_nephew(setup_3)"
 
 The share may also be mapped as Z:, but the UNC path is preferred because drive
 letter mappings can differ between Windows accounts and launch methods.
+
+Use a different named subfolder for each station. Do not point a station at the
+Data_Drive root unless files from all stations are intentionally being mixed.
 
 When a queue finishes, the application:
 
