@@ -496,6 +496,7 @@ class AutomatedTitrationTab:
             copy.deepcopy(self._bo_locked_settings),
             copy.deepcopy(self._bo_locked_plan),
         )
+        start_index = len(self._session.measurement_queue)
         for item in self._recipe:
             if item.get("type") == "SWV":
                 queue_item = self._materialize_swv_item(item)
@@ -509,7 +510,7 @@ class AutomatedTitrationTab:
         self._status_var.set(
             f"BO complete; queued {len(self._recipe)} locked autotitration steps."
         )
-        self._run_queue()
+        self._run_queue(start_index)
 
     def _refresh_manual_tree(self):
         for row in self._manual_tree.get_children():
@@ -754,6 +755,13 @@ class AutomatedTitrationTab:
                 point="Setup",
             )
 
+        # Capture the starting state before the first concentration change.
+        self._append_swv_measurements(
+            recipe,
+            settings=settings,
+            point_label="Initial (before titration)",
+        )
+
         for point in plan:
             point_label = f"{point.target_concentration_um:g} µM"
             if point.stock_added_ul > 1e-9:
@@ -839,52 +847,11 @@ class AutomatedTitrationTab:
                     }
                 )
 
-            # Complete one pass across every configured channel before starting
-            # the next replicate (for example: 1,2,3,1,2,3).
-            for replicate in range(1, settings["replicates"] + 1):
-                for group in self._parameter_groups:
-                    for channel in group.get("channels", []):
-                        recipe.append(
-                            {
-                                "type": "SWV",
-                                "status": "pending",
-                                "details": (
-                                    f"{point_label} | optimized | {group['name']} | "
-                                    f"MUX ch {channel} | "
-                                    f"rep {replicate}/{settings['replicates']}"
-                                ),
-                                "_point": point_label,
-                                "_titration_group": copy.deepcopy(group),
-                                "_mux_channel": int(channel),
-                                "_swv_source": "optimized",
-                            }
-                        )
-                for group in self._parameter_groups:
-                    for channel in group.get("channels", []):
-                        channel = int(channel)
-                        manual_params = getattr(
-                            self, "_manual_channel_params", {}
-                        ).get(channel)
-                        if manual_params is None:
-                            continue
-                        manual_group = copy.deepcopy(group)
-                        manual_group["name"] = f"Manual ch {channel}"
-                        manual_group["params"] = copy.deepcopy(manual_params)
-                        manual_group.pop("session_id", None)
-                        recipe.append(
-                            {
-                                "type": "SWV",
-                                "status": "pending",
-                                "details": (
-                                    f"{point_label} | manual | MUX ch {channel} | "
-                                    f"rep {replicate}/{settings['replicates']}"
-                                ),
-                                "_point": point_label,
-                                "_titration_group": manual_group,
-                                "_mux_channel": channel,
-                                "_swv_source": "manual",
-                            }
-                        )
+            self._append_swv_measurements(
+                recipe,
+                settings=settings,
+                point_label=point_label,
+            )
 
         if plan and plan[-1].volume_remaining_ul > 1e-9:
             self._append_transfer(
@@ -911,6 +878,54 @@ class AutomatedTitrationTab:
                 point="Final cleanup",
             )
         return recipe
+
+    def _append_swv_measurements(self, recipe, *, settings, point_label):
+        # Complete one pass across every configured channel before starting
+        # the next replicate (for example: 1,2,3,1,2,3).
+        for replicate in range(1, settings["replicates"] + 1):
+            for group in self._parameter_groups:
+                for channel in group.get("channels", []):
+                    recipe.append(
+                        {
+                            "type": "SWV",
+                            "status": "pending",
+                            "details": (
+                                f"{point_label} | optimized | {group['name']} | "
+                                f"MUX ch {channel} | "
+                                f"rep {replicate}/{settings['replicates']}"
+                            ),
+                            "_point": point_label,
+                            "_titration_group": copy.deepcopy(group),
+                            "_mux_channel": int(channel),
+                            "_swv_source": "optimized",
+                        }
+                    )
+            for group in self._parameter_groups:
+                for channel in group.get("channels", []):
+                    channel = int(channel)
+                    manual_params = getattr(
+                        self, "_manual_channel_params", {}
+                    ).get(channel)
+                    if manual_params is None:
+                        continue
+                    manual_group = copy.deepcopy(group)
+                    manual_group["name"] = f"Manual ch {channel}"
+                    manual_group["params"] = copy.deepcopy(manual_params)
+                    manual_group.pop("session_id", None)
+                    recipe.append(
+                        {
+                            "type": "SWV",
+                            "status": "pending",
+                            "details": (
+                                f"{point_label} | manual | MUX ch {channel} | "
+                                f"rep {replicate}/{settings['replicates']}"
+                            ),
+                            "_point": point_label,
+                            "_titration_group": manual_group,
+                            "_mux_channel": channel,
+                            "_swv_source": "manual",
+                        }
+                    )
 
     def _append_air_assisted_stock_delivery(
         self,

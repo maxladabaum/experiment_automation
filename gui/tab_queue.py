@@ -1031,6 +1031,23 @@ class QueueTab:
         except Exception:
             messagebox.showerror("Selection Error", "Could not determine selected item.")
             return
+        self.run_from_index(idx)
+
+    def run_from_index(self, idx: int):
+        """Start queue execution at an explicit index without replaying prior items."""
+        self._reset_reorder()
+        if not self._session.measurement_queue:
+            messagebox.showwarning("Empty Queue", "No items in queue."); return
+        if self._session.is_running:
+            messagebox.showwarning("Already Running", "Queue already running."); return
+        try:
+            idx = int(idx)
+        except (TypeError, ValueError):
+            messagebox.showerror("Queue Error", "Invalid queue start index.")
+            return
+        if idx < 0 or idx >= len(self._session.measurement_queue):
+            messagebox.showerror("Queue Error", "Queue start index is out of range.")
+            return
         self._session.is_running = True
         self._session.update_queue_status(
             state="running",
@@ -1055,7 +1072,7 @@ class QueueTab:
             bo_total_sets=None,
         )
         self.clear_log()
-        self.log("Queue start from selected requested.")
+        self.log(f"Queue start requested from item {idx + 1}.")
         self.log(f"Measurement simulation: {'ON' if self._session.simulate_measurements else 'OFF'}")
         self._announce_queue_start(start_index=idx)
         self._copy_queue_file("run_queue_from_selected")

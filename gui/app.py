@@ -210,7 +210,7 @@ class ElectrochemGUI:
             session=self._session,
             on_get_best_parameters=self._bo_tab.get_best_parameter_groups,
             on_send_to_queue=self._queue_tab.add_item,
-            on_run_queue=self._queue_tab.run_queue,
+            on_run_queue=self._queue_tab.run_from_index,
             on_lock_for_bo=self._return_to_bo_setup,
         )
         self._bo_frame = bo_frame

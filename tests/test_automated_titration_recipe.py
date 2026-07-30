@@ -268,7 +268,11 @@ def test_swv_replicates_cycle_across_channels():
     )
 
     recipe = tab._build_recipe(settings, plan)
-    swv_items = [item for item in recipe if item["type"] == "SWV"]
+    swv_items = [
+        item for item in recipe
+        if item["type"] == "SWV"
+        and item["_point"] == "Initial (before titration)"
+    ]
 
     assert [item["_mux_channel"] for item in swv_items] == [
         1, 2, 3,
@@ -320,6 +324,7 @@ def test_manual_swv_pass_follows_optimized_pass_each_replicate():
     swv_items = [
         item for item in tab._build_recipe(settings, plan)
         if item["type"] == "SWV"
+        and item["_point"] == "Initial (before titration)"
     ]
 
     assert [
@@ -332,6 +337,41 @@ def test_manual_swv_pass_follows_optimized_pass_each_replicate():
         (1, "manual"), (2, "manual"), (3, "manual"),
     ]
     assert swv_items[3]["_titration_group"]["params"]["frequency"] == 101.0
+
+
+def test_initial_swv_block_precedes_first_stock_addition():
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    tab._parameter_groups = [
+        {"name": "Group 1", "channels": [1, 2, 3]}
+    ]
+    tab._manual_channel_params = {}
+    settings = {
+        "air_port": 9, "stock_port": 5, "buffer_port": 6, "mix_port": 4,
+        "flow_port": 1, "waste_port": 2, "speed": 20,
+        "syringe_capacity": 250.0, "stock_air_spacer": 100.0,
+        "mix_line_air_push": 250.0, "mix_line_volume": 110.0,
+        "initial_buffer_volume": 1000.0, "aliquot_volume": 100.0,
+        "mix_cycles": 0, "mix_volume": 200.0, "equilibration": 0.0,
+        "replicates": 3,
+    }
+    plan = calculate_titration_plan(
+        [10], stock_concentration_um=10_000,
+        initial_buffer_volume_ul=1000, aliquot_volume_ul=100,
+    )
+
+    recipe = tab._build_recipe(settings, plan)
+    initial_swv_indices = [
+        index for index, item in enumerate(recipe)
+        if item["type"] == "SWV"
+        and item["_point"] == "Initial (before titration)"
+    ]
+    first_stock_index = next(
+        index for index, item in enumerate(recipe)
+        if "Stock delivery" in item.get("details", "")
+    )
+
+    assert len(initial_swv_indices) == 9
+    assert max(initial_swv_indices) < first_stock_index
 
 
 def test_new_manual_channels_use_requested_swv_defaults():
@@ -387,6 +427,9 @@ def test_locked_post_bo_titration_materializes_queues_and_starts():
 
     class Session:
         registry = Registry()
+        measurement_queue = [
+            {"type": "BO_AUTO_LOOP", "status": "completed", "details": "Finished BO"}
+        ]
 
     tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
     tab._session = Session()
@@ -408,7 +451,7 @@ def test_locked_post_bo_titration_materializes_queues_and_starts():
     queued = []
     run_calls = []
     tab._send_queue_item = queued.append
-    tab._run_queue = lambda: run_calls.append(True)
+    tab._run_queue = lambda start_index: run_calls.append(start_index)
     tab._status_var = type("Status", (), {"set": lambda self, value: None})()
     optimized = {
         "begin_potential": -0.7, "end_potential": -0.1,
@@ -422,4 +465,4 @@ def test_locked_post_bo_titration_materializes_queues_and_starts():
 
     assert queued
     assert any(item["type"] == "SWV" for item in queued)
-    assert run_calls == [True]
+    assert run_calls == [1]
