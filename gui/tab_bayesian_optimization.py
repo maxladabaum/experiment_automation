@@ -74,6 +74,9 @@ class BayesianOptimizationTab:
         on_refresh_queue,
         on_script_preview,
         on_run_queue=None,
+        on_configure_auto_titration=None,
+        is_auto_titration_locked=None,
+        on_bo_finished=None,
     ):
         self._frame = parent_frame
         self._session = session
@@ -81,6 +84,9 @@ class BayesianOptimizationTab:
         self._refresh_queue = on_refresh_queue
         self._script_preview = on_script_preview
         self._run_queue = on_run_queue
+        self._configure_auto_titration = on_configure_auto_titration
+        self._is_auto_titration_locked = is_auto_titration_locked
+        self._on_bo_finished = on_bo_finished
 
         self._config_path_var = tk.StringVar(value=str(BO_DEFAULT_CONFIG_PATH))
         self._analysis_dir_var = tk.StringVar(value=str(BO_ANALYSIS_OUTPUT_DIR))
@@ -191,6 +197,8 @@ class BayesianOptimizationTab:
         self._status_var = tk.StringVar(value="Load a BO config to begin.")
         self._record_dir_var = tk.StringVar(value="Record folder: (not started)")
         self._auto_target_var = tk.StringVar(value="5")
+        self._run_auto_titration_var = tk.BooleanVar(value=False)
+        self._post_bo_titration_started = False
         self._bo_objective_var = tk.StringVar(value="quality")
         self._paired_batch_size_var = tk.StringVar(value="4")
         self._paired_target_exchange_var = tk.StringVar(value="")
@@ -537,6 +545,12 @@ class BayesianOptimizationTab:
         ttk.Button(cfg, text="Validate", command=self._validate_config).grid(row=5, column=2, padx=2)
         ttk.Button(cfg, text="Load BO Session", command=self._load_bo_session).grid(row=5, column=3, padx=2)
         ttk.Button(cfg, text="Start BO Session", command=self._start_bo_session).grid(row=5, column=4, padx=2)
+        ttk.Checkbutton(
+            cfg,
+            text="Run autotitration when BO finishes",
+            variable=self._run_auto_titration_var,
+            command=self._toggle_auto_titration,
+        ).grid(row=7, column=1, columnspan=4, sticky="w", padx=4, pady=(4, 0))
         self._rebuild_channel_group_entries()
 
         clue = ttk.LabelFrame(left, text="Setup Cues", padding=8)
@@ -3466,6 +3480,66 @@ class BayesianOptimizationTab:
         win.grab_set()
         win.focus_force()
 
+    def _toggle_auto_titration(self):
+        enabled = bool(self._run_auto_titration_var.get())
+        if not callable(self._configure_auto_titration):
+            if enabled:
+                messagebox.showwarning(
+                    "BO Autotitration", "Automated titration is not available."
+                )
+                self._run_auto_titration_var.set(False)
+            return
+        if not enabled:
+            self._configure_auto_titration(False, [])
+            return
+        if self._config is None:
+            messagebox.showwarning("BO Autotitration", "Load a BO config first.")
+            self._run_auto_titration_var.set(False)
+            return
+        self._sync_channel_groups(show_error=False)
+        groups = []
+        for group in channel_groups(self._config):
+            effective = copy.deepcopy(self._config)
+            effective["initial_parameters"] = copy.deepcopy(
+                group.get("initial_parameters")
+                or resolve_initial_parameters(self._config)
+            )
+            groups.append(
+                {
+                    "id": int(group["id"]),
+                    "name": str(group.get("name") or f"Group {group['id']}"),
+                    "channels": list(group.get("channels") or []),
+                    "params": resolve_initial_parameters(effective),
+                    "method_options": copy.deepcopy(
+                        self._config.get("method_options") or {}
+                    ),
+                }
+            )
+        self._configure_auto_titration(True, groups)
+
+    def select_setup_tab(self):
+        self._tabs.select(0)
+
+    def _start_post_bo_titration(self):
+        if (
+            not self._run_auto_titration_var.get()
+            or self._post_bo_titration_started
+            or not callable(self._on_bo_finished)
+        ):
+            return
+        self._post_bo_titration_started = True
+        try:
+            self._on_bo_finished()
+            self._auto_status_var.set(
+                "BO complete; starting the locked automated titration."
+            )
+        except Exception as exc:
+            self._post_bo_titration_started = False
+            self._auto_status_var.set(
+                f"BO complete, but autotitration could not start: {exc}"
+            )
+            messagebox.showerror("BO Autotitration", str(exc))
+
     def _validate_config(self, show_dialog=True):
         if self._config is None:
             return
@@ -4997,6 +5071,19 @@ class BayesianOptimizationTab:
         if self._run_queue is None:
             messagebox.showwarning("Auto Loop", "Queue runner is not wired for automation.")
             return
+        if (
+            self._run_auto_titration_var.get()
+            and (
+                not callable(self._is_auto_titration_locked)
+                or not self._is_auto_titration_locked()
+            )
+        ):
+            messagebox.showwarning(
+                "BO Autotitration",
+                "Configure and lock the automatic titration settings before starting BO.",
+            )
+            return
+        self._post_bo_titration_started = False
         if self._bo_objective_var.get() == "paired_response":
             self._start_paired_auto_loop()
             return
@@ -5135,6 +5222,7 @@ class BayesianOptimizationTab:
                     f"Session={self._bo_session.session_id}; "
                     f"Experiment={experiment_name}.{best_text}"
                 )
+            self._start_post_bo_titration()
             return
         if self._session.is_running:
             return
@@ -5188,6 +5276,7 @@ class BayesianOptimizationTab:
                     f"Paired BO complete: {len(self._bo_session.observations)} paired comparison(s)."
                 )
                 self._tabs.select(3)
+                self._start_post_bo_titration()
             else:
                 self._auto_status_var.set("Paired BO complete, but session folder could not be loaded.")
             return

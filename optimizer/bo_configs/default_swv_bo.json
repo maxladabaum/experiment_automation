@@ -12,8 +12,7 @@
     5,
     6,
     7,
-    8,
-    10
+    8
   ],
   "method_options": {
     "bandwidth": "4k",
@@ -21,7 +20,7 @@
       "mode": "auto",
       "fixed": "100 nA",
       "auto_min": "100 nA",
-      "auto_max": "25 uA"
+      "auto_max": "50 uA"
     }
   },
   "initial_parameters": {
@@ -239,18 +238,18 @@
     }
   },
   "analysis": {
-    "crop_min_v": -0.5,
+    "crop_min_v": -0.55,
     "crop_max_v": 0.0,
     "smooth_window": 15,
     "smooth_polyorder": 2,
     "minima_search_window_v": 0.3,
     "min_peak_height_ua": null,
-    "peak_voltage_min_v": -0.35,
-    "peak_voltage_max_v": 0.0,
-    "left_min_voltage_min_v": null,
-    "left_min_voltage_max_v": null,
-    "right_min_voltage_min_v": null,
-    "right_min_voltage_max_v": null,
+    "peak_voltage_min_v": -0.45,
+    "peak_voltage_max_v": -0.15,
+    "left_min_voltage_min_v": -0.52,
+    "left_min_voltage_max_v": -0.2,
+    "right_min_voltage_min_v": -0.4,
+    "right_min_voltage_max_v": -0.02,
     "min_start_voltage_v": -0.6,
     "scan_windows": "",
     "use_prominent_minima": false,
@@ -272,21 +271,13 @@
       "id": 1,
       "name": "Group 1",
       "channels": [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        10
+        1
       ],
       "exploration": 0.5,
-      "n_initial_points": 250,
-      "candidate_pool_size": 5000,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
       "local_candidate_pool_size": 100,
-      "initial_point_mode": "random",
+      "initial_point_mode": "specific",
       "gp_falloff_fractions": {
         "begin_potential": 0.2,
         "end_potential": 0.2,
@@ -295,6 +286,225 @@
         "frequency": 0.2,
         "conditioning_potential": 0.2,
         "conditioning_time": 0.2
+      },
+      "initial_parameters": {
+        "begin_potential": -0.6,
+        "end_potential": 0.0,
+        "step_potential": 0.002,
+        "amplitude": 0.036,
+        "frequency": 200.0,
+        "conditioning_potential": -0.6,
+        "conditioning_time": 0.0
+      }
+    },
+    {
+      "id": 2,
+      "name": "Group 2",
+      "channels": [
+        2
+      ],
+      "exploration": 0.5,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "specific",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      },
+      "initial_parameters": {
+        "begin_potential": -0.6,
+        "end_potential": 0.0,
+        "step_potential": 0.002,
+        "amplitude": 0.036,
+        "frequency": 200.0,
+        "conditioning_potential": -0.6,
+        "conditioning_time": 0.0
+      }
+    },
+    {
+      "id": 3,
+      "name": "Group 3",
+      "channels": [
+        3
+      ],
+      "exploration": 0.5,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "specific",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      },
+      "initial_parameters": {
+        "begin_potential": -0.6,
+        "end_potential": 0.0,
+        "step_potential": 0.002,
+        "amplitude": 0.036,
+        "frequency": 200.0,
+        "conditioning_potential": -0.6,
+        "conditioning_time": 0.0
+      }
+    },
+    {
+      "id": 4,
+      "name": "Group 4",
+      "channels": [
+        4
+      ],
+      "exploration": 0.5,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "specific",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      },
+      "initial_parameters": {
+        "begin_potential": -0.6,
+        "end_potential": 0.0,
+        "step_potential": 0.002,
+        "amplitude": 0.036,
+        "frequency": 200.0,
+        "conditioning_potential": -0.6,
+        "conditioning_time": 0.0
+      }
+    },
+    {
+      "id": 5,
+      "name": "Group 5",
+      "channels": [
+        5
+      ],
+      "exploration": 0.5,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "specific",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      },
+      "initial_parameters": {
+        "begin_potential": -0.6,
+        "end_potential": 0.0,
+        "step_potential": 0.002,
+        "amplitude": 0.036,
+        "frequency": 200.0,
+        "conditioning_potential": -0.6,
+        "conditioning_time": 0.0
+      }
+    },
+    {
+      "id": 6,
+      "name": "Group 6",
+      "channels": [
+        6
+      ],
+      "exploration": 0.5,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "specific",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      },
+      "initial_parameters": {
+        "begin_potential": -0.6,
+        "end_potential": 0.0,
+        "step_potential": 0.002,
+        "amplitude": 0.036,
+        "frequency": 200.0,
+        "conditioning_potential": -0.6,
+        "conditioning_time": 0.0
+      }
+    },
+    {
+      "id": 7,
+      "name": "Group 7",
+      "channels": [
+        7
+      ],
+      "exploration": 0.5,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "specific",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      },
+      "initial_parameters": {
+        "begin_potential": -0.6,
+        "end_potential": 0.0,
+        "step_potential": 0.002,
+        "amplitude": 0.036,
+        "frequency": 200.0,
+        "conditioning_potential": -0.6,
+        "conditioning_time": 0.0
+      }
+    },
+    {
+      "id": 8,
+      "name": "Group 8",
+      "channels": [
+        8
+      ],
+      "exploration": 0.5,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "specific",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      },
+      "initial_parameters": {
+        "begin_potential": -0.6,
+        "end_potential": 0.0,
+        "step_potential": 0.002,
+        "amplitude": 0.036,
+        "frequency": 200.0,
+        "conditioning_potential": -0.6,
+        "conditioning_time": 0.0
       }
     }
   ],

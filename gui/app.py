@@ -199,13 +199,22 @@ class ElectrochemGUI:
             on_refresh_queue  = self._queue_tab.refresh,
             on_script_preview = self._script_tab.update,
             on_run_queue      = self._queue_tab.run_queue,
+            on_configure_auto_titration=self._configure_post_bo_titration,
+            is_auto_titration_locked=lambda: (
+                self._automated_titration_tab.bo_settings_locked()
+            ),
+            on_bo_finished=self._run_post_bo_titration,
         )
         self._automated_titration_tab = AutomatedTitrationTab(
             parent_frame=titration_frame,
             session=self._session,
             on_get_best_parameters=self._bo_tab.get_best_parameter_groups,
             on_send_to_queue=self._queue_tab.add_item,
+            on_run_queue=self._queue_tab.run_queue,
+            on_lock_for_bo=self._return_to_bo_setup,
         )
+        self._bo_frame = bo_frame
+        self._titration_frame = titration_frame
         self._queue_tab.add_completion_callback(self._bo_tab.on_queue_complete)
         if SESSION_ARCHIVE_DIR is not None:
             self._queue_tab.add_completion_callback(self._archive_session_after_queue)
@@ -278,6 +287,22 @@ class ElectrochemGUI:
             )
     
     # ── Inter-tab wiring helpers ──────────────────────────────────────────────
+
+    def _configure_post_bo_titration(self, enabled, groups):
+        if not enabled:
+            self._automated_titration_tab.cancel_bo_autotitration()
+            return
+        self._automated_titration_tab.prepare_for_bo(groups)
+        self._nb.select(self._titration_frame)
+
+    def _return_to_bo_setup(self):
+        self._bo_tab.select_setup_tab()
+        self._nb.select(self._bo_frame)
+
+    def _run_post_bo_titration(self):
+        groups = self._bo_tab.get_best_parameter_groups()
+        self._nb.select(self._titration_frame)
+        self._automated_titration_tab.run_locked_after_bo(groups)
 
     @staticmethod
     def _scrollable_tab_content(parent, *, min_width=980):

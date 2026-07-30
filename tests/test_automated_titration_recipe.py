@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 
 from gui.tab_automated_titration import AutomatedTitrationTab
 from core.titration import calculate_titration_plan
@@ -228,5 +229,197 @@ def test_recipe_ends_by_draining_calculated_remaining_mix_volume_to_waste():
         for item in cleanup
         if item["type"] == "PUMP_DISPENSE"
     )
-    assert aspirated == pytest.approx(plan[-1].volume_remaining_ul)
-    assert dispensed == pytest.approx(plan[-1].volume_remaining_ul)
+    assert aspirated == pytest.approx(plan[-1].volume_remaining_ul + 250)
+    assert dispensed == pytest.approx(plan[-1].volume_remaining_ul + 250)
+    assert cleanup[-3]["pump_action"]["params"]["volume"] == pytest.approx(250)
+    assert cleanup[-1]["pump_action"]["params"]["volume"] == pytest.approx(250)
+
+
+def test_swv_replicates_cycle_across_channels():
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    tab._parameter_groups = [
+        {"name": "Group 1", "channels": [1, 2]},
+        {"name": "Group 2", "channels": [3]},
+    ]
+    settings = {
+        "air_port": 9,
+        "stock_port": 5,
+        "buffer_port": 6,
+        "mix_port": 4,
+        "flow_port": 1,
+        "waste_port": 2,
+        "speed": 20,
+        "syringe_capacity": 250.0,
+        "stock_air_spacer": 100.0,
+        "mix_line_air_push": 250.0,
+        "mix_line_volume": 75.0,
+        "initial_buffer_volume": 1000.0,
+        "aliquot_volume": 100.0,
+        "mix_cycles": 0,
+        "mix_volume": 200.0,
+        "equilibration": 0.0,
+        "replicates": 3,
+    }
+    plan = calculate_titration_plan(
+        [10],
+        stock_concentration_um=10_000,
+        initial_buffer_volume_ul=settings["initial_buffer_volume"],
+        aliquot_volume_ul=settings["aliquot_volume"],
+    )
+
+    recipe = tab._build_recipe(settings, plan)
+    swv_items = [item for item in recipe if item["type"] == "SWV"]
+
+    assert [item["_mux_channel"] for item in swv_items] == [
+        1, 2, 3,
+        1, 2, 3,
+        1, 2, 3,
+    ]
+    assert [
+        item["details"].rsplit("rep ", 1)[1]
+        for item in swv_items
+    ] == [
+        "1/3", "1/3", "1/3",
+        "2/3", "2/3", "2/3",
+        "3/3", "3/3", "3/3",
+    ]
+
+
+def test_manual_swv_pass_follows_optimized_pass_each_replicate():
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    optimized = {
+        "begin_potential": -0.7,
+        "end_potential": -0.1,
+        "step_potential": 0.002,
+        "amplitude": 0.036,
+        "frequency": 200.0,
+        "conditioning_potential": -0.7,
+        "conditioning_time": 0.0,
+    }
+    tab._parameter_groups = [
+        {"name": "Group 1", "channels": [1, 2, 3], "params": optimized}
+    ]
+    tab._manual_channel_params = {
+        channel: {**optimized, "frequency": 100.0 + channel}
+        for channel in (1, 2, 3)
+    }
+    settings = {
+        "air_port": 9, "stock_port": 5, "buffer_port": 6, "mix_port": 4,
+        "flow_port": 1, "waste_port": 2, "speed": 20,
+        "syringe_capacity": 250.0, "stock_air_spacer": 100.0,
+        "mix_line_air_push": 250.0, "mix_line_volume": 75.0,
+        "initial_buffer_volume": 1000.0, "aliquot_volume": 100.0,
+        "mix_cycles": 0, "mix_volume": 200.0, "equilibration": 0.0,
+        "replicates": 2,
+    }
+    plan = calculate_titration_plan(
+        [10], stock_concentration_um=10_000,
+        initial_buffer_volume_ul=1000, aliquot_volume_ul=100,
+    )
+
+    swv_items = [
+        item for item in tab._build_recipe(settings, plan)
+        if item["type"] == "SWV"
+    ]
+
+    assert [
+        (item["_mux_channel"], item["_swv_source"])
+        for item in swv_items
+    ] == [
+        (1, "optimized"), (2, "optimized"), (3, "optimized"),
+        (1, "manual"), (2, "manual"), (3, "manual"),
+        (1, "optimized"), (2, "optimized"), (3, "optimized"),
+        (1, "manual"), (2, "manual"), (3, "manual"),
+    ]
+    assert swv_items[3]["_titration_group"]["params"]["frequency"] == 101.0
+
+
+def test_new_manual_channels_use_requested_swv_defaults():
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    optimized = {
+        "begin_potential": -0.65,
+        "end_potential": -0.15,
+        "step_potential": 0.01,
+        "amplitude": 0.1,
+        "frequency": 50.0,
+        "conditioning_potential": -0.7,
+        "conditioning_time": 2.0,
+    }
+    manual = tab._default_manual_params(optimized)
+
+    assert manual["amplitude"] == pytest.approx(0.036)
+    assert manual["step_potential"] == pytest.approx(0.002)
+    assert manual["frequency"] == pytest.approx(200.0)
+    assert manual["begin_potential"] == pytest.approx(-0.65)
+    assert manual["conditioning_time"] == pytest.approx(2.0)
+
+
+def test_initial_buffer_transfer_can_be_bypassed():
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    tab._parameter_groups = []
+    settings = {
+        "air_port": 9, "stock_port": 5, "buffer_port": 6, "mix_port": 4,
+        "flow_port": 1, "waste_port": 2, "speed": 20,
+        "syringe_capacity": 250.0, "stock_air_spacer": 100.0,
+        "mix_line_air_push": 250.0, "mix_line_volume": 75.0,
+        "initial_buffer_volume": 1000.0, "aliquot_volume": 100.0,
+        "mix_cycles": 0, "mix_volume": 200.0, "equilibration": 0.0,
+        "replicates": 1, "skip_initial_buffer": True,
+    }
+    plan = calculate_titration_plan(
+        [10], stock_concentration_um=10_000,
+        initial_buffer_volume_ul=1000, aliquot_volume_ul=100,
+    )
+
+    recipe = tab._build_recipe(settings, plan)
+
+    assert recipe[0]["type"] == "PUMP_INIT"
+    assert not any(item.get("_point") == "Setup" for item in recipe)
+
+
+def test_locked_post_bo_titration_materializes_queues_and_starts():
+    class Registry:
+        def save_script(self, *_args, **_kwargs):
+            return Path("manual-test.ms"), "manual-test"
+
+        def hash_key_for(self, _path):
+            return "test-hash"
+
+    class Session:
+        registry = Registry()
+
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    tab._session = Session()
+    tab._manual_channel_params = {}
+    tab._bo_locked_settings = {
+        "air_port": 9, "stock_port": 5, "buffer_port": 6, "mix_port": 4,
+        "flow_port": 1, "waste_port": 2, "speed": 20,
+        "initial_buffer_speed": 7, "final_cleanup_speed": 11,
+        "syringe_capacity": 250.0, "stock_air_spacer": 100.0,
+        "mix_line_air_push": 250.0, "mix_line_volume": 75.0,
+        "initial_buffer_volume": 1000.0, "aliquot_volume": 100.0,
+        "mix_cycles": 0, "mix_volume": 200.0, "equilibration": 0.0,
+        "replicates": 1, "skip_initial_buffer": True,
+    }
+    tab._bo_locked_plan = calculate_titration_plan(
+        [10], stock_concentration_um=10_000,
+        initial_buffer_volume_ul=1000, aliquot_volume_ul=100,
+    )
+    queued = []
+    run_calls = []
+    tab._send_queue_item = queued.append
+    tab._run_queue = lambda: run_calls.append(True)
+    tab._status_var = type("Status", (), {"set": lambda self, value: None})()
+    optimized = {
+        "begin_potential": -0.7, "end_potential": -0.1,
+        "step_potential": 0.002, "amplitude": 0.036, "frequency": 200.0,
+        "conditioning_potential": -0.7, "conditioning_time": 0.0,
+    }
+
+    tab.run_locked_after_bo([
+        {"name": "Group 1", "channels": [1], "params": optimized}
+    ])
+
+    assert queued
+    assert any(item["type"] == "SWV" for item in queued)
+    assert run_calls == [True]
