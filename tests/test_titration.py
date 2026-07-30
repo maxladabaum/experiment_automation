@@ -38,6 +38,35 @@ def test_zero_first_point_requires_no_stock():
     assert point.volume_remaining_ul == 9500
 
 
+def test_bubble_clear_liquid_loss_reduces_remaining_volume():
+    point = calculate_titration_plan(
+        [10],
+        stock_concentration_um=10_000,
+        initial_buffer_volume_ul=10_000,
+        aliquot_volume_ul=500,
+        bubble_liquid_loss_per_clear_ul=50,
+        clears_per_stock_addition=4,
+    )[0]
+
+    assert point.bubble_clear_loss_ul == pytest.approx(200)
+    assert point.volume_remaining_ul == pytest.approx(
+        point.volume_after_stock_ul - 200 - 500
+    )
+
+
+def test_zero_concentration_has_no_stock_related_bubble_loss():
+    point = calculate_titration_plan(
+        [0],
+        stock_concentration_um=10_000,
+        initial_buffer_volume_ul=10_000,
+        aliquot_volume_ul=500,
+        bubble_liquid_loss_per_clear_ul=50,
+        clears_per_stock_addition=4,
+    )[0]
+
+    assert point.bubble_clear_loss_ul == 0
+
+
 def test_descending_targets_are_rejected():
     with pytest.raises(ValueError, match="nondecreasing"):
         calculate_titration_plan(

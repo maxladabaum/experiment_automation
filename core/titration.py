@@ -18,6 +18,7 @@ class TitrationPoint:
     volume_before_stock_ul: float
     stock_added_ul: float
     volume_after_stock_ul: float
+    bubble_clear_loss_ul: float
     aliquot_removed_ul: float
     volume_remaining_ul: float
 
@@ -42,6 +43,8 @@ def calculate_titration_plan(
     stock_concentration_um: float,
     initial_buffer_volume_ul: float,
     aliquot_volume_ul: float,
+    bubble_liquid_loss_per_clear_ul: float = 0.0,
+    clears_per_stock_addition: int = 0,
 ) -> List[TitrationPoint]:
     """Calculate exact stock additions for an ascending serial titration.
 
@@ -52,6 +55,18 @@ def calculate_titration_plan(
     stock = _positive_finite(stock_concentration_um, "Stock concentration")
     volume = _positive_finite(initial_buffer_volume_ul, "Initial buffer volume")
     aliquot = _positive_finite(aliquot_volume_ul, "Aliquot volume")
+    try:
+        bubble_loss_per_clear = float(bubble_liquid_loss_per_clear_ul)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Bubble liquid loss must be a number.") from exc
+    if not math.isfinite(bubble_loss_per_clear) or bubble_loss_per_clear < 0:
+        raise ValueError("Bubble liquid loss must be zero or greater.")
+    try:
+        clear_count = int(clears_per_stock_addition)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Clear count must be an integer.") from exc
+    if clear_count < 0:
+        raise ValueError("Clear count must be zero or greater.")
     targets = [float(value) for value in desired_concentrations_um]
     if not targets:
         raise ValueError("Enter at least one desired concentration.")
@@ -79,13 +94,20 @@ def calculate_titration_plan(
         volume_after_stock = volume + stock_added
         analyte_after_stock = analyte_amount + stock * stock_added
         achieved = analyte_after_stock / volume_after_stock
-        if aliquot > volume_after_stock + 1e-9:
+        bubble_clear_loss = (
+            bubble_loss_per_clear * clear_count
+            if stock_added > 1e-9
+            else 0.0
+        )
+        total_removed = bubble_clear_loss + aliquot
+        if total_removed > volume_after_stock + 1e-9:
             raise ValueError(
                 f"Point {index} has only {volume_after_stock:g} µL available, "
-                f"less than the {aliquot:g} µL aliquot."
+                f"less than the {total_removed:g} µL combined bubble-clear "
+                "loss and flow-cell aliquot."
             )
 
-        remaining = max(0.0, volume_after_stock - aliquot)
+        remaining = max(0.0, volume_after_stock - total_removed)
         points.append(
             TitrationPoint(
                 index=index,
@@ -94,6 +116,7 @@ def calculate_titration_plan(
                 volume_before_stock_ul=volume,
                 stock_added_ul=stock_added,
                 volume_after_stock_ul=volume_after_stock,
+                bubble_clear_loss_ul=bubble_clear_loss,
                 aliquot_removed_ul=aliquot,
                 volume_remaining_ul=remaining,
             )

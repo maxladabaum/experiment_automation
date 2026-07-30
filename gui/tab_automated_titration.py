@@ -60,21 +60,23 @@ class AutomatedTitrationTab:
         self._waste_port_var = tk.StringVar(value="2")
         self._air_port_var = tk.StringVar(value="9")
         self._mix_line_volume_var = tk.StringVar(value="110")
+        self._mix_line_bubble_volume_var = tk.StringVar(value="50")
+        self._bubble_liquid_loss_var = tk.StringVar(value="50")
         self._stock_air_spacer_var = tk.StringVar(value="100")
         self._mix_line_air_push_var = tk.StringVar(value="250")
-        self._pump_speed_var = tk.StringVar(value="20")
-        self._initial_buffer_speed_var = tk.StringVar(value="20")
-        self._final_cleanup_speed_var = tk.StringVar(value="20")
+        self._pump_speed_var = tk.StringVar(value="15")
+        self._initial_buffer_speed_var = tk.StringVar(value="12")
+        self._final_cleanup_speed_var = tk.StringVar(value="12")
         self._syringe_capacity_var = tk.StringVar(value=f"{PREFERRED_SYRINGE_UL:g}")
-        self._mix_volume_var = tk.StringVar(value="200")
-        self._mix_cycles_var = tk.StringVar(value="3")
-        self._equilibration_var = tk.StringVar(value="0")
+        self._mix_volume_var = tk.StringVar(value="250")
+        self._mix_cycles_var = tk.StringVar(value="1")
+        self._equilibration_var = tk.StringVar(value="180")
 
         self._stock_concentration_var = tk.StringVar(value="10000")
         self._initial_buffer_volume_var = tk.StringVar(value="10000")
         self._aliquot_volume_var = tk.StringVar(value="500")
         self._concentrations_var = tk.StringVar(value="10, 25, 50, 100")
-        self._replicates_var = tk.StringVar(value="1")
+        self._replicates_var = tk.StringVar(value="10")
         self._skip_initial_buffer_var = tk.BooleanVar(value=False)
 
         self._build()
@@ -220,33 +222,39 @@ class AutomatedTitrationTab:
             pump, 6, "Port 4 line volume (µL):", self._mix_line_volume_var
         )
         self._entry_row(
-            pump, 7, "Stock air spacer (µL):", self._stock_air_spacer_var
+            pump, 7, "Port 4 bubble volume (µL):", self._mix_line_bubble_volume_var
         )
         self._entry_row(
-            pump, 8, "Port 4 air push (µL):", self._mix_line_air_push_var
-        )
-        self._entry_row(pump, 9, "Pump speed (1–40):", self._pump_speed_var)
-        self._entry_row(
-            pump, 10, "Initial buffer speed (1–40):", self._initial_buffer_speed_var
+            pump, 8, "Estimated liquid loss per clear (µL):", self._bubble_liquid_loss_var
         )
         self._entry_row(
-            pump, 11, "Final cleanup speed (1–40):", self._final_cleanup_speed_var
+            pump, 9, "Stock air spacer (µL):", self._stock_air_spacer_var
         )
-        self._entry_row(pump, 12, "Syringe capacity (µL):", self._syringe_capacity_var)
-        self._entry_row(pump, 13, "Mix volume per cycle (µL):", self._mix_volume_var)
-        self._entry_row(pump, 14, "Mix cycles after stock:", self._mix_cycles_var)
-        self._entry_row(pump, 15, "Flow-cell equilibration (s):", self._equilibration_var)
+        self._entry_row(
+            pump, 10, "Port 4 air push (µL):", self._mix_line_air_push_var
+        )
+        self._entry_row(pump, 11, "Pump speed (1–40):", self._pump_speed_var)
+        self._entry_row(
+            pump, 12, "Initial buffer speed (1–40):", self._initial_buffer_speed_var
+        )
+        self._entry_row(
+            pump, 13, "Final cleanup speed (1–40):", self._final_cleanup_speed_var
+        )
+        self._entry_row(pump, 14, "Syringe capacity (µL):", self._syringe_capacity_var)
+        self._entry_row(pump, 15, "Mix volume per cycle (µL):", self._mix_volume_var)
+        self._entry_row(pump, 16, "Mix cycles after stock:", self._mix_cycles_var)
+        self._entry_row(pump, 17, "Flow-cell equilibration (s):", self._equilibration_var)
         ttk.Label(
             pump,
             text=(
                 "Stock delivery below one syringe capacity uses spacer air, then "
                 "stock. Larger deliveries omit spacer air. The port-4 air push and "
-                "line-volume discard occur before mixing in both cases."
+                "line plus bubble-volume discard occur before mixing in both cases."
             ),
             wraplength=430,
             justify="left",
             foreground="#666666",
-        ).grid(row=16, column=0, columnspan=2, sticky="w", pady=(10, 0))
+        ).grid(row=18, column=0, columnspan=2, sticky="w", pady=(10, 0))
 
         plan = ttk.LabelFrame(setup, text="Titration Plan", padding=10)
         plan.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
@@ -276,9 +284,9 @@ class AutomatedTitrationTab:
             plan,
             text=(
                 "Enter ascending concentrations separated by commas or spaces. "
-                "Before every point after the first, the prior flow-cell aliquot is "
-                "moved from port 1 to waste at port 2. Bypassing initial buffer still "
-                "uses the entered starting volume for concentration calculations."
+                "At each point, newly titrated solution is transferred from the mixing "
+                "tube into the flow cell. Bypassing initial buffer still uses the "
+                "entered starting volume for concentration calculations."
             ),
             wraplength=430,
             justify="left",
@@ -299,6 +307,7 @@ class AutomatedTitrationTab:
             "Mix Volume Before",
             "Stock Addition",
             "Volume After Stock",
+            "Bubble-Clear Loss",
             "Flow-cell Aliquot",
             "Remaining",
         )
@@ -467,6 +476,8 @@ class AutomatedTitrationTab:
                 stock_concentration_um=settings["stock_concentration"],
                 initial_buffer_volume_ul=settings["initial_buffer_volume"],
                 aliquot_volume_ul=settings["aliquot_volume"],
+                bubble_liquid_loss_per_clear_ul=settings["bubble_liquid_loss"],
+                clears_per_stock_addition=1 + settings["mix_cycles"],
             )
             expected_channels = {
                 int(channel)
@@ -635,6 +646,8 @@ class AutomatedTitrationTab:
                 stock_concentration_um=settings["stock_concentration"],
                 initial_buffer_volume_ul=settings["initial_buffer_volume"],
                 aliquot_volume_ul=settings["aliquot_volume"],
+                bubble_liquid_loss_per_clear_ul=settings["bubble_liquid_loss"],
+                clears_per_stock_addition=1 + settings["mix_cycles"],
             )
             self._recipe = self._build_recipe(settings, self._plan)
         except Exception as exc:
@@ -669,6 +682,7 @@ class AutomatedTitrationTab:
                     f"{point.volume_before_stock_ul:.3f} µL",
                     f"{point.stock_added_ul:.3f} µL",
                     f"{point.volume_after_stock_ul:.3f} µL",
+                    f"{point.bubble_clear_loss_ul:.3f} µL",
                     f"{point.aliquot_removed_ul:.3f} µL",
                     f"{point.volume_remaining_ul:.3f} µL",
                 ),
@@ -684,6 +698,13 @@ class AutomatedTitrationTab:
             "air_port": self._port(self._air_port_var.get(), "Air port"),
             "mix_line_volume": self._nonnegative(
                 self._mix_line_volume_var.get(), "Port 4 line volume"
+            ),
+            "mix_line_bubble_volume": self._nonnegative(
+                self._mix_line_bubble_volume_var.get(), "Port 4 bubble volume"
+            ),
+            "bubble_liquid_loss": self._nonnegative(
+                self._bubble_liquid_loss_var.get(),
+                "Estimated liquid loss per clear",
             ),
             "stock_air_spacer": self._nonnegative(
                 self._stock_air_spacer_var.get(), "Stock air spacer"
@@ -737,6 +758,10 @@ class AutomatedTitrationTab:
             raise ValueError("Stock air spacer must be smaller than syringe capacity.")
         if settings["mix_line_air_push"] > settings["syringe_capacity"]:
             raise ValueError("Port 4 air push cannot exceed syringe capacity.")
+        if settings["bubble_liquid_loss"] > settings["mix_line_bubble_volume"]:
+            raise ValueError(
+                "Estimated liquid loss per clear cannot exceed the bubble volume."
+            )
         return settings
 
     def _build_recipe(self, settings, plan):
@@ -754,13 +779,16 @@ class AutomatedTitrationTab:
                 label="Initial buffer → mixing tube",
                 point="Setup",
             )
-
-        # Capture the starting state before the first concentration change.
-        self._append_swv_measurements(
-            recipe,
-            settings=settings,
-            point_label="Initial (before titration)",
-        )
+            self._append_transfer(
+                recipe,
+                source_port=settings["buffer_port"],
+                destination_port=settings["flow_port"],
+                volume_ul=settings["aliquot_volume"],
+                speed=settings.get("initial_buffer_speed", settings["speed"]),
+                capacity=settings["syringe_capacity"],
+                label="Initial buffer → flow cell",
+                point="Setup",
+            )
 
         for point in plan:
             point_label = f"{point.target_concentration_um:g} µM"
@@ -814,17 +842,30 @@ class AutomatedTitrationTab:
                         label=f"After mix cycle {cycle}",
                     )
 
-            if point.index > 1:
-                self._append_transfer(
-                    recipe,
-                    source_port=settings["flow_port"],
-                    destination_port=settings["waste_port"],
-                    volume_ul=settings["aliquot_volume"],
-                    speed=settings["speed"],
-                    capacity=settings["syringe_capacity"],
-                    label="Previous flow-cell aliquot → waste",
-                    point=point_label,
+            measurement_label = (
+                "Initial buffer"
+                if point.index == 1
+                else f"{plan[point.index - 2].target_concentration_um:g} µM"
+            )
+            if settings["equilibration"] > 0:
+                recipe.append(
+                    {
+                        "type": "PAUSE",
+                        "status": "pending",
+                        "details": (
+                            f"Allow concentration {point_label} to diffuse while "
+                            f"equilibrating {measurement_label} for "
+                            f"{settings['equilibration']:g} s"
+                        ),
+                        "pause_seconds": settings["equilibration"],
+                        "_point": measurement_label,
+                    }
                 )
+            self._append_swv_measurements(
+                recipe,
+                settings=settings,
+                point_label=measurement_label,
+            )
 
             self._append_transfer(
                 recipe,
@@ -836,21 +877,26 @@ class AutomatedTitrationTab:
                 label="Mixing tube → flow cell",
                 point=point_label,
             )
+
+        if plan:
+            final_label = f"{plan[-1].target_concentration_um:g} µM"
             if settings["equilibration"] > 0:
                 recipe.append(
                     {
                         "type": "PAUSE",
                         "status": "pending",
-                        "details": f"Equilibrate flow cell for {settings['equilibration']:g} s",
+                        "details": (
+                            f"Equilibrate final flow-cell solution for "
+                            f"{settings['equilibration']:g} s"
+                        ),
                         "pause_seconds": settings["equilibration"],
-                        "_point": point_label,
+                        "_point": final_label,
                     }
                 )
-
             self._append_swv_measurements(
                 recipe,
                 settings=settings,
-                point_label=point_label,
+                point_label=final_label,
             )
 
         if plan and plan[-1].volume_remaining_ul > 1e-9:
@@ -1037,6 +1083,10 @@ class AutomatedTitrationTab:
         label,
     ):
         """Push liquid out of the port-4 line with air, then discard line air."""
+        clear_volume = (
+            settings["mix_line_volume"]
+            + settings.get("mix_line_bubble_volume", 0.0)
+        )
         recipe.extend(
             [
                 self._pump_item(
@@ -1081,12 +1131,12 @@ class AutomatedTitrationTab:
             recipe,
             source_port=settings["mix_port"],
             destination_port=settings["waste_port"],
-            volume_ul=settings["mix_line_volume"],
+            volume_ul=clear_volume,
             speed=settings["speed"],
             capacity=settings["syringe_capacity"],
             label=(
-                f"{label}: clear {settings['mix_line_volume']:.3f} µL port-4 "
-                "air-filled line → waste"
+                f"{label}: clear {clear_volume:.3f} µL port-4 line + bubbles "
+                "→ waste"
             ),
             point=point,
         )

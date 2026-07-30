@@ -61,6 +61,33 @@ def test_air_assisted_stock_delivery_order_and_volumes():
     assert recipe[13]["pump_action"]["params"]["volume"] == pytest.approx(75)
 
 
+def test_port4_clear_includes_configured_bubble_volume():
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    recipe = []
+    settings = {
+        "air_port": 9,
+        "mix_port": 4,
+        "waste_port": 2,
+        "speed": 20,
+        "syringe_capacity": 250.0,
+        "mix_line_air_push": 250.0,
+        "mix_line_volume": 110.0,
+        "mix_line_bubble_volume": 50.0,
+    }
+
+    tab._append_port4_air_flush_and_clear(
+        recipe,
+        settings=settings,
+        point="test",
+        label="Bubble clear",
+    )
+
+    assert recipe[-4]["pump_action"]["params"]["port"] == 4
+    assert recipe[-3]["pump_action"]["params"]["volume"] == pytest.approx(160)
+    assert recipe[-2]["pump_action"]["params"]["port"] == 2
+    assert recipe[-1]["pump_action"]["params"]["volume"] == pytest.approx(160)
+
+
 def test_stock_at_or_above_syringe_capacity_omits_air_spacer():
     tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
     recipe = []
@@ -271,7 +298,7 @@ def test_swv_replicates_cycle_across_channels():
     swv_items = [
         item for item in recipe
         if item["type"] == "SWV"
-        and item["_point"] == "Initial (before titration)"
+        and item["_point"] == "Initial buffer"
     ]
 
     assert [item["_mux_channel"] for item in swv_items] == [
@@ -324,7 +351,7 @@ def test_manual_swv_pass_follows_optimized_pass_each_replicate():
     swv_items = [
         item for item in tab._build_recipe(settings, plan)
         if item["type"] == "SWV"
-        and item["_point"] == "Initial (before titration)"
+        and item["_point"] == "Initial buffer"
     ]
 
     assert [
@@ -339,7 +366,7 @@ def test_manual_swv_pass_follows_optimized_pass_each_replicate():
     assert swv_items[3]["_titration_group"]["params"]["frequency"] == 101.0
 
 
-def test_initial_swv_block_precedes_first_stock_addition():
+def test_first_stock_mixes_before_buffer_measurement_and_first_flow_load():
     tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
     tab._parameter_groups = [
         {"name": "Group 1", "channels": [1, 2, 3]}
@@ -363,15 +390,110 @@ def test_initial_swv_block_precedes_first_stock_addition():
     initial_swv_indices = [
         index for index, item in enumerate(recipe)
         if item["type"] == "SWV"
-        and item["_point"] == "Initial (before titration)"
+        and item["_point"] == "Initial buffer"
     ]
     first_stock_index = next(
         index for index, item in enumerate(recipe)
         if "Stock delivery" in item.get("details", "")
     )
+    first_titrated_flow_load = next(
+        index for index, item in enumerate(recipe)
+        if item["type"] == "PUMP_DISPENSE"
+        and "Mixing tube" in item.get("details", "")
+        and "flow cell" in item.get("details", "")
+    )
 
     assert len(initial_swv_indices) == 9
-    assert max(initial_swv_indices) < first_stock_index
+    assert first_stock_index < min(initial_swv_indices)
+    assert max(initial_swv_indices) < first_titrated_flow_load
+
+
+def test_multi_point_recipe_pipelines_next_mix_before_current_measurement():
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    tab._parameter_groups = [{"name": "Group 1", "channels": [1]}]
+    tab._manual_channel_params = {}
+    settings = {
+        "air_port": 9, "stock_port": 5, "buffer_port": 6, "mix_port": 4,
+        "flow_port": 1, "waste_port": 2, "speed": 20,
+        "syringe_capacity": 250.0, "stock_air_spacer": 100.0,
+        "mix_line_air_push": 250.0, "mix_line_volume": 110.0,
+        "mix_line_bubble_volume": 50.0,
+        "initial_buffer_volume": 1000.0, "aliquot_volume": 100.0,
+        "mix_cycles": 1, "mix_volume": 200.0, "equilibration": 0.0,
+        "replicates": 1,
+    }
+    plan = calculate_titration_plan(
+        [10, 25, 50], stock_concentration_um=10_000,
+        initial_buffer_volume_ul=1000, aliquot_volume_ul=100,
+    )
+    recipe = tab._build_recipe(settings, plan)
+
+    def first_index(predicate):
+        return next(i for i, item in enumerate(recipe) if predicate(item))
+
+    def stock_index(point):
+        return first_index(
+            lambda item: item.get("_point") == point
+            and "Stock delivery" in item.get("details", "")
+        )
+
+    def measure_index(point):
+        return first_index(
+            lambda item: item.get("_point") == point and item["type"] == "SWV"
+        )
+
+    def load_index(point):
+        return first_index(
+            lambda item: item.get("_point") == point
+            and item["type"] == "PUMP_DISPENSE"
+            and "Mixing tube" in item.get("details", "")
+            and "flow cell" in item.get("details", "")
+        )
+
+    assert (
+        stock_index("10 µM")
+        < measure_index("Initial buffer")
+        < load_index("10 µM")
+        < stock_index("25 µM")
+        < measure_index("10 µM")
+        < load_index("25 µM")
+        < stock_index("50 µM")
+        < measure_index("25 µM")
+        < load_index("50 µM")
+        < measure_index("50 µM")
+    )
+
+
+def test_previous_flow_cell_aliquot_is_not_moved_to_waste():
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    tab._parameter_groups = []
+    settings = {
+        "air_port": 9, "stock_port": 5, "buffer_port": 6, "mix_port": 4,
+        "flow_port": 1, "waste_port": 2, "speed": 20,
+        "syringe_capacity": 250.0, "stock_air_spacer": 100.0,
+        "mix_line_air_push": 250.0, "mix_line_volume": 110.0,
+        "initial_buffer_volume": 1000.0, "aliquot_volume": 100.0,
+        "mix_cycles": 0, "mix_volume": 200.0, "equilibration": 0.0,
+        "replicates": 1,
+    }
+    plan = calculate_titration_plan(
+        [10, 25], stock_concentration_um=10_000,
+        initial_buffer_volume_ul=1000, aliquot_volume_ul=100,
+    )
+
+    recipe = tab._build_recipe(settings, plan)
+
+    assert not any(
+        "Previous flow-cell aliquot" in item.get("details", "")
+        for item in recipe
+    )
+    flow_cell_loads = [
+        item for item in recipe
+        if "Mixing tube" in item.get("details", "")
+        and "flow cell" in item.get("details", "")
+        and item["type"] == "PUMP_DISPENSE"
+    ]
+    assert len(flow_cell_loads) == 2
 
 
 def test_new_manual_channels_use_requested_swv_defaults():
