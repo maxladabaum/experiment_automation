@@ -3630,6 +3630,64 @@ class BayesianOptimizationTab:
         except Exception as exc:
             messagebox.showerror("BO Suggestion", str(exc))
 
+    def get_best_parameter_groups(self):
+        """Return the best completed observation for every active BO group."""
+        if self._bo_session is None:
+            raise RuntimeError("Load or run a Bayesian Optimization session first.")
+
+        results = []
+        missing = []
+        for group in channel_groups(self._bo_session.config):
+            observations = [
+                observation
+                for observation in self._bo_session.observations
+                if int(observation.get("group_id", 1)) == int(group["id"])
+                and isinstance(observation.get("params"), dict)
+                and observation.get("Q_run") is not None
+            ]
+            if not observations:
+                missing.append(str(group.get("name") or f"Group {group['id']}"))
+                continue
+
+            effective_config = self._bo_session._config_for_group(group["id"])
+            direction = str(
+                effective_config.get("acquisition", {}).get(
+                    "optimization_direction", "maximize"
+                )
+            ).strip().lower()
+            choose_minimum = direction in {
+                "minimize", "min", "more_negative", "negative"
+            }
+            best = (min if choose_minimum else max)(
+                observations,
+                key=lambda observation: float(observation["Q_run"]),
+            )
+            results.append(
+                {
+                    "id": int(group["id"]),
+                    "name": str(group.get("name") or f"Group {group['id']}"),
+                    "channels": list(group.get("channels") or []),
+                    "score": float(best["Q_run"]),
+                    "params": copy.deepcopy(best["params"]),
+                    "method_options": copy.deepcopy(
+                        effective_config.get("method_options") or {}
+                    ),
+                    "session_id": self._bo_session.session_id,
+                    "iteration": int(best.get("iteration", 0) or 0),
+                    "optimization_direction": (
+                        "minimize" if choose_minimum else "maximize"
+                    ),
+                }
+            )
+
+        if missing:
+            raise RuntimeError(
+                "No completed BO observation is available for: "
+                + ", ".join(missing)
+                + "."
+            )
+        return results
+
     def _send_to_queue(self):
         if self._bo_session is None:
             messagebox.showwarning("BO Queue", "Start a BO session first.")
