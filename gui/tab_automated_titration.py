@@ -78,6 +78,7 @@ class AutomatedTitrationTab:
         self._concentrations_var = tk.StringVar(value="10, 25, 50, 100")
         self._replicates_var = tk.StringVar(value="10")
         self._skip_initial_buffer_var = tk.BooleanVar(value=False)
+        self._measure_buffer_between_var = tk.BooleanVar(value=False)
 
         self._build()
 
@@ -280,6 +281,11 @@ class AutomatedTitrationTab:
             text="Bypass initial buffer pump steps (mixing tube is already filled)",
             variable=self._skip_initial_buffer_var,
         ).grid(row=5, column=0, columnspan=2, sticky="w", pady=(6, 2))
+        ttk.Checkbutton(
+            plan,
+            text="Pump and measure plain buffer between titration concentrations",
+            variable=self._measure_buffer_between_var,
+        ).grid(row=6, column=0, columnspan=2, sticky="w", pady=2)
         ttk.Label(
             plan,
             text=(
@@ -291,10 +297,10 @@ class AutomatedTitrationTab:
             wraplength=430,
             justify="left",
             foreground="#666666",
-        ).grid(row=6, column=0, columnspan=2, sticky="w", pady=(10, 8))
+        ).grid(row=7, column=0, columnspan=2, sticky="w", pady=(10, 8))
         ttk.Button(
             plan, text="Generate Recipe", command=self._generate_recipe
-        ).grid(row=7, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        ).grid(row=8, column=0, columnspan=2, sticky="ew", pady=(6, 0))
 
     def _build_calculation_preview(self, parent):
         calculation = ttk.LabelFrame(
@@ -742,6 +748,7 @@ class AutomatedTitrationTab:
                 self._replicates_var.get(), "SWV replicates", minimum=1
             ),
             "skip_initial_buffer": bool(self._skip_initial_buffer_var.get()),
+            "measure_buffer_between": bool(self._measure_buffer_between_var.get()),
         }
         if any(
             settings[name] > 40
@@ -866,6 +873,39 @@ class AutomatedTitrationTab:
                 settings=settings,
                 point_label=measurement_label,
             )
+
+            if point.index > 1 and settings.get("measure_buffer_between", False):
+                buffer_label = (
+                    f"0 µM buffer between {measurement_label} and {point_label}"
+                )
+                self._append_transfer(
+                    recipe,
+                    source_port=settings["buffer_port"],
+                    destination_port=settings["flow_port"],
+                    volume_ul=settings["aliquot_volume"],
+                    speed=settings.get("initial_buffer_speed", settings["speed"]),
+                    capacity=settings["syringe_capacity"],
+                    label="Plain buffer → flow cell",
+                    point=buffer_label,
+                )
+                if settings["equilibration"] > 0:
+                    recipe.append(
+                        {
+                            "type": "PAUSE",
+                            "status": "pending",
+                            "details": (
+                                f"Equilibrate plain buffer for "
+                                f"{settings['equilibration']:g} s"
+                            ),
+                            "pause_seconds": settings["equilibration"],
+                            "_point": buffer_label,
+                        }
+                    )
+                self._append_swv_measurements(
+                    recipe,
+                    settings=settings,
+                    point_label=buffer_label,
+                )
 
             self._append_transfer(
                 recipe,

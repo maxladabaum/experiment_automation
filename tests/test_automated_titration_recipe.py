@@ -464,6 +464,51 @@ def test_multi_point_recipe_pipelines_next_mix_before_current_measurement():
     )
 
 
+def test_optional_plain_buffer_measurements_are_inserted_between_concentrations():
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    tab._parameter_groups = [{"name": "Group 1", "channels": [1]}]
+    tab._manual_channel_params = {}
+    settings = {
+        "air_port": 9, "stock_port": 5, "buffer_port": 6, "mix_port": 4,
+        "flow_port": 1, "waste_port": 2, "speed": 20,
+        "initial_buffer_speed": 12,
+        "syringe_capacity": 250.0, "stock_air_spacer": 100.0,
+        "mix_line_air_push": 250.0, "mix_line_volume": 110.0,
+        "mix_line_bubble_volume": 50.0,
+        "initial_buffer_volume": 1000.0, "aliquot_volume": 100.0,
+        "mix_cycles": 1, "mix_volume": 200.0, "equilibration": 0.0,
+        "replicates": 1, "measure_buffer_between": True,
+    }
+    plan = calculate_titration_plan(
+        [40, 80, 160], stock_concentration_um=10_000,
+        initial_buffer_volume_ul=1000, aliquot_volume_ul=100,
+    )
+
+    recipe = tab._build_recipe(settings, plan)
+    measured_points = [
+        item["_point"] for item in recipe if item["type"] == "SWV"
+    ]
+
+    assert measured_points == [
+        "Initial buffer",
+        "40 µM",
+        "0 µM buffer between 40 µM and 80 µM",
+        "80 µM",
+        "0 µM buffer between 80 µM and 160 µM",
+        "160 µM",
+    ]
+    buffer_loads = [
+        item for item in recipe
+        if item["type"] == "PUMP_DISPENSE"
+        and "Plain buffer" in item.get("details", "")
+    ]
+    assert len(buffer_loads) == 2
+    assert all(
+        item["pump_action"]["params"]["volume"] == pytest.approx(100)
+        for item in buffer_loads
+    )
+
+
 def test_previous_flow_cell_aliquot_is_not_moved_to_waste():
     tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
     tab._parameter_groups = []
