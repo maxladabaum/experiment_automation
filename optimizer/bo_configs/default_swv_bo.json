@@ -5,21 +5,20 @@
   "n_initial_points": 0,
   "random_seed": 42,
   "channels": [
-    1,
     2,
-    3,
     4,
     5,
     6,
-    7,
-    8
+    8,
+    9,
+    10
   ],
   "method_options": {
     "bandwidth": "4k",
     "ba_range": {
       "mode": "auto",
       "fixed": "100 nA",
-      "auto_min": "6 uA",
+      "auto_min": "100 nA",
       "auto_max": "50 uA"
     }
   },
@@ -246,10 +245,10 @@
     "min_peak_height_ua": null,
     "peak_voltage_min_v": -0.45,
     "peak_voltage_max_v": -0.15,
-    "left_min_voltage_min_v": -0.52,
+    "left_min_voltage_min_v": -0.54,
     "left_min_voltage_max_v": -0.15,
     "right_min_voltage_min_v": -0.45,
-    "right_min_voltage_max_v": -0.02,
+    "right_min_voltage_max_v": -0.01,
     "min_start_voltage_v": -0.6,
     "scan_windows": "",
     "use_prominent_minima": false,
@@ -271,7 +270,7 @@
       "id": 1,
       "name": "Group 1",
       "channels": [
-        1
+        2
       ],
       "exploration": 0.6,
       "n_initial_points": 0,
@@ -292,7 +291,7 @@
       "id": 2,
       "name": "Group 2",
       "channels": [
-        2
+        4
       ],
       "exploration": 0.6,
       "n_initial_points": 0,
@@ -313,7 +312,7 @@
       "id": 3,
       "name": "Group 3",
       "channels": [
-        3
+        5
       ],
       "exploration": 0.6,
       "n_initial_points": 0,
@@ -334,7 +333,7 @@
       "id": 4,
       "name": "Group 4",
       "channels": [
-        4
+        6
       ],
       "exploration": 0.6,
       "n_initial_points": 0,
@@ -355,7 +354,7 @@
       "id": 5,
       "name": "Group 5",
       "channels": [
-        5
+        8
       ],
       "exploration": 0.6,
       "n_initial_points": 0,
@@ -376,7 +375,7 @@
       "id": 6,
       "name": "Group 6",
       "channels": [
-        6
+        9
       ],
       "exploration": 0.6,
       "n_initial_points": 0,
@@ -397,28 +396,7 @@
       "id": 7,
       "name": "Group 7",
       "channels": [
-        7
-      ],
-      "exploration": 0.6,
-      "n_initial_points": 0,
-      "candidate_pool_size": 1000,
-      "local_candidate_pool_size": 100,
-      "initial_point_mode": "random",
-      "gp_falloff_fractions": {
-        "begin_potential": 0.2,
-        "end_potential": 0.2,
-        "step_potential": 0.2,
-        "amplitude": 0.2,
-        "frequency": 0.2,
-        "conditioning_potential": 0.2,
-        "conditioning_time": 0.2
-      }
-    },
-    {
-      "id": 8,
-      "name": "Group 8",
-      "channels": [
-        8
+        10
       ],
       "exploration": 0.6,
       "n_initial_points": 0,
