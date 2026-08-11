@@ -552,3 +552,74 @@ def test_surrogate_history_filters_to_selected_group():
     observations = tab._surrogate_observations_so_far()
 
     assert [(obs["group_id"], obs["iteration"]) for obs in observations] == [(1, 1), (1, 2)]
+
+
+def test_classic_auto_loop_appends_queue_history_and_runs_only_new_rows():
+    config = normalize_bo_config(
+        {
+            "channels": [1],
+            "channel_groups": [{"name": "Group 1", "channels": [1]}],
+        }
+    )
+    suggestion = type(
+        "Suggestion",
+        (),
+        {"iteration": 1, "group_id": 1, "group_name": "Group 1"},
+    )()
+
+    class FakeBOSession:
+        session_id = "bo-session"
+        observations = []
+
+        def __init__(self):
+            self.config = config
+
+        def ask_next_for_group(self, _group_id):
+            return suggestion
+
+        def build_queue_items(self, _registry, _suggestion):
+            return [
+                {
+                    "type": "SWV",
+                    "status": "pending",
+                    "bo_ref": {"session_id": self.session_id},
+                }
+            ]
+
+        def record_queued(self, _suggestion, _items):
+            return None
+
+    old_item = {
+        "type": "SWV",
+        "status": "completed",
+        "bo_ref": {"session_id": "bo-session"},
+    }
+    measurement_session = type(
+        "MeasurementSession",
+        (),
+        {
+            "is_running": False,
+            "measurement_queue": [old_item],
+            "registry": object(),
+        },
+    )()
+    started_at = []
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    tab._auto_running = True
+    tab._auto_target_var = type("Var", (), {"get": lambda self: "2"})()
+    tab._auto_status_var = type("Var", (), {"set": lambda self, _value: None})()
+    tab._bo_session = FakeBOSession()
+    tab._session = measurement_session
+    tab._suggestion = None
+    tab._render_suggestion = lambda: None
+    tab._add_to_queue = measurement_session.measurement_queue.append
+    tab._refresh_queue = lambda: None
+    tab._refresh_record_files = lambda: None
+    tab._run_queue = lambda: pytest.fail("Completed queue rows must not be replayed")
+    tab._run_queue_from_index = started_at.append
+
+    tab._auto_submit_next()
+
+    assert measurement_session.measurement_queue[0] is old_item
+    assert len(measurement_session.measurement_queue) == 2
+    assert started_at == [1]

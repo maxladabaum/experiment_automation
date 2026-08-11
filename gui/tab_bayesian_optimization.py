@@ -90,6 +90,7 @@ class BayesianOptimizationTab:
         on_refresh_queue,
         on_script_preview,
         on_run_queue=None,
+        on_run_queue_from_index=None,
         on_configure_auto_titration=None,
         is_auto_titration_locked=None,
         on_bo_finished=None,
@@ -100,6 +101,7 @@ class BayesianOptimizationTab:
         self._refresh_queue = on_refresh_queue
         self._script_preview = on_script_preview
         self._run_queue = on_run_queue
+        self._run_queue_from_index = on_run_queue_from_index
         self._configure_auto_titration = on_configure_auto_titration
         self._is_auto_titration_locked = is_auto_titration_locked
         self._on_bo_finished = on_bo_finished
@@ -5612,8 +5614,9 @@ class BayesianOptimizationTab:
             return
         if self._session.is_running:
             return
+        queue_start_index = len(self._session.measurement_queue)
         if self._session.measurement_queue:
-            if not self._clear_auto_queue_if_safe():
+            if not self._auto_queue_is_safe():
                 self._auto_running = False
                 self._auto_status_var.set("Auto loop stopped: queue contains non-BO items.")
                 return
@@ -5637,7 +5640,10 @@ class BayesianOptimizationTab:
                 f"Queued BO iteration {self._suggestion.iteration}; starting queue."
             )
             self._auto_analysis_cutoff = time.time()
-            self._run_queue()
+            if queue_start_index > 0 and callable(self._run_queue_from_index):
+                self._run_queue_from_index(queue_start_index)
+            else:
+                self._run_queue()
         except Exception as exc:
             self._auto_running = False
             self._auto_status_var.set(f"Auto loop stopped: {exc}")
@@ -5679,8 +5685,7 @@ class BayesianOptimizationTab:
         obs = self._run_analysis_for_pending(prompt=False)
         if obs is None or not self._auto_running:
             return
-        if self._clear_auto_queue_if_safe():
-            self._auto_submit_next()
+        self._auto_submit_next()
 
     def _on_live_paired_bo_update(self, payload):
         if not isinstance(payload, dict):
@@ -5841,7 +5846,7 @@ class BayesianOptimizationTab:
             return None
         return path
 
-    def _clear_auto_queue_if_safe(self):
+    def _auto_queue_is_safe(self):
         queue = self._session.measurement_queue
         if not queue:
             return True
@@ -5850,8 +5855,6 @@ class BayesianOptimizationTab:
             ref = item.get("bo_ref") or {}
             if ref.get("session_id") != session_id:
                 return False
-        queue.clear()
-        self._refresh_queue()
         return True
 
     # Parameter and initial-design editing

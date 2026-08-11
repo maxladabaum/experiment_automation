@@ -199,6 +199,7 @@ class ElectrochemGUI:
             on_refresh_queue  = self._queue_tab.refresh,
             on_script_preview = self._script_tab.update,
             on_run_queue      = self._queue_tab.run_queue,
+            on_run_queue_from_index=self._queue_tab.run_from_index,
             on_configure_auto_titration=self._configure_post_bo_titration,
             is_auto_titration_locked=lambda: (
                 self._automated_titration_tab.bo_settings_locked()
