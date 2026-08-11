@@ -803,8 +803,8 @@ class BayesianOptimizationTab:
         ttk.Label(
             paired_box,
             text=(
-                "Warmup parameter sets run first in warmup-sized buffer/target batches. "
-                "Target cycles are then run with the regular batch size."
+                "Warmup parameter sets count toward the Auto Loop target and run first in warmup-sized buffer/target batches. "
+                "Remaining iterations then run in batches using the regular batch size."
             ),
             foreground=self.ACCENT,
             wraplength=460,
@@ -948,7 +948,7 @@ class BayesianOptimizationTab:
         auto.pack(fill="x", padx=4, pady=(0, 8))
         auto_bar = FlowFrame(auto)
         auto_bar.pack(fill="x")
-        auto_bar.add(ttk.Label(auto_bar, text="Target iterations/cycles:"))
+        auto_bar.add(ttk.Label(auto_bar, text="Total target iterations:"))
         auto_bar.add(ttk.Entry(auto_bar, textvariable=self._auto_target_var, width=6))
         auto_bar.add(ttk.Button(auto_bar, text="Start Auto Loop", command=self._start_auto_loop))
         auto_bar.add(ttk.Button(auto_bar, text="Stop Auto", command=self._stop_auto_loop))
@@ -5468,7 +5468,7 @@ class BayesianOptimizationTab:
         self._paired_queue_running = False
         self._auto_status_var.set("Auto loop stopped.")
 
-    def _paired_bo_block_from_setup(self, target_cycles: int) -> dict:
+    def _paired_bo_block_from_setup(self, target_iterations: int) -> dict:
         self._save_config()
         channels = self._channels_var.get().strip()
         batch_size = max(1, int(self._paired_batch_size_var.get() or 1))
@@ -5506,7 +5506,7 @@ class BayesianOptimizationTab:
             "bo_config_path": self._config_path_var.get().strip(),
             "analysis_output_dir": self._analysis_dir_var.get().strip(),
             "analysis_file_glob": self._analysis_glob_var.get().strip() or "*.json",
-            "target_iterations": int(target_cycles),
+            "target_iterations": int(target_iterations),
             "objective": "paired_response",
             "batch_size": batch_size,
             "warmup_batch_size": warmup_batch_size,
@@ -5544,7 +5544,7 @@ class BayesianOptimizationTab:
         buffer_eq = max(0.0, float(block.get("buffer_equilibration_seconds", 0.0) or 0.0))
         eq_text = f" | eq target {target_eq:g}s, buffer {buffer_eq:g}s" if (target_eq or buffer_eq) else ""
         return (
-            f"{config_name} | paired {target} cycles x {batch} methods "
+            f"{config_name} | paired {target} total iter, batches x {batch} methods "
             f"({warmup_text}){eq_text} | {channels}"
         )
 
@@ -5559,10 +5559,10 @@ class BayesianOptimizationTab:
             )
             return
         try:
-            target_cycles = int(self._auto_target_var.get())
-            if target_cycles < 1:
-                raise ValueError("Target cycles must be at least 1.")
-            block = self._paired_bo_block_from_setup(target_cycles)
+            target_iterations = int(self._auto_target_var.get())
+            if target_iterations < 1:
+                raise ValueError("Total target iterations must be at least 1.")
+            block = self._paired_bo_block_from_setup(target_iterations)
         except Exception as exc:
             messagebox.showerror("Paired BO Auto Loop", str(exc))
             return
@@ -5577,7 +5577,8 @@ class BayesianOptimizationTab:
         self._add_to_queue(item)
         self._refresh_queue()
         self._auto_status_var.set(
-            f"Queued paired BO: {target_cycles} cycle(s) x {block['batch_size']} parameter set(s). Starting queue."
+            f"Queued paired BO: {target_iterations} total iteration(s), including warmups; "
+            f"regular batch size {block['batch_size']}. Starting queue."
         )
         self._run_queue()
 

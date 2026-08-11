@@ -1604,7 +1604,7 @@ class QueueTab:
             buffer_eq = max(0.0, float(block.get("buffer_equilibration_seconds", 0.0) or 0.0))
             eq_text = f" | eq target {target_eq:g}s, buffer {buffer_eq:g}s" if (target_eq or buffer_eq) else ""
             return (
-                f"{config_name} | paired {target} cycles x {batch} methods "
+                f"{config_name} | paired {target} total iter, batches x {batch} methods "
                 f"({warmup_text}){eq_text} | {channels}"
             )
         return f"{config_name} | {target} iter | {channels}"
@@ -1845,23 +1845,35 @@ class QueueTab:
 
     @staticmethod
     def _paired_bo_schedule_totals(
-        target_cycles: int,
+        target_iterations: int,
         batch_size: int,
         warmup_observations: int,
         warmup_batch_size: int,
     ) -> tuple[int, int, int]:
-        """Return total parameter sets, physical warmup batches, and all batches."""
-        target_cycles = max(0, int(target_cycles))
+        """Return total parameter sets, physical warmup batches, and all batches.
+
+        ``target_iterations`` includes warmup parameter sets. Batch sizes only
+        control how those iterations are grouped into fluid-exchange batches.
+        """
+        target_iterations = max(0, int(target_iterations))
         batch_size = max(1, int(batch_size))
-        warmup_observations = max(0, int(warmup_observations))
+        warmup_observations = min(
+            target_iterations,
+            max(0, int(warmup_observations)),
+        )
         warmup_batch_size = max(1, int(warmup_batch_size))
         warmup_batches = (
             int(math.ceil(warmup_observations / float(warmup_batch_size)))
             if warmup_observations
             else 0
         )
-        total_parameter_sets = warmup_observations + target_cycles * batch_size
-        return total_parameter_sets, warmup_batches, warmup_batches + target_cycles
+        post_warmup_iterations = max(0, target_iterations - warmup_observations)
+        gp_batches = (
+            int(math.ceil(post_warmup_iterations / float(batch_size)))
+            if post_warmup_iterations
+            else 0
+        )
+        return target_iterations, warmup_batches, warmup_batches + gp_batches
 
     @staticmethod
     def _paired_bo_batch_span(
@@ -1988,7 +2000,6 @@ class QueueTab:
             warmup_batch_size = max(
                 1, int(block.get("warmup_batch_size", batch_size) or batch_size)
             )
-            target_cycles = target_iterations
             warmup_observations = max(
                 0,
                 int(
@@ -2003,12 +2014,14 @@ class QueueTab:
                 warmup_batch_size = warmup_observations
             target_parameter_sets, warmup_batches, total_cycles = (
                 self._paired_bo_schedule_totals(
-                    target_cycles,
+                    target_iterations,
                     batch_size,
                     warmup_observations,
                     warmup_batch_size,
                 )
             )
+            warmup_observations = min(warmup_observations, target_parameter_sets)
+            gp_batches = max(0, total_cycles - warmup_batches)
             target_observations = target_parameter_sets * group_count
             halfway_cycle = max(1, int(math.ceil(total_cycles / 2.0)))
             completed_cycles = 0
@@ -2041,7 +2054,7 @@ class QueueTab:
                 cycle_label = (
                     f"Warmup batch {cycle_index}/{warmup_batches}"
                     if is_warmup_batch
-                    else f"GP cycle {cycle_index - warmup_batches}/{target_cycles}"
+                    else f"GP batch {cycle_index - warmup_batches}/{gp_batches}"
                 )
                 suggestions = self._paired_bo_execution_order(bo_session.ask_batch(suggestion_count))
                 self._set_bo_live_details(

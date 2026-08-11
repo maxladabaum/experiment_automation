@@ -108,9 +108,9 @@ def test_partial_final_warmup_batch_does_not_cross_into_gp_batch():
     assert cycle_span == 7
 
 
-def test_warmups_are_added_before_requested_gp_cycles():
+def test_warmups_are_counted_within_total_target_iterations():
     total_sets, warmup_batches, total_batches = QueueTab._paired_bo_schedule_totals(
-        target_cycles=50,
+        target_iterations=100,
         batch_size=1,
         warmup_observations=50,
         warmup_batch_size=10,
@@ -130,7 +130,7 @@ def test_all_warmups_can_run_as_one_fluid_batch():
         warmup_batch_size=50,
     )
     total_sets, warmup_batches, total_batches = QueueTab._paired_bo_schedule_totals(
-        target_cycles=50,
+        target_iterations=100,
         batch_size=1,
         warmup_observations=50,
         warmup_batch_size=50,
@@ -140,6 +140,32 @@ def test_all_warmups_can_run_as_one_fluid_batch():
     assert total_sets == 100
     assert warmup_batches == 1
     assert total_batches == 51
+
+
+def test_205_total_iterations_with_200_warmups_runs_five_gp_iterations():
+    total_sets, warmup_batches, total_batches = QueueTab._paired_bo_schedule_totals(
+        target_iterations=205,
+        batch_size=1,
+        warmup_observations=200,
+        warmup_batch_size=10,
+    )
+
+    assert total_sets == 205
+    assert warmup_batches == 20
+    assert total_batches == 25
+
+
+def test_total_target_below_configured_warmups_runs_only_targeted_warmups():
+    total_sets, warmup_batches, total_batches = QueueTab._paired_bo_schedule_totals(
+        target_iterations=5,
+        batch_size=1,
+        warmup_observations=200,
+        warmup_batch_size=10,
+    )
+
+    assert total_sets == 5
+    assert warmup_batches == 1
+    assert total_batches == 1
 
 
 def test_paired_gp_batches_return_to_configured_batch_size_after_warmup():

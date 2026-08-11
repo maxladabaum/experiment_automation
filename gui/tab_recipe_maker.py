@@ -338,7 +338,7 @@ class RecipeMakerTab:
             target_eq = max(0.0, float(block.get("target_equilibration_seconds", 0.0) or 0.0))
             buffer_eq = max(0.0, float(block.get("buffer_equilibration_seconds", 0.0) or 0.0))
             eq_text = f" | eq target {target_eq:g}s, buffer {buffer_eq:g}s" if (target_eq or buffer_eq) else ""
-            return f"{config_name} | paired {target} cycles x {batch} methods{eq_text} | {channels}"
+            return f"{config_name} | paired {target} total iter, batches x {batch} methods{eq_text} | {channels}"
         return f"{config_name} | {target} iter | {channels}"
 
     def _add_bo_loop_step(self):
