@@ -1017,6 +1017,8 @@ def compute_channel_quality(
         )
 
     component_scores = {
+        "peak_prominence_raw": peak_prominence_raw,
+        "snr_raw": peak_prominence_raw,
         "normalized_peak_prominence": _clip01(
             peak_prominence_raw / max(peak_prominence_saturation, 1e-12)
         ),
@@ -1030,6 +1032,24 @@ def compute_channel_quality(
         "baseline_stability_score": _clip01(metrics.get("baseline_stability_score", 0.0)),
         "replicate_consistency_score": _clip01(metrics.get("replicate_consistency_score", 0.0)),
         "success_score": _clip01(metrics.get("success_score", 1.0)),
+    }
+    contribution_sources = {
+        "peak_prominence": (
+            float(weights.get("peak_prominence", weights.get("snr", 0.45))),
+            "log_peak_prominence" if mode == "signal_priority_unbounded" else "peak_prominence_raw",
+        ),
+        "repeat_scan_snr": (
+            float(weights.get("repeat_scan_snr", 0.0)),
+            "log_repeat_scan_snr" if mode == "signal_priority_unbounded" else "repeat_scan_snr_raw",
+        ),
+        "peak_height": (
+            float(weights.get("peak_height", 0.35 if mode == "signal_priority_unbounded" else 0.0)),
+            "log_peak_height" if mode == "signal_priority_unbounded" else "peak_height_raw",
+        ),
+        "peak_shape": (float(weights.get("peak_shape", 0.05 if mode == "signal_priority_unbounded" else 0.20)), "peak_shape_score"),
+        "baseline": (float(weights.get("baseline", 0.12 if mode == "signal_priority_unbounded" else 0.20)), "baseline_stability_score"),
+        "replicate_consistency": (float(weights.get("replicate_consistency", 0.03 if mode == "signal_priority_unbounded" else 0.15)), "replicate_consistency_score"),
+        "success": (float(weights.get("success", 0.0 if mode == "signal_priority_unbounded" else 0.10)), "success_score"),
     }
     if mode == "signal_priority_unbounded":
         weighted = (
@@ -1052,8 +1072,18 @@ def compute_channel_quality(
             + float(weights.get("replicate_consistency", 0.03))
             + float(weights.get("success", 0.0))
         )
-        component_scores["Q_channel"] = weighted / max(total_weight, 1e-12)
+        divisor = max(total_weight, 1e-12)
+        for name, (weight, source) in contribution_sources.items():
+            component_scores[f"{name}_contribution"] = (
+                weight * component_scores[source] / divisor
+            )
+        component_scores["unpenalized_Q_channel"] = weighted / divisor
+        component_scores["noise_penalty_magnitude"] = 0.0
+        component_scores["noise_penalty_adjustment"] = 0.0
+        component_scores["Q_channel"] = weighted / divisor
     else:
+        for name, (weight, source) in contribution_sources.items():
+            component_scores[f"{name}_contribution"] = weight * component_scores[source]
         noise_penalty_magnitude = float(weights.get("noise_penalty", 0.0)) * noise_raw
         unpenalized = (
             float(weights.get("peak_prominence", weights.get("snr", 0.35)))
@@ -1071,9 +1101,15 @@ def compute_channel_quality(
             optimization_direction,
         )
         noise_penalty_adjustment = weighted - unpenalized
+        component_scores["unpenalized_Q_channel"] = unpenalized
         component_scores["Q_channel"] = max(0.0, weighted)
         component_scores["noise_penalty_magnitude"] = noise_penalty_magnitude
         component_scores["noise_penalty_adjustment"] = noise_penalty_adjustment
+    component_scores["clip_adjustment"] = (
+        component_scores["Q_channel"]
+        - component_scores["unpenalized_Q_channel"]
+        - component_scores["noise_penalty_adjustment"]
+    )
     component_scores["peak_prominence_raw"] = peak_prominence_raw
     component_scores["snr_raw"] = peak_prominence_raw
     component_scores["normalized_SNR"] = component_scores[
@@ -1295,6 +1331,8 @@ def compute_paired_response_quality(
             "buffer_repeat_relative_std": buffer_repeat_relative_std,
             "target_repeat_relative_std": target_repeat_relative_std,
             "repeat_relative_std": repeat_relative_std,
+            "buffer_classic_components": buffer_q,
+            "target_classic_components": target_q,
         }
         q_values.append(q_channel)
 

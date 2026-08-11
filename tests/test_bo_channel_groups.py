@@ -337,17 +337,27 @@ def test_paired_analysis_records_skip_duplicate_analysis_record(tmp_path):
     assert rows == [(buffer_record, "buffer"), (target_record, "target")]
 
 
-def test_paired_raw_trace_rows_collapse_archived_and_results_scan_duplicates(tmp_path):
+def test_paired_raw_trace_rows_deduplicate_same_paths_without_collapsing_repeats(tmp_path):
     tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
     tab._bo_session = None
     buffer_csv = tmp_path / "buffer_ch4.csv"
+    buffer_repeat_csv = tmp_path / "buffer_ch4_repeat_02.csv"
     target_csv = tmp_path / "target_ch4.csv"
+    target_repeat_csv = tmp_path / "target_ch4_repeat_02.csv"
     buffer_csv.write_text("Voltage,Current\n0,1\n", encoding="utf-8")
+    buffer_repeat_csv.write_text("Voltage,Current\n0,1.1\n", encoding="utf-8")
     target_csv.write_text("Voltage,Current\n0,2\n", encoding="utf-8")
+    target_repeat_csv.write_text("Voltage,Current\n0,2.1\n", encoding="utf-8")
     buffer_results = tmp_path / "buffer_results.csv"
     target_results = tmp_path / "target_results.csv"
-    buffer_results.write_text(f"file_path,channel,scan_number\n{buffer_csv},4,2\n", encoding="utf-8")
-    target_results.write_text(f"file_path,channel,scan_number\n{target_csv},4,2\n", encoding="utf-8")
+    buffer_results.write_text(
+        f"file_path,channel,scan_number\n{buffer_csv},4,1\n{buffer_repeat_csv},4,2\n",
+        encoding="utf-8",
+    )
+    target_results.write_text(
+        f"file_path,channel,scan_number\n{target_csv},4,1\n{target_repeat_csv},4,2\n",
+        encoding="utf-8",
+    )
     buffer_record = tmp_path / "buffer_summary.json"
     target_record = tmp_path / "target_summary.json"
     buffer_record.write_text(json.dumps({"results_csv": str(buffer_results)}), encoding="utf-8")
@@ -357,19 +367,26 @@ def test_paired_raw_trace_rows_collapse_archived_and_results_scan_duplicates(tmp
         {
             "objective": "paired_response",
             "channels": [4],
-            "archived_measurements": [str(buffer_csv), str(target_csv)],
+            "archived_measurements": [
+                str(buffer_csv),
+                str(buffer_repeat_csv),
+                str(target_csv),
+                str(target_repeat_csv),
+            ],
             "buffer_analysis_record": str(buffer_record),
             "target_analysis_record": str(target_record),
         }
     )
 
-    assert [(row["phase"], row["channel"], row.get("scan")) for row in rows] == [
-        ("buffer", "4", None),
-        ("target", "4", None),
+    assert [(row["phase"], row["channel"], Path(row["path"]).name) for row in rows] == [
+        ("buffer", "4", "buffer_ch4.csv"),
+        ("buffer", "4", "buffer_ch4_repeat_02.csv"),
+        ("target", "4", "target_ch4.csv"),
+        ("target", "4", "target_ch4_repeat_02.csv"),
     ]
 
 
-def test_paired_corrected_trace_rows_collapse_external_scan_duplicates():
+def test_paired_corrected_trace_rows_preserve_external_repeat_scans():
     tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
     tab._external_analysis_results = lambda observation: [
         {
@@ -409,7 +426,9 @@ def test_paired_corrected_trace_rows_collapse_external_scan_duplicates():
     assert diagnostics == []
     assert [(row["phase"], row["channel"], row.get("scan")) for row in rows] == [
         ("buffer", "4", 1),
+        ("buffer", "4", 2),
         ("target", "4", 1),
+        ("target", "4", 2),
     ]
 
 

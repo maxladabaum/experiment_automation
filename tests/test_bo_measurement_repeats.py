@@ -151,6 +151,26 @@ def test_classic_q_weights_peak_prominence_and_repeat_scan_snr_separately():
     assert channel["peak_prominence_raw"] == pytest.approx(metrics["1"]["peak_prominence"])
     assert channel["repeat_scan_snr_raw"] == pytest.approx(metrics["1"]["repeat_scan_snr"])
     assert channel["Q_channel"] == pytest.approx(expected)
+    assert channel["peak_prominence_contribution"] == pytest.approx(
+        2.0 * metrics["1"]["peak_prominence"]
+    )
+    assert channel["repeat_scan_snr_contribution"] == pytest.approx(
+        3.0 * metrics["1"]["repeat_scan_snr"]
+    )
+    assert sum(
+        channel[key]
+        for key in (
+            "peak_prominence_contribution",
+            "repeat_scan_snr_contribution",
+            "peak_height_contribution",
+            "peak_shape_contribution",
+            "baseline_contribution",
+            "replicate_consistency_contribution",
+            "success_contribution",
+            "noise_penalty_adjustment",
+            "clip_adjustment",
+        )
+    ) == pytest.approx(channel["Q_channel"])
 
 
 def test_paired_q_uses_averages_and_subtracts_repeat_std_penalty():

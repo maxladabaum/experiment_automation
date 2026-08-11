@@ -41,6 +41,7 @@ from core.bo_session import (
     _acquisition_score,
     active_parameters,
     build_swv_script,
+    compute_channel_quality,
     compute_paired_response_quality,
     compute_run_quality,
     encode_candidate,
@@ -1390,7 +1391,12 @@ class BayesianOptimizationTab:
 
         score_tree_frame = ttk.Frame(score_box)
         score_tree_frame.pack(fill="both", expand=True)
-        score_cols = ("Q", "Peak uA", "Peak Prominence", "Repeat-scan SNR", "Prominence Score", "Shape", "Baseline", "Replicate", "Success")
+        score_cols = (
+            "Classic Q", "Prom. Term", "Repeat-SNR Term", "Peak Term",
+            "Shape Term", "Baseline Term", "Replicate Term", "Success Term",
+            "Noise Adj", "Clip Adj", "Peak uA", "Peak Prominence",
+            "Repeat-scan SNR", "Shape", "Baseline", "Replicate", "Success",
+        )
         self._score_tree = ttk.Treeview(score_tree_frame, columns=score_cols, show="tree headings", height=10, selectmode="extended")
         self._score_tree.heading("#0", text="Ch")
         self._score_tree.column("#0", width=50, anchor="center", stretch=False)
@@ -6334,14 +6340,22 @@ class BayesianOptimizationTab:
             config = self._bo_session.config if self._bo_session else self._config
             self._write_text(self._q_equation_text, "\n".join(self._q_equation_lines(config)))
         paired = self._is_paired_observation(observation)
+        classic_cols = (
+            "Classic Q", "Prom. Term", "Repeat-SNR Term", "Peak Term",
+            "Shape Term", "Baseline Term", "Replicate Term", "Success Term",
+            "Noise Adj", "Clip Adj",
+        )
         if paired:
             score_cols = (
-                "Phase", "Classic Q", "Classic Pair Q", "Buffer Term", "Target Term",
-                "Prominence Term", "Repeat-SNR Term", "Peak uA", "Trace Prominence", "Prominence Score", "Shape", "Success",
+                "Phase", *classic_cols, "Classic Pair Q", "Buffer Term", "Target Term",
+                "Paired Prom. Term", "Paired Repeat Term", "Peak uA", "Trace Prominence", "Prominence Score", "Shape", "Success",
                 "Paired Q", "Delta Peak", "Paired Prominence", "Paired Repeat SNR",
             )
         else:
-            score_cols = ("Q", "Peak uA", "Peak Prominence", "Repeat-scan SNR", "Prominence Score", "Shape", "Baseline", "Replicate", "Success")
+            score_cols = (
+                *classic_cols, "Peak uA", "Peak Prominence", "Repeat-scan SNR",
+                "Prominence Score", "Shape", "Baseline", "Replicate", "Success",
+            )
         self._score_tree.configure(columns=score_cols)
         for col in score_cols:
             self._score_tree.heading(col, text=col)
@@ -6350,6 +6364,40 @@ class BayesianOptimizationTab:
         channel_metrics = observation.get("channel_metrics", {})
         buffer_channel_metrics = observation.get("buffer_channel_metrics", {})
         target_channel_metrics = observation.get("target_channel_metrics", channel_metrics)
+        source_config = self._bo_session.config if self._bo_session else self._config or {}
+        scoring = dict(source_config.get("scoring") or {})
+        direction = str(
+            observation.get("optimization_direction")
+            or dict(source_config.get("acquisition") or {}).get("optimization_direction")
+            or "maximize"
+        )
+
+        def classic_components(data, metrics, key=None):
+            components = data.get(key) if key else data
+            if not isinstance(components, dict) or "peak_prominence_contribution" not in components:
+                # Older session records predate stored term contributions. Rebuild
+                # them from the retained per-channel metrics for display.
+                components = compute_channel_quality(
+                    metrics,
+                    scoring,
+                    "maximize" if paired else direction,
+                )
+            return components
+
+        def classic_values(components):
+            return (
+                self._fmt(components.get("Q_channel")),
+                self._fmt(components.get("peak_prominence_contribution")),
+                self._fmt(components.get("repeat_scan_snr_contribution")),
+                self._fmt(components.get("peak_height_contribution")),
+                self._fmt(components.get("peak_shape_contribution")),
+                self._fmt(components.get("baseline_contribution")),
+                self._fmt(components.get("replicate_consistency_contribution")),
+                self._fmt(components.get("success_contribution")),
+                self._fmt(components.get("noise_penalty_adjustment")),
+                self._fmt(components.get("clip_adjustment")),
+            )
+
         for ch, data in sorted(components.items(), key=lambda item: int(item[0])):
             metrics = channel_metrics.get(str(ch), {}) if isinstance(channel_metrics, dict) else {}
             if paired:
@@ -6359,12 +6407,18 @@ class BayesianOptimizationTab:
                 delta_peak = self._fmt(data.get("delta_peak_height_uA"))
                 paired_prominence = self._fmt(data.get("peak_prominence"))
                 paired_repeat_snr = self._fmt(data.get("repeat_scan_snr"))
+                buffer_classic = classic_components(
+                    data, buffer_metrics, "buffer_classic_components"
+                )
+                target_classic = classic_components(
+                    data, target_metrics, "target_classic_components"
+                )
                 row_specs = (
                     (
                         f"{ch}_buffer",
                         (
                             "Buffer",
-                            self._fmt(data.get("buffer_classic_Q")),
+                            *classic_values(buffer_classic),
                             self._fmt(data.get("classic_pair_Q")),
                             self._fmt(data.get("buffer_classic_Q_contribution")),
                             self._fmt(data.get("target_classic_Q_contribution")),
@@ -6385,7 +6439,7 @@ class BayesianOptimizationTab:
                         f"{ch}_target",
                         (
                             "Target",
-                            self._fmt(data.get("target_classic_Q")),
+                            *classic_values(target_classic),
                             self._fmt(data.get("classic_pair_Q")),
                             self._fmt(data.get("buffer_classic_Q_contribution")),
                             self._fmt(data.get("target_classic_Q_contribution")),
@@ -6412,8 +6466,9 @@ class BayesianOptimizationTab:
                         values=values,
                     )
             else:
+                classic = classic_components(data, metrics)
                 values = (
-                    self._fmt(data.get("Q_channel")),
+                    *classic_values(classic),
                     self._fmt(self._channel_peak_height(metrics)),
                     self._fmt(data.get("peak_prominence_raw", data.get("snr_raw"))),
                     self._fmt(data.get("repeat_scan_snr_raw")),
@@ -7192,8 +7247,6 @@ class BayesianOptimizationTab:
                         "peak_idx_corr": result.get("peak_idx_corr"),
                     }
                 )
-            if str((observation or {}).get("objective") or "").lower() == "paired_response":
-                rows = self._collapse_paired_rows_to_one_trace_per_phase_channel(rows)
             return self._sort_corrected_trace_rows(rows, diagnostics)
         analysis_cfg = self._current_analysis_settings()
         for raw_row in self._raw_trace_rows_for_observation(observation):
@@ -7716,7 +7769,6 @@ class BayesianOptimizationTab:
 
         if paired:
             rows = self._filter_paired_rows_to_matching_measurements(rows)
-            rows = self._collapse_paired_rows_to_one_trace_per_phase_channel(rows)
 
         return sorted(
             rows,
@@ -7833,7 +7885,11 @@ class BayesianOptimizationTab:
                 if measurement_id and measurement_id not in preferred_ids:
                     continue
             filtered.append(row)
-        return self._collapse_paired_phase_duplicates(filtered)
+        # Exact path duplicates are already removed while rows are assembled.
+        # Do not collapse by measurement id here: repeats created from the same
+        # BO method intentionally share that id and must remain independently
+        # visible in Results & Records.
+        return filtered
 
     def _collapse_paired_phase_duplicates(self, rows):
         grouped = {}
