@@ -432,6 +432,49 @@ def test_paired_corrected_trace_rows_preserve_external_repeat_scans():
     ]
 
 
+def test_paired_score_table_builds_one_row_per_analyzed_trace():
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    tab._bo_session = None
+    tab._config = _config()
+    tab._external_analysis_results = lambda observation: [
+        {
+            "_bo_phase": phase,
+            "channel": 4,
+            "scan_number": scan,
+            "status": "OK",
+            "peak_current": peak,
+            "background_current_rms": 0.1,
+            "peak_offset_norm": 0.0,
+            "bracket_width_V": 0.2,
+            "bracket_point_count": 10,
+            "crop_point_count": 20,
+        }
+        for phase, scan, peak in (
+            ("buffer", 1, 1.0),
+            ("buffer", 2, 1.2),
+            ("target", 1, 2.0),
+            ("target", 2, 2.2),
+        )
+    ]
+
+    rows = tab._individual_trace_score_rows(
+        {"objective": "paired_response", "channels": [4]}
+    )
+
+    assert [(row["phase"], row["channel"], row["trace"]) for row in rows] == [
+        ("buffer", "4", 1),
+        ("buffer", "4", 2),
+        ("target", "4", 1),
+        ("target", "4", 2),
+    ]
+    assert [row["metrics"]["mean_peak_current_uA"] for row in rows] == [
+        1.0,
+        1.2,
+        2.0,
+        2.2,
+    ]
+
+
 def test_grouped_analysis_records_are_namespaced(tmp_path):
     session = BOIntegrationSession(_config(), tmp_path)
     first = session.ask_next_groups()

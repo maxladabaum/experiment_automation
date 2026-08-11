@@ -1392,10 +1392,11 @@ class BayesianOptimizationTab:
         score_tree_frame = ttk.Frame(score_box)
         score_tree_frame.pack(fill="both", expand=True)
         score_cols = (
-            "Classic Q", "Prom. Term", "Repeat-SNR Term", "Peak Term",
+            "Trace", "Classic Q", "Prom. Term", "Repeat-SNR Term", "Peak Term",
             "Shape Term", "Baseline Term", "Replicate Term", "Success Term",
-            "Noise Adj", "Clip Adj", "Peak uA", "Peak Prominence",
-            "Repeat-scan SNR", "Shape", "Baseline", "Replicate", "Success",
+            "Noise Adj", "Clip Adj", "Trace Peak uA", "Trace Noise uA",
+            "Mean Peak uA", "Peak STD uA", "Mean Noise uA", "Peak Prominence",
+            "Repeat-scan SNR", "Prominence Score", "Shape", "Baseline", "Replicate", "Success",
         )
         self._score_tree = ttk.Treeview(score_tree_frame, columns=score_cols, show="tree headings", height=10, selectmode="extended")
         self._score_tree.heading("#0", text="Ch")
@@ -6347,13 +6348,17 @@ class BayesianOptimizationTab:
         )
         if paired:
             score_cols = (
-                "Phase", *classic_cols, "Classic Pair Q", "Buffer Term", "Target Term",
-                "Paired Prom. Term", "Paired Repeat Term", "Peak uA", "Trace Prominence", "Prominence Score", "Shape", "Success",
-                "Paired Q", "Delta Peak", "Paired Prominence", "Paired Repeat SNR",
+                "Phase", "Trace", *classic_cols, "Classic Pair Q", "Buffer Term", "Target Term",
+                "Paired Prom. Term", "Paired Repeat Term", "Trace Peak uA", "Trace Noise uA",
+                "Mean Peak uA", "Peak STD uA", "Mean Noise uA", "Peak Prominence", "Repeat-scan SNR",
+                "Shape", "Success", "Paired Q", "Delta Peak", "Combined Noise", "Combined Peak STD",
+                "Paired Prominence", "Paired Repeat SNR",
             )
         else:
             score_cols = (
-                *classic_cols, "Peak uA", "Peak Prominence", "Repeat-scan SNR",
+                "Trace", *classic_cols, "Trace Peak uA", "Trace Noise uA",
+                "Mean Peak uA", "Peak STD uA", "Mean Noise uA",
+                "Peak Prominence", "Repeat-scan SNR",
                 "Prominence Score", "Shape", "Baseline", "Replicate", "Success",
             )
         self._score_tree.configure(columns=score_cols)
@@ -6364,6 +6369,7 @@ class BayesianOptimizationTab:
         channel_metrics = observation.get("channel_metrics", {})
         buffer_channel_metrics = observation.get("buffer_channel_metrics", {})
         target_channel_metrics = observation.get("target_channel_metrics", channel_metrics)
+        individual_traces = self._individual_trace_score_rows(observation)
         source_config = self._bo_session.config if self._bo_session else self._config or {}
         scoring = dict(source_config.get("scoring") or {})
         direction = str(
@@ -6400,6 +6406,9 @@ class BayesianOptimizationTab:
 
         for ch, data in sorted(components.items(), key=lambda item: int(item[0])):
             metrics = channel_metrics.get(str(ch), {}) if isinstance(channel_metrics, dict) else {}
+            channel_traces = [
+                row for row in individual_traces if str(row.get("channel")) == str(ch)
+            ]
             if paired:
                 buffer_metrics = buffer_channel_metrics.get(str(ch), {}) if isinstance(buffer_channel_metrics, dict) else {}
                 target_metrics = target_channel_metrics.get(str(ch), {}) if isinstance(target_channel_metrics, dict) else metrics
@@ -6413,50 +6422,55 @@ class BayesianOptimizationTab:
                 target_classic = classic_components(
                     data, target_metrics, "target_classic_components"
                 )
-                row_specs = (
-                    (
-                        f"{ch}_buffer",
-                        (
-                            "Buffer",
-                            *classic_values(buffer_classic),
-                            self._fmt(data.get("classic_pair_Q")),
-                            self._fmt(data.get("buffer_classic_Q_contribution")),
-                            self._fmt(data.get("target_classic_Q_contribution")),
-                            self._fmt(data.get("peak_prominence_contribution")),
-                            self._fmt(data.get("repeat_scan_snr_contribution")),
-                            self._fmt(self._channel_peak_height(buffer_metrics)),
-                            self._fmt(data.get("buffer_peak_prominence_raw", data.get("buffer_snr_raw"))),
-                            self._fmt(data.get("buffer_peak_prominence_score", data.get("buffer_snr_score"))),
-                            "",
-                            self._fmt(data.get("success_score")),
-                            paired_q,
-                            delta_peak,
-                            paired_prominence,
-                            paired_repeat_snr,
-                        ),
-                    ),
-                    (
-                        f"{ch}_target",
-                        (
-                            "Target",
-                            *classic_values(target_classic),
-                            self._fmt(data.get("classic_pair_Q")),
-                            self._fmt(data.get("buffer_classic_Q_contribution")),
-                            self._fmt(data.get("target_classic_Q_contribution")),
-                            self._fmt(data.get("peak_prominence_contribution")),
-                            self._fmt(data.get("repeat_scan_snr_contribution")),
-                            self._fmt(self._channel_peak_height(target_metrics)),
-                            self._fmt(data.get("target_peak_prominence_raw", data.get("target_snr_raw"))),
-                            self._fmt(data.get("target_peak_prominence_score", data.get("target_snr_score"))),
-                            self._fmt(data.get("target_shape_score")),
-                            self._fmt(data.get("success_score")),
-                            paired_q,
-                            delta_peak,
-                            paired_prominence,
-                            paired_repeat_snr,
-                        ),
-                    ),
+                phase_defaults = (
+                    ("buffer", buffer_metrics, buffer_classic),
+                    ("target", target_metrics, target_classic),
                 )
+                trace_specs = channel_traces or [
+                    {
+                        "phase": phase,
+                        "trace": "aggregate",
+                        "metrics": phase_metrics,
+                        "classic": phase_classic,
+                    }
+                    for phase, phase_metrics, phase_classic in phase_defaults
+                ]
+                row_specs = []
+                for trace_index, trace in enumerate(trace_specs, start=1):
+                    phase = str(trace.get("phase") or "").strip().lower()
+                    trace_metrics = dict(trace.get("metrics") or {})
+                    phase_metrics = buffer_metrics if phase == "buffer" else target_metrics
+                    phase_classic = buffer_classic if phase == "buffer" else target_classic
+                    row_specs.append(
+                        (
+                            f"{ch}_{phase or 'trace'}_{trace_index}",
+                            (
+                                phase.title() or "Trace",
+                                str(trace.get("trace") or trace_index),
+                                *classic_values(phase_classic),
+                                self._fmt(data.get("classic_pair_Q")),
+                                self._fmt(data.get("buffer_classic_Q_contribution")),
+                                self._fmt(data.get("target_classic_Q_contribution")),
+                                self._fmt(data.get("peak_prominence_contribution")),
+                                self._fmt(data.get("repeat_scan_snr_contribution")),
+                                self._fmt(self._channel_peak_height(trace_metrics)),
+                                self._fmt(self._channel_background_rms(trace_metrics)),
+                                self._fmt(self._channel_peak_height(phase_metrics)),
+                                self._fmt(phase_metrics.get("std_peak_current_uA")),
+                                self._fmt(self._channel_background_rms(phase_metrics)),
+                                self._fmt(phase_classic.get("peak_prominence_raw")),
+                                self._fmt(phase_classic.get("repeat_scan_snr_raw")),
+                                self._fmt(phase_classic.get("peak_shape_score")),
+                                self._fmt(phase_classic.get("success_score")),
+                                paired_q,
+                                delta_peak,
+                                self._fmt(data.get("combined_channel_noise")),
+                                self._fmt(data.get("combined_peak_std_uA")),
+                                paired_prominence,
+                                paired_repeat_snr,
+                            ),
+                        )
+                    )
                 for iid, values in row_specs:
                     self._score_tree.insert(
                         "",
@@ -6466,25 +6480,86 @@ class BayesianOptimizationTab:
                         values=values,
                     )
             else:
-                classic = classic_components(data, metrics)
-                values = (
-                    *classic_values(classic),
-                    self._fmt(self._channel_peak_height(metrics)),
-                    self._fmt(data.get("peak_prominence_raw", data.get("snr_raw"))),
-                    self._fmt(data.get("repeat_scan_snr_raw")),
-                    self._fmt(data.get("normalized_peak_prominence", data.get("normalized_SNR"))),
-                    self._fmt(data.get("peak_shape_score")),
-                    self._fmt(data.get("baseline_stability_score")),
-                    self._fmt(data.get("replicate_consistency_score")),
-                    self._fmt(data.get("success_score")),
-                )
-                self._score_tree.insert(
-                    "",
-                    "end",
-                    iid=str(ch),
-                    text=str(ch),
-                    values=values,
-                )
+                aggregate_classic = classic_components(data, metrics)
+                trace_specs = channel_traces or [{
+                    "trace": "aggregate",
+                    "metrics": metrics,
+                    "classic": aggregate_classic,
+                }]
+                for trace_index, trace in enumerate(trace_specs, start=1):
+                    trace_metrics = dict(trace.get("metrics") or {})
+                    values = (
+                        str(trace.get("trace") or trace_index),
+                        *classic_values(aggregate_classic),
+                        self._fmt(self._channel_peak_height(trace_metrics)),
+                        self._fmt(self._channel_background_rms(trace_metrics)),
+                        self._fmt(self._channel_peak_height(metrics)),
+                        self._fmt(metrics.get("std_peak_current_uA")),
+                        self._fmt(self._channel_background_rms(metrics)),
+                        self._fmt(aggregate_classic.get("peak_prominence_raw", aggregate_classic.get("snr_raw"))),
+                        self._fmt(aggregate_classic.get("repeat_scan_snr_raw")),
+                        self._fmt(aggregate_classic.get("normalized_peak_prominence", aggregate_classic.get("normalized_SNR"))),
+                        self._fmt(aggregate_classic.get("peak_shape_score")),
+                        self._fmt(aggregate_classic.get("baseline_stability_score")),
+                        self._fmt(aggregate_classic.get("replicate_consistency_score")),
+                        self._fmt(aggregate_classic.get("success_score")),
+                    )
+                    self._score_tree.insert(
+                        "",
+                        "end",
+                        iid=f"{ch}_trace_{trace_index}",
+                        text=str(ch),
+                        values=values,
+                    )
+
+    def _individual_trace_score_rows(self, observation):
+        """Build one score-table record for every analyzed SWV result row."""
+        selected_channels = self._observation_channel_filter(observation)
+        source_config = self._bo_session.config if self._bo_session else self._config or {}
+        scoring = dict(source_config.get("scoring") or {})
+        direction = str(
+            (observation or {}).get("optimization_direction")
+            or dict(source_config.get("acquisition") or {}).get("optimization_direction")
+            or "maximize"
+        )
+        paired = self._is_paired_observation(observation)
+        rows = []
+        for index, result in enumerate(self._external_analysis_results(observation), start=1):
+            channel = self._normalize_observation_channel(result.get("channel"))
+            if not channel or (selected_channels and channel not in selected_channels):
+                continue
+            metrics_by_channel = _build_channel_metrics([result])
+            metrics = dict(metrics_by_channel.get(channel) or {})
+            if not metrics:
+                continue
+            phase = str(result.get("_bo_phase") or "").strip().lower()
+            classic = compute_channel_quality(
+                metrics,
+                scoring,
+                "maximize" if paired else direction,
+            )
+            trace = result.get("scan_number", result.get("scan_id_from_name"))
+            if trace in (None, ""):
+                trace = result.get("file_name") or Path(str(result.get("file_path") or "")).name
+            if trace in (None, ""):
+                trace = index
+            rows.append(
+                {
+                    "channel": channel,
+                    "phase": phase,
+                    "trace": trace,
+                    "metrics": metrics,
+                    "classic": classic,
+                }
+            )
+        return sorted(
+            rows,
+            key=lambda row: (
+                self._channel_sort_key(row.get("channel")),
+                0 if row.get("phase") == "buffer" else 1 if row.get("phase") == "target" else 2,
+                str(row.get("trace") or ""),
+            ),
+        )
 
     @staticmethod
     def _is_paired_observation(observation):
