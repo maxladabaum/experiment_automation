@@ -817,7 +817,7 @@ class BayesianOptimizationTab:
             foreground=self.ACCENT,
             wraplength=460,
             justify="left",
-        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        ).grid(row=8, column=0, columnspan=3, sticky="w", pady=(4, 0))
 
         params = ttk.LabelFrame(params_host, text="Parameter Space", padding=8)
         params.pack(fill="both", expand=True)
