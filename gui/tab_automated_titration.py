@@ -75,6 +75,7 @@ class AutomatedTitrationTab:
         self._stock_concentration_var = tk.StringVar(value="10000")
         self._initial_buffer_volume_var = tk.StringVar(value="10000")
         self._aliquot_volume_var = tk.StringVar(value="500")
+        self._plain_buffer_volume_var = tk.StringVar(value="500")
         self._concentrations_var = tk.StringVar(value="10, 25, 50, 100")
         self._replicates_var = tk.StringVar(value="10")
         self._skip_initial_buffer_var = tk.BooleanVar(value=False)
@@ -269,23 +270,29 @@ class AutomatedTitrationTab:
         self._entry_row(
             plan, 2, "Flow-cell aliquot each point (µL):", self._aliquot_volume_var
         )
+        self._entry_row(
+            plan,
+            3,
+            "Plain-buffer aliquot between points (µL):",
+            self._plain_buffer_volume_var,
+        )
         ttk.Label(plan, text="Desired concentrations (µM):").grid(
-            row=3, column=0, sticky="ne", padx=(0, 8), pady=4
+            row=4, column=0, sticky="ne", padx=(0, 8), pady=4
         )
         ttk.Entry(plan, textvariable=self._concentrations_var).grid(
-            row=3, column=1, sticky="ew", pady=4
+            row=4, column=1, sticky="ew", pady=4
         )
-        self._entry_row(plan, 4, "SWV replicates per channel:", self._replicates_var)
+        self._entry_row(plan, 5, "SWV replicates per channel:", self._replicates_var)
         ttk.Checkbutton(
             plan,
             text="Bypass initial buffer pump steps (mixing tube is already filled)",
             variable=self._skip_initial_buffer_var,
-        ).grid(row=5, column=0, columnspan=2, sticky="w", pady=(6, 2))
+        ).grid(row=6, column=0, columnspan=2, sticky="w", pady=(6, 2))
         ttk.Checkbutton(
             plan,
             text="Pump and measure plain buffer between titration concentrations",
             variable=self._measure_buffer_between_var,
-        ).grid(row=6, column=0, columnspan=2, sticky="w", pady=2)
+        ).grid(row=7, column=0, columnspan=2, sticky="w", pady=2)
         ttk.Label(
             plan,
             text=(
@@ -297,10 +304,10 @@ class AutomatedTitrationTab:
             wraplength=430,
             justify="left",
             foreground="#666666",
-        ).grid(row=7, column=0, columnspan=2, sticky="w", pady=(10, 8))
+        ).grid(row=8, column=0, columnspan=2, sticky="w", pady=(10, 8))
         ttk.Button(
             plan, text="Generate Recipe", command=self._generate_recipe
-        ).grid(row=8, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        ).grid(row=9, column=0, columnspan=2, sticky="ew", pady=(6, 0))
 
     def _build_calculation_preview(self, parent):
         calculation = ttk.LabelFrame(
@@ -744,6 +751,9 @@ class AutomatedTitrationTab:
             "aliquot_volume": self._positive(
                 self._aliquot_volume_var.get(), "Flow-cell aliquot"
             ),
+            "plain_buffer_volume": self._positive(
+                self._plain_buffer_volume_var.get(), "Plain-buffer aliquot"
+            ),
             "replicates": self._integer(
                 self._replicates_var.get(), "SWV replicates", minimum=1
             ),
@@ -882,7 +892,9 @@ class AutomatedTitrationTab:
                     recipe,
                     source_port=settings["buffer_port"],
                     destination_port=settings["flow_port"],
-                    volume_ul=settings["aliquot_volume"],
+                    volume_ul=settings.get(
+                        "plain_buffer_volume", settings["aliquot_volume"]
+                    ),
                     speed=settings.get("initial_buffer_speed", settings["speed"]),
                     capacity=settings["syringe_capacity"],
                     label="Plain buffer → flow cell",

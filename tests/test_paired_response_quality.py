@@ -17,8 +17,8 @@ def test_paired_q_is_delta_peak_over_combined_noise():
         "paired_response_weights": {
             "buffer_classic_Q": 0.0,
             "target_classic_Q": 0.0,
-            "delta_peak": 10.0,
-            "delta_scale_uA": 1.0,
+            "peak_prominence": 1.0,
+            "repeat_scan_snr": 0.0,
         },
         "run_weights": {
             "low_channel_threshold": 0.5,
@@ -49,6 +49,7 @@ def test_paired_q_is_delta_peak_over_combined_noise():
     assert channel["buffer_channel_noise"] == 0.5
     assert channel["target_channel_noise"] == 1.5
     assert channel["combined_channel_noise"] == 2.0
+    assert channel["repeat_scan_snr"] == 0.0
     assert channel["buffer_classic_Q_contribution"] == 0.0
     assert channel["target_classic_Q_contribution"] == 0.0
     assert channel["delta_peak_contribution"] == 3.0
@@ -72,8 +73,8 @@ def test_paired_q_contribution_terms_sum_to_paired_q():
         "paired_response_weights": {
             "buffer_classic_Q": 0.25,
             "target_classic_Q": 0.25,
-            "delta_peak": 1.0,
-            "delta_scale_uA": 1.0,
+            "peak_prominence": 1.0,
+            "repeat_scan_snr": 0.0,
         },
         "run_weights": {
             "low_channel_threshold": 0.5,
@@ -117,6 +118,53 @@ def test_paired_q_contribution_terms_sum_to_paired_q():
     assert quality["mean_target_classic_Q_contribution"] == channel["target_classic_Q_contribution"]
     assert quality["mean_delta_peak_contribution"] == channel["delta_peak_contribution"]
     assert quality["Q_run"] == 3.5
+
+
+def test_paired_q_weights_repeat_scan_snr_and_peak_prominence_separately():
+    scoring = {
+        "mode": "classic",
+        "channel_weights": {"success": 1.0, "peak_prominence": 0.0},
+        "paired_response_weights": {
+            "buffer_classic_Q": 0.0,
+            "target_classic_Q": 0.0,
+            "peak_prominence": 2.0,
+            "repeat_scan_snr": 3.0,
+        },
+        "run_weights": {
+            "low_channel_threshold": -100.0,
+            "lambda_variability": 0.0,
+            "lambda_failed": 0.0,
+            "lambda_low": 0.0,
+        },
+    }
+    buffer_metrics = {
+        "1": {
+            "mean_peak_current_uA": 2.0,
+            "std_peak_current_uA": 0.25,
+            "ok_scan_count": 2,
+            "mean_background_rms_uA": 0.5,
+            "success_score": 1.0,
+        }
+    }
+    target_metrics = {
+        "1": {
+            "mean_peak_current_uA": 8.0,
+            "std_peak_current_uA": 0.75,
+            "ok_scan_count": 2,
+            "mean_background_rms_uA": 1.5,
+            "success_score": 1.0,
+        }
+    }
+
+    quality = compute_paired_response_quality(buffer_metrics, target_metrics, scoring)
+    channel = quality["channel_components"]["1"]
+
+    assert channel["delta_peak_height_uA"] == 6.0
+    assert channel["peak_prominence"] == 3.0
+    assert channel["repeat_scan_snr"] == 6.0
+    assert channel["peak_prominence_contribution"] == 6.0
+    assert channel["repeat_scan_snr_contribution"] == 18.0
+    assert channel["paired_Q_channel"] == 24.0
 
 
 def test_paired_q_is_zero_when_either_phase_failed():
@@ -199,7 +247,9 @@ def test_paired_q_preserves_negative_delta_score():
         }
     }
 
-    quality = compute_paired_response_quality(buffer_metrics, target_metrics, scoring)
+    quality = compute_paired_response_quality(
+        buffer_metrics, target_metrics, scoring, "survey"
+    )
     channel = quality["channel_components"]["1"]
 
     assert channel["delta_peak_height_uA"] == -6.0
@@ -246,7 +296,9 @@ def test_negative_paired_delta_subtracts_weighted_classic_q_terms():
         }
     }
 
-    quality = compute_paired_response_quality(buffer_metrics, target_metrics, scoring)
+    quality = compute_paired_response_quality(
+        buffer_metrics, target_metrics, scoring, "survey"
+    )
     channel = quality["channel_components"]["1"]
 
     assert channel["delta_peak_contribution"] == -3.0

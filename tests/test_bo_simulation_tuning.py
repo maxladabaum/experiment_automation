@@ -47,14 +47,15 @@ def test_simulation_tuning_builds_independent_paired_bo_config():
     ]
     tab._engine_score_vars = {
         "mode": _var(master, "classic"),
-        "snr": _var(master, 0.5),
+        "peak_prominence": _var(master, 0.5),
+        "repeat_scan_snr": _var(master, 0.4),
         "peak_height": _var(master, 1.0),
         "peak_shape": _var(master, 0.0),
         "baseline": _var(master, 0.0),
         "replicate_consistency": _var(master, 0.0),
         "success": _var(master, 0.0),
         "noise_penalty": _var(master, 5.0),
-        "snr_saturation": _var(master, 20.0),
+        "peak_prominence_saturation": _var(master, 20.0),
         "lambda_variability": _var(master, 0.0),
         "lambda_failed": _var(master, 0.0),
         "lambda_low": _var(master, 0.0),
@@ -63,8 +64,8 @@ def test_simulation_tuning_builds_independent_paired_bo_config():
     tab._engine_paired_score_vars = {
         "buffer_classic_Q": _var(master, 0.1),
         "target_classic_Q": _var(master, 0.2),
-        "delta_peak": _var(master, 2.0),
-        "delta_scale_uA": _var(master, 0.5),
+        "peak_prominence": _var(master, 2.0),
+        "repeat_scan_snr": _var(master, 0.5),
     }
     tab._engine_analysis_vars = {
         "crop_min_v": _var(master, -0.55),
@@ -97,7 +98,9 @@ def test_simulation_tuning_builds_independent_paired_bo_config():
     assert tuned["paired_warmup_cycles"] == 2
     assert tuned["n_initial_points"] == 10
     assert tuned["scoring"]["channel_weights"]["noise_penalty"] == 5.0
-    assert tuned["scoring"]["paired_response_weights"]["delta_peak"] == 2.0
+    assert tuned["scoring"]["channel_weights"]["repeat_scan_snr"] == 0.4
+    assert tuned["scoring"]["paired_response_weights"]["peak_prominence"] == 2.0
+    assert tuned["scoring"]["paired_response_weights"]["repeat_scan_snr"] == 0.5
     assert tuned["analysis"]["crop_min_v"] == -0.55
     assert tuned["analysis"]["smooth_window"] == 11
     assert tuned["analysis"]["require_local_minima_on_both_sides"] is True
@@ -148,3 +151,55 @@ def test_main_setup_persists_per_group_optimizer_settings():
     assert tab._config["channel_groups"][1]["n_initial_points"] == 6
     assert tab._config["channel_groups"][1]["initial_point_mode"] == "random"
     assert "initial_parameters" not in tab._config["channel_groups"][1]
+
+
+def test_classic_scoring_explanation_omits_zero_weight_terms():
+    master = tk.Tcl()
+    tab = BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    values = {
+        "mode": "classic",
+        "peak_prominence": 1.5,
+        "repeat_scan_snr": 0.0,
+        "peak_height": 0.0,
+        "peak_shape": 0.0,
+        "baseline": 0.25,
+        "replicate_consistency": 0.0,
+        "success": 0.0,
+        "noise_penalty": 0.0,
+        "lambda_variability": 0.2,
+        "lambda_repeat_std": 0.0,
+        "lambda_failed": 0.0,
+        "lambda_low": 0.0,
+        "low_channel_threshold": 0.5,
+    }
+    variables = {key: _var(master, value) for key, value in values.items()}
+    explanation = _var(master, "")
+
+    tab._refresh_formula_from_vars(variables, explanation)
+    text = explanation.get()
+
+    assert "1.5*Peak prominence" in text
+    assert "0.25*Baseline" in text
+    assert "0.2*std(Q_channel)" in text
+    assert "Repeat-scan SNR" not in text
+    assert "Shape" not in text
+    assert "Success" not in text
+    assert "Noise uA" not in text
+
+
+def test_paired_scoring_explanation_omits_zero_weight_terms():
+    text = BayesianOptimizationTab._paired_formula_text(
+        {
+            "buffer_classic_Q": 0.0,
+            "target_classic_Q": 0.5,
+            "peak_prominence": 1.25,
+            "repeat_scan_snr": 0.0,
+            "lambda_repeat_std": 0.0,
+        }
+    )
+
+    assert "1.25*peak_prominence" in text
+    assert "0.5*target_classic_Q" in text
+    assert "repeat_scan_SNR" not in text
+    assert "buffer_classic_Q" not in text
+    assert "mean repeat relative STD" not in text

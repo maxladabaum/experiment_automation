@@ -163,4 +163,4 @@ def test_reanalyze_paired_observation_routes_phases_and_rebuilds_paired_q(monkey
     assert rebuilt["quality"]["channel_components"]["1"]["delta_peak_height_uA"] == 3.0
     assert rebuilt["quality"]["channel_components"]["1"]["buffer_classic_Q_contribution"] > 0.0
     assert rebuilt["quality"]["channel_components"]["1"]["target_classic_Q_contribution"] > 0.0
-    assert rebuilt["Q_run"] == pytest.approx(2.2)
+    assert rebuilt["Q_run"] == pytest.approx(10.2)

@@ -9,6 +9,7 @@
   "bo_config_dir": "%USERPROFILE%\\Documents\\Experiment Automation Data\\bo_configs",
   "bo_default_config_path": "%USERPROFILE%\\Documents\\Experiment Automation Data\\bo_configs\\default_swv_bo.json",
   "bo_local_paths_config": "%USERPROFILE%\\Documents\\Experiment Automation Data\\bo_configs\\local_paths.json",
+  "bo_last_setup_metadata_path": "%USERPROFILE%\\Documents\\Experiment Automation Data\\bo_configs\\last_bo_setup_metadata.json",
   "session_archive_dir": "\\\\server-or-tailscale-ip\\Data_Drive",
   "pump_com_port": 8,
   "pump_baud": 9600,

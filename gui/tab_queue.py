@@ -376,7 +376,10 @@ class QueueTab:
                     block = ((item or {}).get("bo_block") or {})
                     target = int(block.get("target_iterations", 0) or 0)
                     if str(block.get("objective") or "").strip().lower() == "paired_response":
-                        target *= max(1, int(block.get("batch_size", 1) or 1)) * 2
+                        target = (
+                            max(0, int(block.get("warmup_iterations", 0) or 0))
+                            + target * max(1, int(block.get("batch_size", 1) or 1))
+                        ) * 2
                 except Exception:
                     target = 0
                 count += max(0, target)
@@ -1591,10 +1594,19 @@ class QueueTab:
         config_name = Path(str(block.get("bo_config_path") or "BO config")).name
         if str(block.get("objective") or "").lower() == "paired_response":
             batch = max(1, int(block.get("batch_size", 1) or 1))
+            warmup_batch = max(1, int(block.get("warmup_batch_size", batch) or batch))
+            warmup_text = (
+                "all warmups in one batch"
+                if bool(block.get("warmup_single_batch", False))
+                else f"warmup batches x {warmup_batch}"
+            )
             target_eq = max(0.0, float(block.get("target_equilibration_seconds", 0.0) or 0.0))
             buffer_eq = max(0.0, float(block.get("buffer_equilibration_seconds", 0.0) or 0.0))
             eq_text = f" | eq target {target_eq:g}s, buffer {buffer_eq:g}s" if (target_eq or buffer_eq) else ""
-            return f"{config_name} | paired {target} cycles x {batch} methods{eq_text} | {channels}"
+            return (
+                f"{config_name} | paired {target} cycles x {batch} methods "
+                f"({warmup_text}){eq_text} | {channels}"
+            )
         return f"{config_name} | {target} iter | {channels}"
 
     def _execute_measurement_item(self, item: dict):
@@ -1832,11 +1844,32 @@ class QueueTab:
         return allowed
 
     @staticmethod
+    def _paired_bo_schedule_totals(
+        target_cycles: int,
+        batch_size: int,
+        warmup_observations: int,
+        warmup_batch_size: int,
+    ) -> tuple[int, int, int]:
+        """Return total parameter sets, physical warmup batches, and all batches."""
+        target_cycles = max(0, int(target_cycles))
+        batch_size = max(1, int(batch_size))
+        warmup_observations = max(0, int(warmup_observations))
+        warmup_batch_size = max(1, int(warmup_batch_size))
+        warmup_batches = (
+            int(math.ceil(warmup_observations / float(warmup_batch_size)))
+            if warmup_observations
+            else 0
+        )
+        total_parameter_sets = warmup_observations + target_cycles * batch_size
+        return total_parameter_sets, warmup_batches, warmup_batches + target_cycles
+
+    @staticmethod
     def _paired_bo_batch_span(
         completed_observations: int,
         target_observations: int,
         batch_size: int,
         warmup_observations: int,
+        warmup_batch_size: int | None = None,
     ) -> tuple[int, int]:
         """Return the next suggestion count and number of logical cycles it covers."""
         remaining = max(0, int(target_observations) - int(completed_observations))
@@ -1846,6 +1879,8 @@ class QueueTab:
         warmup_remaining = max(0, int(warmup_observations) - int(completed_observations))
         if warmup_remaining > 0:
             count = min(remaining, warmup_remaining)
+            if warmup_batch_size is not None:
+                count = min(count, max(1, int(warmup_batch_size)))
         else:
             count = min(remaining, batch_size)
         cycle_span = max(1, int(math.ceil(count / float(batch_size))))
@@ -1886,11 +1921,27 @@ class QueueTab:
         paired_mode = str(block.get("objective") or "").strip().lower() == "paired_response"
         if paired_mode:
             batch_size_for_warmup = max(1, int(block.get("batch_size", 1) or 1))
+            warmup_batch_size = max(
+                1,
+                int(
+                    block.get("warmup_batch_size", batch_size_for_warmup)
+                    or batch_size_for_warmup
+                ),
+            )
+            config["paired_warmup_batch_size"] = warmup_batch_size
+            config["paired_warmup_single_batch"] = bool(
+                block.get("warmup_single_batch", False)
+            )
+            if block.get("warmup_iterations") is not None:
+                config["n_initial_points"] = max(
+                    0, int(block.get("warmup_iterations") or 0)
+                )
             if block.get("paired_warmup_cycles") is not None:
                 warmup_cycles = max(0, int(block.get("paired_warmup_cycles") or 0))
                 config["paired_warmup_cycles"] = warmup_cycles
                 config["paired_batch_size"] = batch_size_for_warmup
-                config["n_initial_points"] = warmup_cycles * batch_size_for_warmup
+                if block.get("warmup_iterations") is None:
+                    config["n_initial_points"] = warmup_cycles * batch_size_for_warmup
         analysis_cfg = dict((config.get("analysis") or {}))
         analysis_cfg.update(dict(block.get("analysis") or {}))
         if block.get("analysis_file_glob"):
@@ -1934,14 +1985,32 @@ class QueueTab:
         if paired_mode:
             group_count = len(config.get("channel_groups") or [{"channels": config.get("channels", [])}])
             batch_size = max(1, int(block.get("batch_size", 1) or 1))
-            target_cycles = target_iterations
-            target_parameter_sets = target_cycles * batch_size
-            target_observations = target_parameter_sets * group_count
-            warmup_observations = min(
-                target_parameter_sets,
-                self._paired_bo_warmup_parameter_sets(config),
+            warmup_batch_size = max(
+                1, int(block.get("warmup_batch_size", batch_size) or batch_size)
             )
-            halfway_cycle = max(1, int(math.ceil(target_cycles / 2.0)))
+            target_cycles = target_iterations
+            warmup_observations = max(
+                0,
+                int(
+                    block.get(
+                        "warmup_iterations",
+                        self._paired_bo_warmup_parameter_sets(config),
+                    )
+                    or 0
+                ),
+            )
+            if bool(block.get("warmup_single_batch", False)) and warmup_observations > 0:
+                warmup_batch_size = warmup_observations
+            target_parameter_sets, warmup_batches, total_cycles = (
+                self._paired_bo_schedule_totals(
+                    target_cycles,
+                    batch_size,
+                    warmup_observations,
+                    warmup_batch_size,
+                )
+            )
+            target_observations = target_parameter_sets * group_count
+            halfway_cycle = max(1, int(math.ceil(total_cycles / 2.0)))
             completed_cycles = 0
             target_equilibration_seconds = max(0.0, float(block.get("target_equilibration_seconds", 0.0) or 0.0))
             buffer_equilibration_seconds = max(0.0, float(block.get("buffer_equilibration_seconds", 0.0) or 0.0))
@@ -1955,39 +2024,38 @@ class QueueTab:
                 "buffer_exchange_block_path",
                 "Return-to-buffer exchange",
             )
-            while self._session.is_running and completed_cycles < target_cycles:
-                suggestion_count, cycle_span = self._paired_bo_batch_span(
+            while self._session.is_running and completed_cycles < total_cycles:
+                suggestion_count, _cycle_span = self._paired_bo_batch_span(
                     len(bo_session.observations) // group_count,
                     target_parameter_sets,
                     batch_size,
                     warmup_observations,
+                    warmup_batch_size,
                 )
                 if suggestion_count <= 0:
                     break
                 cycle_index = completed_cycles + 1
-                cycle_end = min(target_cycles, completed_cycles + cycle_span)
-                is_consolidated_warmup = (
+                is_warmup_batch = (
                     len(bo_session.observations) // group_count < warmup_observations
-                    and suggestion_count > batch_size
                 )
                 cycle_label = (
-                    f"Warmup cycles {cycle_index}-{cycle_end}"
-                    if is_consolidated_warmup
-                    else f"Cycle {cycle_index}"
+                    f"Warmup batch {cycle_index}/{warmup_batches}"
+                    if is_warmup_batch
+                    else f"GP cycle {cycle_index - warmup_batches}/{target_cycles}"
                 )
                 suggestions = self._paired_bo_execution_order(bo_session.ask_batch(suggestion_count))
                 self._set_bo_live_details(
                     item,
-                    f"{cycle_label}/{target_cycles} | preparing suggestions | iterations {suggestions[0].iteration}-{suggestions[-1].iteration}",
+                    f"{cycle_label} | preparing suggestions | iterations {suggestions[0].iteration}-{suggestions[-1].iteration}",
                 )
                 cycle_progress_record = self._append_bo_progress(
                     item,
-                    "BO_WARMUP" if is_consolidated_warmup else "BO_CYCLE",
+                    "BO_WARMUP" if is_warmup_batch else "BO_CYCLE",
                     "running",
-                    f"{cycle_label}/{target_cycles}: iterations {suggestions[0].iteration}-{suggestions[-1].iteration}",
+                    f"{cycle_label}: iterations {suggestions[0].iteration}-{suggestions[-1].iteration}",
                 )
                 self.log(
-                    f"BO paired {cycle_label.lower()}/{target_cycles}: {len(suggestions)} suggestion(s), "
+                    f"BO paired {cycle_label.lower()}: {len(suggestions)} suggestion(s), "
                     f"iterations {suggestions[0].iteration}-{suggestions[-1].iteration}"
                 )
 
@@ -1995,8 +2063,20 @@ class QueueTab:
                 target_items = []
                 suggestion_metadata = {}
                 for suggestion in suggestions:
-                    logical_cycle = ((int(suggestion.iteration) - 1) // batch_size) + 1
-                    batch_index = ((int(suggestion.iteration) - 1) % batch_size) + 1
+                    suggestion_iteration = int(suggestion.iteration)
+                    if suggestion_iteration <= warmup_observations:
+                        logical_cycle = (
+                            (suggestion_iteration - 1) // warmup_batch_size
+                        ) + 1
+                        batch_index = (
+                            (suggestion_iteration - 1) % warmup_batch_size
+                        ) + 1
+                    else:
+                        gp_iteration = suggestion_iteration - warmup_observations
+                        logical_cycle = warmup_batches + (
+                            (gp_iteration - 1) // batch_size
+                        ) + 1
+                        batch_index = ((gp_iteration - 1) % batch_size) + 1
                     buffer = bo_session.build_queue_items(self._session.registry, suggestion, phase="buffer")
                     target = bo_session.build_queue_items(self._session.registry, suggestion, phase="target")
                     bo_session.record_queued(suggestion, buffer + target)
@@ -2032,7 +2112,7 @@ class QueueTab:
                         "bo_mode": "paired_response",
                         "bo_parent_item": item,
                         "bo_cycle_current": cycle_index,
-                        "bo_cycle_total": target_cycles,
+                        "bo_cycle_total": total_cycles,
                         "bo_phase": "buffer measurements",
                         "completed_before": completed_measurements,
                         "bo_total_measurements": total_measurements,
@@ -2056,7 +2136,7 @@ class QueueTab:
                     self._session.update_queue_status(
                         bo_mode="paired_response",
                         bo_cycle_current=cycle_index,
-                        bo_cycle_total=target_cycles,
+                        bo_cycle_total=total_cycles,
                         bo_phase="buffer-to-target exchange",
                         bo_completed_measurements=completed_measurements,
                         bo_total_measurements=total_measurements,
@@ -2066,7 +2146,7 @@ class QueueTab:
                     self.log(f"BO paired batch: running buffer-to-target exchange block ({len(target_exchange_items)} step(s))")
                     if not self._execute_bo_operational_items(
                         [copy.deepcopy(x) for x in target_exchange_items],
-                        f"{cycle_label}/{target_cycles} buffer-to-target exchange",
+                        f"{cycle_label} buffer-to-target exchange",
                         bo_parent_item=item,
                     ):
                         return False
@@ -2076,7 +2156,7 @@ class QueueTab:
                 self._session.update_queue_status(
                     bo_mode="paired_response",
                     bo_cycle_current=cycle_index,
-                    bo_cycle_total=target_cycles,
+                    bo_cycle_total=total_cycles,
                     bo_phase="target equilibration",
                     bo_completed_measurements=completed_measurements,
                     bo_total_measurements=total_measurements,
@@ -2085,7 +2165,7 @@ class QueueTab:
                 )
                 if not self._execute_bo_equilibration_pause(
                     target_equilibration_seconds,
-                    f"BO paired {cycle_label.lower()}/{target_cycles}: target equilibration",
+                    f"BO paired {cycle_label.lower()}: target equilibration",
                     bo_parent_item=item,
                 ):
                     return False
@@ -2097,7 +2177,7 @@ class QueueTab:
                         "bo_mode": "paired_response",
                         "bo_parent_item": item,
                         "bo_cycle_current": cycle_index,
-                        "bo_cycle_total": target_cycles,
+                        "bo_cycle_total": total_cycles,
                         "bo_phase": "target measurements",
                         "completed_before": completed_measurements,
                         "bo_total_measurements": total_measurements,
@@ -2121,7 +2201,7 @@ class QueueTab:
                     self._session.update_queue_status(
                         bo_mode="paired_response",
                         bo_cycle_current=cycle_index,
-                        bo_cycle_total=target_cycles,
+                        bo_cycle_total=total_cycles,
                         bo_phase="target-to-buffer exchange",
                         bo_completed_measurements=completed_measurements,
                         bo_total_measurements=total_measurements,
@@ -2131,18 +2211,18 @@ class QueueTab:
                     self.log(f"BO paired batch: running target-to-buffer exchange block ({len(buffer_exchange_items)} step(s))")
                     if not self._execute_bo_operational_items(
                         [copy.deepcopy(x) for x in buffer_exchange_items],
-                        f"{cycle_label}/{target_cycles} target-to-buffer exchange",
+                        f"{cycle_label} target-to-buffer exchange",
                         bo_parent_item=item,
                     ):
                         return False
                 else:
                     self.log("BO paired batch: no target-to-buffer exchange block configured; next cycle will start in current fluid")
 
-                if cycle_end < target_cycles:
+                if cycle_index < total_cycles:
                     self._session.update_queue_status(
                         bo_mode="paired_response",
                         bo_cycle_current=cycle_index,
-                        bo_cycle_total=target_cycles,
+                        bo_cycle_total=total_cycles,
                         bo_phase="buffer equilibration",
                         bo_completed_measurements=completed_measurements,
                         bo_total_measurements=total_measurements,
@@ -2151,19 +2231,19 @@ class QueueTab:
                     )
                     if not self._execute_bo_equilibration_pause(
                         buffer_equilibration_seconds,
-                        f"BO paired {cycle_label.lower()}/{target_cycles}: buffer equilibration",
+                        f"BO paired {cycle_label.lower()}: buffer equilibration",
                         bo_parent_item=item,
                     ):
                         return False
 
                 self._set_bo_live_details(
                     item,
-                    f"Cycle {cycle_index}/{target_cycles} | analysis | importing iterations {suggestions[0].iteration}-{suggestions[-1].iteration}",
+                    f"{cycle_label} | analysis | importing iterations {suggestions[0].iteration}-{suggestions[-1].iteration}",
                 )
                 self._session.update_queue_status(
                     bo_mode="paired_response",
                     bo_cycle_current=cycle_index,
-                    bo_cycle_total=target_cycles,
+                    bo_cycle_total=total_cycles,
                     bo_phase="analysis",
                     bo_completed_measurements=completed_measurements,
                     bo_total_measurements=total_measurements,
@@ -2173,7 +2253,7 @@ class QueueTab:
                 for suggestion in suggestions:
                     self._set_bo_live_details(
                         item,
-                        f"Cycle {cycle_index}/{target_cycles} | analysis | importing iteration {suggestion.iteration}",
+                        f"{cycle_label} | analysis | importing iteration {suggestion.iteration}",
                     )
                     metadata = dict(suggestion_metadata.get(int(suggestion.iteration), {}))
                     metadata["target_trace_number"] = len(buffer_items) + int(metadata.get("target_trace_number", 0) or 0)
@@ -2193,20 +2273,20 @@ class QueueTab:
                     )
                     if callable(live_refresh):
                         self._run_bo_render_break(bo_session, obs.get("iteration"))
-                completed_cycles = cycle_end
+                completed_cycles = cycle_index
                 self._update_bo_progress(
                     cycle_progress_record,
                     "completed",
-                    f"{cycle_label}/{target_cycles}: iterations {suggestions[0].iteration}-{suggestions[-1].iteration} complete",
+                    f"{cycle_label}: iterations {suggestions[0].iteration}-{suggestions[-1].iteration} complete",
                 )
                 self._set_bo_live_details(
                     item,
-                    f"Cycle {cycle_index}/{target_cycles} complete | {len(bo_session.observations)}/{target_observations} parameter sets observed",
+                    f"{cycle_label} complete | {len(bo_session.observations)}/{target_observations} parameter sets observed",
                 )
                 self._session.update_queue_status(
                     bo_mode="paired_response",
                     bo_cycle_current=cycle_index,
-                    bo_cycle_total=target_cycles,
+                    bo_cycle_total=total_cycles,
                     bo_phase="cycle complete",
                     bo_completed_measurements=completed_measurements,
                     bo_total_measurements=total_measurements,
@@ -2216,7 +2296,7 @@ class QueueTab:
                 if session_mgr is not None and not halfway_notified and completed_cycles >= halfway_cycle:
                     halfway_notified = True
                     session_mgr.notify_slack(
-                        f"BO paired-response progress: cycle {completed_cycles}/{target_cycles} complete "
+                        f"BO paired-response progress: batch {completed_cycles}/{total_cycles} complete "
                         f"(halfway). {len(bo_session.observations)}/{target_observations} hyperparameter sets observed. "
                         f"Session={bo_session.session_id}; Experiment={Path(exp_path).name}."
                     )
@@ -2224,29 +2304,31 @@ class QueueTab:
             completed_iterations = len(bo_session.observations)
             item["details"] = (
                 f"{self._format_bo_block_details(block)} | done "
-                f"{completed_cycles}/{target_cycles} cycles, {completed_iterations}/{target_observations} methods"
+                f"{completed_cycles}/{total_cycles} fluid batches, "
+                f"{completed_iterations}/{target_observations} methods"
             )
             self._append_bo_progress(
                 item,
                 "BO_DONE",
-                "completed" if completed_cycles >= target_cycles else "stopped",
-                f"Paired BO done: {completed_cycles}/{target_cycles} cycles, {completed_iterations}/{target_observations} parameter sets",
+                "completed" if completed_cycles >= total_cycles else "stopped",
+                f"Paired BO done: {completed_cycles}/{total_cycles} fluid batches, "
+                f"{completed_iterations}/{target_observations} parameter sets",
             )
             self._root.after(0, self.refresh)
             best = bo_session.best_observation()
             if best is not None:
                 item["bo_best_q"] = float(best.get("Q_run", 0.0))
                 self.log(f"BO block best Q_run={item['bo_best_q']:.3f}")
-            if session_mgr is not None and completed_cycles >= target_cycles:
+            if session_mgr is not None and completed_cycles >= total_cycles:
                 best_text = ""
                 if best is not None:
                     best_text = f" Best Q_run={float(best.get('Q_run', 0.0)):.3f} at iter {int(best.get('iteration', 0) or 0)}."
                 session_mgr.notify_slack(
-                    f"BO paired-response session completed: {completed_cycles}/{target_cycles} cycles, "
+                    f"BO paired-response session completed: {completed_cycles}/{total_cycles} fluid batches, "
                     f"{completed_iterations}/{target_observations} hyperparameter sets. "
                     f"Session={bo_session.session_id}; Experiment={Path(exp_path).name}.{best_text}"
                 )
-            return self._session.is_running and completed_cycles >= target_cycles
+            return self._session.is_running and completed_cycles >= total_cycles
 
         classic_groups = config.get("channel_groups") or [
             {"id": 1, "name": "Group 1", "channels": config.get("channels", [])}

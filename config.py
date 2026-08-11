@@ -174,6 +174,14 @@ BO_LOCAL_PATHS_CONFIG = _as_path(
     ),
     BO_CONFIG_DIR / "local_paths.json",
 )
+BO_LAST_SETUP_METADATA_PATH = _as_path(
+    _env_or_local(
+        "EA_BO_LAST_SETUP_METADATA_PATH",
+        "bo_last_setup_metadata_path",
+        BO_CONFIG_DIR / "last_bo_setup_metadata.json",
+    ),
+    BO_CONFIG_DIR / "last_bo_setup_metadata.json",
+)
 
 
 def _load_bo_local_paths() -> dict:

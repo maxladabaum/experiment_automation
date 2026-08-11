@@ -118,12 +118,17 @@ def _build_channel_metrics(results: List[dict]) -> Dict[str, dict]:
         if not ok_rows:
             metrics[channel] = {
                 "snr": 0.0,
+                "peak_prominence": 0.0,
+                "repeat_scan_snr": 0.0,
                 "peak_shape_score": 0.0,
                 "baseline_stability_score": 0.0,
                 "replicate_consistency_score": 0.0,
                 "success_score": _clip01(success_score),
                 "ok_scan_count": 0,
                 "total_scan_count": total,
+                "std_peak_current_uA": 0.0,
+                "std_background_rms_uA": 0.0,
+                "repeat_relative_std": 0.0,
             }
             continue
 
@@ -146,13 +151,25 @@ def _build_channel_metrics(results: List[dict]) -> Dict[str, dict]:
         replicate_scores = _score_from_cv(peak_currents)
         mean_peak_current = _mean(peak_currents, 0.0)
         mean_background_rms = _mean(background_rms, 0.0)
+        std_peak_current = _std(peak_currents)
+        std_background_rms = _std(background_rms)
+        repeat_relative_std = 0.5 * (
+            _cv(peak_currents) + _cv(background_rms)
+        )
         mean_bracket_point_count = _mean(bracket_point_counts, 1.0)
         mean_crop_point_count = _mean(crop_point_counts, 1.0)
         snr_unadjusted = mean_peak_current / max(mean_background_rms, 1e-12)
+        repeat_scan_snr = (
+            mean_peak_current / max(std_peak_current, 1e-12)
+            if len(peak_currents) > 1
+            else 0.0
+        )
         metrics[channel] = {
             "snr": snr_unadjusted,
             "snr_unadjusted": snr_unadjusted,
-            "peak_shape_score": _clip01(0.5 * _median(offset_scores, 0.0) + 0.5 * width_scores),
+            "peak_prominence": snr_unadjusted,
+            "repeat_scan_snr": repeat_scan_snr,
+            "peak_shape_score": _clip01(0.5 * _mean(offset_scores, 0.0) + 0.5 * width_scores),
             "baseline_stability_score": _clip01(baseline_scores),
             "replicate_consistency_score": _clip01(replicate_scores),
             "success_score": _clip01(success_score),
@@ -162,8 +179,11 @@ def _build_channel_metrics(results: List[dict]) -> Dict[str, dict]:
             "mean_crop_point_count": mean_crop_point_count,
             "median_peak_current_uA": _median(peak_currents, 0.0),
             "mean_peak_current_uA": mean_peak_current,
+            "std_peak_current_uA": std_peak_current,
             "median_background_rms_uA": _median(background_rms, 0.0),
             "mean_background_rms_uA": mean_background_rms,
+            "std_background_rms_uA": std_background_rms,
+            "repeat_relative_std": repeat_relative_std,
         }
     return metrics
 

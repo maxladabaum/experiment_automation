@@ -77,6 +77,71 @@ def test_paired_warmup_cycles_are_consolidated_into_one_batch():
     assert cycle_span == 2
 
 
+def test_paired_warmup_batch_size_chunks_warmup_before_regular_batches():
+    schedule = []
+    completed = 0
+    while completed < 55:
+        count, cycle_span = QueueTab._paired_bo_batch_span(
+            completed_observations=completed,
+            target_observations=55,
+            batch_size=1,
+            warmup_observations=50,
+            warmup_batch_size=10,
+        )
+        schedule.append((count, cycle_span))
+        completed += count
+
+    assert schedule[:5] == [(10, 10)] * 5
+    assert schedule[5:] == [(1, 1)] * 5
+
+
+def test_partial_final_warmup_batch_does_not_cross_into_gp_batch():
+    count, cycle_span = QueueTab._paired_bo_batch_span(
+        completed_observations=40,
+        target_observations=60,
+        batch_size=1,
+        warmup_observations=47,
+        warmup_batch_size=10,
+    )
+
+    assert count == 7
+    assert cycle_span == 7
+
+
+def test_warmups_are_added_before_requested_gp_cycles():
+    total_sets, warmup_batches, total_batches = QueueTab._paired_bo_schedule_totals(
+        target_cycles=50,
+        batch_size=1,
+        warmup_observations=50,
+        warmup_batch_size=10,
+    )
+
+    assert total_sets == 100
+    assert warmup_batches == 5
+    assert total_batches == 55
+
+
+def test_all_warmups_can_run_as_one_fluid_batch():
+    count, cycle_span = QueueTab._paired_bo_batch_span(
+        completed_observations=0,
+        target_observations=100,
+        batch_size=1,
+        warmup_observations=50,
+        warmup_batch_size=50,
+    )
+    total_sets, warmup_batches, total_batches = QueueTab._paired_bo_schedule_totals(
+        target_cycles=50,
+        batch_size=1,
+        warmup_observations=50,
+        warmup_batch_size=50,
+    )
+
+    assert (count, cycle_span) == (50, 50)
+    assert total_sets == 100
+    assert warmup_batches == 1
+    assert total_batches == 51
+
+
 def test_paired_gp_batches_return_to_configured_batch_size_after_warmup():
     count, cycle_span = QueueTab._paired_bo_batch_span(
         completed_observations=10,

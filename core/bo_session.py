@@ -213,6 +213,15 @@ def _same_path(left: str | Path, right: str | Path) -> bool:
         return Path(left) == Path(right)
 
 
+def _normalized_optimization_direction(direction: Optional[str]) -> str:
+    raw = str(direction or "maximize").strip().lower()
+    if raw in {"minimize", "min", "more_negative", "negative"}:
+        return "minimize"
+    if raw in {"survey", "either", "absolute", "magnitude"}:
+        return "survey"
+    return "maximize"
+
+
 def normalize_bo_config(config: dict) -> dict:
     cfg = dict(config)
     cfg.setdefault("schema_version", 1)
@@ -220,6 +229,9 @@ def normalize_bo_config(config: dict) -> dict:
     cfg.setdefault("n_initial_points", 8)
     cfg.setdefault("random_seed", 42)
     cfg.setdefault("channels", list(range(1, 11)))
+    cfg["measurements_per_channel"] = max(
+        1, int(cfg.get("measurements_per_channel", 1) or 1)
+    )
     channels = parse_channels(cfg.get("channels", []))
     raw_groups = cfg.get("channel_groups")
     if not isinstance(raw_groups, list) or not raw_groups:
@@ -243,6 +255,11 @@ def normalize_bo_config(config: dict) -> dict:
         if raw.get("initial_point_mode") is not None:
             mode = str(raw["initial_point_mode"]).strip().lower()
             group["initial_point_mode"] = "random" if mode == "random" else "specific"
+        if raw.get("optimization_direction") is not None:
+            direction = str(raw["optimization_direction"]).strip().lower()
+            group["optimization_direction"] = _normalized_optimization_direction(
+                direction
+            )
         falloffs = raw.get("gp_falloff_fractions") or raw.get("gp_length_scales")
         if isinstance(falloffs, dict):
             parsed_falloffs = {
@@ -314,6 +331,11 @@ def normalize_bo_config(config: dict) -> dict:
     cfg["acquisition"].setdefault("local_candidate_pool_size", 120)
     cfg["acquisition"].setdefault("initial_point_mode", "specific")
     cfg["acquisition"].setdefault("optimization_direction", "maximize")
+    cfg["acquisition"]["optimization_direction"] = (
+        _normalized_optimization_direction(
+            cfg["acquisition"].get("optimization_direction")
+        )
+    )
     cfg["acquisition"].setdefault("use_gp", True)
     cfg["acquisition"].setdefault("gp_optimizer_restarts", 2)
     default_gp_falloff = {name: 0.2 for name in PARAMETER_ORDER}
@@ -326,15 +348,27 @@ def normalize_bo_config(config: dict) -> dict:
     cfg["scoring"].setdefault(
         "channel_weights",
         {
-            "snr": 0.35,
+            "peak_prominence": 0.35,
+            "repeat_scan_snr": 0.0,
             "peak_height": 0.0,
             "peak_shape": 0.20,
             "baseline": 0.20,
             "replicate_consistency": 0.15,
             "success": 0.10,
-            "snr_saturation": 20.0,
+            "peak_prominence_saturation": 20.0,
         },
     )
+    channel_weights = cfg["scoring"]["channel_weights"]
+    channel_weights.setdefault(
+        "peak_prominence", float(channel_weights.get("snr", 0.35))
+    )
+    channel_weights.setdefault("repeat_scan_snr", 0.0)
+    channel_weights.setdefault(
+        "peak_prominence_saturation",
+        float(channel_weights.get("snr_saturation", 20.0)),
+    )
+    channel_weights.pop("snr", None)
+    channel_weights.pop("snr_saturation", None)
     cfg["scoring"].setdefault(
         "run_weights",
         {
@@ -344,15 +378,38 @@ def normalize_bo_config(config: dict) -> dict:
             "low_channel_threshold": 0.50,
         },
     )
+    cfg["scoring"]["run_weights"].setdefault("lambda_repeat_std", 0.0)
     cfg["scoring"].setdefault(
         "paired_response_weights",
         {
             "buffer_classic_Q": 0.25,
             "target_classic_Q": 0.25,
-            "delta_peak": 1.0,
-            "delta_scale_uA": 1.0,
+            "peak_prominence": 1.0,
+            "repeat_scan_snr": 0.0,
+            "lambda_repeat_std": 0.0,
         },
     )
+    cfg["scoring"]["paired_response_weights"].setdefault(
+        "lambda_repeat_std",
+        float(cfg["scoring"]["run_weights"].get("lambda_repeat_std", 0.0)),
+    )
+    paired_weights = cfg["scoring"]["paired_response_weights"]
+    paired_weights.setdefault(
+        "peak_prominence", float(paired_weights.get("delta_peak", 1.0))
+    )
+    paired_weights.setdefault("repeat_scan_snr", 0.0)
+    paired_weights.pop("delta_peak", None)
+    paired_weights.pop("delta_scale_uA", None)
+    if cfg.get("paired_batch_size") is not None:
+        cfg["paired_batch_size"] = max(1, int(cfg.get("paired_batch_size") or 1))
+    if cfg.get("paired_warmup_batch_size") is not None:
+        cfg["paired_warmup_batch_size"] = max(
+            1, int(cfg.get("paired_warmup_batch_size") or 1)
+        )
+    if cfg.get("paired_warmup_single_batch") is not None:
+        cfg["paired_warmup_single_batch"] = bool(
+            cfg.get("paired_warmup_single_batch")
+        )
     cfg.setdefault("analysis", {})
     cfg["analysis"].setdefault("file_glob", BO_ANALYSIS_FILE_GLOB)
     cfg["analysis"].setdefault("copy_outputs_into_record", True)
@@ -389,6 +446,49 @@ def save_bo_config(config: dict, path: str | Path) -> Path:
     with open(out, "w", encoding="utf-8") as fh:
         json.dump(normalized, fh, indent=2)
     return out
+
+
+def save_bo_setup_metadata(
+    config: dict,
+    ui_settings: Optional[dict],
+    path: str | Path,
+) -> Path:
+    """Persist the most recent BO setup as machine-local launch defaults."""
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_version": 1,
+        "saved_at": datetime.now().isoformat(timespec="seconds"),
+        "bo_config": normalize_bo_config(config),
+        "ui_settings": copy.deepcopy(ui_settings or {}),
+    }
+    temporary = out.with_name(f"{out.name}.tmp")
+    with open(temporary, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2)
+    temporary.replace(out)
+    return out
+
+
+def load_bo_setup_metadata(path: str | Path) -> Optional[dict]:
+    """Load a machine-local BO setup snapshot, returning None when unavailable."""
+    source = Path(path)
+    try:
+        with open(source, "r", encoding="utf-8") as fh:
+            payload = json.load(fh)
+    except (FileNotFoundError, OSError, ValueError, TypeError):
+        return None
+    if not isinstance(payload, dict) or not isinstance(payload.get("bo_config"), dict):
+        return None
+    return {
+        "schema_version": int(payload.get("schema_version", 1) or 1),
+        "saved_at": str(payload.get("saved_at") or ""),
+        "bo_config": normalize_bo_config(payload["bo_config"]),
+        "ui_settings": (
+            copy.deepcopy(payload.get("ui_settings"))
+            if isinstance(payload.get("ui_settings"), dict)
+            else {}
+        ),
+    }
 
 
 def validate_bo_config(config: dict) -> List[str]:
@@ -835,16 +935,56 @@ def _validate_candidate_normalized(candidate: Dict[str, float], cfg: dict) -> Li
     return errors
 
 
-def compute_channel_quality(metrics: dict, scoring: dict) -> dict:
+def _penalized_value(
+    base_value: float,
+    penalty_magnitude: float,
+    direction: Optional[str],
+) -> float:
+    """Move a score away from the requested optimum; survey moves toward zero."""
+    base = float(base_value)
+    penalty = max(0.0, float(penalty_magnitude))
+    normalized = _normalized_optimization_direction(direction)
+    if normalized == "minimize":
+        return base + penalty
+    if normalized == "survey":
+        if base > 0.0:
+            return max(0.0, base - penalty)
+        if base < 0.0:
+            return min(0.0, base + penalty)
+        return 0.0
+    return base - penalty
+
+
+def _clip_run_quality(q_run: float, direction: Optional[str]) -> float:
+    normalized = _normalized_optimization_direction(direction)
+    value = float(q_run)
+    if normalized == "maximize":
+        return max(0.0, value)
+    if normalized == "minimize":
+        return min(0.0, value)
+    return value
+
+
+def compute_channel_quality(
+    metrics: dict,
+    scoring: dict,
+    optimization_direction: str = "maximize",
+) -> dict:
     mode = str(scoring.get("mode", "classic") or "classic").strip().lower()
     weights = scoring.get("channel_weights", {})
-    snr_saturation = float(weights.get("snr_saturation", 20.0))
-    if "snr" in metrics:
-        snr_raw = float(metrics.get("snr", 0.0))
+    peak_prominence_saturation = float(
+        weights.get(
+            "peak_prominence_saturation", weights.get("snr_saturation", 20.0)
+        )
+    )
+    if "peak_prominence" in metrics or "snr" in metrics:
+        peak_prominence_raw = float(
+            metrics.get("peak_prominence", metrics.get("snr", 0.0)) or 0.0
+        )
     else:
         peak_current = abs(float(metrics.get("peak_current", 0.0)))
         baseline_noise = float(metrics.get("baseline_noise", 0.0))
-        snr_raw = peak_current / (baseline_noise + 1e-12)
+        peak_prominence_raw = peak_current / (baseline_noise + 1e-12)
     peak_height_raw = abs(
         float(
             metrics.get(
@@ -866,12 +1006,25 @@ def compute_channel_quality(metrics: dict, scoring: dict) -> dict:
             or 0.0
         )
     )
+    peak_std_raw = abs(float(metrics.get("std_peak_current_uA", 0.0) or 0.0))
+    repeat_scan_count = int(metrics.get("ok_scan_count", 0) or 0)
+    repeat_scan_snr_raw = float(metrics.get("repeat_scan_snr", 0.0) or 0.0)
+    if "repeat_scan_snr" not in metrics:
+        repeat_scan_snr_raw = (
+            peak_height_raw / peak_std_raw
+            if repeat_scan_count > 1 and peak_std_raw > 1e-12
+            else 0.0
+        )
 
     component_scores = {
-        "normalized_SNR": _clip01(snr_raw / max(snr_saturation, 1e-12)),
+        "normalized_peak_prominence": _clip01(
+            peak_prominence_raw / max(peak_prominence_saturation, 1e-12)
+        ),
         "peak_height_raw": peak_height_raw,
         "noise_raw": noise_raw,
-        "log_snr": math.log1p(max(0.0, snr_raw)),
+        "log_peak_prominence": math.log1p(max(0.0, peak_prominence_raw)),
+        "repeat_scan_snr_raw": repeat_scan_snr_raw,
+        "log_repeat_scan_snr": math.log1p(max(0.0, repeat_scan_snr_raw)),
         "log_peak_height": math.log1p(max(0.0, peak_height_raw)),
         "peak_shape_score": _clip01(metrics.get("peak_shape_score", 0.0)),
         "baseline_stability_score": _clip01(metrics.get("baseline_stability_score", 0.0)),
@@ -880,7 +1033,10 @@ def compute_channel_quality(metrics: dict, scoring: dict) -> dict:
     }
     if mode == "signal_priority_unbounded":
         weighted = (
-            float(weights.get("snr", 0.45)) * component_scores["log_snr"]
+            float(weights.get("peak_prominence", weights.get("snr", 0.45)))
+            * component_scores["log_peak_prominence"]
+            + float(weights.get("repeat_scan_snr", 0.0))
+            * component_scores["log_repeat_scan_snr"]
             + float(weights.get("peak_height", 0.35)) * component_scores["log_peak_height"]
             + float(weights.get("baseline", 0.12)) * component_scores["baseline_stability_score"]
             + float(weights.get("peak_shape", 0.05)) * component_scores["peak_shape_score"]
@@ -888,7 +1044,8 @@ def compute_channel_quality(metrics: dict, scoring: dict) -> dict:
             + float(weights.get("success", 0.0)) * component_scores["success_score"]
         )
         total_weight = (
-            float(weights.get("snr", 0.45))
+            float(weights.get("peak_prominence", weights.get("snr", 0.45)))
+            + float(weights.get("repeat_scan_snr", 0.0))
             + float(weights.get("peak_height", 0.35))
             + float(weights.get("baseline", 0.12))
             + float(weights.get("peak_shape", 0.05))
@@ -897,26 +1054,45 @@ def compute_channel_quality(metrics: dict, scoring: dict) -> dict:
         )
         component_scores["Q_channel"] = weighted / max(total_weight, 1e-12)
     else:
-        weighted = (
-            float(weights.get("snr", 0.35)) * snr_raw
+        noise_penalty_magnitude = float(weights.get("noise_penalty", 0.0)) * noise_raw
+        unpenalized = (
+            float(weights.get("peak_prominence", weights.get("snr", 0.35)))
+            * peak_prominence_raw
+            + float(weights.get("repeat_scan_snr", 0.0)) * repeat_scan_snr_raw
             + float(weights.get("peak_height", 0.0)) * peak_height_raw
             + float(weights.get("peak_shape", 0.20)) * component_scores["peak_shape_score"]
             + float(weights.get("baseline", 0.20)) * component_scores["baseline_stability_score"]
             + float(weights.get("replicate_consistency", 0.15)) * component_scores["replicate_consistency_score"]
             + float(weights.get("success", 0.10)) * component_scores["success_score"]
-            - float(weights.get("noise_penalty", 0.0)) * noise_raw
         )
+        weighted = _penalized_value(
+            unpenalized,
+            noise_penalty_magnitude,
+            optimization_direction,
+        )
+        noise_penalty_adjustment = weighted - unpenalized
         component_scores["Q_channel"] = max(0.0, weighted)
-    component_scores["snr_raw"] = snr_raw
+        component_scores["noise_penalty_magnitude"] = noise_penalty_magnitude
+        component_scores["noise_penalty_adjustment"] = noise_penalty_adjustment
+    component_scores["peak_prominence_raw"] = peak_prominence_raw
+    component_scores["snr_raw"] = peak_prominence_raw
+    component_scores["normalized_SNR"] = component_scores[
+        "normalized_peak_prominence"
+    ]
+    component_scores["log_snr"] = component_scores["log_peak_prominence"]
     return component_scores
 
 
-def compute_run_quality(channel_metrics: dict, scoring: dict) -> dict:
-    mode = str(scoring.get("mode", "classic") or "classic").strip().lower()
+def compute_run_quality(
+    channel_metrics: dict,
+    scoring: dict,
+    optimization_direction: str = "maximize",
+) -> dict:
+    direction = _normalized_optimization_direction(optimization_direction)
     per_channel = {}
     q_values = []
     for channel, metrics in _channel_items(channel_metrics):
-        result = compute_channel_quality(metrics, scoring)
+        result = compute_channel_quality(metrics, scoring, direction)
         per_channel[str(channel)] = result
         q_values.append(float(result["Q_channel"]))
 
@@ -929,26 +1105,56 @@ def compute_run_quality(channel_metrics: dict, scoring: dict) -> dict:
     failed_fraction = (
         sum(1 for data in per_channel.values() if float(data.get("success_score", 1.0) or 0.0) <= 0.0) / len(q_values)
     )
-    low_fraction = sum(1 for q in q_values if q < threshold) / len(q_values)
-    q_run = (
-        mean_q
-        - float(run_weights.get("lambda_variability", 0.20)) * std_q
-        - float(run_weights.get("lambda_failed", 0.40)) * failed_fraction
-        - float(run_weights.get("lambda_low", 0.20)) * low_fraction
+    if direction == "minimize":
+        low_fraction = sum(1 for q in q_values if q > threshold) / len(q_values)
+    elif direction == "survey":
+        low_fraction = sum(1 for q in q_values if abs(q) < threshold) / len(q_values)
+    else:
+        low_fraction = sum(1 for q in q_values if q < threshold) / len(q_values)
+    mean_repeat_relative_std = (
+        sum(
+            float(metrics.get("repeat_relative_std", 0.0) or 0.0)
+            for _channel, metrics in _channel_items(channel_metrics)
+        )
+        / max(len(per_channel), 1)
     )
-    final_q = q_run if mode == "signal_priority_unbounded" else max(0.0, q_run)
+    repeat_std_penalty = (
+        float(run_weights.get("lambda_repeat_std", 0.0))
+        * mean_repeat_relative_std
+    )
+    run_penalty_magnitude = (
+        float(run_weights.get("lambda_variability", 0.20)) * std_q
+        + float(run_weights.get("lambda_failed", 0.40)) * failed_fraction
+        + float(run_weights.get("lambda_low", 0.20)) * low_fraction
+        + repeat_std_penalty
+    )
+    penalized_q = _penalized_value(mean_q, run_penalty_magnitude, direction)
+    run_penalty_adjustment = penalized_q - mean_q
+    final_q = _clip_run_quality(penalized_q, direction)
     return {
         "Q_run": final_q,
         "mean_Q_channel": mean_q,
         "std_Q_channel": std_q,
         "failed_channel_fraction": failed_fraction,
         "low_channel_fraction": low_fraction,
+        "poor_channel_fraction": low_fraction,
+        "mean_repeat_relative_std": mean_repeat_relative_std,
+        "repeat_std_penalty": repeat_std_penalty,
+        "optimization_direction": direction,
+        "run_penalty_magnitude": run_penalty_magnitude,
+        "run_penalty_adjustment": run_penalty_adjustment,
         "Q_channels": {ch: data["Q_channel"] for ch, data in per_channel.items()},
         "channel_components": per_channel,
     }
 
 
-def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, scoring: dict) -> dict:
+def compute_paired_response_quality(
+    buffer_metrics: dict,
+    target_metrics: dict,
+    scoring: dict,
+    optimization_direction: str = "maximize",
+) -> dict:
+    direction = _normalized_optimization_direction(optimization_direction)
     channels = sorted(
         {str(ch) for ch, _ in _channel_items(buffer_metrics)}
         & {str(ch) for ch, _ in _channel_items(target_metrics)},
@@ -959,8 +1165,10 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
     for channel in channels:
         buffer_raw = dict(buffer_metrics.get(channel) or buffer_metrics.get(int(channel), {}) or {})
         target_raw = dict(target_metrics.get(channel) or target_metrics.get(int(channel), {}) or {})
-        buffer_q = compute_channel_quality(buffer_raw, scoring)
-        target_q = compute_channel_quality(target_raw, scoring)
+        # Classic trace Q measures trace quality and is always a maximize-style
+        # score. Its signed contribution below aligns it with the paired delta.
+        buffer_q = compute_channel_quality(buffer_raw, scoring, "maximize")
+        target_q = compute_channel_quality(target_raw, scoring, "maximize")
         buffer_peak = float(buffer_q.get("peak_height_raw", 0.0) or 0.0)
         target_peak = float(target_q.get("peak_height_raw", 0.0) or 0.0)
         delta_peak = target_peak - buffer_peak
@@ -969,33 +1177,78 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
         buffer_noise = float(buffer_q.get("noise_raw", 0.0) or 0.0)
         target_noise = float(target_q.get("noise_raw", 0.0) or 0.0)
         combined_noise = buffer_noise + target_noise
+        buffer_peak_std = abs(
+            float(buffer_raw.get("std_peak_current_uA", 0.0) or 0.0)
+        )
+        target_peak_std = abs(
+            float(target_raw.get("std_peak_current_uA", 0.0) or 0.0)
+        )
+        combined_peak_std = buffer_peak_std + target_peak_std
+        buffer_repeat_count = int(buffer_raw.get("ok_scan_count", 0) or 0)
+        target_repeat_count = int(target_raw.get("ok_scan_count", 0) or 0)
         success = min(float(buffer_q.get("success_score", 1.0) or 0.0), float(target_q.get("success_score", 1.0) or 0.0))
-        delta_score = delta_peak / max(combined_noise, 1e-12)
+        peak_prominence = delta_peak / max(combined_noise, 1e-12)
+        repeat_scan_snr = (
+            delta_peak / max(combined_peak_std, 1e-12)
+            if buffer_repeat_count > 1 and target_repeat_count > 1
+            else 0.0
+        )
         fractional_score = math.log1p(max(0.0, fractional_delta))
-        snr_saturation = max(1e-12, float(scoring.get("channel_weights", {}).get("snr_saturation", 20.0)))
-        target_snr_score = _clip01(float(target_q.get("snr_raw", 0.0) or 0.0) / snr_saturation)
-        buffer_snr_score = _clip01(float(buffer_q.get("snr_raw", 0.0) or 0.0) / snr_saturation)
+        prominence_saturation = max(
+            1e-12,
+            float(
+                scoring.get("channel_weights", {}).get(
+                    "peak_prominence_saturation",
+                    scoring.get("channel_weights", {}).get("snr_saturation", 20.0),
+                )
+            ),
+        )
+        target_prominence_score = _clip01(float(target_q.get("peak_prominence_raw", 0.0) or 0.0) / prominence_saturation)
+        buffer_prominence_score = _clip01(float(buffer_q.get("peak_prominence_raw", 0.0) or 0.0) / prominence_saturation)
         target_shape_score = _clip01(target_q.get("peak_shape_score", 0.0))
         buffer_classic_q = float(buffer_q.get("Q_channel", 0.0) or 0.0)
         target_classic_q = float(target_q.get("Q_channel", 0.0) or 0.0)
+        buffer_repeat_relative_std = float(
+            buffer_raw.get("repeat_relative_std", 0.0) or 0.0
+        )
+        target_repeat_relative_std = float(
+            target_raw.get("repeat_relative_std", 0.0) or 0.0
+        )
+        repeat_relative_std = 0.5 * (
+            buffer_repeat_relative_std + target_repeat_relative_std
+        )
         valid_classic_pair = buffer_classic_q > 0.0 and target_classic_q > 0.0
         if not valid_classic_pair:
             success = 0.0
         paired_weights = dict(scoring.get("paired_response_weights") or {})
         buffer_classic_weight = float(paired_weights.get("buffer_classic_Q", 0.0) or 0.0)
         target_classic_weight = float(paired_weights.get("target_classic_Q", 0.0) or 0.0)
+        peak_prominence_weight = float(
+            paired_weights.get("peak_prominence", paired_weights.get("delta_peak", 1.0))
+            or 0.0
+        )
+        repeat_scan_snr_weight = float(
+            paired_weights.get("repeat_scan_snr", 0.0) or 0.0
+        )
         standard_quality_score = 0.5 * (buffer_classic_q + target_classic_q)
-        classic_q_sign = -1.0 if delta_score < 0.0 else 1.0
+        classic_q_sign = -1.0 if delta_peak < 0.0 else 1.0
         buffer_q_contribution = classic_q_sign * buffer_classic_weight * buffer_classic_q
         target_q_contribution = classic_q_sign * target_classic_weight * target_classic_q
         if success <= 0.0:
             buffer_q_contribution = 0.0
             target_q_contribution = 0.0
-            delta_peak_contribution = 0.0
+            peak_prominence_contribution = 0.0
+            repeat_scan_snr_contribution = 0.0
             q_channel = 0.0
         else:
-            delta_peak_contribution = delta_score
-            q_channel = delta_peak_contribution + buffer_q_contribution + target_q_contribution
+            peak_prominence_contribution = peak_prominence_weight * peak_prominence
+            repeat_scan_snr_contribution = repeat_scan_snr_weight * repeat_scan_snr
+            q_channel = (
+                peak_prominence_contribution
+                + repeat_scan_snr_contribution
+                + buffer_q_contribution
+                + target_q_contribution
+            )
         per_channel[channel] = {
             "Q_channel": q_channel,
             "paired_Q_channel": q_channel,
@@ -1005,33 +1258,48 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
             "classic_pair_Q": standard_quality_score,
             "buffer_classic_Q_contribution": buffer_q_contribution,
             "target_classic_Q_contribution": target_q_contribution,
-            "delta_peak_contribution": delta_peak_contribution,
+            "peak_prominence_contribution": peak_prominence_contribution,
+            "repeat_scan_snr_contribution": repeat_scan_snr_contribution,
+            "delta_peak_contribution": peak_prominence_contribution,
             "buffer_classic_Q_weight": buffer_classic_weight,
             "target_classic_Q_weight": target_classic_weight,
-            "delta_peak_weight": 1.0,
-            "paired_weight_total": 1.0,
+            "peak_prominence_weight": peak_prominence_weight,
+            "repeat_scan_snr_weight": repeat_scan_snr_weight,
             "buffer_peak_height_raw": buffer_peak,
             "target_peak_height_raw": target_peak,
             "buffer_channel_noise": buffer_noise,
             "target_channel_noise": target_noise,
             "combined_channel_noise": combined_noise,
+            "buffer_peak_std_uA": buffer_peak_std,
+            "target_peak_std_uA": target_peak_std,
+            "combined_peak_std_uA": combined_peak_std,
             "delta_peak_height_uA": delta_peak,
             "abs_delta_peak_height_uA": abs_delta_peak,
             "fractional_delta_peak": fractional_delta,
-            "delta_peak_score": delta_score,
+            "peak_prominence": peak_prominence,
+            "repeat_scan_snr": repeat_scan_snr,
+            "delta_peak_score": peak_prominence,
             "fractional_delta_peak_score": fractional_score,
             "buffer_snr_raw": buffer_q.get("snr_raw", 0.0),
             "target_snr_raw": target_q.get("snr_raw", 0.0),
-            "target_snr_score": target_snr_score,
-            "buffer_snr_score": buffer_snr_score,
+            "target_peak_prominence_raw": target_q.get("peak_prominence_raw", 0.0),
+            "buffer_peak_prominence_raw": buffer_q.get("peak_prominence_raw", 0.0),
+            "target_peak_prominence_score": target_prominence_score,
+            "buffer_peak_prominence_score": buffer_prominence_score,
+            "target_snr_score": target_prominence_score,
+            "buffer_snr_score": buffer_prominence_score,
             "target_shape_score": target_shape_score,
             "standard_quality_score": standard_quality_score,
             "classic_pair_Q_score": standard_quality_score,
             "success_score": success,
+            "buffer_repeat_relative_std": buffer_repeat_relative_std,
+            "target_repeat_relative_std": target_repeat_relative_std,
+            "repeat_relative_std": repeat_relative_std,
         }
         q_values.append(q_channel)
 
     run_weights = scoring.get("run_weights", {})
+    paired_weights = dict(scoring.get("paired_response_weights") or {})
     if not q_values:
         q_values = [0.0]
     mean_q = sum(q_values) / len(q_values)
@@ -1041,13 +1309,32 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
         sum(1 for data in per_channel.values() if float(data.get("success_score", 1.0) or 0.0) <= 0.0)
         / max(len(per_channel), 1)
     )
-    low_fraction = sum(1 for q in q_values if q < threshold) / len(q_values)
-    q_run = (
-        mean_q
-        - float(run_weights.get("lambda_variability", 0.20)) * std_q
-        - float(run_weights.get("lambda_failed", 0.40)) * failed_fraction
-        - float(run_weights.get("lambda_low", 0.20)) * low_fraction
+    if direction == "minimize":
+        low_fraction = sum(1 for q in q_values if q > threshold) / len(q_values)
+    elif direction == "survey":
+        low_fraction = sum(1 for q in q_values if abs(q) < threshold) / len(q_values)
+    else:
+        low_fraction = sum(1 for q in q_values if q < threshold) / len(q_values)
+    mean_repeat_relative_std = (
+        sum(
+            float(data.get("repeat_relative_std", 0.0) or 0.0)
+            for data in per_channel.values()
+        )
+        / max(len(per_channel), 1)
     )
+    repeat_std_penalty = (
+        float(paired_weights.get("lambda_repeat_std", 0.0))
+        * mean_repeat_relative_std
+    )
+    run_penalty_magnitude = (
+        float(run_weights.get("lambda_variability", 0.20)) * std_q
+        + float(run_weights.get("lambda_failed", 0.40)) * failed_fraction
+        + float(run_weights.get("lambda_low", 0.20)) * low_fraction
+        + repeat_std_penalty
+    )
+    q_run = _penalized_value(mean_q, run_penalty_magnitude, direction)
+    run_penalty_adjustment = q_run - mean_q
+    q_run = _clip_run_quality(q_run, direction)
     mean_delta = (
         sum(float(data.get("delta_peak_height_uA", 0.0) or 0.0) for data in per_channel.values()) / len(per_channel)
         if per_channel else 0.0
@@ -1069,19 +1356,34 @@ def compute_paired_response_quality(buffer_metrics: dict, target_metrics: dict, 
         "std_Q_channel": std_q,
         "failed_channel_fraction": failed_fraction,
         "low_channel_fraction": low_fraction,
+        "poor_channel_fraction": low_fraction,
+        "mean_repeat_relative_std": mean_repeat_relative_std,
+        "repeat_std_penalty": repeat_std_penalty,
+        "optimization_direction": direction,
+        "run_penalty_magnitude": run_penalty_magnitude,
+        "run_penalty_adjustment": run_penalty_adjustment,
         "mean_buffer_classic_Q": _mean_component("buffer_classic_Q"),
         "mean_target_classic_Q": _mean_component("target_classic_Q"),
         "mean_classic_pair_Q": _mean_component("classic_pair_Q"),
         "mean_buffer_classic_Q_contribution": _mean_component("buffer_classic_Q_contribution"),
         "mean_target_classic_Q_contribution": _mean_component("target_classic_Q_contribution"),
         "mean_delta_peak_contribution": _mean_component("delta_peak_contribution"),
+        "mean_peak_prominence_contribution": _mean_component("peak_prominence_contribution"),
+        "mean_repeat_scan_snr_contribution": _mean_component("repeat_scan_snr_contribution"),
         "mean_delta_peak_height_uA": mean_delta,
         "mean_abs_delta_peak_height_uA": mean_abs_delta,
         "mean_fractional_delta_peak": _mean_component("fractional_delta_peak"),
         "mean_delta_peak_score": _mean_component("delta_peak_score"),
+        "mean_peak_prominence": _mean_component("peak_prominence"),
+        "mean_repeat_scan_snr": _mean_component("repeat_scan_snr"),
+        "mean_buffer_peak_std_uA": _mean_component("buffer_peak_std_uA"),
+        "mean_target_peak_std_uA": _mean_component("target_peak_std_uA"),
+        "mean_combined_peak_std_uA": _mean_component("combined_peak_std_uA"),
         "mean_fractional_delta_peak_score": _mean_component("fractional_delta_peak_score"),
         "mean_buffer_snr_raw": _mean_component("buffer_snr_raw"),
         "mean_target_snr_raw": _mean_component("target_snr_raw"),
+        "mean_buffer_peak_prominence": _mean_component("buffer_peak_prominence_raw"),
+        "mean_target_peak_prominence": _mean_component("target_peak_prominence_raw"),
         "mean_buffer_channel_noise": _mean_component("buffer_channel_noise"),
         "mean_target_channel_noise": _mean_component("target_channel_noise"),
         "mean_combined_channel_noise": _mean_component("combined_channel_noise"),
@@ -1381,47 +1683,63 @@ class BOIntegrationSession:
         items = []
         params_for_hash = self._params_for_method_ref(suggestion.params)
         phase_label = str(phase or "").strip().lower()
+        measurement_count = max(
+            1, int(self.config.get("measurements_per_channel", 1) or 1)
+        )
         for channel in channels:
-            script = wrap_mux(base_script, channel)
-            note = f"BO {suggestion.method_id} | {suggestion.group_name} | MUX ch {channel}"
-            if phase_label:
-                note = f"{note} | {phase_label}"
-            saved_path, saved_name = registry.save_script(
-                "SWV",
-                script,
-                params=params_for_hash,
-                mux_channel=channel,
-                note=note,
-            )
-            hash_key = "-"
-            try:
-                hash_key = registry.hash_key_for(saved_path)
-            except Exception:
-                pass
-            item = {
-                "type": "SWV",
-                "script_path": str(saved_path),
-                "status": "pending",
-                "details": f"BO {suggestion.group_name} iter {suggestion.iteration:03d} | {saved_name} (MUX ch {channel})"
-                + (f" | {phase_label}" if phase_label else ""),
-                "method_ref": {
-                    "hash_key": hash_key,
-                    "technique": "SWV",
-                    "params": dict(params_for_hash),
-                    "mux_channel": channel,
-                },
-                "bo_ref": {
-                    "session_id": self.session_id,
-                    "iteration": suggestion.iteration,
-                    "method_id": suggestion.method_id,
-                    "record_dir": str(self.record_dir),
-                    "group_id": suggestion.group_id,
-                    "group_name": suggestion.group_name,
-                },
-            }
-            if phase_label:
-                item["bo_ref"]["phase"] = phase_label
-            items.append(item)
+            for repeat_index in range(1, measurement_count + 1):
+                script = wrap_mux(base_script, channel)
+                note = f"BO {suggestion.method_id} | {suggestion.group_name} | MUX ch {channel}"
+                if phase_label:
+                    note = f"{note} | {phase_label}"
+                if measurement_count > 1:
+                    note = f"{note} | repeat {repeat_index}/{measurement_count}"
+                saved_path, saved_name = registry.save_script(
+                    "SWV",
+                    script,
+                    params=params_for_hash,
+                    mux_channel=channel,
+                    note=note,
+                )
+                hash_key = "-"
+                try:
+                    hash_key = registry.hash_key_for(saved_path)
+                except Exception:
+                    pass
+                item = {
+                    "type": "SWV",
+                    "script_path": str(saved_path),
+                    "status": "pending",
+                    "details": (
+                        f"BO {suggestion.group_name} iter {suggestion.iteration:03d} | "
+                        f"{saved_name} (MUX ch {channel})"
+                        + (f" | {phase_label}" if phase_label else "")
+                        + (
+                            f" | repeat {repeat_index}/{measurement_count}"
+                            if measurement_count > 1
+                            else ""
+                        )
+                    ),
+                    "method_ref": {
+                        "hash_key": hash_key,
+                        "technique": "SWV",
+                        "params": dict(params_for_hash),
+                        "mux_channel": channel,
+                    },
+                    "bo_ref": {
+                        "session_id": self.session_id,
+                        "iteration": suggestion.iteration,
+                        "method_id": suggestion.method_id,
+                        "record_dir": str(self.record_dir),
+                        "group_id": suggestion.group_id,
+                        "group_name": suggestion.group_name,
+                        "measurement_repeat_index": repeat_index,
+                        "measurement_repeat_count": measurement_count,
+                    },
+                }
+                if phase_label:
+                    item["bo_ref"]["phase"] = phase_label
+                items.append(item)
         self._write_json(
             self.methods_dir / f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_queue_items.json",
             {"method_id": suggestion.method_id, "items": items},
@@ -1460,7 +1778,12 @@ class BOIntegrationSession:
         group_id = int(suggestion_data.get("group_id", 1))
         group = self._group(group_id)
         channel_metrics = self._filter_metrics(channel_metrics, group["channels"])
-        quality = compute_run_quality(channel_metrics, self.config.get("scoring", {}))
+        optimization_direction = self._group_optimization_direction(group_id)
+        quality = compute_run_quality(
+            channel_metrics,
+            self.config.get("scoring", {}),
+            optimization_direction,
+        )
         iteration = int(suggestion_data["iteration"])
         retained_path = self._retain_analysis_file(source, iteration, group_id=group_id)
         observation = {
@@ -1477,6 +1800,7 @@ class BOIntegrationSession:
             "group_id": group_id,
             "group_name": group["name"],
             "channels": list(group["channels"]),
+            "optimization_direction": optimization_direction,
         }
         if payload.get("results_json"):
             observation["analysis_results_json"] = str(payload["results_json"])
@@ -1535,7 +1859,13 @@ class BOIntegrationSession:
         target_payload = self._load_json_file(target_path)
         buffer_metrics = self._filter_metrics(extract_channel_metrics(buffer_payload), group["channels"])
         target_metrics = self._filter_metrics(extract_channel_metrics(target_payload), group["channels"])
-        quality = compute_paired_response_quality(buffer_metrics, target_metrics, self.config.get("scoring", {}))
+        optimization_direction = self._group_optimization_direction(group_id)
+        quality = compute_paired_response_quality(
+            buffer_metrics,
+            target_metrics,
+            self.config.get("scoring", {}),
+            optimization_direction,
+        )
         retained_buffer = self._retain_analysis_file(Path(buffer_path), iteration, suffix="buffer", group_id=group_id)
         retained_target = self._retain_analysis_file(Path(target_path), iteration, suffix="target", group_id=group_id)
         buffer_truth = dict(buffer_payload.get("simulation_truth") or {})
@@ -1589,6 +1919,7 @@ class BOIntegrationSession:
             "group_id": group_id,
             "group_name": group["name"],
             "channels": list(group["channels"]),
+            "optimization_direction": optimization_direction,
         }
         if buffer_payload.get("results_json"):
             observation["buffer_analysis_results_json"] = str(buffer_payload["results_json"])
@@ -1882,6 +2213,7 @@ class BOIntegrationSession:
 
         iteration = int(observation.get("iteration", 0) or 0)
         group_id = int(observation.get("group_id", 1) or 1)
+        optimization_direction = self._group_optimization_direction(group_id)
         if iteration < 1:
             raise ValueError("Observation has no valid BO iteration")
         raw_paths = []
@@ -1944,7 +2276,12 @@ class BOIntegrationSession:
             target_summary, target_summary_path = analyze(target_paths, "target")
             buffer_metrics = extract_channel_metrics(buffer_summary)
             target_metrics = extract_channel_metrics(target_summary)
-            quality = compute_paired_response_quality(buffer_metrics, target_metrics, scoring)
+            quality = compute_paired_response_quality(
+                buffer_metrics,
+                target_metrics,
+                scoring,
+                optimization_direction,
+            )
             return {
                 "buffer_channel_metrics": buffer_metrics,
                 "target_channel_metrics": target_metrics,
@@ -1964,7 +2301,11 @@ class BOIntegrationSession:
 
         summary, summary_path = analyze(raw_paths)
         channel_metrics = extract_channel_metrics(summary)
-        quality = compute_run_quality(channel_metrics, scoring)
+        quality = compute_run_quality(
+            channel_metrics,
+            scoring,
+            optimization_direction,
+        )
         return {
             "channel_metrics": channel_metrics,
             "quality": quality,
@@ -2157,6 +2498,13 @@ class BOIntegrationSession:
             initial.update(group["initial_parameters"])
             config["initial_parameters"] = initial
         return normalize_bo_config(config)
+
+    def _group_optimization_direction(self, group_id: int) -> str:
+        return _normalized_optimization_direction(
+            self._config_for_group(group_id)
+            .get("acquisition", {})
+            .get("optimization_direction", "maximize")
+        )
 
     def _group_observations(self, group_id: int) -> List[dict]:
         return [
@@ -2392,12 +2740,20 @@ class BOIntegrationSession:
         return candidates
 
     def _optimization_direction(self) -> str:
-        raw = str(self.config.get("acquisition", {}).get("optimization_direction", "maximize") or "maximize").strip().lower()
-        return "minimize" if raw in {"minimize", "min", "more_negative", "negative"} else "maximize"
+        return _normalized_optimization_direction(
+            self.config.get("acquisition", {}).get(
+                "optimization_direction", "maximize"
+            )
+        )
 
     def _objective_value(self, q_run: float) -> float:
         value = float(q_run)
-        return -value if self._optimization_direction() == "minimize" else value
+        direction = self._optimization_direction()
+        if direction == "minimize":
+            return -value
+        if direction == "survey":
+            return abs(value)
+        return value
 
     def _params_for_method_ref(self, params: dict) -> dict:
         result = {name: _format_float(params[name]) for name in PARAMETER_ORDER}
@@ -2489,10 +2845,16 @@ class BOIntegrationSession:
                 row["mean_buffer_classic_Q_contribution"] = quality.get("mean_buffer_classic_Q_contribution", "")
                 row["mean_target_classic_Q_contribution"] = quality.get("mean_target_classic_Q_contribution", "")
                 row["mean_delta_peak_contribution"] = quality.get("mean_delta_peak_contribution", "")
+                row["mean_peak_prominence_contribution"] = quality.get("mean_peak_prominence_contribution", "")
+                row["mean_repeat_scan_snr_contribution"] = quality.get("mean_repeat_scan_snr_contribution", "")
                 row["mean_delta_peak_height_uA"] = quality.get("mean_delta_peak_height_uA", "")
                 row["mean_abs_delta_peak_height_uA"] = quality.get("mean_abs_delta_peak_height_uA", "")
                 row["mean_fractional_delta_peak"] = quality.get("mean_fractional_delta_peak", "")
                 row["mean_delta_peak_score"] = quality.get("mean_delta_peak_score", "")
+                row["mean_peak_prominence"] = quality.get("mean_peak_prominence", "")
+                row["mean_repeat_scan_snr"] = quality.get("mean_repeat_scan_snr", "")
+                row["mean_buffer_peak_std_uA"] = quality.get("mean_buffer_peak_std_uA", "")
+                row["mean_target_peak_std_uA"] = quality.get("mean_target_peak_std_uA", "")
                 row["mean_fractional_delta_peak_score"] = quality.get("mean_fractional_delta_peak_score", "")
                 row["mean_buffer_snr_raw"] = quality.get("mean_buffer_snr_raw", "")
                 row["mean_target_snr_raw"] = quality.get("mean_target_snr_raw", "")
@@ -2516,10 +2878,17 @@ class BOIntegrationSession:
                         "buffer_classic_Q_contribution",
                         "target_classic_Q_contribution",
                         "delta_peak_contribution",
+                        "peak_prominence_contribution",
+                        "repeat_scan_snr_contribution",
                         "delta_peak_height_uA",
                         "abs_delta_peak_height_uA",
                         "fractional_delta_peak",
                         "delta_peak_score",
+                        "peak_prominence",
+                        "repeat_scan_snr",
+                        "buffer_peak_std_uA",
+                        "target_peak_std_uA",
+                        "combined_peak_std_uA",
                         "fractional_delta_peak_score",
                         "buffer_snr_raw",
                         "target_snr_raw",

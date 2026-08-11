@@ -21,6 +21,7 @@ class MachineLocalConfigTests(unittest.TestCase):
             "EA_BO_CONFIG_DIR",
             "EA_BO_DEFAULT_CONFIG_PATH",
             "EA_BO_LOCAL_PATHS_CONFIG",
+            "EA_BO_LAST_SETUP_METADATA_PATH",
         ):
             env.pop(key, None)
         env["EA_LOCAL_CONFIG_PATH"] = str(local_config_path)
@@ -34,6 +35,7 @@ class MachineLocalConfigTests(unittest.TestCase):
             "'bo_config_dir': str(config.BO_CONFIG_DIR), "
             "'bo_default_config': str(config.BO_DEFAULT_CONFIG_PATH), "
             "'bo_local_paths': str(config.BO_LOCAL_PATHS_CONFIG), "
+            "'bo_last_setup': str(config.BO_LAST_SETUP_METADATA_PATH), "
             "'pump': [config.PUMP_DEFAULT_COM_PORT, config.PUMP_DEFAULT_BAUD, config.PUMP_DEFAULT_DEV], "
             "'potentiostat': config.DEVICE_DEFAULT_PORT"
             "}))"
@@ -63,6 +65,10 @@ class MachineLocalConfigTests(unittest.TestCase):
         self.assertEqual(
             Path(values["bo_local_paths"]),
             expected / "bo_configs" / "local_paths.json",
+        )
+        self.assertEqual(
+            Path(values["bo_last_setup"]),
+            expected / "bo_configs" / "last_bo_setup_metadata.json",
         )
 
     def test_external_config_and_environment_precedence(self):

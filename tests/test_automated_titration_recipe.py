@@ -476,6 +476,7 @@ def test_optional_plain_buffer_measurements_are_inserted_between_concentrations(
         "mix_line_air_push": 250.0, "mix_line_volume": 110.0,
         "mix_line_bubble_volume": 50.0,
         "initial_buffer_volume": 1000.0, "aliquot_volume": 100.0,
+        "plain_buffer_volume": 175.0,
         "mix_cycles": 1, "mix_volume": 200.0, "equilibration": 0.0,
         "replicates": 1, "measure_buffer_between": True,
     }
@@ -504,8 +505,17 @@ def test_optional_plain_buffer_measurements_are_inserted_between_concentrations(
     ]
     assert len(buffer_loads) == 2
     assert all(
-        item["pump_action"]["params"]["volume"] == pytest.approx(100)
+        item["pump_action"]["params"]["volume"] == pytest.approx(175)
         for item in buffer_loads
+    )
+    titrated_loads = [
+        item for item in recipe
+        if item["type"] == "PUMP_DISPENSE"
+        and "Mixing tube → flow cell" in item.get("details", "")
+    ]
+    assert all(
+        item["pump_action"]["params"]["volume"] == pytest.approx(100)
+        for item in titrated_loads
     )
 
 

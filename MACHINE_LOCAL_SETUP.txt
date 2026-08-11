@@ -49,6 +49,14 @@ Use this layout for each Windows user:
       recipe_maker\
           custom_blocks\
           saved_recipes\
+      bo_configs\
+          default_swv_bo.json
+          last_bo_setup_metadata.json
+
+The application writes last_bo_setup_metadata.json whenever BO settings are
+saved or a BO session is started. On the next launch, that snapshot supplies
+the default BO configuration and run-setup fields. It is machine-local and
+must not be committed to the repository.
 
 Recommended JSON paths:
 

@@ -254,14 +254,15 @@ class RecipeMakerTab:
         return {
             "mode": "signal_priority_unbounded",
             "channel_weights": {
-                "snr": 0.35,
+                "peak_prominence": 0.35,
+                "repeat_scan_snr": 0.0,
                 "peak_height": 0.0,
                 "peak_shape": 0.20,
                 "baseline": 0.20,
                 "replicate_consistency": 0.15,
                 "success": 0.10,
                 "noise_penalty": 0.0,
-                "snr_saturation": 20.0,
+                "peak_prominence_saturation": 20.0,
             },
             "run_weights": {
                 "lambda_variability": 0.20,
@@ -278,7 +279,8 @@ class RecipeMakerTab:
         run = dict(scoring.get("run_weights") or {})
         if mode == "signal_priority_unbounded":
             total = (
-                float(channel.get("snr", 0.45))
+                float(channel.get("peak_prominence", channel.get("snr", 0.45)))
+                + float(channel.get("repeat_scan_snr", 0.0))
                 + float(channel.get("peak_height", 0.35))
                 + float(channel.get("baseline", 0.12))
                 + float(channel.get("peak_shape", 0.05))
@@ -286,15 +288,15 @@ class RecipeMakerTab:
                 + float(channel.get("success", 0.0))
             )
             q_text = (
-                "Q_channel = (w_snr*log1p(raw_snr) + w_peak*log1p(peak_uA) + "
+                "Q_channel = (w_prominence*log1p(peak_prominence) + w_repeat_snr*log1p(repeat_scan_snr) + w_peak*log1p(peak_uA) + "
                 "w_baseline*baseline + w_shape*shape + w_replicate*replicate + "
                 f"w_success*success) / {max(total, 1e-12):.4g}."
             )
         else:
             q_text = (
-                "Q_channel = w_snr*raw_snr + w_peak*peak_uA + w_shape*shape + "
+                "Q_channel = w_prominence*peak_prominence + w_repeat_snr*repeat_scan_snr + w_peak*peak_uA + w_shape*shape + "
                 "w_baseline*baseline + w_replicate*replicate + w_success*success "
-                f"- noise_penalty({float(channel.get('noise_penalty', 0.0)):g})*noise_uA; floored at 0."
+                f"with noise_penalty({float(channel.get('noise_penalty', 0.0)):g})*noise_uA subtracted for maximize/survey and added for minimize; floored at 0."
             )
         return (
             f"{q_text} Q_run = mean(Q_channel) "
@@ -308,8 +310,8 @@ class RecipeMakerTab:
         return {
             "buffer_classic_Q": 0.25,
             "target_classic_Q": 0.25,
-            "delta_peak": 1.0,
-            "delta_scale_uA": 1.0,
+            "peak_prominence": 1.0,
+            "repeat_scan_snr": 0.0,
         }
 
     @staticmethod
@@ -320,11 +322,11 @@ class RecipeMakerTab:
     @staticmethod
     def _paired_response_equation_text(weights: dict) -> str:
         return (
-            "delta_peak = target_peak_height_uA - buffer_peak_height_uA; "
-            "Q_channel = paired_Q_channel = delta_peak / "
-            "(target_channel_noise + buffer_channel_noise) "
+            "delta_peak = avg target peak - avg buffer peak; repeat_scan_SNR = delta_peak / (buffer peak STD + target peak STD); "
+            "peak_prominence = delta_peak / (avg buffer RMS + avg target RMS); "
+            "Q_channel = repeat_SNR_weight*repeat_scan_SNR + prominence_weight*peak_prominence "
             "+ sign(delta_peak)*(buffer_weight*buffer_classic_Q + target_weight*target_classic_Q). "
-            "Q_run = mean(Q_channel) - run variability/failed/low-channel penalties."
+            "Q_run penalties move away from the requested optimum; maximize/minimize clip the undesired sign to 0, while survey retains both signs and optimizes |Q_run|."
         )
 
     def _bo_details(self, block: dict) -> str:
@@ -1332,14 +1334,15 @@ class RecipeMakerTab:
         normal_run = dict(normal_scoring.get("run_weights") or {})
         normal_vars = {
             "mode": tk.StringVar(value=self._display_score_mode(normal_scoring.get("mode", "classic"))),
-            "snr": tk.StringVar(value=str(normal_channel.get("snr", 0.35))),
+            "peak_prominence": tk.StringVar(value=str(normal_channel.get("peak_prominence", normal_channel.get("snr", 0.35)))),
+            "repeat_scan_snr": tk.StringVar(value=str(normal_channel.get("repeat_scan_snr", 0.0))),
             "peak_height": tk.StringVar(value=str(normal_channel.get("peak_height", 0.0))),
             "peak_shape": tk.StringVar(value=str(normal_channel.get("peak_shape", 0.20))),
             "baseline": tk.StringVar(value=str(normal_channel.get("baseline", 0.20))),
             "replicate_consistency": tk.StringVar(value=str(normal_channel.get("replicate_consistency", 0.15))),
             "success": tk.StringVar(value=str(normal_channel.get("success", 0.10))),
             "noise_penalty": tk.StringVar(value=str(normal_channel.get("noise_penalty", 0.0))),
-            "snr_saturation": tk.StringVar(value=str(normal_channel.get("snr_saturation", 20.0))),
+            "peak_prominence_saturation": tk.StringVar(value=str(normal_channel.get("peak_prominence_saturation", normal_channel.get("snr_saturation", 20.0)))),
             "lambda_variability": tk.StringVar(value=str(normal_run.get("lambda_variability", 0.20))),
             "lambda_failed": tk.StringVar(value=str(normal_run.get("lambda_failed", 0.40))),
             "lambda_low": tk.StringVar(value=str(normal_run.get("lambda_low", 0.20))),
@@ -1352,14 +1355,15 @@ class RecipeMakerTab:
             return {
                 "mode": "signal_priority_unbounded" if mode == "signal_priority_unbounded" else "classic",
                 "channel_weights": {
-                    "snr": max(0.0, float(normal_vars["snr"].get() or 0.0)),
+                    "peak_prominence": max(0.0, float(normal_vars["peak_prominence"].get() or 0.0)),
+                    "repeat_scan_snr": max(0.0, float(normal_vars["repeat_scan_snr"].get() or 0.0)),
                     "peak_height": max(0.0, float(normal_vars["peak_height"].get() or 0.0)),
                     "peak_shape": max(0.0, float(normal_vars["peak_shape"].get() or 0.0)),
                     "baseline": max(0.0, float(normal_vars["baseline"].get() or 0.0)),
                     "replicate_consistency": max(0.0, float(normal_vars["replicate_consistency"].get() or 0.0)),
                     "success": max(0.0, float(normal_vars["success"].get() or 0.0)),
                     "noise_penalty": max(0.0, float(normal_vars["noise_penalty"].get() or 0.0)),
-                    "snr_saturation": max(1e-12, float(normal_vars["snr_saturation"].get() or 20.0)),
+                    "peak_prominence_saturation": max(1e-12, float(normal_vars["peak_prominence_saturation"].get() or 20.0)),
                 },
                 "run_weights": {
                     "lambda_variability": max(0.0, float(normal_vars["lambda_variability"].get() or 0.0)),
@@ -1386,18 +1390,19 @@ class RecipeMakerTab:
         normal_mode.grid(row=0, column=1, columnspan=2, sticky="w", padx=(4, 10), pady=2)
         normal_mode.bind("<<ComboboxSelected>>", _refresh_normal_formula)
         normal_entries = [
-            ("SNR weight:", "snr"),
+            ("Peak prominence weight:", "peak_prominence"),
+            ("Repeat-scan SNR weight:", "repeat_scan_snr"),
             ("Peak weight:", "peak_height"),
             ("Shape weight:", "peak_shape"),
             ("Baseline weight:", "baseline"),
             ("Replicate weight:", "replicate_consistency"),
             ("Success weight:", "success"),
             ("Noise penalty:", "noise_penalty"),
-            ("SNR saturation:", "snr_saturation"),
+            ("Peak prominence saturation:", "peak_prominence_saturation"),
             ("Run std penalty:", "lambda_variability"),
             ("Run failed penalty:", "lambda_failed"),
-            ("Run low-Q penalty:", "lambda_low"),
-            ("Low-Q threshold:", "low_channel_threshold"),
+            ("Run poor-channel penalty:", "lambda_low"),
+            ("Poor-channel threshold:", "low_channel_threshold"),
         ]
         for idx, (label, key) in enumerate(normal_entries):
             row = 1 + idx // 2
@@ -1407,13 +1412,14 @@ class RecipeMakerTab:
             entry.grid(row=row, column=base_col + 1, sticky="w", padx=(4, 10), pady=2)
             entry.bind("<FocusOut>", _refresh_normal_formula)
             entry.bind("<Return>", _refresh_normal_formula)
+        normal_formula_row = 2 + (len(normal_entries) - 1) // 2
         ttk.Label(
             normal_box,
             textvariable=normal_formula_var,
             foreground="#155e63",
             wraplength=760,
             justify="left",
-        ).grid(row=7, column=0, columnspan=6, sticky="w", pady=(6, 0))
+        ).grid(row=normal_formula_row, column=0, columnspan=6, sticky="w", pady=(6, 0))
 
         paired_weights = self._default_paired_response_weights()
         saved_paired_weights = dict(scoring.get("paired_response_weights") or {})
