@@ -193,11 +193,24 @@ class NumpyGaussianProcessRegressor:
 
 def load_bo_config(path: Optional[str | Path] = None) -> dict:
     config_path = Path(path) if path else Path(BO_DEFAULT_CONFIG_PATH)
+    if not config_path.exists() and _same_path(config_path, BO_DEFAULT_CONFIG_PATH):
+        config = normalize_bo_config({})
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(config_path, "w", encoding="utf-8") as fh:
+            json.dump(config, fh, indent=2)
+        return config
     with open(config_path, "r", encoding="utf-8") as fh:
         config = json.load(fh)
     if not isinstance(config, dict):
         raise ValueError("BO config must be a JSON object")
     return normalize_bo_config(config)
+
+
+def _same_path(left: str | Path, right: str | Path) -> bool:
+    try:
+        return Path(left).resolve() == Path(right).resolve()
+    except Exception:
+        return Path(left) == Path(right)
 
 
 def normalize_bo_config(config: dict) -> dict:

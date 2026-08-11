@@ -27,7 +27,21 @@ class ExternalAnalysisError(RuntimeError):
 
 def _python_command(project: Path, configured: str = "") -> List[str]:
     if configured:
-        return shlex.split(configured, posix=os.name != "nt")
+        raw = str(configured).strip()
+        unquoted = raw
+        if len(unquoted) >= 2 and unquoted[0] == unquoted[-1] and unquoted[0] in ("'", '"'):
+            unquoted = unquoted[1:-1]
+        if Path(unquoted).expanduser().exists():
+            return [str(Path(unquoted).expanduser())]
+        parts = shlex.split(raw, posix=os.name != "nt")
+        if os.name == "nt":
+            parts = [
+                part[1:-1]
+                if len(part) >= 2 and part[0] == part[-1] and part[0] in ("'", '"')
+                else part
+                for part in parts
+            ]
+        return parts
     candidates = (
         project / ".venv64" / "Scripts" / "python.exe",
         project / ".venv" / "Scripts" / "python.exe",

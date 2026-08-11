@@ -163,15 +163,16 @@ gui/tab_bayesian_optimization.py
   Optional GUI tab for configuration, suggestions, queueing, auto-loop control,
   and analysis import.
 
-optimizer/bo_configs/default_swv_bo.json
-  User-editable default SWV mux BO search space.
+%USERPROFILE%\Documents\Experiment Automation Data\bo_configs\default_swv_bo.json
+  Machine-local editable default SWV mux BO search space. The app creates this
+  file automatically from built-in defaults if it is missing.
 
 config.py
   BO path defaults. Environment variables are optional.
 
-optimizer/bo_configs/local_paths.example.json
-  Template for machine-local BO paths such as the analysis output folder. Copy
-  it to optimizer/bo_configs/local_paths.json or use the BO Setup tab's Save Paths button.
+%USERPROFILE%\Documents\Experiment Automation Data\bo_configs\local_paths.json
+  Machine-local BO paths such as the analysis output folder. Use the BO Setup
+  tab's Save Paths button to create or update it.
 
 BO TAB LAYOUT
 
@@ -219,7 +220,10 @@ tests; replay is useful for checking record/import behavior against old data.
 
 BO CONFIG AND INITIAL DESIGN
 
-The editable BO config is optimizer/bo_configs/default_swv_bo.json. It controls:
+The editable BO config defaults to
+%USERPROFILE%\Documents\Experiment Automation Data\bo_configs\default_swv_bo.json
+on Windows. It is intentionally outside the GitHub folder so local BO setup
+stays on this computer. It controls:
 
 channels
   The mux channels used for one BO iteration. By default this is channels 1-10.
@@ -254,10 +258,10 @@ analysis
 BO PATH SETTINGS WITHOUT ENVIRONMENT FILES
 
 Environment variables still work, but they are not required. The app can read
-an ignored optimizer/bo_configs/local_paths.json for machine-specific path settings:
+a machine-local bo_configs/local_paths.json for machine-specific path settings:
 
 {
-  "analysis_output_dir": "analysis_outputs",
+  "analysis_output_dir": "%USERPROFILE%\\Documents\\Experiment Automation Data\\analysis_outputs",
   "analysis_file_glob": "*.json",
   "analysis_mode": "external",
   "analysis_project": ".",
@@ -267,8 +271,8 @@ an ignored optimizer/bo_configs/local_paths.json for machine-specific path setti
 }
 
 The Setup subtab can create or update this local file with the Save Paths
-button. The tracked optimizer/bo_configs/local_paths.example.json file documents the
-expected shape without forcing one machine's paths onto everyone else.
+button. The local_config.example.json file documents optional BO path override
+keys without forcing one machine's paths onto everyone else.
 
 Real BO analysis runs as a blocking external worker. The 32-bit controller
 writes a request, launches `bo_headless.py` with the configured 64-bit Python,

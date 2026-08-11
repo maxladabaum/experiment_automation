@@ -154,11 +154,26 @@ SESSION_ARCHIVE_DIR = (
 BLOCKS_DIR      = Path("recipe_maker") / "default_blocks"  # bundled default block definitions
 SAVE_DATED_METHOD_COPIES = False            # if True, also write methods/YYYY-MM-DD/*.ms working copies
 # Bayesian optimization integration (optional)
-BO_CONFIG_DIR = Path(os.getenv("EA_BO_CONFIG_DIR", str(Path("optimizer") / "bo_configs")))
-BO_DEFAULT_CONFIG_PATH = Path(
-    os.getenv("EA_BO_DEFAULT_CONFIG_PATH", str(BO_CONFIG_DIR / "default_swv_bo.json"))
+BO_CONFIG_DIR = _as_path(
+    _env_or_local("EA_BO_CONFIG_DIR", "bo_config_dir", DATA_DIR / "bo_configs"),
+    DATA_DIR / "bo_configs",
 )
-BO_LOCAL_PATHS_CONFIG = Path(os.getenv("EA_BO_LOCAL_PATHS_CONFIG", str(BO_CONFIG_DIR / "local_paths.json")))
+BO_DEFAULT_CONFIG_PATH = _as_path(
+    _env_or_local(
+        "EA_BO_DEFAULT_CONFIG_PATH",
+        "bo_default_config_path",
+        BO_CONFIG_DIR / "default_swv_bo.json",
+    ),
+    BO_CONFIG_DIR / "default_swv_bo.json",
+)
+BO_LOCAL_PATHS_CONFIG = _as_path(
+    _env_or_local(
+        "EA_BO_LOCAL_PATHS_CONFIG",
+        "bo_local_paths_config",
+        BO_CONFIG_DIR / "local_paths.json",
+    ),
+    BO_CONFIG_DIR / "local_paths.json",
+)
 
 
 def _load_bo_local_paths() -> dict:
@@ -174,7 +189,7 @@ _BO_LOCAL_PATHS = _load_bo_local_paths()
 BO_ANALYSIS_OUTPUT_DIR = Path(
     os.getenv(
         "EA_BO_ANALYSIS_OUTPUT_DIR",
-        str(_BO_LOCAL_PATHS.get("analysis_output_dir", "analysis_outputs")),
+        str(_BO_LOCAL_PATHS.get("analysis_output_dir", DATA_DIR / "analysis_outputs")),
     )
 )
 BO_ANALYSIS_FILE_GLOB = os.getenv(

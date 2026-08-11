@@ -1,0 +1,100 @@
+{
+  "metadata": {
+    "saved_at": "2026-07-29T19:43:31",
+    "version": 1
+  },
+  "items": [
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 7",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 7
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 200.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 200.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 200.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 200.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 7",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 7
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 200.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 200.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 200.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 200.0,
+          "speed": 15
+        }
+      }
+    }
+  ]
+}

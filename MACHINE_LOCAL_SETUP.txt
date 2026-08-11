@@ -128,6 +128,9 @@ first detected serial device is not reliable.
       analysis environment as well.
   [ ] Create the external local_config.json from local_config.example.json.
   [ ] Create the Documents\Experiment Automation Data directory tree.
+  [ ] Confirm the BO config is under Documents\Experiment Automation Data\bo_configs,
+      not inside the GitHub checkout. The app creates default_swv_bo.json there
+      automatically if it is missing.
   [ ] Copy any shared method library and saved recipes into the external tree.
   [ ] Detect and configure the pump and potentiostat ports.
   [ ] Verify the pump connects and physically responds to initialization.
