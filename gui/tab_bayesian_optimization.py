@@ -6397,7 +6397,10 @@ class BayesianOptimizationTab:
                 "Phase", "Trace", *classic_cols, "Classic Pair Q", "Buffer Term", "Target Term",
                 "Paired Prom. Term", "Paired Repeat Term", "Trace Peak uA", "Trace Noise uA",
                 "Mean Peak uA", "Peak STD uA", "Mean Noise uA", "Peak Prominence", "Repeat-scan SNR",
-                "Shape", "Success", "Paired Q", "Delta Peak", "Combined Noise", "Pairwise Difference STD",
+                "Shape", "Success", "Paired Q", "Delta Peak", "Combined Noise",
+                "Combined Peak STD", "Pair Δ Mean", "Pair Count", "Pair Δ STD",
+                "Buffer Peaks uA", "Target Peaks uA", "Pair Δ Values uA",
+                "Pair STD Floor", "Pair Reg STD", "Pair Raw SNR",
                 "Paired Prominence", "Paired Repeat SNR",
             )
         else:
@@ -6512,6 +6515,36 @@ class BayesianOptimizationTab:
                                 delta_peak,
                                 self._fmt(data.get("combined_channel_noise")),
                                 self._fmt(data.get("combined_peak_std_uA")),
+                                self._fmt_raw(
+                                    data.get(
+                                        "pairwise_mean_peak_difference_uA",
+                                        data.get("delta_peak_height_uA"),
+                                    )
+                                    if data.get("repeat_scan_snr_definition") == "pairwise"
+                                    else None
+                                ),
+                                self._fmt_raw(
+                                    data.get("pairwise_peak_difference_count")
+                                ),
+                                self._fmt_raw(
+                                    data.get("pairwise_peak_difference_std_uA")
+                                ),
+                                self._format_peak_height_list(
+                                    buffer_metrics.get("peak_currents_uA")
+                                ),
+                                self._format_peak_height_list(
+                                    target_metrics.get("peak_currents_uA")
+                                ),
+                                self._format_peak_height_list(
+                                    data.get("pairwise_peak_differences_uA")
+                                ),
+                                self._fmt_raw(data.get("pairwise_std_floor_uA")),
+                                self._fmt_raw(
+                                    data.get("pairwise_regularized_std_uA")
+                                ),
+                                self._fmt_raw(
+                                    data.get("unregularized_repeat_scan_snr")
+                                ),
                                 paired_prominence,
                                 paired_repeat_snr,
                             ),
@@ -6616,15 +6649,7 @@ class BayesianOptimizationTab:
         if not hasattr(self, "_history_tree"):
             return
         if paired:
-            columns = (
-                "Group", "Set", "BO Iter", "Buffer Trace", "Target Trace",
-                "Q_run", "Paired Q", "Buffer Q", "Target Q", "Classic Pair Q",
-                "Buffer Term", "Target Term", "Prominence Term", "Repeat-SNR Term",
-                "Delta Peak", "Paired Prominence", "Paired Repeat SNR", "Frac Delta", "Distance",
-                "Buffer Prominence", "Target Prominence", "Buffer Noise", "Target Noise", "Combined Noise",
-                "Target Shape", "Success",
-                "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t",
-            )
+            columns = self._paired_history_columns()
             self._history_tree.configure(columns=columns)
             self._history_tree.heading("#0", text="Cycle")
             self._history_tree.column("#0", width=62, anchor="center", stretch=False)
@@ -6638,6 +6663,15 @@ class BayesianOptimizationTab:
                 "Prominence Term": 110,
                 "Repeat-SNR Term": 108,
                 "Delta Peak": 88,
+                "Pair Δ Mean": 92,
+                "Pair Count": 84,
+                "Pair Δ STD": 88,
+                "Buffer Peaks uA": 190,
+                "Target Peaks uA": 190,
+                "Pair Δ Values uA": 260,
+                "Pair Reg STD": 94,
+                "Pair STD Floor": 102,
+                "Pair Raw SNR": 94,
                 "Classic Pair Q": 104,
                 "Buffer Prominence": 112,
                 "Target Prominence": 112,
@@ -6660,6 +6694,21 @@ class BayesianOptimizationTab:
             self._history_tree.heading(col, text=col)
             self._history_tree.column(col, width=widths.get(col, 76), anchor="center", stretch=False)
 
+    @staticmethod
+    def _paired_history_columns():
+        return (
+            "Group", "Set", "BO Iter", "Buffer Trace", "Target Trace",
+            "Q_run", "Paired Q", "Buffer Q", "Target Q", "Classic Pair Q",
+            "Buffer Term", "Target Term", "Prominence Term", "Repeat-SNR Term",
+            "Delta Peak", "Pair Δ Mean", "Pair Count", "Pair Δ STD",
+            "Buffer Peaks uA", "Target Peaks uA", "Pair Δ Values uA",
+            "Pair Reg STD", "Pair STD Floor", "Pair Raw SNR",
+            "Paired Prominence", "Paired Repeat SNR", "Frac Delta", "Distance",
+            "Buffer Prominence", "Target Prominence", "Buffer Noise", "Target Noise",
+            "Combined Noise", "Target Shape", "Success",
+            "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t",
+        )
+
     def _paired_history_values(self, obs):
         params = obs.get("params", {})
         quality = dict(obs.get("quality") or {})
@@ -6668,6 +6717,10 @@ class BayesianOptimizationTab:
         delta_peak = quality.get("mean_abs_delta_peak_height_uA", truth.get("expected_delta_peak_uA"))
         batch_size = self._paired_batch_size_for_observation(obs)
         paired_batch_index = self._paired_batch_index_for_observation(obs, batch_size=batch_size)
+        buffer_peaks, target_peaks, pairwise_differences = (
+            self._paired_peak_height_history_values(obs)
+        )
+
         return (
             str(obs.get("group_name") or f"Group {int(obs.get('group_id', 1))}"),
             str(paired_batch_index) if paired_batch_index is not None else "",
@@ -6684,6 +6737,51 @@ class BayesianOptimizationTab:
             self._fmt(quality.get("mean_peak_prominence_contribution", quality.get("mean_delta_peak_contribution"))),
             self._fmt(quality.get("mean_repeat_scan_snr_contribution")),
             self._fmt(delta_peak),
+            self._fmt_raw(
+                self._pairwise_observation_value(
+                    obs,
+                    "mean_pairwise_mean_peak_difference_uA",
+                    "pairwise_mean_peak_difference_uA",
+                )
+            ),
+            self._fmt_raw(
+                self._pairwise_observation_value(
+                    obs,
+                    "mean_pairwise_peak_difference_count",
+                    "pairwise_peak_difference_count",
+                )
+            ),
+            self._fmt_raw(
+                self._pairwise_observation_value(
+                    obs,
+                    "mean_pairwise_peak_difference_std_uA",
+                    "pairwise_peak_difference_std_uA",
+                )
+            ),
+            buffer_peaks,
+            target_peaks,
+            pairwise_differences,
+            self._fmt_raw(
+                self._pairwise_observation_value(
+                    obs,
+                    "mean_pairwise_regularized_std_uA",
+                    "pairwise_regularized_std_uA",
+                )
+            ),
+            self._fmt_raw(
+                self._pairwise_observation_value(
+                    obs,
+                    "mean_pairwise_std_floor_uA",
+                    "pairwise_std_floor_uA",
+                )
+            ),
+            self._fmt_raw(
+                self._pairwise_observation_value(
+                    obs,
+                    "mean_unregularized_repeat_scan_snr",
+                    "unregularized_repeat_scan_snr",
+                )
+            ),
             self._fmt(quality.get("mean_peak_prominence", quality.get("mean_delta_peak_score"))),
             self._fmt(quality.get("mean_repeat_scan_snr")),
             self._fmt(quality.get("mean_fractional_delta_peak")),
@@ -6707,6 +6805,49 @@ class BayesianOptimizationTab:
     @staticmethod
     def _string_or_empty(value):
         return "" if value is None else str(value)
+
+    @staticmethod
+    def _format_peak_height_list(values):
+        if not isinstance(values, (list, tuple)):
+            return ""
+        numeric = []
+        for value in values:
+            try:
+                numeric.append(float(value))
+            except (TypeError, ValueError):
+                continue
+        return json.dumps(numeric, separators=(",", ":")) if numeric else ""
+
+    @classmethod
+    def _paired_peak_height_history_values(cls, observation):
+        quality = dict((observation or {}).get("quality") or {})
+        components = dict(quality.get("channel_components") or {})
+        buffer_metrics = dict((observation or {}).get("buffer_channel_metrics") or {})
+        target_metrics = dict((observation or {}).get("target_channel_metrics") or {})
+
+        def channel_lists(source, key):
+            entries = []
+            for channel in sorted(components, key=cls._channel_sort_key):
+                values = dict(source.get(str(channel)) or {}).get(key)
+                rendered = cls._format_peak_height_list(values)
+                if rendered:
+                    entries.append(f"ch{channel}:{rendered}")
+            return " | ".join(entries)
+
+        difference_entries = []
+        for channel in sorted(components, key=cls._channel_sort_key):
+            rendered = cls._format_peak_height_list(
+                dict(components.get(channel) or {}).get(
+                    "pairwise_peak_differences_uA"
+                )
+            )
+            if rendered:
+                difference_entries.append(f"ch{channel}:{rendered}")
+        return (
+            channel_lists(buffer_metrics, "peak_currents_uA"),
+            channel_lists(target_metrics, "peak_currents_uA"),
+            " | ".join(difference_entries),
+        )
 
     def _paired_batch_size_for_observation(self, obs) -> int:
         for source in (
@@ -7012,6 +7153,14 @@ class BayesianOptimizationTab:
             "Target Q": "Target classic Q",
             "Classic Pair Q": "Classic pair Q",
             "Delta Peak": "Delta Peak",
+            "Pair Δ Mean": "Pairwise mean difference",
+            "Pair Count": "Pairwise difference count",
+            "Pair Δ STD": "Pairwise sample STD",
+            "Pair Reg STD": "Pairwise regularized STD",
+            "Pair STD Floor": "Pairwise STD floor",
+            "Pair Raw SNR": "Pairwise unregularized SNR",
+            "Paired Prominence": "Paired peak prominence",
+            "Paired Repeat SNR": "Paired repeat-scan SNR",
             "Frac Delta": "Fractional delta peak",
             "Distance": "Distance",
             "Buffer Prominence": "Buffer peak prominence",
@@ -9203,6 +9352,12 @@ class BayesianOptimizationTab:
             "Distance",
             "Paired peak prominence",
             "Paired repeat-scan SNR",
+            "Pairwise mean difference",
+            "Pairwise difference count",
+            "Pairwise sample STD",
+            "Pairwise regularized STD",
+            "Pairwise STD floor",
+            "Pairwise unregularized SNR",
             "Buffer peak prominence",
             "Target peak prominence",
             "Buffer channel noise",
@@ -9261,6 +9416,37 @@ class BayesianOptimizationTab:
             return quality.get("mean_peak_prominence", quality.get("mean_delta_peak_score"))
         if metric == "Paired repeat-scan SNR":
             return quality.get("mean_repeat_scan_snr")
+        pairwise_metric_keys = {
+            "Pairwise mean difference": (
+                "mean_pairwise_mean_peak_difference_uA",
+                "pairwise_mean_peak_difference_uA",
+            ),
+            "Pairwise difference count": (
+                "mean_pairwise_peak_difference_count",
+                "pairwise_peak_difference_count",
+            ),
+            "Pairwise sample STD": (
+                "mean_pairwise_peak_difference_std_uA",
+                "pairwise_peak_difference_std_uA",
+            ),
+            "Pairwise regularized STD": (
+                "mean_pairwise_regularized_std_uA",
+                "pairwise_regularized_std_uA",
+            ),
+            "Pairwise STD floor": (
+                "mean_pairwise_std_floor_uA",
+                "pairwise_std_floor_uA",
+            ),
+            "Pairwise unregularized SNR": (
+                "mean_unregularized_repeat_scan_snr",
+                "unregularized_repeat_scan_snr",
+            ),
+        }
+        if metric in pairwise_metric_keys:
+            summary_key, component_key = pairwise_metric_keys[metric]
+            return self._pairwise_observation_value(
+                observation, summary_key, component_key
+            )
         if metric == "Buffer peak prominence":
             return quality.get("mean_buffer_peak_prominence", quality.get("mean_buffer_snr_raw"))
         if metric == "Target peak prominence":
@@ -9406,6 +9592,44 @@ class BayesianOptimizationTab:
             except (TypeError, ValueError):
                 continue
         return sum(values) / len(values) if values else None
+
+    @classmethod
+    def _pairwise_observation_value(
+        cls, observation, summary_key, component_key
+    ):
+        """Read a saved pairwise aggregate, with fallbacks for older records."""
+        quality = dict((observation or {}).get("quality") or {})
+        value = quality.get(summary_key)
+        if value is not None:
+            return value
+        value = cls._observation_component_mean(observation, component_key)
+        if value is not None:
+            return value
+        if summary_key == "mean_pairwise_mean_peak_difference_uA":
+            return quality.get("mean_delta_peak_height_uA")
+        if summary_key != "mean_pairwise_peak_difference_count":
+            return None
+
+        components = dict(quality.get("channel_components") or {})
+        buffer_metrics = dict((observation or {}).get("buffer_channel_metrics") or {})
+        target_metrics = dict((observation or {}).get("target_channel_metrics") or {})
+        counts = []
+        for channel, data in components.items():
+            differences = (data or {}).get("pairwise_peak_differences_uA")
+            if isinstance(differences, list) and differences:
+                counts.append(float(len(differences)))
+                continue
+            buffer = dict(buffer_metrics.get(str(channel)) or {})
+            target = dict(target_metrics.get(str(channel)) or {})
+            try:
+                count = int(buffer.get("ok_scan_count", 0) or 0) * int(
+                    target.get("ok_scan_count", 0) or 0
+                )
+            except (TypeError, ValueError):
+                count = 0
+            if count:
+                counts.append(float(count))
+        return sum(counts) / len(counts) if counts else None
 
     def _observation_peak_rms(self, observation):
         row_peaks = []

@@ -217,8 +217,23 @@ def test_pairwise_rescore_saves_every_target_minus_buffer_difference():
     pairwise_std = 1.2909944487358056
 
     assert channel["pairwise_peak_differences_uA"] == differences
+    assert channel["pairwise_mean_peak_difference_uA"] == pytest.approx(3.5)
+    assert channel["pairwise_peak_difference_count"] == 4
     assert channel["pairwise_peak_difference_std_uA"] == pytest.approx(pairwise_std)
     assert channel["repeat_scan_snr"] == pytest.approx(3.5 / pairwise_std)
+    assert quality["repeat_scan_snr_definition"] == "pairwise"
+    assert quality["mean_pairwise_mean_peak_difference_uA"] == pytest.approx(3.5)
+    assert quality["mean_pairwise_peak_difference_count"] == pytest.approx(4)
+    assert quality["mean_pairwise_peak_difference_std_uA"] == pytest.approx(
+        pairwise_std
+    )
+    assert quality["mean_pairwise_regularized_std_uA"] == pytest.approx(
+        pairwise_std
+    )
+    assert quality["mean_pairwise_std_floor_uA"] == pytest.approx(0.0)
+    assert quality["mean_unregularized_repeat_scan_snr"] == pytest.approx(
+        3.5 / pairwise_std
+    )
 
 
 def test_paired_repeat_scan_snr_defaults_to_original_definition():

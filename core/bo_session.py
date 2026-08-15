@@ -1299,6 +1299,7 @@ def compute_paired_response_quality(
                 buffer_raw,
                 target_raw,
             )
+            pairwise_peak_difference_count = len(pairwise_peak_differences)
             if len(pairwise_peak_differences) > 1:
                 pairwise_mean = sum(pairwise_peak_differences) / len(
                     pairwise_peak_differences
@@ -1316,6 +1317,9 @@ def compute_paired_response_quality(
                     else 0.0
                 )
             else:
+                pairwise_peak_difference_count = (
+                    buffer_repeat_count * target_repeat_count
+                )
                 repeat_scan_snr, combined_peak_std = _pairwise_repeat_snr_from_summaries(
                     buffer_peak,
                     target_peak,
@@ -1342,6 +1346,7 @@ def compute_paired_response_quality(
             )
         else:
             pairwise_peak_differences = []
+            pairwise_peak_difference_count = 0
             raw_pairwise_std = combined_peak_std = buffer_peak_std + target_peak_std
             regularized_pairwise_std = combined_peak_std
             pairwise_std_floor = 0.0
@@ -1437,6 +1442,8 @@ def compute_paired_response_quality(
             "repeat_scan_snr_definition": repeat_scan_snr_definition,
             **(
                 {
+                    "pairwise_mean_peak_difference_uA": pairwise_mean,
+                    "pairwise_peak_difference_count": pairwise_peak_difference_count,
                     "pairwise_peak_difference_std_uA": combined_peak_std,
                     "pairwise_regularized_std_uA": regularized_pairwise_std,
                     "pairwise_std_floor_uA": pairwise_std_floor,
@@ -1523,7 +1530,21 @@ def compute_paired_response_quality(
             sum(float(data.get(key, 0.0) or 0.0) for data in per_channel.values()) / len(per_channel)
             if per_channel else 0.0
         )
-    return {
+    pairwise_channels = [
+        data
+        for data in per_channel.values()
+        if data.get("repeat_scan_snr_definition") == "pairwise"
+    ]
+
+    def _mean_pairwise_component(key: str) -> float:
+        return (
+            sum(float(data.get(key, 0.0) or 0.0) for data in pairwise_channels)
+            / len(pairwise_channels)
+            if pairwise_channels
+            else 0.0
+        )
+
+    quality = {
         "Q_run": q_run,
         "objective": "paired_response",
         "mean_Q_channel": mean_q,
@@ -1569,6 +1590,31 @@ def compute_paired_response_quality(
         "Q_channels": {ch: data["Q_channel"] for ch, data in per_channel.items()},
         "channel_components": per_channel,
     }
+    if pairwise_channels:
+        quality.update(
+            {
+                "repeat_scan_snr_definition": "pairwise",
+                "mean_pairwise_mean_peak_difference_uA": _mean_pairwise_component(
+                    "pairwise_mean_peak_difference_uA"
+                ),
+                "mean_pairwise_peak_difference_count": _mean_pairwise_component(
+                    "pairwise_peak_difference_count"
+                ),
+                "mean_pairwise_peak_difference_std_uA": _mean_pairwise_component(
+                    "pairwise_peak_difference_std_uA"
+                ),
+                "mean_pairwise_regularized_std_uA": _mean_pairwise_component(
+                    "pairwise_regularized_std_uA"
+                ),
+                "mean_pairwise_std_floor_uA": _mean_pairwise_component(
+                    "pairwise_std_floor_uA"
+                ),
+                "mean_unregularized_repeat_scan_snr": _mean_pairwise_component(
+                    "unregularized_repeat_scan_snr"
+                ),
+            }
+        )
+    return quality
 
 
 def extract_channel_metrics(payload: Any) -> dict:
@@ -3076,6 +3122,27 @@ class BOIntegrationSession:
                 row["mean_repeat_scan_snr"] = quality.get("mean_repeat_scan_snr", "")
                 row["mean_buffer_peak_std_uA"] = quality.get("mean_buffer_peak_std_uA", "")
                 row["mean_target_peak_std_uA"] = quality.get("mean_target_peak_std_uA", "")
+                row["repeat_scan_snr_definition"] = quality.get(
+                    "repeat_scan_snr_definition", "original"
+                )
+                row["mean_pairwise_mean_peak_difference_uA"] = quality.get(
+                    "mean_pairwise_mean_peak_difference_uA", ""
+                )
+                row["mean_pairwise_peak_difference_count"] = quality.get(
+                    "mean_pairwise_peak_difference_count", ""
+                )
+                row["mean_pairwise_peak_difference_std_uA"] = quality.get(
+                    "mean_pairwise_peak_difference_std_uA", ""
+                )
+                row["mean_pairwise_regularized_std_uA"] = quality.get(
+                    "mean_pairwise_regularized_std_uA", ""
+                )
+                row["mean_pairwise_std_floor_uA"] = quality.get(
+                    "mean_pairwise_std_floor_uA", ""
+                )
+                row["mean_unregularized_repeat_scan_snr"] = quality.get(
+                    "mean_unregularized_repeat_scan_snr", ""
+                )
                 row["mean_fractional_delta_peak_score"] = quality.get("mean_fractional_delta_peak_score", "")
                 row["mean_buffer_snr_raw"] = quality.get("mean_buffer_snr_raw", "")
                 row["mean_target_snr_raw"] = quality.get("mean_target_snr_raw", "")
@@ -3090,6 +3157,12 @@ class BOIntegrationSession:
             for ch, q in obs["quality"].get("Q_channels", {}).items():
                 row[f"Q_ch{ch}"] = q
             if str(obs.get("objective") or "").lower() == "paired_response":
+                buffer_channel_metrics = dict(
+                    obs.get("buffer_channel_metrics") or {}
+                )
+                target_channel_metrics = dict(
+                    obs.get("target_channel_metrics") or {}
+                )
                 for ch, data in dict(quality.get("channel_components") or {}).items():
                     prefix = f"ch{ch}"
                     for key in (
@@ -3110,6 +3183,13 @@ class BOIntegrationSession:
                         "buffer_peak_std_uA",
                         "target_peak_std_uA",
                         "combined_peak_std_uA",
+                        "repeat_scan_snr_definition",
+                        "pairwise_mean_peak_difference_uA",
+                        "pairwise_peak_difference_count",
+                        "pairwise_peak_difference_std_uA",
+                        "pairwise_regularized_std_uA",
+                        "pairwise_std_floor_uA",
+                        "unregularized_repeat_scan_snr",
                         "fractional_delta_peak_score",
                         "buffer_snr_raw",
                         "target_snr_raw",
@@ -3122,6 +3202,28 @@ class BOIntegrationSession:
                         "success_score",
                     ):
                         row[f"{prefix}_{key}"] = data.get(key, "")
+                    pairwise_differences = data.get("pairwise_peak_differences_uA")
+                    row[f"{prefix}_pairwise_peak_differences_uA"] = (
+                        json.dumps(pairwise_differences)
+                        if isinstance(pairwise_differences, list)
+                        else ""
+                    )
+                    buffer_peaks = dict(
+                        buffer_channel_metrics.get(str(ch)) or {}
+                    ).get("peak_currents_uA")
+                    target_peaks = dict(
+                        target_channel_metrics.get(str(ch)) or {}
+                    ).get("peak_currents_uA")
+                    row[f"{prefix}_buffer_peak_currents_uA"] = (
+                        json.dumps(buffer_peaks)
+                        if isinstance(buffer_peaks, list)
+                        else ""
+                    )
+                    row[f"{prefix}_target_peak_currents_uA"] = (
+                        json.dumps(target_peaks)
+                        if isinstance(target_peaks, list)
+                        else ""
+                    )
             rows.append(row)
         fieldnames = []
         for row in rows:
