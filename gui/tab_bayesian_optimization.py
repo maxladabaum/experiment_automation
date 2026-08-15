@@ -6515,7 +6515,7 @@ class BayesianOptimizationTab:
                                 delta_peak,
                                 self._fmt(data.get("combined_channel_noise")),
                                 self._fmt(data.get("combined_peak_std_uA")),
-                                self._fmt_raw(
+                                self._fmt_pairwise(
                                     data.get(
                                         "pairwise_mean_peak_difference_uA",
                                         data.get("delta_peak_height_uA"),
@@ -6523,10 +6523,10 @@ class BayesianOptimizationTab:
                                     if data.get("repeat_scan_snr_definition") == "pairwise"
                                     else None
                                 ),
-                                self._fmt_raw(
+                                self._fmt_pairwise_count(
                                     data.get("pairwise_peak_difference_count")
                                 ),
-                                self._fmt_raw(
+                                self._fmt_pairwise(
                                     data.get("pairwise_peak_difference_std_uA")
                                 ),
                                 self._format_peak_height_list(
@@ -6538,11 +6538,11 @@ class BayesianOptimizationTab:
                                 self._format_peak_height_list(
                                     data.get("pairwise_peak_differences_uA")
                                 ),
-                                self._fmt_raw(data.get("pairwise_std_floor_uA")),
-                                self._fmt_raw(
+                                self._fmt_pairwise(data.get("pairwise_std_floor_uA")),
+                                self._fmt_pairwise(
                                     data.get("pairwise_regularized_std_uA")
                                 ),
-                                self._fmt_raw(
+                                self._fmt_pairwise(
                                     data.get("unregularized_repeat_scan_snr")
                                 ),
                                 paired_prominence,
@@ -6737,21 +6737,21 @@ class BayesianOptimizationTab:
             self._fmt(quality.get("mean_peak_prominence_contribution", quality.get("mean_delta_peak_contribution"))),
             self._fmt(quality.get("mean_repeat_scan_snr_contribution")),
             self._fmt(delta_peak),
-            self._fmt_raw(
+            self._fmt_pairwise(
                 self._pairwise_observation_value(
                     obs,
                     "mean_pairwise_mean_peak_difference_uA",
                     "pairwise_mean_peak_difference_uA",
                 )
             ),
-            self._fmt_raw(
+            self._fmt_pairwise_count(
                 self._pairwise_observation_value(
                     obs,
                     "mean_pairwise_peak_difference_count",
                     "pairwise_peak_difference_count",
                 )
             ),
-            self._fmt_raw(
+            self._fmt_pairwise(
                 self._pairwise_observation_value(
                     obs,
                     "mean_pairwise_peak_difference_std_uA",
@@ -6761,21 +6761,21 @@ class BayesianOptimizationTab:
             buffer_peaks,
             target_peaks,
             pairwise_differences,
-            self._fmt_raw(
+            self._fmt_pairwise(
                 self._pairwise_observation_value(
                     obs,
                     "mean_pairwise_regularized_std_uA",
                     "pairwise_regularized_std_uA",
                 )
             ),
-            self._fmt_raw(
+            self._fmt_pairwise(
                 self._pairwise_observation_value(
                     obs,
                     "mean_pairwise_std_floor_uA",
                     "pairwise_std_floor_uA",
                 )
             ),
-            self._fmt_raw(
+            self._fmt_pairwise(
                 self._pairwise_observation_value(
                     obs,
                     "mean_unregularized_repeat_scan_snr",
@@ -6816,7 +6816,7 @@ class BayesianOptimizationTab:
                 numeric.append(float(value))
             except (TypeError, ValueError):
                 continue
-        return json.dumps(numeric, separators=(",", ":")) if numeric else ""
+        return ", ".join(f"{value:.4f}" for value in numeric)
 
     @classmethod
     def _paired_peak_height_history_values(cls, observation):
@@ -6831,7 +6831,7 @@ class BayesianOptimizationTab:
                 values = dict(source.get(str(channel)) or {}).get(key)
                 rendered = cls._format_peak_height_list(values)
                 if rendered:
-                    entries.append(f"ch{channel}:{rendered}")
+                    entries.append(f"Ch {channel}: {rendered}")
             return " | ".join(entries)
 
         difference_entries = []
@@ -6842,7 +6842,7 @@ class BayesianOptimizationTab:
                 )
             )
             if rendered:
-                difference_entries.append(f"ch{channel}:{rendered}")
+                difference_entries.append(f"Ch {channel}: {rendered}")
         return (
             channel_lists(buffer_metrics, "peak_currents_uA"),
             channel_lists(target_metrics, "peak_currents_uA"),
@@ -9535,6 +9535,23 @@ class BayesianOptimizationTab:
             return f"{float(value):.6g}"
         except (TypeError, ValueError):
             return ""
+
+    @staticmethod
+    def _fmt_pairwise(value):
+        try:
+            return f"{float(value):.4f}"
+        except (TypeError, ValueError):
+            return ""
+
+    @staticmethod
+    def _fmt_pairwise_count(value):
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return ""
+        if numeric.is_integer():
+            return str(int(numeric))
+        return f"{numeric:.2f}".rstrip("0").rstrip(".")
 
     @staticmethod
     def _channel_peak_height(metrics):

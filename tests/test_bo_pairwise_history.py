@@ -74,16 +74,16 @@ def test_pairwise_history_row_contains_every_numeric_snr_input():
         )
     )
 
-    assert row["Pair Δ Mean"] == "3.5"
+    assert row["Pair Δ Mean"] == "3.5000"
     assert row["Pair Count"] == "4"
-    assert row["Pair Δ STD"] == "1.29099"
-    assert row["Pair STD Floor"] == "0.25"
-    assert row["Pair Reg STD"] == "1.31498"
-    assert row["Pair Raw SNR"] == "2.71109"
+    assert row["Pair Δ STD"] == "1.2910"
+    assert row["Pair STD Floor"] == "0.2500"
+    assert row["Pair Reg STD"] == "1.3150"
+    assert row["Pair Raw SNR"] == "2.7111"
     assert row["Paired Repeat SNR"] == "2.662"
-    assert row["Buffer Peaks uA"] == "ch1:[1.0,2.0]"
-    assert row["Target Peaks uA"] == "ch1:[4.0,6.0]"
-    assert row["Pair Δ Values uA"] == "ch1:[3.0,5.0,2.0,4.0]"
+    assert row["Buffer Peaks uA"] == "Ch 1: 1.0000, 2.0000"
+    assert row["Target Peaks uA"] == "Ch 1: 4.0000, 6.0000"
+    assert row["Pair Δ Values uA"] == "Ch 1: 3.0000, 5.0000, 2.0000, 4.0000"
 
 
 @pytest.mark.parametrize(
@@ -166,5 +166,5 @@ def test_pairwise_history_reconstructs_mean_and_count_for_older_records():
         )
     )
 
-    assert row["Pair Δ Mean"] == "3.5"
+    assert row["Pair Δ Mean"] == "3.5000"
     assert row["Pair Count"] == "4"
