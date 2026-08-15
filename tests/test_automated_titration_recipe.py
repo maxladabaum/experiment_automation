@@ -366,6 +366,62 @@ def test_manual_swv_pass_follows_optimized_pass_each_replicate():
     assert swv_items[3]["_titration_group"]["params"]["frequency"] == 101.0
 
 
+def test_multiple_manual_swv_settings_run_after_optimized_setting():
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    optimized = {
+        "begin_potential": -0.7,
+        "end_potential": -0.1,
+        "step_potential": 0.002,
+        "amplitude": 0.036,
+        "frequency": 200.0,
+        "conditioning_potential": -0.7,
+        "conditioning_time": 0.0,
+    }
+    tab._parameter_groups = [
+        {"name": "Group 1", "channels": [1, 2], "params": optimized}
+    ]
+    tab._manual_channel_params = {
+        1: [
+            {**optimized, "frequency": 101.0},
+            {**optimized, "frequency": 201.0},
+        ],
+        2: [
+            {**optimized, "frequency": 102.0},
+            {**optimized, "frequency": 202.0},
+            {**optimized, "frequency": 302.0},
+        ],
+    }
+    recipe = []
+
+    tab._append_swv_measurements(
+        recipe,
+        settings={"replicates": 1},
+        point_label="Initial buffer",
+    )
+
+    assert [
+        (
+            item["_mux_channel"],
+            item["_swv_source"],
+            item["_titration_group"]["params"]["frequency"],
+        )
+        for item in recipe
+    ] == [
+        (1, "optimized", 200.0),
+        (2, "optimized", 200.0),
+        (1, "manual", 101.0),
+        (2, "manual", 102.0),
+        (1, "manual", 201.0),
+        (2, "manual", 202.0),
+        (2, "manual", 302.0),
+    ]
+    assert [
+        item.get("_manual_setting_index")
+        for item in recipe
+        if item["_swv_source"] == "manual"
+    ] == [0, 0, 1, 1, 2]
+
+
 def test_first_stock_mixes_before_buffer_measurement_and_first_flow_load():
     tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
     tab._parameter_groups = [
@@ -503,11 +559,23 @@ def test_optional_plain_buffer_measurements_are_inserted_between_concentrations(
         if item["type"] == "PUMP_DISPENSE"
         and "Plain buffer" in item.get("details", "")
     ]
-    assert len(buffer_loads) == 2
+    assert len(buffer_loads) == 3
     assert all(
         item["pump_action"]["params"]["volume"] == pytest.approx(175)
         for item in buffer_loads
     )
+    first_plain_buffer_index = recipe.index(buffer_loads[0])
+    first_stock_index = next(
+        index
+        for index, item in enumerate(recipe)
+        if "Stock delivery" in item.get("details", "")
+    )
+    initial_buffer_measurement_index = next(
+        index
+        for index, item in enumerate(recipe)
+        if item["type"] == "SWV" and item["_point"] == "Initial buffer"
+    )
+    assert first_plain_buffer_index < first_stock_index < initial_buffer_measurement_index
     titrated_loads = [
         item for item in recipe
         if item["type"] == "PUMP_DISPENSE"
@@ -591,6 +659,37 @@ def test_initial_buffer_transfer_can_be_bypassed():
     recipe = tab._build_recipe(settings, plan)
 
     assert recipe[0]["type"] == "PUMP_INIT"
+    assert not any(item.get("_point") == "Setup" for item in recipe)
+
+
+def test_plain_buffer_initial_step_runs_when_mix_tube_setup_is_bypassed():
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    tab._parameter_groups = []
+    settings = {
+        "air_port": 9, "stock_port": 5, "buffer_port": 6, "mix_port": 4,
+        "flow_port": 1, "waste_port": 2, "speed": 20,
+        "initial_buffer_speed": 12,
+        "syringe_capacity": 250.0, "stock_air_spacer": 100.0,
+        "mix_line_air_push": 250.0, "mix_line_volume": 75.0,
+        "initial_buffer_volume": 1000.0, "aliquot_volume": 100.0,
+        "plain_buffer_volume": 175.0,
+        "mix_cycles": 0, "mix_volume": 200.0, "equilibration": 0.0,
+        "replicates": 1, "skip_initial_buffer": True,
+        "measure_buffer_between": True,
+    }
+    plan = calculate_titration_plan(
+        [10], stock_concentration_um=10_000,
+        initial_buffer_volume_ul=1000, aliquot_volume_ul=100,
+    )
+
+    recipe = tab._build_recipe(settings, plan)
+
+    assert recipe[0]["type"] == "PUMP_INIT"
+    first_dispense = next(
+        item for item in recipe if item["type"] == "PUMP_DISPENSE"
+    )
+    assert "Plain buffer" in first_dispense["details"]
+    assert first_dispense["pump_action"]["params"]["volume"] == pytest.approx(175)
     assert not any(item.get("_point") == "Setup" for item in recipe)
 
 

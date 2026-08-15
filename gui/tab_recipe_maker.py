@@ -312,6 +312,8 @@ class RecipeMakerTab:
             "target_classic_Q": 0.25,
             "peak_prominence": 1.0,
             "repeat_scan_snr": 0.0,
+            "repeat_scan_snr_definition": "original",
+            "pairwise_std_floor_uA": 0.01,
         }
 
     @staticmethod
@@ -321,8 +323,21 @@ class RecipeMakerTab:
 
     @staticmethod
     def _paired_response_equation_text(weights: dict) -> str:
+        repeat_definition = str(
+            (weights or {}).get("repeat_scan_snr_definition", "original")
+        ).lower()
+        repeat_equation = (
+            "pairwise differences = every target peak - every buffer peak; "
+            "repeat_scan_SNR = (avg target peak - avg buffer peak) / "
+            "sqrt(STD(pairwise differences)^2 + pairwise STD floor^2); "
+            if repeat_definition == "pairwise"
+            else "repeat_scan_SNR = delta_peak / "
+            "(buffer peak STD + target peak STD); "
+        )
         return (
-            "delta_peak = avg target peak - avg buffer peak; repeat_scan_SNR = delta_peak / (buffer peak STD + target peak STD); "
+            "delta_peak = avg target peak - avg buffer peak; "
+            + repeat_equation
+            +
             "peak_prominence = delta_peak / (avg buffer RMS + avg target RMS); "
             "Q_channel = repeat_SNR_weight*repeat_scan_SNR + prominence_weight*peak_prominence "
             "+ sign(delta_peak)*(buffer_weight*buffer_classic_Q + target_weight*target_classic_Q). "
@@ -1432,9 +1447,38 @@ class RecipeMakerTab:
         weight_box.grid(row=8, column=0, columnspan=5, padx=6, pady=(6, 4), sticky="we")
         weight_box.columnconfigure(0, weight=1)
         paired_formula_var = tk.StringVar(value=self._paired_response_equation_text(paired_weights))
+        repeat_snr_definition_var = tk.StringVar(
+            value=str(
+                paired_weights.get("repeat_scan_snr_definition", "original")
+                or "original"
+            ).lower()
+        )
 
         def _paired_weights_from_vars():
+            paired_weights["repeat_scan_snr_definition"] = (
+                repeat_snr_definition_var.get() or "original"
+            ).strip().lower()
             return dict(paired_weights)
+
+        def _refresh_paired_formula(_event=None):
+            paired_formula_var.set(
+                self._paired_response_equation_text(_paired_weights_from_vars())
+            )
+
+        definition_row = ttk.Frame(weight_box)
+        definition_row.grid(row=0, column=0, sticky="w", pady=(0, 4))
+        ttk.Label(definition_row, text="Repeat-scan SNR definition:").pack(
+            side="left"
+        )
+        definition_box = ttk.Combobox(
+            definition_row,
+            textvariable=repeat_snr_definition_var,
+            values=("original", "pairwise"),
+            state="readonly",
+            width=14,
+        )
+        definition_box.pack(side="left", padx=(6, 0))
+        definition_box.bind("<<ComboboxSelected>>", _refresh_paired_formula)
 
         ttk.Label(
             weight_box,
@@ -1442,7 +1486,7 @@ class RecipeMakerTab:
             foreground="#155e63",
             wraplength=760,
             justify="left",
-        ).grid(row=0, column=0, sticky="w", pady=(6, 0))
+        ).grid(row=1, column=0, sticky="w", pady=(6, 0))
 
         analysis = block.get("analysis") or {}
         ttk.Label(win, text="Crop min/max (V):").grid(row=9, column=0, **pad, sticky="e")

@@ -1,3 +1,5 @@
+import json
+
 from core.bo_session import BOIntegrationSession, normalize_bo_config
 
 
@@ -97,3 +99,48 @@ def test_single_group_available_candidates_use_group_candidate_pool_size(tmp_pat
     available = session._available_candidates(set(), config=group_config)
 
     assert len(available) == 50
+
+
+def test_single_group_candidate_metadata_uses_effective_group_pool(tmp_path):
+    config = normalize_bo_config(
+        {
+            "acquisition": {
+                "candidate_pool_size": 60,
+                "local_candidate_pool_size": 0,
+            },
+            "channel_groups": [
+                {
+                    "name": "Group 1",
+                    "channels": [1, 2],
+                    "candidate_pool_size": 100,
+                    "local_candidate_pool_size": 0,
+                }
+            ],
+            "parameters": {
+                "amplitude": {
+                    "mode": "active",
+                    "space": "continuous",
+                    "min": 0.01,
+                    "max": 0.20,
+                    "step": 0.001,
+                    "value": 0.036,
+                }
+            },
+        }
+    )
+    session = BOIntegrationSession(config, tmp_path)
+
+    state = json.loads((session.record_dir / "bo_state.json").read_text())
+    preview = json.loads(
+        (session.record_dir / "initial_parameters_preview.json").read_text()
+    )
+    rows, metadata, _model = session._candidate_prediction_rows(group_id=1)
+
+    assert len(session.candidates) == 60
+    assert state["candidate_count"] == 100
+    assert state["global_candidate_count"] == 60
+    assert state["candidate_counts_by_group"] == {"1": 100}
+    assert preview["candidate_count"] == 100
+    assert metadata["global_candidate_count"] == 100
+    assert metadata["candidate_count"] == 100
+    assert len(rows) == 100

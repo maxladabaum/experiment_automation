@@ -398,6 +398,18 @@ def normalize_bo_config(config: dict) -> dict:
         "peak_prominence", float(paired_weights.get("delta_peak", 1.0))
     )
     paired_weights.setdefault("repeat_scan_snr", 0.0)
+    repeat_scan_snr_definition = str(
+        paired_weights.get("repeat_scan_snr_definition", "original") or "original"
+    ).strip().lower()
+    if repeat_scan_snr_definition not in {"original", "pairwise"}:
+        raise ValueError(
+            "scoring.paired_response_weights.repeat_scan_snr_definition "
+            "must be 'original' or 'pairwise'"
+        )
+    paired_weights["repeat_scan_snr_definition"] = repeat_scan_snr_definition
+    paired_weights["pairwise_std_floor_uA"] = max(
+        0.0, float(paired_weights.get("pairwise_std_floor_uA", 0.01) or 0.0)
+    )
     paired_weights.pop("delta_peak", None)
     paired_weights.pop("delta_scale_uA", None)
     if cfg.get("paired_batch_size") is not None:
@@ -1184,6 +1196,62 @@ def compute_run_quality(
     }
 
 
+def _pairwise_repeat_snr_from_summaries(
+    buffer_mean: float,
+    target_mean: float,
+    buffer_std: float,
+    target_std: float,
+    buffer_count: int,
+    target_count: int,
+) -> Tuple[float, float]:
+    """Return target-minus-buffer SNR and sample STD over all cross-phase pairs."""
+    pair_count = buffer_count * target_count
+    if buffer_count < 1 or target_count < 1 or pair_count < 2:
+        return 0.0, 0.0
+    # For every t_j - b_i, the centered sum of squares can be recovered
+    # exactly from the two phase sample variances without retaining raw scans.
+    pairwise_sum_squares = (
+        target_count * max(0, buffer_count - 1) * buffer_std ** 2
+        + buffer_count * max(0, target_count - 1) * target_std ** 2
+    )
+    pairwise_std = math.sqrt(pairwise_sum_squares / (pair_count - 1))
+    if pairwise_std <= 1e-12:
+        return 0.0, pairwise_std
+    return (target_mean - buffer_mean) / pairwise_std, pairwise_std
+
+
+def _pairwise_peak_differences_from_metrics(
+    buffer_metrics: dict,
+    target_metrics: dict,
+) -> List[float]:
+    """Return all finite target-minus-buffer replicate peak differences."""
+    buffer_raw = buffer_metrics.get("peak_currents_uA")
+    target_raw = target_metrics.get("peak_currents_uA")
+    if not isinstance(buffer_raw, (list, tuple)) or not isinstance(
+        target_raw, (list, tuple)
+    ):
+        return []
+
+    def finite_values(values: Iterable[Any]) -> List[float]:
+        result = []
+        for value in values:
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(numeric):
+                result.append(numeric)
+        return result
+
+    buffer_values = finite_values(buffer_raw)
+    target_values = finite_values(target_raw)
+    return [
+        target_value - buffer_value
+        for buffer_value in buffer_values
+        for target_value in target_values
+    ]
+
+
 def compute_paired_response_quality(
     buffer_metrics: dict,
     target_metrics: dict,
@@ -1219,16 +1287,74 @@ def compute_paired_response_quality(
         target_peak_std = abs(
             float(target_raw.get("std_peak_current_uA", 0.0) or 0.0)
         )
-        combined_peak_std = buffer_peak_std + target_peak_std
         buffer_repeat_count = int(buffer_raw.get("ok_scan_count", 0) or 0)
         target_repeat_count = int(target_raw.get("ok_scan_count", 0) or 0)
+        paired_weights = dict(scoring.get("paired_response_weights") or {})
+        repeat_scan_snr_definition = str(
+            paired_weights.get("repeat_scan_snr_definition", "original")
+            or "original"
+        ).strip().lower()
+        if repeat_scan_snr_definition == "pairwise":
+            pairwise_peak_differences = _pairwise_peak_differences_from_metrics(
+                buffer_raw,
+                target_raw,
+            )
+            if len(pairwise_peak_differences) > 1:
+                pairwise_mean = sum(pairwise_peak_differences) / len(
+                    pairwise_peak_differences
+                )
+                combined_peak_std = math.sqrt(
+                    sum(
+                        (value - pairwise_mean) ** 2
+                        for value in pairwise_peak_differences
+                    )
+                    / (len(pairwise_peak_differences) - 1)
+                )
+                repeat_scan_snr = (
+                    pairwise_mean / combined_peak_std
+                    if combined_peak_std > 1e-12
+                    else 0.0
+                )
+            else:
+                repeat_scan_snr, combined_peak_std = _pairwise_repeat_snr_from_summaries(
+                    buffer_peak,
+                    target_peak,
+                    buffer_peak_std,
+                    target_peak_std,
+                    buffer_repeat_count,
+                    target_repeat_count,
+                )
+            raw_pairwise_std = combined_peak_std
+            unregularized_repeat_scan_snr = repeat_scan_snr
+            pairwise_std_floor = max(
+                0.0,
+                float(paired_weights.get("pairwise_std_floor_uA", 0.0) or 0.0),
+            )
+            regularized_pairwise_std = math.hypot(
+                raw_pairwise_std,
+                pairwise_std_floor,
+            )
+            pairwise_mean = target_peak - buffer_peak
+            repeat_scan_snr = (
+                pairwise_mean / regularized_pairwise_std
+                if regularized_pairwise_std > 1e-12
+                else 0.0
+            )
+        else:
+            pairwise_peak_differences = []
+            raw_pairwise_std = combined_peak_std = buffer_peak_std + target_peak_std
+            regularized_pairwise_std = combined_peak_std
+            pairwise_std_floor = 0.0
+            unregularized_repeat_scan_snr = 0.0
+            repeat_scan_snr = (
+                delta_peak / combined_peak_std
+                if buffer_repeat_count > 1
+                and target_repeat_count > 1
+                and combined_peak_std > 1e-12
+                else 0.0
+            )
         success = min(float(buffer_q.get("success_score", 1.0) or 0.0), float(target_q.get("success_score", 1.0) or 0.0))
         peak_prominence = delta_peak / max(combined_noise, 1e-12)
-        repeat_scan_snr = (
-            delta_peak / max(combined_peak_std, 1e-12)
-            if buffer_repeat_count > 1 and target_repeat_count > 1
-            else 0.0
-        )
         fractional_score = math.log1p(max(0.0, fractional_delta))
         prominence_saturation = max(
             1e-12,
@@ -1256,7 +1382,6 @@ def compute_paired_response_quality(
         valid_classic_pair = buffer_classic_q > 0.0 and target_classic_q > 0.0
         if not valid_classic_pair:
             success = 0.0
-        paired_weights = dict(scoring.get("paired_response_weights") or {})
         buffer_classic_weight = float(paired_weights.get("buffer_classic_Q", 0.0) or 0.0)
         target_classic_weight = float(paired_weights.get("target_classic_Q", 0.0) or 0.0)
         peak_prominence_weight = float(
@@ -1309,6 +1434,18 @@ def compute_paired_response_quality(
             "buffer_peak_std_uA": buffer_peak_std,
             "target_peak_std_uA": target_peak_std,
             "combined_peak_std_uA": combined_peak_std,
+            "repeat_scan_snr_definition": repeat_scan_snr_definition,
+            **(
+                {
+                    "pairwise_peak_difference_std_uA": combined_peak_std,
+                    "pairwise_regularized_std_uA": regularized_pairwise_std,
+                    "pairwise_std_floor_uA": pairwise_std_floor,
+                    "unregularized_repeat_scan_snr": unregularized_repeat_scan_snr,
+                    "pairwise_peak_differences_uA": pairwise_peak_differences,
+                }
+                if repeat_scan_snr_definition == "pairwise"
+                else {}
+            ),
             "delta_peak_height_uA": delta_peak,
             "abs_delta_peak_height_uA": abs_delta_peak,
             "fractional_delta_peak": fractional_delta,
@@ -1479,6 +1616,7 @@ class BOIntegrationSession:
         self.plots_dir = self.record_dir / "plots"
         self._ensure_record_dirs()
         self.candidates = generate_candidates(self.config)
+        self._candidate_pool_cache: Dict[str, List[Dict[str, float]]] = {}
         self.observations: List[dict] = []
         self.suggestions: List[dict] = []
         self.pending: Optional[dict] = None
@@ -1536,6 +1674,7 @@ class BOIntegrationSession:
         session.plots_dir = record_path / "plots"
         session._ensure_record_dirs()
         session.candidates = generate_candidates(session.config)
+        session._candidate_pool_cache = {}
         session.observations = list(state.get("observations") or [])
         session.suggestions = list(state.get("suggestions") or [])
         session.pending = dict(state["pending"]) if isinstance(state.get("pending"), dict) else None
@@ -1694,7 +1833,7 @@ class BOIntegrationSession:
 
     def _available_candidates(self, tried: set, config: Optional[dict] = None) -> List[Dict[str, float]]:
         config = config or self.config
-        base_candidates = self.candidates if config == self.config else generate_candidates(config)
+        base_candidates = self._base_candidates_for_config(config)
         available = [c for c in base_candidates if candidate_key(c) not in tried]
         group_initial = resolve_initial_parameters(config)
         if not validate_candidate(group_initial, config) and candidate_key(group_initial) not in tried:
@@ -2429,13 +2568,47 @@ class BOIntegrationSession:
     def should_stop(self) -> bool:
         return False
 
+    def _base_candidates_for_config(
+        self,
+        config: Optional[dict] = None,
+    ) -> List[Dict[str, float]]:
+        """Return candidates for the effective global or group configuration."""
+        effective_config = config or self.config
+        if effective_config == self.config:
+            return self.candidates
+        cache = getattr(self, "_candidate_pool_cache", None)
+        if cache is None:
+            cache = {}
+            self._candidate_pool_cache = cache
+        cache_key = json.dumps(effective_config, sort_keys=True, separators=(",", ":"))
+        if cache_key not in cache:
+            cache[cache_key] = generate_candidates(effective_config)
+        return cache[cache_key]
+
+    def _candidate_counts_by_group(self) -> Dict[str, int]:
+        return {
+            str(group["id"]): len(
+                self._base_candidates_for_config(
+                    self._config_for_group(int(group["id"]))
+                )
+            )
+            for group in channel_groups(self.config)
+        }
+
     def save_state(self) -> Path:
+        candidate_counts_by_group = self._candidate_counts_by_group()
         payload = {
             "session_id": self.session_id,
             "config_path": str(self.config_path) if self.config_path else None,
             "record_dir": str(self.record_dir),
             "analysis_output_dir": str(self.analysis_output_dir),
-            "candidate_count": len(self.candidates),
+            "candidate_count": (
+                next(iter(candidate_counts_by_group.values()))
+                if len(candidate_counts_by_group) == 1
+                else len(self.candidates)
+            ),
+            "global_candidate_count": len(self.candidates),
+            "candidate_counts_by_group": candidate_counts_by_group,
             "active_parameters": active_parameters(self.config),
             "channel_groups": channel_groups(self.config),
             "pending": self.pending,
@@ -2823,6 +2996,14 @@ class BOIntegrationSession:
         return source
 
     def _write_session_start_files(self) -> None:
+        groups = channel_groups(self.config)
+        preview_candidates = (
+            self._base_candidates_for_config(
+                self._config_for_group(int(groups[0]["id"]))
+            )
+            if len(groups) == 1
+            else self.candidates
+        )
         self._write_json(self.record_dir / "bo_config_snapshot.json", self.config)
         self._write_json(self.record_dir / "search_space.json", self.config.get("parameters", {}))
         self._write_json(self.record_dir / "constraints.json", self.config.get("constraints", {}))
@@ -2832,8 +3013,10 @@ class BOIntegrationSession:
                 "initial_parameters": resolve_initial_parameters(self.config),
                 "initial_point_mode": str(self.config.get("acquisition", {}).get("initial_point_mode", "specific")),
                 "start_candidate": dict(self._start_candidate),
-                "candidate_count": len(self.candidates),
-                "initial_candidates": self.candidates[: int(self.config.get("n_initial_points", 8))],
+                "candidate_count": len(preview_candidates),
+                "global_candidate_count": len(self.candidates),
+                "candidate_counts_by_group": self._candidate_counts_by_group(),
+                "initial_candidates": preview_candidates[: int(self.config.get("n_initial_points", 8))],
             },
         )
 
@@ -3016,6 +3199,9 @@ class BOIntegrationSession:
         observed_keys = {candidate_key(obs["params"]) for obs in observations}
         best_q = historical_session._best_q_for_observations(observations)
         best_objective = max((historical_session._objective_value(float(obs["Q_run"])) for obs in observations), default=0.0)
+        global_candidates = list(
+            self._base_candidates_for_config(effective_config)
+        )
         rows = []
         metadata = {
             "backend": (
@@ -3024,7 +3210,7 @@ class BOIntegrationSession:
                 else "distance_weighted_fallback"
             ),
             "observation_count": len(observations),
-            "candidate_count": len(self.candidates),
+            "candidate_count": len(global_candidates),
             "active_parameters": active_parameters(effective_config),
             "best_Q_run": best_q,
             "optimization_direction": historical_session._optimization_direction(),
@@ -3038,7 +3224,6 @@ class BOIntegrationSession:
         if gp is not None:
             metadata.update(_gp_kernel_metadata(gp))
 
-        global_candidates = list(self.candidates)
         global_keys = {candidate_key(candidate) for candidate in global_candidates}
         local_candidates = [
             candidate

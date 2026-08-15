@@ -233,7 +233,9 @@
       "buffer_classic_Q": 0.05,
       "target_classic_Q": 0.05,
       "delta_peak": 5.0,
-      "delta_scale_uA": 1.0
+      "delta_scale_uA": 1.0,
+      "repeat_scan_snr_definition": "original",
+      "pairwise_std_floor_uA": 0.01
     }
   },
   "analysis": {

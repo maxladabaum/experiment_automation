@@ -116,6 +116,7 @@ def test_repeat_analysis_averages_signal_and_noise_and_reports_std(builder):
         1.2 / (0.4 / (2 ** 0.5))
     )
     assert metrics["std_peak_current_uA"] == pytest.approx(0.4 / (2 ** 0.5))
+    assert metrics["peak_currents_uA"] == pytest.approx([1.0, 1.4])
     assert metrics["std_background_rms_uA"] == pytest.approx(0.2 / (2 ** 0.5))
     assert metrics["repeat_relative_std"] > 0.0
 
@@ -256,4 +257,40 @@ def test_legacy_snr_and_delta_weights_migrate_to_new_metric_names():
     assert "snr" not in channel
     assert paired["peak_prominence"] == 2.5
     assert paired["repeat_scan_snr"] == 0.0
+    assert paired["repeat_scan_snr_definition"] == "original"
+    assert paired["pairwise_std_floor_uA"] == 0.01
     assert "delta_peak" not in paired
+
+
+def test_pairwise_repeat_snr_definition_is_normalized_and_validated():
+    config = normalize_bo_config(
+        {
+            "scoring": {
+                "paired_response_weights": {
+                    "repeat_scan_snr_definition": " PairWise ",
+                    "pairwise_std_floor_uA": "0.02",
+                }
+            }
+        }
+    )
+
+    assert (
+        config["scoring"]["paired_response_weights"][
+            "repeat_scan_snr_definition"
+        ]
+        == "pairwise"
+    )
+    assert (
+        config["scoring"]["paired_response_weights"]["pairwise_std_floor_uA"]
+        == 0.02
+    )
+    with pytest.raises(ValueError, match="must be 'original' or 'pairwise'"):
+        normalize_bo_config(
+            {
+                "scoring": {
+                    "paired_response_weights": {
+                        "repeat_scan_snr_definition": "unknown",
+                    }
+                }
+            }
+        )

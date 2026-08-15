@@ -66,6 +66,8 @@ def test_simulation_tuning_builds_independent_paired_bo_config():
         "target_classic_Q": _var(master, 0.2),
         "peak_prominence": _var(master, 2.0),
         "repeat_scan_snr": _var(master, 0.5),
+        "repeat_scan_snr_definition": _var(master, "pairwise"),
+        "pairwise_std_floor_uA": _var(master, 0.02),
     }
     tab._engine_analysis_vars = {
         "crop_min_v": _var(master, -0.55),
@@ -101,6 +103,13 @@ def test_simulation_tuning_builds_independent_paired_bo_config():
     assert tuned["scoring"]["channel_weights"]["repeat_scan_snr"] == 0.4
     assert tuned["scoring"]["paired_response_weights"]["peak_prominence"] == 2.0
     assert tuned["scoring"]["paired_response_weights"]["repeat_scan_snr"] == 0.5
+    assert (
+        tuned["scoring"]["paired_response_weights"][
+            "repeat_scan_snr_definition"
+        ]
+        == "pairwise"
+    )
+    assert tuned["scoring"]["paired_response_weights"]["pairwise_std_floor_uA"] == 0.02
     assert tuned["analysis"]["crop_min_v"] == -0.55
     assert tuned["analysis"]["smooth_window"] == 11
     assert tuned["analysis"]["require_local_minima_on_both_sides"] is True

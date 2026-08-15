@@ -109,6 +109,7 @@ def _build_channel_metrics(results: List[dict]) -> Dict[str, dict]:
                 "ok_scan_count": 0,
                 "total_scan_count": total,
                 "std_peak_current_uA": 0.0,
+                "peak_currents_uA": [],
                 "std_background_rms_uA": 0.0,
                 "repeat_relative_std": 0.0,
             }
@@ -147,6 +148,7 @@ def _build_channel_metrics(results: List[dict]) -> Dict[str, dict]:
             "median_peak_current_uA": _median(peak_currents, 0.0),
             "mean_peak_current_uA": mean_peak_current,
             "std_peak_current_uA": std_peak_current,
+            "peak_currents_uA": peak_currents,
             "median_background_rms_uA": _median(background_rms, 0.0),
             "mean_background_rms_uA": mean_background_rms,
             "std_background_rms_uA": std_background_rms,

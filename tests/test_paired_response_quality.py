@@ -1,3 +1,5 @@
+import pytest
+
 from core.bo_session import compute_paired_response_quality
 
 
@@ -129,6 +131,7 @@ def test_paired_q_weights_repeat_scan_snr_and_peak_prominence_separately():
             "target_classic_Q": 0.0,
             "peak_prominence": 2.0,
             "repeat_scan_snr": 3.0,
+            "repeat_scan_snr_definition": "pairwise",
         },
         "run_weights": {
             "low_channel_threshold": -100.0,
@@ -161,10 +164,107 @@ def test_paired_q_weights_repeat_scan_snr_and_peak_prominence_separately():
 
     assert channel["delta_peak_height_uA"] == 6.0
     assert channel["peak_prominence"] == 3.0
-    assert channel["repeat_scan_snr"] == 6.0
+    pairwise_std = (1.25 / 3.0) ** 0.5
+    assert channel["combined_peak_std_uA"] == pytest.approx(pairwise_std)
+    assert channel["pairwise_peak_difference_std_uA"] == pytest.approx(
+        pairwise_std
+    )
+    assert channel["repeat_scan_snr"] == pytest.approx(6.0 / pairwise_std)
     assert channel["peak_prominence_contribution"] == 6.0
-    assert channel["repeat_scan_snr_contribution"] == 18.0
-    assert channel["paired_Q_channel"] == 24.0
+    assert channel["repeat_scan_snr_contribution"] == pytest.approx(
+        18.0 / pairwise_std
+    )
+    assert channel["paired_Q_channel"] == pytest.approx(
+        6.0 + 18.0 / pairwise_std
+    )
+
+
+def test_pairwise_rescore_saves_every_target_minus_buffer_difference():
+    scoring = {
+        "channel_weights": {"success": 1.0, "peak_prominence": 0.0},
+        "paired_response_weights": {
+            "buffer_classic_Q": 0.0,
+            "target_classic_Q": 0.0,
+            "peak_prominence": 0.0,
+            "repeat_scan_snr": 1.0,
+            "repeat_scan_snr_definition": "pairwise",
+        },
+        "run_weights": {
+            "low_channel_threshold": -100.0,
+            "lambda_variability": 0.0,
+            "lambda_failed": 0.0,
+            "lambda_low": 0.0,
+        },
+    }
+    buffer_metrics = {"1": {
+        "peak_currents_uA": [1.0, 2.0],
+        "mean_peak_current_uA": 1.5,
+        "std_peak_current_uA": 0.5,
+        "ok_scan_count": 2,
+        "success_score": 1.0,
+    }}
+    target_metrics = {"1": {
+        "peak_currents_uA": [4.0, 6.0],
+        "mean_peak_current_uA": 5.0,
+        "std_peak_current_uA": 1.0,
+        "ok_scan_count": 2,
+        "success_score": 1.0,
+    }}
+
+    quality = compute_paired_response_quality(buffer_metrics, target_metrics, scoring)
+    channel = quality["channel_components"]["1"]
+    differences = [3.0, 5.0, 2.0, 4.0]
+    pairwise_std = 1.2909944487358056
+
+    assert channel["pairwise_peak_differences_uA"] == differences
+    assert channel["pairwise_peak_difference_std_uA"] == pytest.approx(pairwise_std)
+    assert channel["repeat_scan_snr"] == pytest.approx(3.5 / pairwise_std)
+
+
+def test_paired_repeat_scan_snr_defaults_to_original_definition():
+    scoring = {
+        "channel_weights": {"success": 1.0, "peak_prominence": 0.0},
+        "paired_response_weights": {
+            "buffer_classic_Q": 0.0,
+            "target_classic_Q": 0.0,
+            "peak_prominence": 0.0,
+            "repeat_scan_snr": 1.0,
+        },
+        "run_weights": {
+            "lambda_variability": 0.0,
+            "lambda_failed": 0.0,
+            "lambda_low": 0.0,
+        },
+    }
+    buffer_metrics = {
+        "1": {
+            "mean_peak_current_uA": 2.0,
+            "std_peak_current_uA": 0.25,
+            "ok_scan_count": 2,
+            "success_score": 1.0,
+        }
+    }
+    target_metrics = {
+        "1": {
+            "mean_peak_current_uA": 8.0,
+            "std_peak_current_uA": 0.75,
+            "ok_scan_count": 2,
+            "success_score": 1.0,
+        }
+    }
+
+    quality = compute_paired_response_quality(
+        buffer_metrics,
+        target_metrics,
+        scoring,
+        "survey",
+    )
+    channel = quality["channel_components"]["1"]
+
+    assert channel["repeat_scan_snr_definition"] == "original"
+    assert channel["combined_peak_std_uA"] == pytest.approx(1.0)
+    assert channel["repeat_scan_snr"] == pytest.approx(6.0)
+    assert "pairwise_peak_difference_std_uA" not in channel
 
 
 def test_paired_q_is_zero_when_either_phase_failed():

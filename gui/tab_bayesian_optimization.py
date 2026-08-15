@@ -191,6 +191,8 @@ class BayesianOptimizationTab:
                 "target_classic_Q": "0.25",
                 "peak_prominence": "1.0",
                 "repeat_scan_snr": "0.00",
+                "repeat_scan_snr_definition": "original",
+                "pairwise_std_floor_uA": "0.01",
                 "lambda_repeat_std": "0.00",
             }.items()
         }
@@ -236,6 +238,8 @@ class BayesianOptimizationTab:
         self._paired_target_classic_q_weight_var = tk.StringVar(value="0.25")
         self._paired_delta_peak_weight_var = tk.StringVar(value="1.0")
         self._paired_repeat_scan_snr_weight_var = tk.StringVar(value="0.00")
+        self._paired_repeat_scan_snr_definition_var = tk.StringVar(value="original")
+        self._paired_pairwise_std_floor_var = tk.StringVar(value="0.01")
         self._paired_repeat_std_penalty_var = tk.StringVar(value="0.00")
         self._paired_formula_var = tk.StringVar(value="")
         self._analysis_trend_metric_var = tk.StringVar(value="Q_run")
@@ -291,6 +295,8 @@ class BayesianOptimizationTab:
                 "target_classic_Q": "0.25",
                 "peak_prominence": "1.0",
                 "repeat_scan_snr": "0.00",
+                "repeat_scan_snr_definition": "original",
+                "pairwise_std_floor_uA": "0.01",
                 "lambda_repeat_std": "0.00",
             }.items()
         }
@@ -2165,10 +2171,9 @@ class BayesianOptimizationTab:
         acquisition["gp_length_scales"] = populated
 
         scoring = self._scoring_from_vars(self._engine_score_vars)
-        scoring["paired_response_weights"] = {
-            key: max(0.0, float(var.get() or 0.0))
-            for key, var in self._engine_paired_score_vars.items()
-        }
+        scoring["paired_response_weights"] = self._paired_scoring_from_var_map(
+            self._engine_paired_score_vars
+        )
         cfg["scoring"] = scoring
         if hasattr(self, "_engine_analysis_vars"):
             cfg["analysis"] = self._engine_analysis_config()
@@ -2361,6 +2366,8 @@ class BayesianOptimizationTab:
             "target_classic_Q": self._paired_target_classic_q_weight_var,
             "peak_prominence": self._paired_delta_peak_weight_var,
             "repeat_scan_snr": self._paired_repeat_scan_snr_weight_var,
+            "repeat_scan_snr_definition": self._paired_repeat_scan_snr_definition_var,
+            "pairwise_std_floor_uA": self._paired_pairwise_std_floor_var,
             "lambda_repeat_std": self._paired_repeat_std_penalty_var,
         }
 
@@ -2371,6 +2378,8 @@ class BayesianOptimizationTab:
             "target_classic_Q": 0.25,
             "peak_prominence": 1.0,
             "repeat_scan_snr": 0.0,
+            "repeat_scan_snr_definition": "original",
+            "pairwise_std_floor_uA": 0.01,
             "lambda_repeat_std": 0.0,
         }
 
@@ -2620,6 +2629,7 @@ class BayesianOptimizationTab:
             ("Repeat-scan SNR weight:", "repeat_scan_snr"),
             ("Repeat-scan peak prominence weight:", "peak_prominence"),
             ("Paired run repeat relative-std penalty:", "lambda_repeat_std"),
+            ("Pairwise STD floor (uA):", "pairwise_std_floor_uA"),
         )
         for idx, (label, key) in enumerate(entries):
             row = idx // 2
@@ -2630,11 +2640,25 @@ class BayesianOptimizationTab:
             entry.bind("<FocusOut>", lambda _e: on_change())
             entry.bind("<Return>", lambda _e: on_change())
         formula_row = 1 + (len(entries) - 1) // 2
+        ttk.Label(scoring_box, text="Repeat-scan SNR definition:").grid(
+            row=formula_row, column=0, sticky="w", pady=(6, 2)
+        )
+        definition_box = ttk.Combobox(
+            scoring_box,
+            textvariable=vars_by_name["repeat_scan_snr_definition"],
+            values=("original", "pairwise"),
+            state="readonly",
+            width=14,
+        )
+        definition_box.grid(
+            row=formula_row, column=1, sticky="w", padx=(4, 12), pady=(6, 2)
+        )
+        definition_box.bind("<<ComboboxSelected>>", lambda _e: refresh_explanation())
         ttk.Button(
             scoring_box,
             text="Refresh Scoring Explanation",
             command=refresh_explanation,
-        ).grid(row=formula_row, column=0, columnspan=4, sticky="w", pady=(6, 2))
+        ).grid(row=formula_row, column=2, columnspan=2, sticky="w", pady=(6, 2))
         ttk.Label(
             scoring_box,
             textvariable=formula_var,
@@ -2707,10 +2731,21 @@ class BayesianOptimizationTab:
         return self._paired_scoring_from_var_map(self._paired_scoring_vars())
 
     def _paired_scoring_from_var_map(self, vars_by_name):
-        return {
+        definition_var = vars_by_name.get("repeat_scan_snr_definition")
+        definition = str(
+            definition_var.get() if definition_var is not None else "original"
+        ).strip().lower()
+        if definition not in {"original", "pairwise"}:
+            raise ValueError(
+                "Paired repeat-scan SNR definition must be original or pairwise."
+            )
+        weights = {
             key: max(0.0, float(var.get() or 0.0))
             for key, var in vars_by_name.items()
+            if key != "repeat_scan_snr_definition"
         }
+        weights["repeat_scan_snr_definition"] = definition
+        return weights
 
     def _refresh_paired_score_formula(self):
         try:
@@ -2730,9 +2765,20 @@ class BayesianOptimizationTab:
         if float(weights.get("repeat_scan_snr", 0.0) or 0.0) != 0.0:
             weight = float(weights["repeat_scan_snr"])
             terms.append(f"  + {weight:g}*repeat_scan_SNR")
-            definitions.append(
-                "  repeat_scan_SNR = delta_peak / (buffer peak STD + target peak STD)."
-            )
+            if str(weights.get("repeat_scan_snr_definition", "original")).lower() == "pairwise":
+                std_floor = max(
+                    0.0, float(weights.get("pairwise_std_floor_uA", 0.0) or 0.0)
+                )
+                definitions.append(
+                    "  repeat_scan_SNR = (average target peak - average buffer peak) / "
+                    "sqrt(STD(all target-minus-buffer replicate pairs)^2 + "
+                    f"{std_floor:g}^2)."
+                )
+            else:
+                definitions.append(
+                    "  repeat_scan_SNR = delta_peak / "
+                    "(buffer peak STD + target peak STD)."
+                )
         if float(weights.get("peak_prominence", 0.0) or 0.0) != 0.0:
             weight = float(weights["peak_prominence"])
             terms.append(f"  + {weight:g}*peak_prominence")
@@ -6351,7 +6397,7 @@ class BayesianOptimizationTab:
                 "Phase", "Trace", *classic_cols, "Classic Pair Q", "Buffer Term", "Target Term",
                 "Paired Prom. Term", "Paired Repeat Term", "Trace Peak uA", "Trace Noise uA",
                 "Mean Peak uA", "Peak STD uA", "Mean Noise uA", "Peak Prominence", "Repeat-scan SNR",
-                "Shape", "Success", "Paired Q", "Delta Peak", "Combined Noise", "Combined Peak STD",
+                "Shape", "Success", "Paired Q", "Delta Peak", "Combined Noise", "Pairwise Difference STD",
                 "Paired Prominence", "Paired Repeat SNR",
             )
         else:
@@ -8119,7 +8165,17 @@ class BayesianOptimizationTab:
             lines.extend(
                 [
                     "Paired-response Q_channel terms:",
-                    "  repeat_scan_SNR = delta_peak / (buffer peak STD + target peak STD)",
+                    (
+                        "  repeat_scan_SNR = (average target peak - average buffer peak) / "
+                        "STD(all target-minus-buffer replicate pairs)"
+                        if any(
+                            str((data or {}).get("repeat_scan_snr_definition", "original")).lower()
+                            == "pairwise"
+                            for data in ((quality.get("channel_components") or {}).values())
+                        )
+                        else "  repeat_scan_SNR = delta_peak / "
+                        "(buffer peak STD + target peak STD)"
+                    ),
                     "  peak_prominence = delta_peak / (average buffer RMS + average target RMS)",
                     "  paired_Q_channel = repeat_SNR_weight*repeat_scan_SNR + prominence_weight*peak_prominence "
                     "+ sign(delta_peak)*(buffer_weight*buffer_classic_Q + target_weight*target_classic_Q)",
