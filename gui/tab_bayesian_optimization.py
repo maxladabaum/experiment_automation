@@ -6397,7 +6397,7 @@ class BayesianOptimizationTab:
                 "Phase", "Trace", *classic_cols, "Classic Pair Q", "Buffer Term", "Target Term",
                 "Paired Prom. Term", "Paired Repeat Term", "Trace Peak uA", "Trace Noise uA",
                 "Mean Peak uA", "Peak STD uA", "Mean Noise uA", "Peak Prominence", "Repeat-scan SNR",
-                "Shape", "Success", "Paired Q", "Delta Peak", "Combined Noise",
+                "Shape", "Success", "All Peaks", "Paired Q", "Delta Peak", "Combined Noise",
                 "Combined Peak STD", "Pair Δ Mean", "Pair Count", "Pair Δ STD",
                 "Buffer Peaks uA", "Target Peaks uA", "Pair Δ Values uA",
                 "Pair STD Floor", "Pair Reg STD", "Pair Raw SNR",
@@ -6511,6 +6511,9 @@ class BayesianOptimizationTab:
                                 self._fmt(phase_classic.get("repeat_scan_snr_raw")),
                                 self._fmt(phase_classic.get("peak_shape_score")),
                                 self._fmt(phase_classic.get("success_score")),
+                                "Yes" if data.get(
+                                    f"{phase}_all_peaks_identified", False
+                                ) else "No",
                                 paired_q,
                                 delta_peak,
                                 self._fmt(data.get("combined_channel_noise")),
@@ -6678,6 +6681,7 @@ class BayesianOptimizationTab:
                 "Buffer Noise": 94,
                 "Target Noise": 94,
                 "Combined Noise": 106,
+                "All Peaks": 82,
                 "BO Iter": 78,
             }
         else:
@@ -6705,7 +6709,7 @@ class BayesianOptimizationTab:
             "Pair Reg STD", "Pair STD Floor", "Pair Raw SNR",
             "Paired Prominence", "Paired Repeat SNR", "Frac Delta", "Distance",
             "Buffer Prominence", "Target Prominence", "Buffer Noise", "Target Noise",
-            "Combined Noise", "Target Shape", "Success",
+            "Combined Noise", "Target Shape", "Success", "All Peaks",
             "Begin", "End", "Step", "Amp", "Freq", "Cond E", "Cond t",
         )
 
@@ -6793,6 +6797,7 @@ class BayesianOptimizationTab:
             self._fmt(quality.get("mean_combined_channel_noise")),
             self._fmt(quality.get("mean_target_shape_score")),
             self._fmt(quality.get("mean_success_score")),
+            "Yes" if quality.get("all_phase_peaks_identified", True) else "No",
             self._fmt_raw(params.get("begin_potential")),
             self._fmt_raw(params.get("end_potential")),
             self._fmt_raw(params.get("step_potential")),
@@ -8314,6 +8319,7 @@ class BayesianOptimizationTab:
             lines.extend(
                 [
                     "Paired-response Q_channel terms:",
+                    "  Hard peak gate: Q_run and the affected paired Q_channel are 0 unless every buffer and target trace identifies a peak.",
                     (
                         "  repeat_scan_SNR = (average target peak - average buffer peak) / "
                         "STD(all target-minus-buffer replicate pairs)"

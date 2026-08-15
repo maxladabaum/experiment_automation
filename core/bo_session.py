@@ -1252,6 +1252,20 @@ def _pairwise_peak_differences_from_metrics(
     ]
 
 
+def _phase_peak_completeness(metrics: dict) -> Tuple[bool, int, int]:
+    """Return whether every recorded trace produced an identified peak."""
+    ok_count = int(metrics.get("ok_scan_count", 0) or 0)
+    if metrics.get("total_scan_count") is not None:
+        total_count = int(metrics.get("total_scan_count", 0) or 0)
+        return total_count > 0 and ok_count == total_count, ok_count, total_count
+    if metrics.get("success_score") is not None:
+        success = float(metrics.get("success_score", 0.0) or 0.0)
+        return success >= 1.0 - 1e-12, ok_count, ok_count
+    # Legacy records may predate explicit scan counts. Preserve their prior
+    # behavior because completeness cannot be reconstructed from the summary.
+    return True, ok_count, ok_count
+
+
 def compute_paired_response_quality(
     buffer_metrics: dict,
     target_metrics: dict,
@@ -1289,6 +1303,19 @@ def compute_paired_response_quality(
         )
         buffer_repeat_count = int(buffer_raw.get("ok_scan_count", 0) or 0)
         target_repeat_count = int(target_raw.get("ok_scan_count", 0) or 0)
+        (
+            buffer_all_peaks_identified,
+            buffer_ok_scan_count,
+            buffer_total_scan_count,
+        ) = _phase_peak_completeness(buffer_raw)
+        (
+            target_all_peaks_identified,
+            target_ok_scan_count,
+            target_total_scan_count,
+        ) = _phase_peak_completeness(target_raw)
+        all_phase_peaks_identified = (
+            buffer_all_peaks_identified and target_all_peaks_identified
+        )
         paired_weights = dict(scoring.get("paired_response_weights") or {})
         repeat_scan_snr_definition = str(
             paired_weights.get("repeat_scan_snr_definition", "original")
@@ -1385,7 +1412,8 @@ def compute_paired_response_quality(
             buffer_repeat_relative_std + target_repeat_relative_std
         )
         valid_classic_pair = buffer_classic_q > 0.0 and target_classic_q > 0.0
-        if not valid_classic_pair:
+        valid_source_pair = valid_classic_pair and all_phase_peaks_identified
+        if not valid_source_pair:
             success = 0.0
         buffer_classic_weight = float(paired_weights.get("buffer_classic_Q", 0.0) or 0.0)
         target_classic_weight = float(paired_weights.get("target_classic_Q", 0.0) or 0.0)
@@ -1419,6 +1447,14 @@ def compute_paired_response_quality(
             "Q_channel": q_channel,
             "paired_Q_channel": q_channel,
             "valid_classic_pair": valid_classic_pair,
+            "valid_source_pair": valid_source_pair,
+            "all_phase_peaks_identified": all_phase_peaks_identified,
+            "buffer_all_peaks_identified": buffer_all_peaks_identified,
+            "target_all_peaks_identified": target_all_peaks_identified,
+            "buffer_ok_scan_count": buffer_ok_scan_count,
+            "buffer_total_scan_count": buffer_total_scan_count,
+            "target_ok_scan_count": target_ok_scan_count,
+            "target_total_scan_count": target_total_scan_count,
             "buffer_classic_Q": buffer_classic_q,
             "target_classic_Q": target_classic_q,
             "classic_pair_Q": standard_quality_score,
@@ -1517,6 +1553,14 @@ def compute_paired_response_quality(
     q_run = _penalized_value(mean_q, run_penalty_magnitude, direction)
     run_penalty_adjustment = q_run - mean_q
     q_run = _clip_run_quality(q_run, direction)
+    incomplete_peak_channels = [
+        channel
+        for channel, data in per_channel.items()
+        if not data.get("all_phase_peaks_identified", False)
+    ]
+    all_phase_peaks_identified = bool(per_channel) and not incomplete_peak_channels
+    if not all_phase_peaks_identified:
+        q_run = 0.0
     mean_delta = (
         sum(float(data.get("delta_peak_height_uA", 0.0) or 0.0) for data in per_channel.values()) / len(per_channel)
         if per_channel else 0.0
@@ -1558,6 +1602,10 @@ def compute_paired_response_quality(
         "optimization_direction": direction,
         "run_penalty_magnitude": run_penalty_magnitude,
         "run_penalty_adjustment": run_penalty_adjustment,
+        "all_phase_peaks_identified": all_phase_peaks_identified,
+        "peak_completeness_gate_applied": not all_phase_peaks_identified,
+        "incomplete_peak_channel_count": len(incomplete_peak_channels),
+        "incomplete_peak_channels": incomplete_peak_channels,
         "mean_buffer_classic_Q": _mean_component("buffer_classic_Q"),
         "mean_target_classic_Q": _mean_component("target_classic_Q"),
         "mean_classic_pair_Q": _mean_component("classic_pair_Q"),
@@ -3153,6 +3201,21 @@ class BOIntegrationSession:
                 row["mean_target_snr_score"] = quality.get("mean_target_snr_score", "")
                 row["mean_target_shape_score"] = quality.get("mean_target_shape_score", "")
                 row["mean_success_score"] = quality.get("mean_success_score", "")
+                row["all_phase_peaks_identified"] = quality.get(
+                    "all_phase_peaks_identified", ""
+                )
+                row["peak_completeness_gate_applied"] = quality.get(
+                    "peak_completeness_gate_applied", ""
+                )
+                row["incomplete_peak_channel_count"] = quality.get(
+                    "incomplete_peak_channel_count", ""
+                )
+                incomplete_channels = quality.get("incomplete_peak_channels")
+                row["incomplete_peak_channels"] = (
+                    json.dumps(incomplete_channels)
+                    if isinstance(incomplete_channels, list)
+                    else ""
+                )
             row.update({name: obs["params"].get(name) for name in PARAMETER_ORDER})
             for ch, q in obs["quality"].get("Q_channels", {}).items():
                 row[f"Q_ch{ch}"] = q
@@ -3200,6 +3263,14 @@ class BOIntegrationSession:
                         "target_snr_score",
                         "target_shape_score",
                         "success_score",
+                        "valid_source_pair",
+                        "all_phase_peaks_identified",
+                        "buffer_all_peaks_identified",
+                        "target_all_peaks_identified",
+                        "buffer_ok_scan_count",
+                        "buffer_total_scan_count",
+                        "target_ok_scan_count",
+                        "target_total_scan_count",
                     ):
                         row[f"{prefix}_{key}"] = data.get(key, "")
                     pairwise_differences = data.get("pairwise_peak_differences_uA")

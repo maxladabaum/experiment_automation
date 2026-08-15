@@ -327,6 +327,112 @@ def test_paired_q_is_zero_when_either_phase_failed():
     assert quality["Q_run"] == 0.0
 
 
+def test_paired_q_is_zero_when_only_some_buffer_traces_have_peaks():
+    scoring = {
+        "mode": "classic",
+        "channel_weights": {
+            "snr": 0.0,
+            "peak_height": 0.0,
+            "peak_shape": 0.0,
+            "baseline": 0.0,
+            "replicate_consistency": 0.0,
+            "success": 1.0,
+            "noise_penalty": 0.0,
+            "snr_saturation": 20.0,
+        },
+        "paired_response_weights": {
+            "buffer_classic_Q": 0.5,
+            "target_classic_Q": 0.5,
+            "peak_prominence": 0.0,
+            "repeat_scan_snr": 0.0,
+            "repeat_scan_snr_definition": "pairwise",
+        },
+        "run_weights": {
+            "low_channel_threshold": 0.5,
+            "lambda_variability": 0.0,
+            "lambda_failed": 0.0,
+            "lambda_low": 0.0,
+        },
+    }
+    buffer_metrics = {
+        "1": {
+            "peak_currents_uA": [1.0, 1.1],
+            "mean_peak_current_uA": 1.05,
+            "std_peak_current_uA": 0.05,
+            "ok_scan_count": 2,
+            "total_scan_count": 3,
+            "success_score": 2.0 / 3.0,
+        }
+    }
+    target_metrics = {
+        "1": {
+            "peak_currents_uA": [2.0, 2.1, 2.2],
+            "mean_peak_current_uA": 2.1,
+            "std_peak_current_uA": 0.1,
+            "ok_scan_count": 3,
+            "total_scan_count": 3,
+            "success_score": 1.0,
+        }
+    }
+
+    quality = compute_paired_response_quality(buffer_metrics, target_metrics, scoring)
+    channel = quality["channel_components"]["1"]
+
+    assert channel["buffer_all_peaks_identified"] is False
+    assert channel["target_all_peaks_identified"] is True
+    assert channel["all_phase_peaks_identified"] is False
+    assert channel["buffer_ok_scan_count"] == 2
+    assert channel["buffer_total_scan_count"] == 3
+    assert channel["paired_Q_channel"] == 0.0
+    assert quality["Q_run"] == 0.0
+    assert quality["peak_completeness_gate_applied"] is True
+    assert quality["incomplete_peak_channels"] == ["1"]
+
+
+def test_one_incomplete_channel_zeros_the_entire_paired_run():
+    scoring = {
+        "mode": "classic",
+        "channel_weights": {
+            "snr": 0.0,
+            "peak_height": 0.0,
+            "peak_shape": 0.0,
+            "baseline": 0.0,
+            "replicate_consistency": 0.0,
+            "success": 1.0,
+            "noise_penalty": 0.0,
+            "snr_saturation": 20.0,
+        },
+        "paired_response_weights": {
+            "buffer_classic_Q": 0.5,
+            "target_classic_Q": 0.5,
+            "peak_prominence": 0.0,
+            "repeat_scan_snr": 0.0,
+        },
+        "run_weights": {
+            "low_channel_threshold": 0.0,
+            "lambda_variability": 0.0,
+            "lambda_failed": 0.0,
+            "lambda_low": 0.0,
+        },
+    }
+    buffer_metrics = {
+        "1": {"mean_peak_current_uA": 1.0, "ok_scan_count": 3, "total_scan_count": 3, "success_score": 1.0},
+        "2": {"mean_peak_current_uA": 1.0, "ok_scan_count": 2, "total_scan_count": 3, "success_score": 2.0 / 3.0},
+    }
+    target_metrics = {
+        "1": {"mean_peak_current_uA": 2.0, "ok_scan_count": 3, "total_scan_count": 3, "success_score": 1.0},
+        "2": {"mean_peak_current_uA": 2.0, "ok_scan_count": 3, "total_scan_count": 3, "success_score": 1.0},
+    }
+
+    quality = compute_paired_response_quality(buffer_metrics, target_metrics, scoring)
+
+    assert quality["channel_components"]["1"]["paired_Q_channel"] > 0.0
+    assert quality["channel_components"]["2"]["paired_Q_channel"] == 0.0
+    assert quality["all_phase_peaks_identified"] is False
+    assert quality["incomplete_peak_channels"] == ["2"]
+    assert quality["Q_run"] == 0.0
+
+
 def test_paired_q_preserves_negative_delta_score():
     scoring = {
         "mode": "classic",
