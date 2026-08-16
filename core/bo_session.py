@@ -1223,8 +1223,10 @@ def _pairwise_repeat_snr_from_summaries(
 def _pairwise_peak_differences_from_metrics(
     buffer_metrics: dict,
     target_metrics: dict,
+    buffer_total_count: Optional[int] = None,
+    target_total_count: Optional[int] = None,
 ) -> List[float]:
-    """Return all finite target-minus-buffer replicate peak differences."""
+    """Return pair differences, padding failed peak fits with zero."""
     buffer_raw = buffer_metrics.get("peak_currents_uA")
     target_raw = target_metrics.get("peak_currents_uA")
     if not isinstance(buffer_raw, (list, tuple)) or not isinstance(
@@ -1245,6 +1247,10 @@ def _pairwise_peak_differences_from_metrics(
 
     buffer_values = finite_values(buffer_raw)
     target_values = finite_values(target_raw)
+    if buffer_total_count is not None:
+        buffer_values.extend([0.0] * max(0, buffer_total_count - len(buffer_values)))
+    if target_total_count is not None:
+        target_values.extend([0.0] * max(0, target_total_count - len(target_values)))
     return [
         target_value - buffer_value
         for buffer_value in buffer_values
@@ -1264,6 +1270,51 @@ def _phase_peak_completeness(metrics: dict) -> Tuple[bool, int, int]:
     # Legacy records may predate explicit scan counts. Preserve their prior
     # behavior because completeness cannot be reconstructed from the summary.
     return True, ok_count, ok_count
+
+
+def _failure_adjusted_peak_std(
+    metrics: dict,
+    successful_mean: float,
+    successful_std: float,
+    ok_count: int,
+    total_count: int,
+) -> Tuple[float, List[float]]:
+    """Sample STD with failed fits represented as zero, without changing the mean signal."""
+    raw = metrics.get("peak_currents_uA")
+    values: List[float] = []
+    if isinstance(raw, (list, tuple)):
+        for value in raw:
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(numeric):
+                values.append(numeric)
+    total_count = max(int(total_count), int(ok_count), len(values))
+    if values:
+        adjusted_values = values + [0.0] * max(0, total_count - len(values))
+        if len(adjusted_values) < 2:
+            return 0.0, adjusted_values
+        adjusted_mean = sum(adjusted_values) / len(adjusted_values)
+        adjusted_std = math.sqrt(
+            sum((value - adjusted_mean) ** 2 for value in adjusted_values)
+            / (len(adjusted_values) - 1)
+        )
+        return adjusted_std, adjusted_values
+    if total_count < 2 or ok_count < 1:
+        return 0.0, []
+    # Recover the padded sample variance exactly from the successful-scan
+    # sample mean/STD when archived records do not contain the raw peak list.
+    sum_values = ok_count * successful_mean
+    sum_squares = (
+        max(0, ok_count - 1) * successful_std ** 2
+        + ok_count * successful_mean ** 2
+    )
+    centered_sum_squares = max(
+        0.0,
+        sum_squares - (sum_values ** 2 / total_count),
+    )
+    return math.sqrt(centered_sum_squares / (total_count - 1)), []
 
 
 def compute_paired_response_quality(
@@ -1295,10 +1346,10 @@ def compute_paired_response_quality(
         buffer_noise = float(buffer_q.get("noise_raw", 0.0) or 0.0)
         target_noise = float(target_q.get("noise_raw", 0.0) or 0.0)
         combined_noise = buffer_noise + target_noise
-        buffer_peak_std = abs(
+        successful_buffer_peak_std = abs(
             float(buffer_raw.get("std_peak_current_uA", 0.0) or 0.0)
         )
-        target_peak_std = abs(
+        successful_target_peak_std = abs(
             float(target_raw.get("std_peak_current_uA", 0.0) or 0.0)
         )
         buffer_repeat_count = int(buffer_raw.get("ok_scan_count", 0) or 0)
@@ -1316,6 +1367,31 @@ def compute_paired_response_quality(
         all_phase_peaks_identified = (
             buffer_all_peaks_identified and target_all_peaks_identified
         )
+        buffer_peak_std, buffer_failure_adjusted_peaks = _failure_adjusted_peak_std(
+            buffer_raw,
+            buffer_peak,
+            successful_buffer_peak_std,
+            buffer_ok_scan_count,
+            buffer_total_scan_count,
+        )
+        target_peak_std, target_failure_adjusted_peaks = _failure_adjusted_peak_std(
+            target_raw,
+            target_peak,
+            successful_target_peak_std,
+            target_ok_scan_count,
+            target_total_scan_count,
+        )
+        buffer_has_minimum_peaks = buffer_ok_scan_count >= 2 or (
+            "ok_scan_count" not in buffer_raw
+            and "total_scan_count" not in buffer_raw
+        )
+        target_has_minimum_peaks = target_ok_scan_count >= 2 or (
+            "ok_scan_count" not in target_raw
+            and "total_scan_count" not in target_raw
+        )
+        minimum_phase_peaks_identified = (
+            buffer_has_minimum_peaks and target_has_minimum_peaks
+        )
         paired_weights = dict(scoring.get("paired_response_weights") or {})
         repeat_scan_snr_definition = str(
             paired_weights.get("repeat_scan_snr_definition", "original")
@@ -1325,21 +1401,23 @@ def compute_paired_response_quality(
             pairwise_peak_differences = _pairwise_peak_differences_from_metrics(
                 buffer_raw,
                 target_raw,
+                buffer_total_scan_count,
+                target_total_scan_count,
             )
             pairwise_peak_difference_count = len(pairwise_peak_differences)
             if len(pairwise_peak_differences) > 1:
-                pairwise_mean = sum(pairwise_peak_differences) / len(
+                failure_adjusted_pairwise_mean = sum(pairwise_peak_differences) / len(
                     pairwise_peak_differences
                 )
                 combined_peak_std = math.sqrt(
                     sum(
-                        (value - pairwise_mean) ** 2
+                        (value - failure_adjusted_pairwise_mean) ** 2
                         for value in pairwise_peak_differences
                     )
                     / (len(pairwise_peak_differences) - 1)
                 )
                 repeat_scan_snr = (
-                    pairwise_mean / combined_peak_std
+                    delta_peak / combined_peak_std
                     if combined_peak_std > 1e-12
                     else 0.0
                 )
@@ -1357,9 +1435,17 @@ def compute_paired_response_quality(
                 )
             raw_pairwise_std = combined_peak_std
             unregularized_repeat_scan_snr = repeat_scan_snr
-            pairwise_std_floor = max(
+            configured_pairwise_std_floor = max(
                 0.0,
                 float(paired_weights.get("pairwise_std_floor_uA", 0.0) or 0.0),
+            )
+            pairwise_baseline_rms_floor = max(
+                0.0,
+                0.5 * (abs(buffer_noise) + abs(target_noise)),
+            )
+            pairwise_std_floor = max(
+                configured_pairwise_std_floor,
+                pairwise_baseline_rms_floor,
             )
             regularized_pairwise_std = math.hypot(
                 raw_pairwise_std,
@@ -1412,7 +1498,7 @@ def compute_paired_response_quality(
             buffer_repeat_relative_std + target_repeat_relative_std
         )
         valid_classic_pair = buffer_classic_q > 0.0 and target_classic_q > 0.0
-        valid_source_pair = valid_classic_pair and all_phase_peaks_identified
+        valid_source_pair = valid_classic_pair and minimum_phase_peaks_identified
         if not valid_source_pair:
             success = 0.0
         buffer_classic_weight = float(paired_weights.get("buffer_classic_Q", 0.0) or 0.0)
@@ -1449,12 +1535,17 @@ def compute_paired_response_quality(
             "valid_classic_pair": valid_classic_pair,
             "valid_source_pair": valid_source_pair,
             "all_phase_peaks_identified": all_phase_peaks_identified,
+            "minimum_phase_peaks_identified": minimum_phase_peaks_identified,
             "buffer_all_peaks_identified": buffer_all_peaks_identified,
             "target_all_peaks_identified": target_all_peaks_identified,
             "buffer_ok_scan_count": buffer_ok_scan_count,
             "buffer_total_scan_count": buffer_total_scan_count,
             "target_ok_scan_count": target_ok_scan_count,
             "target_total_scan_count": target_total_scan_count,
+            "buffer_failure_adjusted_peak_currents_uA": buffer_failure_adjusted_peaks,
+            "target_failure_adjusted_peak_currents_uA": target_failure_adjusted_peaks,
+            "buffer_successful_peak_std_uA": successful_buffer_peak_std,
+            "target_successful_peak_std_uA": successful_target_peak_std,
             "buffer_classic_Q": buffer_classic_q,
             "target_classic_Q": target_classic_q,
             "classic_pair_Q": standard_quality_score,
@@ -1483,6 +1574,8 @@ def compute_paired_response_quality(
                     "pairwise_peak_difference_std_uA": combined_peak_std,
                     "pairwise_regularized_std_uA": regularized_pairwise_std,
                     "pairwise_std_floor_uA": pairwise_std_floor,
+                    "pairwise_configured_std_floor_uA": configured_pairwise_std_floor,
+                    "pairwise_baseline_rms_floor_uA": pairwise_baseline_rms_floor,
                     "unregularized_repeat_scan_snr": unregularized_repeat_scan_snr,
                     "pairwise_peak_differences_uA": pairwise_peak_differences,
                 }
@@ -1559,8 +1652,11 @@ def compute_paired_response_quality(
         if not data.get("all_phase_peaks_identified", False)
     ]
     all_phase_peaks_identified = bool(per_channel) and not incomplete_peak_channels
-    if not all_phase_peaks_identified:
-        q_run = 0.0
+    insufficient_peak_channels = [
+        channel
+        for channel, data in per_channel.items()
+        if not data.get("minimum_phase_peaks_identified", False)
+    ]
     mean_delta = (
         sum(float(data.get("delta_peak_height_uA", 0.0) or 0.0) for data in per_channel.values()) / len(per_channel)
         if per_channel else 0.0
@@ -1603,9 +1699,11 @@ def compute_paired_response_quality(
         "run_penalty_magnitude": run_penalty_magnitude,
         "run_penalty_adjustment": run_penalty_adjustment,
         "all_phase_peaks_identified": all_phase_peaks_identified,
-        "peak_completeness_gate_applied": not all_phase_peaks_identified,
+        "peak_completeness_gate_applied": bool(insufficient_peak_channels),
         "incomplete_peak_channel_count": len(incomplete_peak_channels),
         "incomplete_peak_channels": incomplete_peak_channels,
+        "insufficient_peak_channel_count": len(insufficient_peak_channels),
+        "insufficient_peak_channels": insufficient_peak_channels,
         "mean_buffer_classic_Q": _mean_component("buffer_classic_Q"),
         "mean_target_classic_Q": _mean_component("target_classic_Q"),
         "mean_classic_pair_Q": _mean_component("classic_pair_Q"),
@@ -1656,6 +1754,12 @@ def compute_paired_response_quality(
                 ),
                 "mean_pairwise_std_floor_uA": _mean_pairwise_component(
                     "pairwise_std_floor_uA"
+                ),
+                "mean_pairwise_configured_std_floor_uA": _mean_pairwise_component(
+                    "pairwise_configured_std_floor_uA"
+                ),
+                "mean_pairwise_baseline_rms_floor_uA": _mean_pairwise_component(
+                    "pairwise_baseline_rms_floor_uA"
                 ),
                 "mean_unregularized_repeat_scan_snr": _mean_pairwise_component(
                     "unregularized_repeat_scan_snr"
@@ -3188,6 +3292,12 @@ class BOIntegrationSession:
                 row["mean_pairwise_std_floor_uA"] = quality.get(
                     "mean_pairwise_std_floor_uA", ""
                 )
+                row["mean_pairwise_configured_std_floor_uA"] = quality.get(
+                    "mean_pairwise_configured_std_floor_uA", ""
+                )
+                row["mean_pairwise_baseline_rms_floor_uA"] = quality.get(
+                    "mean_pairwise_baseline_rms_floor_uA", ""
+                )
                 row["mean_unregularized_repeat_scan_snr"] = quality.get(
                     "mean_unregularized_repeat_scan_snr", ""
                 )
@@ -3252,6 +3362,8 @@ class BOIntegrationSession:
                         "pairwise_peak_difference_std_uA",
                         "pairwise_regularized_std_uA",
                         "pairwise_std_floor_uA",
+                        "pairwise_configured_std_floor_uA",
+                        "pairwise_baseline_rms_floor_uA",
                         "unregularized_repeat_scan_snr",
                         "fractional_delta_peak_score",
                         "buffer_snr_raw",
@@ -3271,6 +3383,9 @@ class BOIntegrationSession:
                         "buffer_total_scan_count",
                         "target_ok_scan_count",
                         "target_total_scan_count",
+                        "minimum_phase_peaks_identified",
+                        "buffer_successful_peak_std_uA",
+                        "target_successful_peak_std_uA",
                     ):
                         row[f"{prefix}_{key}"] = data.get(key, "")
                     pairwise_differences = data.get("pairwise_peak_differences_uA")
@@ -3295,6 +3410,17 @@ class BOIntegrationSession:
                         if isinstance(target_peaks, list)
                         else ""
                     )
+                    for phase in ("buffer", "target"):
+                        adjusted = data.get(
+                            f"{phase}_failure_adjusted_peak_currents_uA"
+                        )
+                        row[
+                            f"{prefix}_{phase}_failure_adjusted_peak_currents_uA"
+                        ] = (
+                            json.dumps(adjusted)
+                            if isinstance(adjusted, list)
+                            else ""
+                        )
             rows.append(row)
         fieldnames = []
         for row in rows:

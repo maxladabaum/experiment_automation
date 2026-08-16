@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 from core.bo_session import compute_paired_response_quality
@@ -132,6 +134,7 @@ def test_paired_q_weights_repeat_scan_snr_and_peak_prominence_separately():
             "peak_prominence": 2.0,
             "repeat_scan_snr": 3.0,
             "repeat_scan_snr_definition": "pairwise",
+            "pairwise_std_floor_uA": 0.002,
         },
         "run_weights": {
             "low_channel_threshold": -100.0,
@@ -169,13 +172,19 @@ def test_paired_q_weights_repeat_scan_snr_and_peak_prominence_separately():
     assert channel["pairwise_peak_difference_std_uA"] == pytest.approx(
         pairwise_std
     )
-    assert channel["repeat_scan_snr"] == pytest.approx(6.0 / pairwise_std)
+    rms_floor = (0.5 + 1.5) / 2.0
+    regularized_std = math.hypot(pairwise_std, rms_floor)
+    assert channel["pairwise_configured_std_floor_uA"] == pytest.approx(0.002)
+    assert channel["pairwise_baseline_rms_floor_uA"] == pytest.approx(rms_floor)
+    assert channel["pairwise_std_floor_uA"] == pytest.approx(rms_floor)
+    assert channel["pairwise_regularized_std_uA"] == pytest.approx(regularized_std)
+    assert channel["repeat_scan_snr"] == pytest.approx(6.0 / regularized_std)
     assert channel["peak_prominence_contribution"] == 6.0
     assert channel["repeat_scan_snr_contribution"] == pytest.approx(
-        18.0 / pairwise_std
+        18.0 / regularized_std
     )
     assert channel["paired_Q_channel"] == pytest.approx(
-        6.0 + 18.0 / pairwise_std
+        6.0 + 18.0 / regularized_std
     )
 
 
@@ -327,7 +336,7 @@ def test_paired_q_is_zero_when_either_phase_failed():
     assert quality["Q_run"] == 0.0
 
 
-def test_paired_q_is_zero_when_only_some_buffer_traces_have_peaks():
+def test_failed_peak_fit_is_zero_padded_for_std_without_zeroing_paired_q():
     scoring = {
         "mode": "classic",
         "channel_weights": {
@@ -383,13 +392,21 @@ def test_paired_q_is_zero_when_only_some_buffer_traces_have_peaks():
     assert channel["all_phase_peaks_identified"] is False
     assert channel["buffer_ok_scan_count"] == 2
     assert channel["buffer_total_scan_count"] == 3
-    assert channel["paired_Q_channel"] == 0.0
-    assert quality["Q_run"] == 0.0
-    assert quality["peak_completeness_gate_applied"] is True
+    assert channel["buffer_failure_adjusted_peak_currents_uA"] == pytest.approx(
+        [1.0, 1.1, 0.0]
+    )
+    assert channel["target_failure_adjusted_peak_currents_uA"] == pytest.approx(
+        [2.0, 2.1, 2.2]
+    )
+    assert channel["buffer_peak_std_uA"] == pytest.approx(0.6082762530298219)
+    assert channel["minimum_phase_peaks_identified"] is True
+    assert channel["paired_Q_channel"] > 0.0
+    assert quality["Q_run"] > 0.0
+    assert quality["peak_completeness_gate_applied"] is False
     assert quality["incomplete_peak_channels"] == ["1"]
 
 
-def test_one_incomplete_channel_zeros_the_entire_paired_run():
+def test_one_partially_successful_channel_does_not_zero_the_entire_paired_run():
     scoring = {
         "mode": "classic",
         "channel_weights": {
@@ -427,10 +444,51 @@ def test_one_incomplete_channel_zeros_the_entire_paired_run():
     quality = compute_paired_response_quality(buffer_metrics, target_metrics, scoring)
 
     assert quality["channel_components"]["1"]["paired_Q_channel"] > 0.0
-    assert quality["channel_components"]["2"]["paired_Q_channel"] == 0.0
+    assert quality["channel_components"]["2"]["paired_Q_channel"] > 0.0
     assert quality["all_phase_peaks_identified"] is False
     assert quality["incomplete_peak_channels"] == ["2"]
-    assert quality["Q_run"] == 0.0
+    assert quality["Q_run"] > 0.0
+
+
+def test_fewer_than_two_identified_peaks_in_a_phase_zeros_that_channel():
+    scoring = {
+        "channel_weights": {"success": 1.0},
+        "paired_response_weights": {
+            "buffer_classic_Q": 0.5,
+            "target_classic_Q": 0.5,
+            "peak_prominence": 0.0,
+            "repeat_scan_snr": 1.0,
+            "repeat_scan_snr_definition": "pairwise",
+        },
+        "run_weights": {
+            "lambda_variability": 0.0,
+            "lambda_failed": 0.0,
+            "lambda_low": 0.0,
+        },
+    }
+    buffer_metrics = {"1": {
+        "peak_currents_uA": [1.0],
+        "mean_peak_current_uA": 1.0,
+        "ok_scan_count": 1,
+        "total_scan_count": 3,
+        "success_score": 1.0 / 3.0,
+    }}
+    target_metrics = {"1": {
+        "peak_currents_uA": [2.0, 2.1, 2.2],
+        "mean_peak_current_uA": 2.1,
+        "ok_scan_count": 3,
+        "total_scan_count": 3,
+        "success_score": 1.0,
+    }}
+
+    quality = compute_paired_response_quality(buffer_metrics, target_metrics, scoring)
+    channel = quality["channel_components"]["1"]
+
+    assert channel["buffer_failure_adjusted_peak_currents_uA"] == [1.0, 0.0, 0.0]
+    assert channel["minimum_phase_peaks_identified"] is False
+    assert channel["paired_Q_channel"] == 0.0
+    assert quality["peak_completeness_gate_applied"] is True
+    assert quality["insufficient_peak_channels"] == ["1"]
 
 
 def test_paired_q_preserves_negative_delta_score():

@@ -2629,7 +2629,7 @@ class BayesianOptimizationTab:
             ("Repeat-scan SNR weight:", "repeat_scan_snr"),
             ("Repeat-scan peak prominence weight:", "peak_prominence"),
             ("Paired run repeat relative-std penalty:", "lambda_repeat_std"),
-            ("Pairwise STD floor (uA):", "pairwise_std_floor_uA"),
+            ("Minimum pairwise STD floor (uA):", "pairwise_std_floor_uA"),
         )
         for idx, (label, key) in enumerate(entries):
             row = idx // 2
@@ -2770,9 +2770,15 @@ class BayesianOptimizationTab:
                     0.0, float(weights.get("pairwise_std_floor_uA", 0.0) or 0.0)
                 )
                 definitions.append(
+                    "  baseline_RMS_floor = (average buffer RMS + average target RMS) / 2."
+                )
+                definitions.append(
+                    f"  effective_STD_floor = max({std_floor:g}, baseline_RMS_floor)."
+                )
+                definitions.append(
                     "  repeat_scan_SNR = (average target peak - average buffer peak) / "
                     "sqrt(STD(all target-minus-buffer replicate pairs)^2 + "
-                    f"{std_floor:g}^2)."
+                    "effective_STD_floor^2)."
                 )
             else:
                 definitions.append(
@@ -6533,10 +6539,12 @@ class BayesianOptimizationTab:
                                     data.get("pairwise_peak_difference_std_uA")
                                 ),
                                 self._format_peak_height_list(
-                                    buffer_metrics.get("peak_currents_uA")
+                                    data.get("buffer_failure_adjusted_peak_currents_uA")
+                                    or buffer_metrics.get("peak_currents_uA")
                                 ),
                                 self._format_peak_height_list(
-                                    target_metrics.get("peak_currents_uA")
+                                    data.get("target_failure_adjusted_peak_currents_uA")
+                                    or target_metrics.get("peak_currents_uA")
                                 ),
                                 self._format_peak_height_list(
                                     data.get("pairwise_peak_differences_uA")
@@ -6830,10 +6838,12 @@ class BayesianOptimizationTab:
         buffer_metrics = dict((observation or {}).get("buffer_channel_metrics") or {})
         target_metrics = dict((observation or {}).get("target_channel_metrics") or {})
 
-        def channel_lists(source, key):
+        def channel_lists(source, key, component_key):
             entries = []
             for channel in sorted(components, key=cls._channel_sort_key):
-                values = dict(source.get(str(channel)) or {}).get(key)
+                values = dict(components.get(channel) or {}).get(component_key)
+                if not values:
+                    values = dict(source.get(str(channel)) or {}).get(key)
                 rendered = cls._format_peak_height_list(values)
                 if rendered:
                     entries.append(f"Ch {channel}: {rendered}")
@@ -6849,8 +6859,16 @@ class BayesianOptimizationTab:
             if rendered:
                 difference_entries.append(f"Ch {channel}: {rendered}")
         return (
-            channel_lists(buffer_metrics, "peak_currents_uA"),
-            channel_lists(target_metrics, "peak_currents_uA"),
+            channel_lists(
+                buffer_metrics,
+                "peak_currents_uA",
+                "buffer_failure_adjusted_peak_currents_uA",
+            ),
+            channel_lists(
+                target_metrics,
+                "peak_currents_uA",
+                "target_failure_adjusted_peak_currents_uA",
+            ),
             " | ".join(difference_entries),
         )
 
@@ -8319,7 +8337,8 @@ class BayesianOptimizationTab:
             lines.extend(
                 [
                     "Paired-response Q_channel terms:",
-                    "  Hard peak gate: Q_run and the affected paired Q_channel are 0 unless every buffer and target trace identifies a peak.",
+                    "  Failed peak fits contribute 0 uA to the repeat-variability STD but do not change the successful-peak means.",
+                    "  A paired Q_channel is 0 only when either phase has fewer than two identified peaks.",
                     (
                         "  repeat_scan_SNR = (average target peak - average buffer peak) / "
                         "STD(all target-minus-buffer replicate pairs)"
