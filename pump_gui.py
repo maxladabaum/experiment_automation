@@ -7,6 +7,7 @@
 #   python pump_gui.py           # real hardware on Windows (DLLs installed)
 
 import sys, time, threading, argparse
+import queue as thread_queue
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -132,6 +133,9 @@ class PumpCtrl:
         self.current_speed = None
         self._backend = None
         self._plunger_steps = 0
+        self._com_queue = None
+        self._com_thread = None
+        self._com_thread_id = None
 
     def _log(self, s):
         if self.log_cb: self.log_cb(s)
@@ -139,6 +143,8 @@ class PumpCtrl:
     def _sync_backend_plunger(self):
         backend = self._backend
         if backend is None:
+            return
+        if not (self.use_sim or not HAS_COM):
             return
         if hasattr(backend, 'plunger_steps'):
             try:
@@ -160,6 +166,66 @@ class PumpCtrl:
             except Exception:
                 return ""
 
+    def _start_com_thread(self):
+        if self._com_thread is not None and self._com_thread.is_alive():
+            return
+        self._com_queue = thread_queue.Queue()
+
+        def worker():
+            self._com_thread_id = threading.get_ident()
+            pythoncom.CoInitialize()
+            try:
+                while True:
+                    item = self._com_queue.get()
+                    if item is None:
+                        break
+                    func, result_q = item
+                    try:
+                        result_q.put((True, func()))
+                    except Exception as exc:
+                        result_q.put((False, exc))
+            finally:
+                try:
+                    if self._backend is not None:
+                        self._backend.PumpExitComm()
+                except Exception:
+                    pass
+                self._backend = None
+                try:
+                    pythoncom.CoUninitialize()
+                except Exception:
+                    pass
+                self._com_thread_id = None
+
+        self._com_thread = threading.Thread(target=worker, daemon=True)
+        self._com_thread.start()
+
+    def _call_com_thread(self, func):
+        if self.use_sim or not HAS_COM:
+            return func()
+        if threading.get_ident() == self._com_thread_id:
+            return func()
+        self._start_com_thread()
+        result_q = thread_queue.Queue(maxsize=1)
+        self._com_queue.put((func, result_q))
+        ok, value = result_q.get()
+        if ok:
+            return value
+        raise value
+
+    def _stop_com_thread(self):
+        thread = self._com_thread
+        queue_obj = self._com_queue
+        if thread is None or queue_obj is None:
+            self._com_thread = None
+            self._com_queue = None
+            return
+        queue_obj.put(None)
+        if threading.get_ident() != self._com_thread_id:
+            thread.join(timeout=5.0)
+        self._com_thread = None
+        self._com_queue = None
+
 
     def connect(self, com_port:int, baud:int, dev:int):
         if self.connected: return
@@ -174,51 +240,66 @@ class PumpCtrl:
             return
 
         self._log(f"Connecting (real) -> COM{self.com_port} @ {self.baud}, dev={self.dev}")
-        self._backend = gencache.EnsureDispatch(PROGID)
         try:
-            try:
-                self._backend.EnableLog = True
-                self._backend.LogComPort = True
-                self._backend.CommandAckTimeout = 18
-                self._backend.CommandRetryCount = 3
-                try: self._backend.BaudRate = self.baud
-                except Exception: pass
-            except Exception: pass
-
-            self._backend.PumpInitComm(self.com_port)
-            try:
-                self._backend.PumpSendCommand("Q", self.dev, "")
-            except Exception as probe_exc:
+            def connect_real():
+                self._backend = gencache.EnsureDispatch(PROGID)
                 try:
-                    self._backend.PumpExitComm()
+                    self._backend.EnableLog = True
+                    self._backend.LogComPort = True
+                    self._backend.CommandAckTimeout = 18
+                    self._backend.CommandRetryCount = 3
+                    try: self._backend.BaudRate = self.baud
+                    except Exception: pass
                 except Exception:
                     pass
-                raise RuntimeError(
-                    f"COM{self.com_port} opened, but pump address {self.dev} did not respond: {probe_exc}"
-                )
+
+                self._backend.PumpInitComm(self.com_port)
+                try:
+                    self._backend.PumpSendCommand("Q", self.dev, "")
+                except Exception as probe_exc:
+                    try:
+                        self._backend.PumpExitComm()
+                    except Exception:
+                        pass
+                    raise RuntimeError(
+                        f"COM{self.com_port} opened, but pump address {self.dev} did not respond: {probe_exc}"
+                    )
+
+            self._call_com_thread(connect_real)
             self.connected = True
             self._sync_backend_plunger()
             self._log("Connected.")
         except Exception as e:
             self._backend = None
+            self._stop_com_thread()
             raise RuntimeError(f"Connect failed: {e}")
 
     def disconnect(self):
         if not self.connected: return
-        try: self._backend.PumpExitComm()
-        except Exception: pass
+        if self.use_sim or not HAS_COM:
+            try: self._backend.PumpExitComm()
+            except Exception: pass
+        else:
+            try:
+                self._call_com_thread(lambda: self._backend.PumpExitComm())
+            except Exception:
+                pass
+            self._stop_com_thread()
         self.connected = False; self._backend = None
         self._log("Disconnected.")
 
     def _send(self, cmd, wait_s=1.0):
         if not self.connected: raise RuntimeError("Not connected.")
-        try:
-            self._backend.PumpSendCommand(cmd, self.dev, "")
-        except Exception:
-            try: self._backend.PumpSendNoWait(cmd, self.dev)
-            except Exception: pass
-        time.sleep(wait_s)
-        return self._get_last_answer()
+        def send_real():
+            try:
+                self._backend.PumpSendCommand(cmd, self.dev, "")
+            except Exception:
+                try: self._backend.PumpSendNoWait(cmd, self.dev)
+                except Exception: pass
+            time.sleep(wait_s)
+            return self._get_last_answer()
+
+        return self._call_com_thread(send_real)
 
     def initialize(self):
         ans = self._send("ZR", 1.2)
@@ -236,6 +317,8 @@ class PumpCtrl:
         self.syringe_ul = volume
         self._set_plunger_steps(min(self._ul_to_steps(current_volume), self.steps_per_stroke))
         if self._backend is not None:
+            if not (self.use_sim or not HAS_COM):
+                return
             if hasattr(self._backend, "steps_per_stroke"):
                 self._backend.steps_per_stroke = self.steps_per_stroke
             if hasattr(self._backend, "syringe_ul"):

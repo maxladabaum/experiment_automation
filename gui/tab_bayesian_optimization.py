@@ -4161,7 +4161,7 @@ class BayesianOptimizationTab:
                 ]
                 if not stream_observations:
                     missing.append(
-                        f"{group.get('name') or f'Group {group['id']}'} ({result_direction})"
+                        f"{group.get('name') or 'Group ' + str(group['id'])} ({result_direction})"
                     )
                     continue
                 if result_direction == "minimize":

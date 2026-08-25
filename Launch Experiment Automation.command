@@ -68,7 +68,7 @@ echo "[INFO] Launching app in 2 seconds..."
 echo "========================================"
 sleep 2
 
-$PYTHON_BIN -m main
+$PYTHON_BIN -X faulthandler -m main
 EC=$?
 
 if [ "$EC" -ne 0 ]; then
