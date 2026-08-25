@@ -1152,7 +1152,7 @@ class QueueTab:
                                      f"{item['type']} (live)", None, item["type"])
                     try:
                         mux_channel = self._extract_mux_channel(item)
-                        meas_tag = self._session.next_meas_tag_with_mux(mux_channel)
+                        meas_tag = self._next_measurement_tag(item, mux_channel)
                         self._session.measurement_queue[i]["meas_tag"] = meas_tag
                         self.log(f"[Tag] {meas_tag}")
                         self._root.after(0, self.refresh_labels)
@@ -1439,6 +1439,17 @@ class QueueTab:
                 return None
         return None
 
+    def _next_measurement_tag(self, item: dict, mux_channel: Optional[int]) -> str:
+        """Use a virtual analysis channel while retaining the physical MUX channel."""
+        method_ref = dict((item or {}).get("method_ref") or {})
+        bo_ref = dict((item or {}).get("bo_ref") or {})
+        channel_label = str(
+            method_ref.get("channel_label") or bo_ref.get("channel_label") or ""
+        ).strip().lower()
+        if channel_label and re.fullmatch(r"\d+_(?:max|min)", channel_label):
+            return f"{self._session.next_meas_tag()}_ch{channel_label}"
+        return self._session.next_meas_tag_with_mux(mux_channel)
+
     # ── Pause / alert helpers ─────────────────────────────────────────────────
 
     def _exec_pause(self, seconds: float) -> bool:
@@ -1616,7 +1627,7 @@ class QueueTab:
         success = False
         try:
             mux_channel = self._extract_mux_channel(item)
-            meas_tag = self._session.next_meas_tag_with_mux(mux_channel)
+            meas_tag = self._next_measurement_tag(item, mux_channel)
             item["meas_tag"] = meas_tag
             self.log(f"[Tag] {meas_tag}")
             self._root.after(0, self.refresh_labels)
@@ -1912,9 +1923,16 @@ class QueueTab:
 
     @staticmethod
     def _paired_bo_execution_order(suggestions: list) -> list:
+        direction_order = {"maximize": 0, "minimize": 1}
         return sorted(
             suggestions,
-            key=lambda suggestion: (int(suggestion.iteration), int(suggestion.group_id)),
+            key=lambda suggestion: (
+                int(suggestion.iteration),
+                int(suggestion.group_id),
+                direction_order.get(
+                    str(getattr(suggestion, "optimization_direction", "")), 2
+                ),
+            ),
         )
 
     def _exec_bo_auto_loop(self, item: dict) -> bool:
@@ -1995,7 +2013,17 @@ class QueueTab:
         halfway_notified = False
 
         if paired_mode:
-            group_count = len(config.get("channel_groups") or [{"channels": config.get("channels", [])}])
+            configured_groups = config.get("channel_groups") or [{"channels": config.get("channels", [])}]
+            optimizer_count = sum(
+                2
+                if str(
+                    group.get("optimization_direction")
+                    or (config.get("acquisition") or {}).get("optimization_direction")
+                    or "maximize"
+                ).strip().lower().replace(" ", "_") == "maximize_and_minimize"
+                else 1
+                for group in configured_groups
+            )
             batch_size = max(1, int(block.get("batch_size", 1) or 1))
             warmup_batch_size = max(
                 1, int(block.get("warmup_batch_size", batch_size) or batch_size)
@@ -2022,7 +2050,7 @@ class QueueTab:
             )
             warmup_observations = min(warmup_observations, target_parameter_sets)
             gp_batches = max(0, total_cycles - warmup_batches)
-            target_observations = target_parameter_sets * group_count
+            target_observations = target_parameter_sets * optimizer_count
             halfway_cycle = max(1, int(math.ceil(total_cycles / 2.0)))
             completed_cycles = 0
             target_equilibration_seconds = max(0.0, float(block.get("target_equilibration_seconds", 0.0) or 0.0))
@@ -2039,7 +2067,7 @@ class QueueTab:
             )
             while self._session.is_running and completed_cycles < total_cycles:
                 suggestion_count, _cycle_span = self._paired_bo_batch_span(
-                    len(bo_session.observations) // group_count,
+                    len(bo_session.observations) // optimizer_count,
                     target_parameter_sets,
                     batch_size,
                     warmup_observations,
@@ -2049,7 +2077,7 @@ class QueueTab:
                     break
                 cycle_index = completed_cycles + 1
                 is_warmup_batch = (
-                    len(bo_session.observations) // group_count < warmup_observations
+                    len(bo_session.observations) // optimizer_count < warmup_observations
                 )
                 cycle_label = (
                     f"Warmup batch {cycle_index}/{warmup_batches}"
@@ -2093,7 +2121,7 @@ class QueueTab:
                     buffer = bo_session.build_queue_items(self._session.registry, suggestion, phase="buffer")
                     target = bo_session.build_queue_items(self._session.registry, suggestion, phase="target")
                     bo_session.record_queued(suggestion, buffer + target)
-                    suggestion_metadata[int(suggestion.iteration)] = {
+                    suggestion_metadata[str(suggestion.method_id)] = {
                         "paired_cycle": logical_cycle,
                         "paired_batch_index": batch_index,
                         "buffer_trace_number": len(buffer_items) + 1,
@@ -2268,7 +2296,7 @@ class QueueTab:
                         item,
                         f"{cycle_label} | analysis | importing iteration {suggestion.iteration}",
                     )
-                    metadata = dict(suggestion_metadata.get(int(suggestion.iteration), {}))
+                    metadata = dict(suggestion_metadata.get(str(suggestion.method_id), {}))
                     metadata["target_trace_number"] = len(buffer_items) + int(metadata.get("target_trace_number", 0) or 0)
                     buffer_summary = self._run_bo_analysis(bo_session, block, suggestion=suggestion, phase="buffer")
                     target_summary = self._run_bo_analysis(bo_session, block, suggestion=suggestion, phase="target")
@@ -2346,17 +2374,33 @@ class QueueTab:
         classic_groups = config.get("channel_groups") or [
             {"id": 1, "name": "Group 1", "channels": config.get("channels", [])}
         ]
-        def group_completed(group):
+        classic_optimizers = []
+        for group in classic_groups:
+            configured_direction = str(
+                group.get("optimization_direction")
+                or (config.get("acquisition") or {}).get("optimization_direction")
+                or "maximize"
+            ).strip().lower().replace(" ", "_")
+            directions = (
+                ("maximize", "minimize")
+                if configured_direction == "maximize_and_minimize"
+                else (configured_direction,)
+            )
+            classic_optimizers.extend((group, direction) for direction in directions)
+
+        def group_completed(optimizer):
+            group, direction = optimizer
             group_id = int(group.get("id", 1))
             return sum(
                 1 for obs in bo_session.observations
                 if int(obs.get("group_id", 1)) == group_id
+                and str(obs.get("optimization_direction") or direction) == direction
             )
 
         while self._session.is_running and any(
-            group_completed(group) < target_iterations for group in classic_groups
+            group_completed(optimizer) < target_iterations for optimizer in classic_optimizers
         ):
-            group = min(classic_groups, key=group_completed)
+            group, _direction = min(classic_optimizers, key=group_completed)
             suggestion = bo_session.ask_next_for_group(int(group.get("id", 1)))
             self.log(
                 f"BO {suggestion.group_name} iteration {suggestion.iteration}: generating queue items"
@@ -2440,7 +2484,7 @@ class QueueTab:
                 )
 
         completed_iterations = len(bo_session.observations)
-        expected_observations = target_iterations * len(classic_groups)
+        expected_observations = target_iterations * len(classic_optimizers)
         item["details"] = (
             f"{self._format_bo_block_details(block)} | done "
             f"{completed_iterations}/{expected_observations} group iterations"

@@ -89,7 +89,11 @@ def _build_channel_metrics(results: List[dict]) -> Dict[str, dict]:
         channel = row.get("channel")
         if channel is None:
             continue
-        key = str(int(channel))
+        text = str(channel).strip().lower()
+        try:
+            key = str(int(float(text)))
+        except (TypeError, ValueError):
+            key = text
         grouped.setdefault(key, []).append(row)
 
     metrics: Dict[str, dict] = {}

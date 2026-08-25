@@ -2391,6 +2391,13 @@ class BayesianOptimizationTab:
     @staticmethod
     def _display_optimization_direction(direction) -> str:
         text = str(direction or "maximize").strip().lower()
+        if text.replace("_", " ").replace("+", " and ") in {
+            "maximize and minimize",
+            "max and min",
+            "minimize and maximize",
+            "min and max",
+        }:
+            return "maximize_and_minimize"
         if text in {"minimize", "min", "more_negative", "negative"}:
             return "minimize"
         if text in {"survey", "either", "absolute", "magnitude"}:
@@ -3103,8 +3110,11 @@ class BayesianOptimizationTab:
             rescored = 0
             rebuilt_metrics = 0
             for obs in self._bo_session.observations:
-                optimization_direction = self._bo_session._group_optimization_direction(
-                    int(obs.get("group_id", 1) or 1)
+                optimization_direction = self._display_optimization_direction(
+                    obs.get("optimization_direction")
+                    or self._bo_session._group_optimization_direction(
+                        int(obs.get("group_id", 1) or 1)
+                    )
                 )
                 if self._is_paired_observation(obs):
                     buffer_metrics = obs.get("buffer_channel_metrics")
@@ -3199,10 +3209,17 @@ class BayesianOptimizationTab:
             )
 
         def failed_reanalysis_update(observation, exc):
-            optimization_direction = self._bo_session._group_optimization_direction(
-                int(observation.get("group_id", 1) or 1)
+            optimization_direction = self._display_optimization_direction(
+                observation.get("optimization_direction")
+                or self._bo_session._group_optimization_direction(
+                    int(observation.get("group_id", 1) or 1)
+                )
             )
-            channels = observation.get("channels") or []
+            channels = (
+                observation.get("analysis_channels")
+                or observation.get("channels")
+                or []
+            )
             if not channels:
                 metrics = observation.get("channel_metrics")
                 if isinstance(metrics, dict):
@@ -3582,7 +3599,7 @@ class BayesianOptimizationTab:
             direction = ttk.Combobox(
                 panel,
                 textvariable=settings["optimization_direction_var"],
-                values=("maximize", "minimize", "survey"),
+                values=("maximize", "minimize", "maximize_and_minimize", "survey"),
                 state="readonly",
                 width=10,
             )
@@ -3825,7 +3842,7 @@ class BayesianOptimizationTab:
             ttk.Combobox(
                 panel,
                 textvariable=settings["optimization_direction_var"],
-                values=("maximize", "minimize", "survey"),
+                values=("maximize", "minimize", "maximize_and_minimize", "survey"),
                 state="readonly",
                 width=10,
             ).grid(row=3, column=1, sticky="w", padx=6)
@@ -4133,25 +4150,30 @@ class BayesianOptimizationTab:
                     "optimization_direction", "maximize"
                 )
             )
-            if direction == "minimize":
-                best = min(
-                    observations,
-                    key=lambda observation: float(observation["Q_run"]),
-                )
-            elif direction == "survey":
-                best = max(
-                    observations,
-                    key=lambda observation: abs(float(observation["Q_run"])),
-                )
-            else:
-                best = max(
-                    observations,
-                    key=lambda observation: float(observation["Q_run"]),
-                )
-            results.append(
-                {
+            directions = ("maximize", "minimize") if direction == "maximize_and_minimize" else (direction,)
+            for result_direction in directions:
+                stream_observations = [
+                    observation for observation in observations
+                    if direction != "maximize_and_minimize"
+                    or self._display_optimization_direction(
+                        observation.get("optimization_direction")
+                    ) == result_direction
+                ]
+                if not stream_observations:
+                    missing.append(
+                        f"{group.get('name') or f'Group {group['id']}'} ({result_direction})"
+                    )
+                    continue
+                if result_direction == "minimize":
+                    best = min(stream_observations, key=lambda observation: float(observation["Q_run"]))
+                elif result_direction == "survey":
+                    best = max(stream_observations, key=lambda observation: abs(float(observation["Q_run"])))
+                else:
+                    best = max(stream_observations, key=lambda observation: float(observation["Q_run"]))
+                results.append({
                     "id": int(group["id"]),
-                    "name": str(group.get("name") or f"Group {group['id']}"),
+                    "name": str(group.get("name") or f"Group {group['id']}")
+                    + (f" ({result_direction})" if direction == "maximize_and_minimize" else ""),
                     "channels": list(group.get("channels") or []),
                     "score": float(best["Q_run"]),
                     "params": copy.deepcopy(best["params"]),
@@ -4160,9 +4182,10 @@ class BayesianOptimizationTab:
                     ),
                     "session_id": self._bo_session.session_id,
                     "iteration": int(best.get("iteration", 0) or 0),
-                    "optimization_direction": direction,
+                    "optimization_direction": result_direction,
+                    "split_direction_channel": direction == "maximize_and_minimize",
                 }
-            )
+                )
 
         if missing:
             raise RuntimeError(
@@ -5295,17 +5318,27 @@ class BayesianOptimizationTab:
                 continue
             try:
                 group_id = int(row.get("group_id", 1))
-                group_name = str(row.get("group_name") or f"Group {group_id}")
+                group_name = self._observation_result_label(row)
                 iteration = int(row.get("iteration", index + 1))
-                history_key = f"g{group_id}:i{iteration}"
-                grouped.setdefault((group_id, group_name), []).append(
+                direction = str(row.get("optimization_direction") or "")
+                split_direction = any(
+                    re.fullmatch(r"\d+_(?:max|min)", str(channel))
+                    for channel in row.get("analysis_channels", [])
+                )
+                if not split_direction:
+                    direction = ""
+                history_key = (
+                    f"g{group_id}:{direction}:i{iteration}"
+                    if split_direction else f"g{group_id}:i{iteration}"
+                )
+                grouped.setdefault((group_id, direction, group_name), []).append(
                     (history_key, iteration, float(value))
                 )
             except (TypeError, ValueError):
                 continue
         return [
             (group_name, sorted(points, key=lambda point: point[1]))
-            for (_group_id, group_name), points in sorted(grouped.items())
+            for (_group_id, _direction, group_name), points in sorted(grouped.items())
         ]
 
     def _on_analysis_trend_click(self, event, points):
@@ -5647,7 +5680,18 @@ class BayesianOptimizationTab:
         target = int(self._auto_target_var.get())
         groups = channel_groups(self._bo_session.config) if self._bo_session else []
         completed = len(self._bo_session.observations) if self._bo_session else 0
-        expected = target * max(1, len(groups))
+        optimizer_count = sum(
+            2
+            if self._display_optimization_direction(
+                group.get("optimization_direction")
+                or (self._bo_session.config.get("acquisition") or {}).get(
+                    "optimization_direction", "maximize"
+                )
+            ) == "maximize_and_minimize"
+            else 1
+            for group in groups
+        )
+        expected = target * max(1, optimizer_count)
         if completed >= expected:
             self._auto_running = False
             self._auto_status_var.set(f"Auto loop complete: {completed}/{expected} group iteration(s).")
@@ -6459,7 +6503,9 @@ class BayesianOptimizationTab:
                 self._fmt(components.get("clip_adjustment")),
             )
 
-        for ch, data in sorted(components.items(), key=lambda item: int(item[0])):
+        for ch, data in sorted(
+            components.items(), key=lambda item: self._channel_sort_key(item[0])
+        ):
             metrics = channel_metrics.get(str(ch), {}) if isinstance(channel_metrics, dict) else {}
             channel_traces = [
                 row for row in individual_traces if str(row.get("channel")) == str(ch)
@@ -6566,7 +6612,7 @@ class BayesianOptimizationTab:
                         "",
                         "end",
                         iid=iid,
-                        text=str(ch),
+                        text=self._display_analysis_channel(ch),
                         values=values,
                     )
             else:
@@ -6598,7 +6644,7 @@ class BayesianOptimizationTab:
                         "",
                         "end",
                         iid=f"{ch}_trace_{trace_index}",
-                        text=str(ch),
+                        text=self._display_analysis_channel(ch),
                         values=values,
                     )
 
@@ -6734,7 +6780,7 @@ class BayesianOptimizationTab:
         )
 
         return (
-            str(obs.get("group_name") or f"Group {int(obs.get('group_id', 1))}"),
+            self._observation_result_label(obs),
             str(paired_batch_index) if paired_batch_index is not None else "",
             str(obs.get("iteration") or ""),
             self._string_or_empty(obs.get("buffer_trace_number")),
@@ -6937,7 +6983,16 @@ class BayesianOptimizationTab:
             q = obs.get("quality", {})
             params = obs.get("params", {})
             iteration = str(obs.get("iteration"))
-            history_key = f"g{int(obs.get('group_id', 1))}:i{iteration}"
+            direction_key = str(obs.get("optimization_direction") or "")
+            split_direction = any(
+                re.fullmatch(r"\d+_(?:max|min)", str(channel))
+                for channel in obs.get("analysis_channels", [])
+            )
+            history_key = (
+                f"g{int(obs.get('group_id', 1))}:{direction_key}:i{iteration}"
+                if split_direction
+                else f"g{int(obs.get('group_id', 1))}:i{iteration}"
+            )
             peak_uA, rms_uA = self._observation_peak_rms(obs)
             prominence_raw = self._observation_component_mean(obs, "peak_prominence_raw")
             repeat_scan_snr = self._observation_component_mean(obs, "repeat_scan_snr_raw")
@@ -6953,7 +7008,7 @@ class BayesianOptimizationTab:
                 text = str(cycle) if cycle is not None else ""
             else:
                 values = (
-                    str(obs.get("group_name") or f"Group {int(obs.get('group_id', 1))}"),
+                    self._observation_result_label(obs),
                     self._fmt(obs.get("Q_run")),
                     self._fmt(q.get("mean_Q_channel")),
                     self._fmt(q.get("std_Q_channel")),
@@ -8256,10 +8311,36 @@ class BayesianOptimizationTab:
 
     @staticmethod
     def _channel_sort_key(channel):
+        match = re.match(r"^0*(\d+)(?:_(max|min))?$", str(channel or ""), re.IGNORECASE)
+        if match:
+            return (int(match.group(1)), 0 if match.group(2) == "max" else 1)
         try:
-            return int(channel)
+            return (int(channel), 0)
         except (TypeError, ValueError):
-            return 9999
+            return (9999, str(channel))
+
+    @staticmethod
+    def _observation_result_label(observation):
+        analysis_channels = list((observation or {}).get("analysis_channels") or [])
+        if any(
+            re.fullmatch(r"\d+_(?:max|min)", str(channel))
+            for channel in analysis_channels
+        ):
+            return ", ".join(
+                BayesianOptimizationTab._display_analysis_channel(channel)
+                for channel in analysis_channels
+            )
+        return str(
+            (observation or {}).get("group_name")
+            or f"Group {int((observation or {}).get('group_id', 1))}"
+        )
+
+    @staticmethod
+    def _display_analysis_channel(channel):
+        match = re.fullmatch(r"0*(\d+)_(max|min)", str(channel or ""), re.IGNORECASE)
+        if match:
+            return f"ch{int(match.group(1))} {match.group(2).lower()}"
+        return f"ch{channel}"
 
     def _q_breakdown_lines(self, observation, config=None):
         quality = dict((observation or {}).get("quality") or {})
@@ -8579,6 +8660,13 @@ class BayesianOptimizationTab:
                 return None
         return None
 
+    def _surrogate_optimization_direction(self):
+        selected = self._selected_history_observation or {}
+        direction = self._display_optimization_direction(
+            selected.get("optimization_direction")
+        )
+        return direction if direction in {"maximize", "minimize"} else None
+
     def _surrogate_artifact_iterations(self):
         if self._bo_session is None:
             return []
@@ -8604,7 +8692,9 @@ class BayesianOptimizationTab:
     @staticmethod
     def _parse_surrogate_artifact_name(name):
         text = str(name or "")
-        grouped = re.search(r"group_(\d+)_iter_(\d+)_", text)
+        grouped = re.search(
+            r"group_(\d+)_(?:(?:maximize|minimize)_)?iter_(\d+)_", text
+        )
         if grouped:
             return int(grouped.group(1)), int(grouped.group(2))
         plain = re.search(r"iter_(\d+)_", text)
@@ -8641,7 +8731,10 @@ class BayesianOptimizationTab:
                 return None
             iteration = int(raw)
         group_id = self._surrogate_group_id()
-        stem = self._bo_session._group_iteration_stem(iteration, group_id=group_id) if group_id is not None else f"iter_{int(iteration):03d}"
+        direction = self._surrogate_optimization_direction()
+        stem = self._bo_session._group_iteration_stem(
+            iteration, group_id=group_id, optimization_direction=direction,
+        ) if group_id is not None else f"iter_{int(iteration):03d}"
         candidates = (
             self._bo_session.surrogate_dir / f"{stem}_candidate_predictions.csv",
             self._bo_session.acquisition_dir / f"{stem}_acquisition_values.csv",
@@ -8736,9 +8829,10 @@ class BayesianOptimizationTab:
                 return None
             iteration = int(raw)
         group_id = self._surrogate_group_id()
+        direction = self._surrogate_optimization_direction()
         candidates = []
         if group_id is not None:
-            candidates.append(self._bo_session.surrogate_dir / f"{self._bo_session._group_iteration_stem(iteration, group_id=group_id)}_gp_model.pkl")
+            candidates.append(self._bo_session.surrogate_dir / f"{self._bo_session._group_iteration_stem(iteration, group_id=group_id, optimization_direction=direction)}_gp_model.pkl")
         candidates.append(self._bo_session.surrogate_dir / f"iter_{int(iteration):03d}_gp_model.pkl")
         for path in candidates:
             if path.exists():
@@ -9258,6 +9352,7 @@ class BayesianOptimizationTab:
             return []
         limit = self._surrogate_iteration_limit()
         selected_group_id = self._surrogate_group_id()
+        selected_direction = self._surrogate_optimization_direction()
         observations = []
         for obs in self._bo_session.observations:
             try:
@@ -9270,6 +9365,10 @@ class BayesianOptimizationTab:
                         continue
                 except Exception:
                     continue
+            if selected_direction is not None and self._display_optimization_direction(
+                obs.get("optimization_direction")
+            ) != selected_direction:
+                continue
             if limit is None or iteration <= limit:
                 observations.append(obs)
         return observations
@@ -9342,9 +9441,10 @@ class BayesianOptimizationTab:
             metadata_candidates = []
             if str(iteration).isdigit():
                 group_id = self._surrogate_group_id()
+                direction = self._surrogate_optimization_direction()
                 if group_id is not None:
                     metadata_candidates.append(
-                        self._bo_session.surrogate_dir / f"{self._bo_session._group_iteration_stem(int(iteration), group_id=group_id)}_surrogate_metadata.json"
+                        self._bo_session.surrogate_dir / f"{self._bo_session._group_iteration_stem(int(iteration), group_id=group_id, optimization_direction=direction)}_surrogate_metadata.json"
                     )
                 metadata_candidates.append(
                     self._bo_session.surrogate_dir / f"iter_{int(iteration):03d}_surrogate_metadata.json"
@@ -9611,7 +9711,11 @@ class BayesianOptimizationTab:
     @classmethod
     def _observation_channel_filter(cls, observation):
         channels = set()
-        for channel in (observation or {}).get("channels", []):
+        source_channels = (
+            (observation or {}).get("analysis_channels")
+            or (observation or {}).get("channels", [])
+        )
+        for channel in source_channels:
             normalized = cls._normalize_observation_channel(channel)
             if normalized is not None:
                 channels.add(normalized)

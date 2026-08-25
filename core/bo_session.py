@@ -88,6 +88,7 @@ class BOSuggestion:
     group_id: int = 1
     group_name: str = "Group 1"
     channels: Optional[List[int]] = None
+    optimization_direction: Optional[str] = None
 
 
 class Matern:
@@ -215,11 +216,26 @@ def _same_path(left: str | Path, right: str | Path) -> bool:
 
 def _normalized_optimization_direction(direction: Optional[str]) -> str:
     raw = str(direction or "maximize").strip().lower()
+    if raw.replace("_", " ").replace("+", " and ") in {
+        "maximize and minimize",
+        "max and min",
+        "minimize and maximize",
+        "min and max",
+    }:
+        return "maximize_and_minimize"
     if raw in {"minimize", "min", "more_negative", "negative"}:
         return "minimize"
     if raw in {"survey", "either", "absolute", "magnitude"}:
         return "survey"
     return "maximize"
+
+
+def _optimization_directions(direction: Optional[str]) -> Tuple[str, ...]:
+    """Expand a configured direction into its independent optimizer streams."""
+    normalized = _normalized_optimization_direction(direction)
+    if normalized == "maximize_and_minimize":
+        return ("maximize", "minimize")
+    return (normalized,)
 
 
 def normalize_bo_config(config: dict) -> dict:
@@ -1332,8 +1348,17 @@ def compute_paired_response_quality(
     per_channel = {}
     q_values = []
     for channel in channels:
-        buffer_raw = dict(buffer_metrics.get(channel) or buffer_metrics.get(int(channel), {}) or {})
-        target_raw = dict(target_metrics.get(channel) or target_metrics.get(int(channel), {}) or {})
+        numeric_channel = int(channel) if str(channel).isdigit() else None
+        buffer_raw = dict(
+            buffer_metrics.get(channel)
+            or (buffer_metrics.get(numeric_channel) if numeric_channel is not None else {})
+            or {}
+        )
+        target_raw = dict(
+            target_metrics.get(channel)
+            or (target_metrics.get(numeric_channel) if numeric_channel is not None else {})
+            or {}
+        )
         # Classic trace Q measures trace quality and is always a maximize-style
         # score. Its signed contribution below aligns it with the paired delta.
         buffer_q = compute_channel_quality(buffer_raw, scoring, "maximize")
@@ -1820,6 +1845,7 @@ class BOIntegrationSession:
         self.pending: Optional[dict] = None
         self.pending_batch: List[dict] = []
         self._rng = random.Random(int(self.config.get("random_seed", 42)))
+        self._optimizer_rngs: Dict[str, random.Random] = {}
         self._start_candidate = self._resolve_start_candidate()
         self._write_session_start_files()
         self.save_state()
@@ -1878,6 +1904,7 @@ class BOIntegrationSession:
         session.pending = dict(state["pending"]) if isinstance(state.get("pending"), dict) else None
         session.pending_batch = list(state.get("pending_batch") or [])
         session._rng = random.Random(int(session.config.get("random_seed", 42)))
+        session._optimizer_rngs = {}
         session._start_candidate = session._resolve_start_candidate()
         return session
 
@@ -1899,7 +1926,14 @@ class BOIntegrationSession:
             if int(self.pending.get("group_id", 1)) == int(group_id):
                 return BOSuggestion(**self.pending)
             raise RuntimeError("Another channel group suggestion is waiting for analysis")
-        existing = self._group_observations(group_id)
+        configured_direction = self._group_optimization_direction(group_id)
+        directions = _optimization_directions(configured_direction)
+        direction = min(
+            directions,
+            key=lambda value: len(self._group_observations(group_id, value)),
+        )
+        group_config["acquisition"]["optimization_direction"] = direction
+        existing = self._group_observations(group_id, direction)
         pending = self._pending_for_group(group_id)
         if pending is not None:
             return BOSuggestion(**pending)
@@ -1913,7 +1947,8 @@ class BOIntegrationSession:
             observations=existing,
             config=group_config,
         )
-        method_id = f"{self.session_id}_g{group_id:02d}_iter_{iteration:03d}"
+        direction_token = f"_{direction}" if len(directions) > 1 else ""
+        method_id = f"{self.session_id}_g{group_id:02d}{direction_token}_iter_{iteration:03d}"
         suggestion = {
             "iteration": iteration,
             "method_id": method_id,
@@ -1923,6 +1958,7 @@ class BOIntegrationSession:
             "group_id": group_id,
             "group_name": group["name"],
             "channels": list(group["channels"]),
+            "optimization_direction": direction,
         }
         self.pending = suggestion
         self.suggestions.append(dict(suggestion))
@@ -1936,7 +1972,11 @@ class BOIntegrationSession:
 
     def ask_batch(self, count: int) -> List[BOSuggestion]:
         groups = channel_groups(self.config)
-        if len(groups) > 1:
+        has_multiple_optimizers = len(groups) > 1 or any(
+            len(_optimization_directions(self._group_optimization_direction(group["id"]))) > 1
+            for group in groups
+        )
+        if has_multiple_optimizers:
             if self.pending is not None:
                 raise RuntimeError("A single pending BO suggestion is already waiting for analysis")
             if self.pending_batch:
@@ -1944,39 +1984,45 @@ class BOIntegrationSession:
             suggestions = []
             count = max(1, int(count))
             for group in groups:
-                group_config = self._config_for_group(group["id"])
-                observed = self._group_observations(group["id"])
-                tried = {candidate_key(obs["params"]) for obs in observed}
-                pending_params = []
-                for offset in range(count):
-                    available = self._available_candidates(tried, config=group_config)
-                    if not available:
-                        break
-                    iteration = len(observed) + offset + 1
-                    params = self._choose_candidate(
-                        available,
-                        pending_params=pending_params,
-                        observations=observed,
-                        config=group_config,
-                    )
-                    record = {
-                        "iteration": iteration,
-                        "method_id": f"{self.session_id}_g{group['id']:02d}_iter_{iteration:03d}",
-                        "params": params,
-                        "created_at": datetime.now().isoformat(timespec="seconds"),
-                        "status": "suggested",
-                        "group_id": group["id"],
-                        "group_name": group["name"],
-                        "channels": list(group["channels"]),
-                    }
-                    suggestions.append(record)
-                    pending_params.append(dict(params))
-                    tried.add(candidate_key(params))
-                    self.suggestions.append(dict(record))
-                    self._write_json(
-                        self.methods_dir / f"group_{group['id']:02d}_iter_{iteration:03d}_suggested_method.json",
-                        record,
-                    )
+                configured_direction = self._group_optimization_direction(group["id"])
+                directions = _optimization_directions(configured_direction)
+                for direction in directions:
+                    group_config = self._config_for_group(group["id"])
+                    group_config["acquisition"]["optimization_direction"] = direction
+                    observed = self._group_observations(group["id"], direction)
+                    tried = {candidate_key(obs["params"]) for obs in observed}
+                    pending_params = []
+                    for offset in range(count):
+                        available = self._available_candidates(tried, config=group_config)
+                        if not available:
+                            break
+                        iteration = len(observed) + offset + 1
+                        params = self._choose_candidate(
+                            available,
+                            pending_params=pending_params,
+                            observations=observed,
+                            config=group_config,
+                        )
+                        direction_token = f"_{direction}" if len(directions) > 1 else ""
+                        record = {
+                            "iteration": iteration,
+                            "method_id": f"{self.session_id}_g{group['id']:02d}{direction_token}_iter_{iteration:03d}",
+                            "params": params,
+                            "created_at": datetime.now().isoformat(timespec="seconds"),
+                            "status": "suggested",
+                            "group_id": group["id"],
+                            "group_name": group["name"],
+                            "channels": list(group["channels"]),
+                            "optimization_direction": direction,
+                        }
+                        suggestions.append(record)
+                        pending_params.append(dict(params))
+                        tried.add(candidate_key(params))
+                        self.suggestions.append(dict(record))
+                        self._write_json(
+                            self.methods_dir / f"group_{group['id']:02d}_{direction}_iter_{iteration:03d}_suggested_method.json",
+                            record,
+                        )
             if not suggestions:
                 raise RuntimeError("All valid candidates have been evaluated")
             self.pending_batch = suggestions
@@ -2014,6 +2060,7 @@ class BOIntegrationSession:
                 "group_id": group["id"],
                 "group_name": group["name"],
                 "channels": list(group["channels"]),
+                "optimization_direction": self._group_optimization_direction(group["id"]),
             }
             suggestions.append(suggestion)
             pending_params.append(dict(params))
@@ -2061,7 +2108,16 @@ class BOIntegrationSession:
         measurement_count = max(
             1, int(self.config.get("measurements_per_channel", 1) or 1)
         )
+        split_directions = (
+            self._group_optimization_direction(suggestion.group_id)
+            == "maximize_and_minimize"
+        )
         for channel in channels:
+            channel_label = (
+                f"{int(channel)}_{'max' if suggestion.optimization_direction == 'maximize' else 'min'}"
+                if split_directions
+                else str(int(channel))
+            )
             for repeat_index in range(1, measurement_count + 1):
                 script = wrap_mux(base_script, channel)
                 note = f"BO {suggestion.method_id} | {suggestion.group_name} | MUX ch {channel}"
@@ -2100,6 +2156,7 @@ class BOIntegrationSession:
                         "technique": "SWV",
                         "params": dict(params_for_hash),
                         "mux_channel": channel,
+                        "channel_label": channel_label,
                     },
                     "bo_ref": {
                         "session_id": self.session_id,
@@ -2108,6 +2165,8 @@ class BOIntegrationSession:
                         "record_dir": str(self.record_dir),
                         "group_id": suggestion.group_id,
                         "group_name": suggestion.group_name,
+                        "optimization_direction": suggestion.optimization_direction,
+                        "channel_label": channel_label,
                         "measurement_repeat_index": repeat_index,
                         "measurement_repeat_count": measurement_count,
                     },
@@ -2115,8 +2174,13 @@ class BOIntegrationSession:
                 if phase_label:
                     item["bo_ref"]["phase"] = phase_label
                 items.append(item)
+        direction_part = (
+            f"_{suggestion.optimization_direction}"
+            if self._group_optimization_direction(suggestion.group_id) == "maximize_and_minimize"
+            else ""
+        )
         self._write_json(
-            self.methods_dir / f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_queue_items.json",
+            self.methods_dir / f"group_{suggestion.group_id:02d}{direction_part}_iter_{suggestion.iteration:03d}_queue_items.json",
             {"method_id": suggestion.method_id, "items": items},
         )
         return items
@@ -2152,15 +2216,28 @@ class BOIntegrationSession:
         channel_metrics = extract_channel_metrics(payload)
         group_id = int(suggestion_data.get("group_id", 1))
         group = self._group(group_id)
-        channel_metrics = self._filter_metrics(channel_metrics, group["channels"])
-        optimization_direction = self._group_optimization_direction(group_id)
+        optimization_direction = _normalized_optimization_direction(
+            suggestion_data.get("optimization_direction")
+            or self._group_optimization_direction(group_id)
+        )
+        artifact_direction = (
+            optimization_direction
+            if self._group_optimization_direction(group_id) == "maximize_and_minimize"
+            else None
+        )
+        channel_metrics = self._filter_metrics(
+            channel_metrics, group["channels"], artifact_direction
+        )
         quality = compute_run_quality(
             channel_metrics,
             self.config.get("scoring", {}),
             optimization_direction,
         )
         iteration = int(suggestion_data["iteration"])
-        retained_path = self._retain_analysis_file(source, iteration, group_id=group_id)
+        retained_path = self._retain_analysis_file(
+            source, iteration, group_id=group_id,
+            optimization_direction=artifact_direction,
+        )
         observation = {
             "iteration": iteration,
             "method_id": suggestion_data["method_id"],
@@ -2175,6 +2252,7 @@ class BOIntegrationSession:
             "group_id": group_id,
             "group_name": group["name"],
             "channels": list(group["channels"]),
+            "analysis_channels": list(channel_metrics),
             "optimization_direction": optimization_direction,
         }
         if payload.get("results_json"):
@@ -2187,6 +2265,7 @@ class BOIntegrationSession:
             iteration,
             suggestion_data["method_id"],
             group_id=group_id,
+            optimization_direction=artifact_direction,
         )
         if archived_measurements:
             observation["archived_measurements"] = archived_measurements
@@ -2205,7 +2284,7 @@ class BOIntegrationSession:
             if record.get("method_id") != suggestion_data["method_id"]
         ]
         self._write_json(
-            self.analysis_dir / f"group_{group_id:02d}_iter_{iteration:03d}_quality.json",
+            self.analysis_dir / f"{self._group_iteration_stem(iteration, group_id, artifact_direction)}_quality.json",
             observation,
         )
         self._write_history_csv()
@@ -2230,19 +2309,37 @@ class BOIntegrationSession:
         group = self._group(group_id)
         iteration = int(suggestion_data["iteration"])
         method_id = str(suggestion_data["method_id"])
+        optimization_direction = _normalized_optimization_direction(
+            suggestion_data.get("optimization_direction")
+            or self._group_optimization_direction(group_id)
+        )
+        artifact_direction = (
+            optimization_direction
+            if self._group_optimization_direction(group_id) == "maximize_and_minimize"
+            else None
+        )
         buffer_payload = self._load_json_file(buffer_path)
         target_payload = self._load_json_file(target_path)
-        buffer_metrics = self._filter_metrics(extract_channel_metrics(buffer_payload), group["channels"])
-        target_metrics = self._filter_metrics(extract_channel_metrics(target_payload), group["channels"])
-        optimization_direction = self._group_optimization_direction(group_id)
+        buffer_metrics = self._filter_metrics(
+            extract_channel_metrics(buffer_payload), group["channels"], artifact_direction
+        )
+        target_metrics = self._filter_metrics(
+            extract_channel_metrics(target_payload), group["channels"], artifact_direction
+        )
         quality = compute_paired_response_quality(
             buffer_metrics,
             target_metrics,
             self.config.get("scoring", {}),
             optimization_direction,
         )
-        retained_buffer = self._retain_analysis_file(Path(buffer_path), iteration, suffix="buffer", group_id=group_id)
-        retained_target = self._retain_analysis_file(Path(target_path), iteration, suffix="target", group_id=group_id)
+        retained_buffer = self._retain_analysis_file(
+            Path(buffer_path), iteration, suffix="buffer", group_id=group_id,
+            optimization_direction=artifact_direction,
+        )
+        retained_target = self._retain_analysis_file(
+            Path(target_path), iteration, suffix="target", group_id=group_id,
+            optimization_direction=artifact_direction,
+        )
         buffer_truth = dict(buffer_payload.get("simulation_truth") or {})
         target_truth = dict(target_payload.get("simulation_truth") or {})
         paired_cycle = self._first_present(
@@ -2294,6 +2391,7 @@ class BOIntegrationSession:
             "group_id": group_id,
             "group_name": group["name"],
             "channels": list(group["channels"]),
+            "analysis_channels": list(target_metrics),
             "optimization_direction": optimization_direction,
         }
         if buffer_payload.get("results_json"):
@@ -2316,12 +2414,14 @@ class BOIntegrationSession:
             method_id,
             phase="buffer",
             group_id=group_id,
+            optimization_direction=artifact_direction,
         )
         archived_target = self._archive_iteration_measurements(
             iteration,
             method_id,
             phase="target",
             group_id=group_id,
+            optimization_direction=artifact_direction,
         )
         archived_measurements = archived_buffer + archived_target
         if archived_measurements:
@@ -2340,10 +2440,13 @@ class BOIntegrationSession:
             if str(record.get("method_id") or "") != method_id
         ]
         self._write_json(
-            self.analysis_dir / f"group_{group_id:02d}_iter_{iteration:03d}_paired_quality.json",
+            self.analysis_dir / f"{self._group_iteration_stem(iteration, group_id, artifact_direction)}_paired_quality.json",
             observation,
         )
-        self._write_paired_components_csv(iteration, quality, group_id=group_id)
+        self._write_paired_components_csv(
+            iteration, quality, group_id=group_id,
+            optimization_direction=artifact_direction,
+        )
         self._write_history_csv()
         self.save_state()
         self._write_optional_iteration_artifacts(iteration, observation)
@@ -2355,6 +2458,13 @@ class BOIntegrationSession:
             self._write_surrogate_and_acquisition_artifacts(
                 iteration,
                 group_id=int(observation.get("group_id", 1) or 1),
+                optimization_direction=(
+                    observation.get("optimization_direction")
+                    if self._group_optimization_direction(
+                        int(observation.get("group_id", 1) or 1)
+                    ) == "maximize_and_minimize"
+                    else None
+                ),
             )
         except Exception as exc:
             warnings.warn(f"BO surrogate/acquisition artifact write failed for iter {iteration}: {exc}")
@@ -2365,7 +2475,10 @@ class BOIntegrationSession:
                 return value
         return None
 
-    def _write_paired_components_csv(self, iteration: int, quality: dict, group_id: int = 1) -> None:
+    def _write_paired_components_csv(
+        self, iteration: int, quality: dict, group_id: int = 1,
+        optimization_direction: Optional[str] = None,
+    ) -> None:
         rows = []
         for channel, data in sorted(
             dict(quality.get("channel_components") or {}).items(),
@@ -2375,7 +2488,7 @@ class BOIntegrationSession:
             row.update(dict(data or {}))
             rows.append(row)
         self._write_csv(
-            self.analysis_dir / f"group_{int(group_id):02d}_iter_{int(iteration):03d}_paired_components.csv",
+            self.analysis_dir / f"{self._group_iteration_stem(iteration, group_id, optimization_direction)}_paired_components.csv",
             rows,
         )
 
@@ -2452,12 +2565,13 @@ class BOIntegrationSession:
         method_id: str,
         phase: Optional[str] = None,
         group_id: Optional[int] = None,
+        optimization_direction: Optional[str] = None,
     ) -> List[str]:
         csv_paths = self._iteration_csv_paths(iteration, method_id, phase=phase)
         if not csv_paths:
             return []
         phase_part = f"_{str(phase).strip().lower()}" if phase else ""
-        archive_dir = self.experiment_dir / "legacy" / f"{self._group_iteration_stem(iteration, group_id=group_id)}{phase_part}"
+        archive_dir = self.experiment_dir / "legacy" / f"{self._group_iteration_stem(iteration, group_id=group_id, optimization_direction=optimization_direction)}{phase_part}"
         archive_dir.mkdir(parents=True, exist_ok=True)
         archived: List[str] = []
         for csv_path in csv_paths:
@@ -2554,11 +2668,22 @@ class BOIntegrationSession:
         iteration = int(suggestion_data["iteration"])
         group_id = int(suggestion_data.get("group_id", 1) or 1)
         method_id = str(suggestion_data["method_id"])
+        optimization_direction = _normalized_optimization_direction(
+            suggestion_data.get("optimization_direction")
+            or self._group_optimization_direction(group_id)
+        )
         phase_label = str(phase or "").strip().lower()
         output = Path(output_dir) if output_dir else (self.experiment_dir / "bo_analysis")
         csv_paths = self._iteration_csv_paths(iteration, method_id, phase=phase_label or None)
         input_paths = csv_paths if csv_paths else [Path(folder) for folder in (folders or [self.experiment_dir])]
-        stem = self._group_iteration_stem(iteration, group_id=group_id)
+        stem = self._group_iteration_stem(
+            iteration, group_id=group_id,
+            optimization_direction=(
+                optimization_direction
+                if self._group_optimization_direction(group_id) == "maximize_and_minimize"
+                else None
+            ),
+        )
         output_stem = f"bo_{stem}" + (f"_{phase_label}" if phase_label else "")
         request = {
             "folders": [str(Path(folder)) for folder in input_paths],
@@ -2588,7 +2713,16 @@ class BOIntegrationSession:
 
         iteration = int(observation.get("iteration", 0) or 0)
         group_id = int(observation.get("group_id", 1) or 1)
-        optimization_direction = self._group_optimization_direction(group_id)
+        optimization_direction = _normalized_optimization_direction(
+            observation.get("optimization_direction")
+            or self._group_optimization_direction(group_id)
+        )
+        artifact_direction = (
+            optimization_direction
+            if self._group_optimization_direction(group_id) == "maximize_and_minimize"
+            else None
+        )
+        observation_channels = observation.get("channels") or []
         if iteration < 1:
             raise ValueError("Observation has no valid BO iteration")
         raw_paths = []
@@ -2599,8 +2733,12 @@ class BOIntegrationSession:
             if path.exists() and path.is_file() and path not in raw_paths:
                 raw_paths.append(path)
         if not raw_paths:
-            raw_paths = self._discover_archived_measurements(iteration, group_id=group_id)
-        allowed_channels = {int(ch) for ch in observation.get("channels") or []}
+            raw_paths = self._discover_archived_measurements(
+                iteration,
+                group_id=group_id,
+                optimization_direction=artifact_direction,
+            )
+        allowed_channels = {int(ch) for ch in observation_channels}
         if allowed_channels:
             filtered_raw_paths = []
             for path in raw_paths:
@@ -2618,7 +2756,7 @@ class BOIntegrationSession:
 
         def analyze(paths: List[Path], phase: str = "") -> tuple[dict, Path]:
             suffix = f"_{phase}" if phase else ""
-            stem = f"bo_{self._group_iteration_stem(iteration, group_id=group_id)}_reanalyzed{suffix}"
+            stem = f"bo_{self._group_iteration_stem(iteration, group_id=group_id, optimization_direction=artifact_direction)}_reanalyzed{suffix}"
             request = {
                 "folders": [str(path.resolve()) for path in paths],
                 "output_dir": str(output.resolve()),
@@ -2651,6 +2789,13 @@ class BOIntegrationSession:
             target_summary, target_summary_path = analyze(target_paths, "target")
             buffer_metrics = extract_channel_metrics(buffer_summary)
             target_metrics = extract_channel_metrics(target_summary)
+            if observation_channels:
+                buffer_metrics = self._filter_metrics(
+                    buffer_metrics, observation_channels, artifact_direction
+                )
+                target_metrics = self._filter_metrics(
+                    target_metrics, observation_channels, artifact_direction
+                )
             quality = compute_paired_response_quality(
                 buffer_metrics,
                 target_metrics,
@@ -2676,6 +2821,10 @@ class BOIntegrationSession:
 
         summary, summary_path = analyze(raw_paths)
         channel_metrics = extract_channel_metrics(summary)
+        if observation_channels:
+            channel_metrics = self._filter_metrics(
+                channel_metrics, observation_channels, artifact_direction
+            )
         quality = compute_run_quality(
             channel_metrics,
             scoring,
@@ -2732,10 +2881,21 @@ class BOIntegrationSession:
             f"analyzed peaks, so its Q score was set to 0. {detail}"
         )
 
-    def _discover_archived_measurements(self, iteration: int, group_id: Optional[int] = None) -> List[Path]:
+    def _discover_archived_measurements(
+        self,
+        iteration: int,
+        group_id: Optional[int] = None,
+        optimization_direction: Optional[str] = None,
+    ) -> List[Path]:
         """Find raw CSVs in legacy iteration folders used by older sessions."""
         legacy = self.experiment_dir / "legacy"
-        base_stems = [self._group_iteration_stem(iteration, group_id=group_id)]
+        base_stems = [
+            self._group_iteration_stem(
+                iteration,
+                group_id=group_id,
+                optimization_direction=optimization_direction,
+            )
+        ]
         legacy_stem = self._group_iteration_stem(iteration, group_id=None)
         if legacy_stem not in base_stems:
             base_stems.append(legacy_stem)
@@ -2762,6 +2922,24 @@ class BOIntegrationSession:
         if not self.observations:
             return None
         return max(self.observations, key=lambda obs: self._objective_value(float(obs.get("Q_run", 0.0))))
+
+    def best_observations_by_optimizer(self) -> Dict[str, dict]:
+        """Return one best record per physical group and independent direction."""
+        best = {}
+        for group in channel_groups(self.config):
+            configured = self._group_optimization_direction(group["id"])
+            for direction in _optimization_directions(configured):
+                observations = self._group_observations(group["id"], direction)
+                if not observations:
+                    continue
+                if direction == "minimize":
+                    selected = min(observations, key=lambda obs: float(obs.get("Q_run", 0.0)))
+                elif direction == "survey":
+                    selected = max(observations, key=lambda obs: abs(float(obs.get("Q_run", 0.0))))
+                else:
+                    selected = max(observations, key=lambda obs: float(obs.get("Q_run", 0.0)))
+                best[f"group_{int(group['id']):02d}_{direction}"] = selected
+        return best
 
     def should_stop(self) -> bool:
         return False
@@ -2814,6 +2992,7 @@ class BOIntegrationSession:
             "suggestions": self.suggestions,
             "observations": self.observations,
             "best_observation": self.best_observation(),
+            "best_observations_by_optimizer": self.best_observations_by_optimizer(),
             "updated_at": datetime.now().isoformat(timespec="seconds"),
         }
         path = self.record_dir / self.STATE_FILE
@@ -2830,17 +3009,31 @@ class BOIntegrationSession:
         original_observations = self.observations
         original_config = self.config
         original_start = self._start_candidate
+        original_rng = self._rng
         if observations is not None:
             self.observations = observations
         if config is not None:
             self.config = config
             self._start_candidate = self._resolve_start_candidate(config)
+            rngs = getattr(self, "_optimizer_rngs", None)
+            if rngs is None:
+                rngs = {}
+                self._optimizer_rngs = rngs
+            rng_key = json.dumps(config, sort_keys=True, separators=(",", ":"))
+            if rng_key not in rngs:
+                digest = hashlib.sha256(rng_key.encode("utf-8")).digest()
+                offset = int.from_bytes(digest[:8], "big")
+                rngs[rng_key] = random.Random(
+                    int(config.get("random_seed", 42)) + offset
+                )
+            self._rng = rngs[rng_key]
         try:
             return self._choose_candidate_current(available, pending_params)
         finally:
             self.observations = original_observations
             self.config = original_config
             self._start_candidate = original_start
+            self._rng = original_rng
 
     def _choose_candidate_current(
         self,
@@ -2915,10 +3108,22 @@ class BOIntegrationSession:
             .get("optimization_direction", "maximize")
         )
 
-    def _group_observations(self, group_id: int) -> List[dict]:
-        return [
+    def _group_observations(
+        self, group_id: int, optimization_direction: Optional[str] = None
+    ) -> List[dict]:
+        observations = [
             obs for obs in self.observations
             if int(obs.get("group_id", 1)) == int(group_id)
+        ]
+        if optimization_direction is None:
+            return observations
+        direction = _normalized_optimization_direction(optimization_direction)
+        return [
+            obs for obs in observations
+            if _normalized_optimization_direction(
+                obs.get("optimization_direction")
+                or self._group_optimization_direction(group_id)
+            ) == direction
         ]
 
     def _pending_for_group(self, group_id: int) -> Optional[dict]:
@@ -2930,9 +3135,40 @@ class BOIntegrationSession:
         )
 
     @staticmethod
-    def _filter_metrics(metrics: dict, channels: List[int]) -> dict:
+    def _filter_metrics(
+        metrics: dict,
+        channels: List[int],
+        optimization_direction: Optional[str] = None,
+    ) -> dict:
         allowed = {str(int(ch)) for ch in channels}
-        return {str(key): value for key, value in metrics.items() if str(key) in allowed}
+        suffix = (
+            "max" if optimization_direction == "maximize"
+            else "min" if optimization_direction == "minimize"
+            else ""
+        )
+        parsed = {}
+        for key, value in metrics.items():
+            text = str(key).strip().lower()
+            match = re.fullmatch(r"0*(\d+)(?:_(max|min))?", text)
+            if not match or str(int(match.group(1))) not in allowed:
+                continue
+            present_suffix = str(match.group(2) or "")
+            physical = str(int(match.group(1)))
+            parsed[(physical, present_suffix)] = value
+        filtered = {}
+        for physical in sorted(allowed, key=int):
+            if suffix:
+                exact = parsed.get((physical, suffix))
+                fallback = parsed.get((physical, ""))
+                if exact is not None:
+                    filtered[f"{physical}_{suffix}"] = exact
+                elif fallback is not None:
+                    filtered[f"{physical}_{suffix}"] = fallback
+            else:
+                value = parsed.get((physical, ""))
+                if value is not None:
+                    filtered[physical] = value
+        return filtered
 
     def _maximin_candidate(
         self,
@@ -3171,10 +3407,16 @@ class BOIntegrationSession:
         return result
 
     @staticmethod
-    def _group_iteration_stem(iteration: int, group_id: Optional[int] = None) -> str:
+    def _group_iteration_stem(
+        iteration: int, group_id: Optional[int] = None,
+        optimization_direction: Optional[str] = None,
+    ) -> str:
         if group_id is None:
             return f"iter_{int(iteration):03d}"
-        return f"group_{int(group_id):02d}_iter_{int(iteration):03d}"
+        direction_part = ""
+        if optimization_direction in {"maximize", "minimize"}:
+            direction_part = f"_{optimization_direction}"
+        return f"group_{int(group_id):02d}{direction_part}_iter_{int(iteration):03d}"
 
     def _retain_analysis_file(
         self,
@@ -3182,9 +3424,13 @@ class BOIntegrationSession:
         iteration: int,
         suffix: Optional[str] = None,
         group_id: Optional[int] = None,
+        optimization_direction: Optional[str] = None,
     ) -> Path:
         suffix_part = f"_{str(suffix).strip()}" if suffix else ""
-        stem = self._group_iteration_stem(iteration, group_id=group_id)
+        stem = self._group_iteration_stem(
+            iteration, group_id=group_id,
+            optimization_direction=optimization_direction,
+        )
         target = self.analysis_dir / f"{stem}{suffix_part}_{source.name}"
         if source.resolve() == target.resolve():
             return target
@@ -3241,6 +3487,10 @@ class BOIntegrationSession:
                 "group_id": obs.get("group_id", 1),
                 "group_name": obs.get("group_name", "Group 1"),
                 "channels": ",".join(str(ch) for ch in obs.get("channels", [])),
+                "analysis_channels": ",".join(
+                    f"ch{ch}" for ch in obs.get("analysis_channels", obs.get("channels", []))
+                ),
+                "optimization_direction": obs.get("optimization_direction", ""),
                 "method_id": obs["method_id"],
                 "objective": obs.get("objective", ""),
                 "paired_cycle": "" if paired_cycle is None else paired_cycle,
@@ -3464,9 +3714,14 @@ class BOIntegrationSession:
             return None
         return ((iteration - 1) % batch_size) + 1 if iteration > 0 else None
 
-    def _write_surrogate_and_acquisition_artifacts(self, iteration: int, group_id: Optional[int] = None) -> None:
-        rows, metadata, gp = self._candidate_prediction_rows(group_id=group_id)
-        stem = self._group_iteration_stem(iteration, group_id=group_id)
+    def _write_surrogate_and_acquisition_artifacts(
+        self, iteration: int, group_id: Optional[int] = None,
+        optimization_direction: Optional[str] = None,
+    ) -> None:
+        rows, metadata, gp = self._candidate_prediction_rows(
+            group_id=group_id, optimization_direction=optimization_direction,
+        )
+        stem = self._group_iteration_stem(iteration, group_id, optimization_direction)
         self._write_json(self.surrogate_dir / f"{stem}_surrogate_metadata.json", metadata)
         self._write_csv(self.surrogate_dir / f"{stem}_candidate_predictions.csv", rows)
         self._write_csv(self.acquisition_dir / f"{stem}_acquisition_values.csv", rows)
@@ -3485,12 +3740,17 @@ class BOIntegrationSession:
                 metadata["gp_pickle_error"] = str(exc)
                 self._write_json(self.surrogate_dir / f"{stem}_surrogate_metadata.json", metadata)
 
-        self._write_surrogate_projection_plot(iteration, rows, value_key="predicted_mean_Q", group_id=group_id)
-        self._write_surrogate_projection_plot(iteration, rows, value_key="acquisition_value", group_id=group_id)
+        self._write_surrogate_projection_plot(iteration, rows, value_key="predicted_mean_Q", group_id=group_id, optimization_direction=optimization_direction)
+        self._write_surrogate_projection_plot(iteration, rows, value_key="acquisition_value", group_id=group_id, optimization_direction=optimization_direction)
 
-    def _candidate_prediction_rows(self, group_id: Optional[int] = None) -> Tuple[List[dict], dict, Any]:
-        observations = self._group_observations(group_id) if group_id is not None else list(self.observations)
+    def _candidate_prediction_rows(
+        self, group_id: Optional[int] = None,
+        optimization_direction: Optional[str] = None,
+    ) -> Tuple[List[dict], dict, Any]:
+        observations = self._group_observations(group_id, optimization_direction) if group_id is not None else list(self.observations)
         effective_config = self._config_for_group(group_id) if group_id is not None else self.config
+        if optimization_direction in {"maximize", "minimize"}:
+            effective_config["acquisition"]["optimization_direction"] = optimization_direction
         historical_session = copy.copy(self)
         historical_session.config = effective_config
         historical_session.observations = list(observations)
@@ -3624,6 +3884,7 @@ class BOIntegrationSession:
         rows: List[dict],
         value_key: str,
         group_id: Optional[int] = None,
+        optimization_direction: Optional[str] = None,
     ) -> None:
         try:
             import matplotlib
@@ -3657,7 +3918,7 @@ class BOIntegrationSession:
         ax.grid(alpha=0.2)
         fig.tight_layout()
         suffix = "surrogate_projection" if value_key == "predicted_mean_Q" else "acquisition_projection"
-        stem = self._group_iteration_stem(iteration, group_id=group_id)
+        stem = self._group_iteration_stem(iteration, group_id, optimization_direction)
         fig.savefig(self.plots_dir / f"{stem}_{suffix}.png", dpi=160)
         plt.close(fig)
 

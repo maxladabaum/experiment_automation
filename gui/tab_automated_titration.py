@@ -1161,9 +1161,13 @@ class AutomatedTitrationTab:
             # Run the same manual-setting number across every channel before
             # advancing to the next setting, mirroring the optimized channel pass.
             for setting_index in range(manual_pass_count):
+                manual_channels_seen = set()
                 for group in self._parameter_groups:
                     for channel in group.get("channels", []):
                         channel = int(channel)
+                        if channel in manual_channels_seen:
+                            continue
+                        manual_channels_seen.add(channel)
                         param_sets = manual_by_channel.get(channel, [])
                         if setting_index >= len(param_sets):
                             continue
@@ -1175,6 +1179,8 @@ class AutomatedTitrationTab:
                             param_sets[setting_index]
                         )
                         manual_group.pop("session_id", None)
+                        manual_group.pop("optimization_direction", None)
+                        manual_group.pop("split_direction_channel", None)
                         recipe.append(
                             {
                                 "type": "SWV",
@@ -1445,6 +1451,14 @@ class AutomatedTitrationTab:
         group = item["_titration_group"]
         channel = int(item["_mux_channel"])
         source = item.get("_swv_source", "optimized")
+        optimization_direction = str(group.get("optimization_direction") or "")
+        channel_label = ""
+        if (
+            source == "optimized"
+            and bool(group.get("split_direction_channel"))
+            and optimization_direction in {"maximize", "minimize"}
+        ):
+            channel_label = f"{channel}_{'max' if optimization_direction == 'maximize' else 'min'}"
         params = copy.deepcopy(group["params"])
         options = copy.deepcopy(group.get("method_options") or {})
         base_script = build_swv_script(params, options)
@@ -1478,6 +1492,8 @@ class AutomatedTitrationTab:
                 "technique": "SWV",
                 "params": params_for_hash,
                 "mux_channel": channel,
+                **({"channel_label": channel_label} if channel_label else {}),
+                **({"optimization_direction": optimization_direction} if channel_label else {}),
             },
         }
 

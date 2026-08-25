@@ -604,7 +604,9 @@ def compute_drift_fields(all_results: List[dict]) -> List[dict]:
     ref: Dict[int, dict] = {}
 
     # Sort globally so we always pick the lowest scan_number as reference
-    sorted_results = sorted(all_results, key=lambda r: (r["channel"], r["scan_number"]))
+    sorted_results = sorted(
+        all_results, key=lambda r: (str(r["channel"]), r["scan_number"])
+    )
 
     for r in sorted_results:
         ch = r["channel"]
@@ -684,12 +686,12 @@ def run_batch(
 
     ordered: List[Tuple[int, SWVFile]] = [
         (ch, f)
-        for ch, flist in sorted(by_ch.items())
+        for ch, flist in sorted(by_ch.items(), key=lambda item: str(item[0]))
         for f in flist
     ]
 
     total = len(ordered)
-    scan_counters: Dict[int, int] = {}
+    scan_counters: Dict[object, int] = {}
 
     for idx, (ch, f) in enumerate(ordered):
         if progress_callback:

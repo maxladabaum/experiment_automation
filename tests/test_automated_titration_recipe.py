@@ -422,6 +422,81 @@ def test_multiple_manual_swv_settings_run_after_optimized_setting():
     ] == [0, 0, 1, 1, 2]
 
 
+def test_dual_bo_autotitration_runs_both_directions_without_duplicating_manual():
+    class Registry:
+        def save_script(self, *_args, **_kwargs):
+            return Path("dual-bo-test.ms"), "dual-bo-test"
+
+        def hash_key_for(self, _path):
+            return "dual-bo-hash"
+
+    class Session:
+        registry = Registry()
+
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    tab._session = Session()
+    base_params = {
+        "begin_potential": -0.7,
+        "end_potential": -0.1,
+        "step_potential": 0.002,
+        "amplitude": 0.036,
+        "frequency": 200.0,
+        "conditioning_potential": -0.7,
+        "conditioning_time": 0.0,
+    }
+    tab._parameter_groups = [
+        {
+            "name": "Group 1 max",
+            "channels": [1, 2],
+            "params": {**base_params, "frequency": 250.0},
+            "optimization_direction": "maximize",
+            "split_direction_channel": True,
+        },
+        {
+            "name": "Group 1 min",
+            "channels": [1, 2],
+            "params": {**base_params, "frequency": 75.0},
+            "optimization_direction": "minimize",
+            "split_direction_channel": True,
+        },
+    ]
+    tab._manual_channel_params = {
+        1: {**base_params, "frequency": 101.0},
+        2: {**base_params, "frequency": 102.0},
+    }
+    recipe = []
+
+    tab._append_swv_measurements(
+        recipe,
+        settings={"replicates": 1},
+        point_label="Initial buffer",
+    )
+
+    assert [
+        (
+            item["_mux_channel"],
+            item["_swv_source"],
+            item["_titration_group"].get("optimization_direction"),
+        )
+        for item in recipe
+    ] == [
+        (1, "optimized", "maximize"),
+        (2, "optimized", "maximize"),
+        (1, "optimized", "minimize"),
+        (2, "optimized", "minimize"),
+        (1, "manual", None),
+        (2, "manual", None),
+    ]
+
+    queue_items = [tab._materialize_swv_item(item) for item in recipe]
+    assert [
+        item["method_ref"].get("channel_label") for item in queue_items
+    ] == ["1_max", "2_max", "1_min", "2_min", None, None]
+    assert [
+        item["method_ref"]["mux_channel"] for item in queue_items
+    ] == [1, 2, 1, 2, 1, 2]
+
+
 def test_first_stock_mixes_before_buffer_measurement_and_first_flow_load():
     tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
     tab._parameter_groups = [

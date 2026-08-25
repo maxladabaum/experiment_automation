@@ -1,6 +1,7 @@
 import copy
 import json
 import random
+from pathlib import Path
 
 from core.bo_session import (
     BOIntegrationSession,
@@ -14,6 +15,8 @@ from core.bo_session import (
     save_bo_config,
     save_bo_setup_metadata,
 )
+from gui.tab_bayesian_optimization import BayesianOptimizationTab
+from gui.tab_queue import QueueTab
 
 
 def _directional_scoring():
@@ -126,6 +129,131 @@ def test_survey_direction_keeps_sign_and_prefers_larger_magnitude():
 
     assert best["Q_run"] == -2.0
     assert candidate_key(choice) == candidate_key(session.candidates[0])
+
+
+def test_maximize_and_minimize_normalizes_from_display_label():
+    config = _config("maximize and minimize")
+
+    assert config["acquisition"]["optimization_direction"] == "maximize_and_minimize"
+
+
+def test_maximize_and_minimize_asks_two_isolated_optimizer_streams(tmp_path):
+    config = _config("maximize_and_minimize")
+    session = BOIntegrationSession(config, tmp_path)
+
+    first = session.ask_batch(1)
+
+    assert [suggestion.optimization_direction for suggestion in first] == [
+        "maximize",
+        "minimize",
+    ]
+    assert first[0].iteration == first[1].iteration == 1
+    assert first[0].method_id != first[1].method_id
+
+    session.observations = [
+        {
+            "iteration": 1,
+            "group_id": 1,
+            "params": dict(first[0].params),
+            "Q_run": 10.0,
+            "optimization_direction": "maximize",
+        },
+        {
+            "iteration": 1,
+            "group_id": 1,
+            "params": dict(first[1].params),
+            "Q_run": -10.0,
+            "optimization_direction": "minimize",
+        },
+    ]
+    session.pending_batch = []
+
+    captured = []
+    original_choose = session._choose_candidate
+
+    def capture(available, pending_params=None, observations=None, config=None):
+        captured.append(
+            (
+                config["acquisition"]["optimization_direction"],
+                [obs["optimization_direction"] for obs in observations],
+            )
+        )
+        return original_choose(available, pending_params, observations, config)
+
+    session._choose_candidate = capture
+    second = session.ask_batch(1)
+
+    assert [suggestion.optimization_direction for suggestion in second] == [
+        "maximize",
+        "minimize",
+    ]
+    assert captured == [
+        ("maximize", ["maximize"]),
+        ("minimize", ["minimize"]),
+    ]
+
+
+def test_dual_direction_queue_items_use_virtual_analysis_channels(tmp_path):
+    class Registry:
+        def save_script(self, *_args, **_kwargs):
+            return tmp_path / "method.psmethod", "method.psmethod"
+
+        def hash_key_for(self, path):
+            return Path(path).stem
+
+    session = BOIntegrationSession(_config("maximize_and_minimize"), tmp_path)
+    maximize, minimize = session.ask_batch(1)
+
+    maximize_item = session.build_queue_items(Registry(), maximize)[0]
+    minimize_item = session.build_queue_items(Registry(), minimize)[0]
+
+    assert maximize_item["method_ref"]["mux_channel"] == 1
+    assert maximize_item["method_ref"]["channel_label"] == "1_max"
+    assert maximize_item["bo_ref"]["channel_label"] == "1_max"
+    assert minimize_item["method_ref"]["mux_channel"] == 1
+    assert minimize_item["method_ref"]["channel_label"] == "1_min"
+
+
+def test_dual_direction_metrics_are_saved_as_distinct_virtual_channels():
+    metrics = {
+        "1": {"peak_prominence": 2.0},
+        "1_max": {"peak_prominence": 5.0},
+        "1_min": {"peak_prominence": 3.0},
+    }
+
+    maximize = BOIntegrationSession._filter_metrics(metrics, [1], "maximize")
+    minimize = BOIntegrationSession._filter_metrics(metrics, [1], "minimize")
+
+    assert maximize == {"1_max": {"peak_prominence": 5.0}}
+    assert minimize == {"1_min": {"peak_prominence": 3.0}}
+
+
+def test_dual_direction_measurement_tag_keeps_physical_mux_and_virtual_channel():
+    class Session:
+        def next_meas_tag(self):
+            return "meas_20260824_1200_001"
+
+        def next_meas_tag_with_mux(self, mux_channel):
+            return f"ordinary_ch{mux_channel}"
+
+    tab = QueueTab.__new__(QueueTab)
+    tab._session = Session()
+    item = {
+        "method_ref": {"mux_channel": 1, "channel_label": "1_max"},
+        "bo_ref": {"optimization_direction": "maximize"},
+    }
+
+    assert tab._next_measurement_tag(item, 1) == "meas_20260824_1200_001_ch1_max"
+
+
+def test_results_label_displays_virtual_direction_channel():
+    observation = {
+        "group_id": 1,
+        "group_name": "Group 1",
+        "analysis_channels": ["1_min"],
+    }
+
+    assert BayesianOptimizationTab._observation_result_label(observation) == "ch1 min"
 
 
 def test_mixed_group_directions_survive_normalization_and_persistence(tmp_path):

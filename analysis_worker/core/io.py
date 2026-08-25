@@ -1,14 +1,14 @@
 import os
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
 FILENAME_RE = re.compile(
     r"^(?P<mode>swv|cv)_ch(?P<ch>\d+)_([0-9a-f]+)_meas_"
-    r"(?P<date>\d{8})_(?P<time>\d{4})_(?P<scan>\d+)_ch(?P<ch2>\d+)\.csv$",
+    r"(?P<date>\d{8})_(?P<time>\d{4})_(?P<scan>\d+)_ch(?P<ch2>\d+)(?:_(?P<direction>max|min))?\.csv$",
     re.IGNORECASE,
 )
 CHANNEL_RE = re.compile(r"(?:^|[_\-\s])ch(?:annel)?\s*0*(\d+)(?:\D|$)", re.IGNORECASE)
@@ -19,7 +19,7 @@ SCAN_RE = re.compile(r"(?:^|[_\-\s])meas[_\-\s].*?(\d+)(?:\D|$)", re.IGNORECASE)
 class MeasurementFile:
     mode: str
     scan: int
-    ch: int
+    ch: Any
     ts: int
     path: str
     folder_index: int
@@ -52,9 +52,11 @@ def collect_measurement_csvs_from_folders(
             if wanted_mode is not None and file_mode != wanted_mode:
                 continue
             if m:
-                ch = int(m.group("ch"))
-                if int(m.group("ch2")) != ch:
+                physical_ch = int(m.group("ch"))
+                if int(m.group("ch2")) != physical_ch:
                     continue
+                direction = str(m.group("direction") or "").lower()
+                ch = f"{physical_ch}_{direction}" if direction else physical_ch
                 scan = int(m.group("scan"))
                 ts = int(f"{m.group('date')}{m.group('time')}")
             else:
@@ -84,8 +86,8 @@ def collect_cv_csvs_from_folders(folders: List[str]) -> List[MeasurementFile]:
     return collect_measurement_csvs_from_folders(folders, mode="cv")
 
 
-def group_by_channel_and_sort(files: List[SWVFile]) -> Dict[int, List[SWVFile]]:
-    d: Dict[int, List[SWVFile]] = {}
+def group_by_channel_and_sort(files: List[SWVFile]) -> Dict[Any, List[SWVFile]]:
+    d: Dict[Any, List[SWVFile]] = {}
     for f in files:
         d.setdefault(f.ch, []).append(f)
     for ch in d:

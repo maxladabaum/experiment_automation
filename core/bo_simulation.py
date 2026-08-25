@@ -540,11 +540,24 @@ def run_optimizer_simulation(
     rows = []
     iterations_per_group = max(1, int(iterations))
     groups = channel_groups(cfg)
-    total_iterations = iterations_per_group * len(groups)
+    optimizer_count = sum(
+        2 if str(
+            group.get("optimization_direction")
+            or (cfg.get("acquisition") or {}).get("optimization_direction")
+            or "maximize"
+        ).strip().lower().replace(" ", "_") == "maximize_and_minimize" else 1
+        for group in groups
+    )
+    total_iterations = iterations_per_group * optimizer_count
     completed = 0
     for _iteration_index in range(iterations_per_group):
-        for group in groups:
-            suggestion = session.ask_next_for_group(group["id"])
+        for suggestion in session.ask_batch(1):
+            direction_part = (
+                f"_{suggestion.optimization_direction}"
+                if str(suggestion.optimization_direction) in {"maximize", "minimize"}
+                and optimizer_count > len(groups)
+                else ""
+            )
             if progress_callback:
                 progress_callback(
                     completed,
@@ -563,9 +576,9 @@ def run_optimizer_simulation(
                 session,
                 raw_dir,
                 analysis_output,
-                f"bo_g{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}",
+                f"bo_g{suggestion.group_id:02d}{direction_part}_iter_{suggestion.iteration:03d}",
                 dict(cfg.get("analysis") or {}),
-                request_name=f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_simulation_analysis_request.json",
+                request_name=f"group_{suggestion.group_id:02d}{direction_part}_iter_{suggestion.iteration:03d}_simulation_analysis_request.json",
             )
             path = _augment_analysis_summary(Path(summary["summary_path"]), simulation_payload)
             obs = session.import_analysis(path, notes="Simulation engine", suggestion=suggestion)
@@ -573,7 +586,7 @@ def run_optimizer_simulation(
             obs["swv_trace_preview"] = simulation_payload.get("swv_traces", {})
             session.observations[-1] = obs
             session._write_json(
-                session.analysis_dir / f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_quality.json",
+                session.analysis_dir / f"group_{suggestion.group_id:02d}{direction_part}_iter_{suggestion.iteration:03d}_quality.json",
                 obs,
             )
             session.save_state()
@@ -621,7 +634,15 @@ def run_paired_response_optimizer_simulation(
     batch_size = max(1, int(batch_size))
     groups = channel_groups(cfg)
     group_count = len(groups)
-    total_observations = total_cycles * batch_size * group_count
+    optimizer_count = sum(
+        2 if str(
+            group.get("optimization_direction")
+            or (cfg.get("acquisition") or {}).get("optimization_direction")
+            or "maximize"
+        ).strip().lower().replace(" ", "_") == "maximize_and_minimize" else 1
+        for group in groups
+    )
+    total_observations = total_cycles * batch_size * optimizer_count
     total_traces = total_observations * 2
     completed_observations = 0
     completed_traces = 0
@@ -637,8 +658,14 @@ def run_paired_response_optimizer_simulation(
             )
         buffered = []
         for suggestion_index, suggestion in enumerate(suggestions, start=1):
+            direction_part = (
+                f"_{suggestion.optimization_direction}"
+                if str(suggestion.optimization_direction) in {"maximize", "minimize"}
+                and optimizer_count > group_count
+                else ""
+            )
             batch_idx = ((int(suggestion.iteration) - 1) % batch_size) + 1
-            buffer_trace_number = (cycle_idx * batch_size * group_count * 2) + suggestion_index
+            buffer_trace_number = (cycle_idx * batch_size * optimizer_count * 2) + suggestion_index
             buffer_payload = engine.paired_analysis_payload(suggestion.params, suggestion.iteration, "buffer")
             _filter_simulation_payload_channels(buffer_payload, suggestion.channels)
             _annotate_paired_payload(buffer_payload, cycle_number, batch_idx, buffer_trace_number, "buffer")
@@ -654,9 +681,9 @@ def run_paired_response_optimizer_simulation(
                 session,
                 buffer_raw_dir,
                 analysis_output,
-                f"bo_g{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_buffer",
+                f"bo_g{suggestion.group_id:02d}{direction_part}_iter_{suggestion.iteration:03d}_buffer",
                 dict(cfg.get("analysis") or {}),
-                request_name=f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_buffer_simulation_analysis_request.json",
+                request_name=f"group_{suggestion.group_id:02d}{direction_part}_iter_{suggestion.iteration:03d}_buffer_simulation_analysis_request.json",
             )
             buffer_path = _augment_analysis_summary(
                 Path(buffer_summary["summary_path"]),
@@ -672,6 +699,7 @@ def run_paired_response_optimizer_simulation(
                     "bo_iteration": suggestion.iteration,
                     "group_id": suggestion.group_id,
                     "group_name": suggestion.group_name,
+                    "optimization_direction": suggestion.optimization_direction,
                     "path": str(buffer_path),
                 }
             )
@@ -690,8 +718,14 @@ def run_paired_response_optimizer_simulation(
                 f"Simulating paired cycle {cycle_number}/{total_cycles}: target batch",
             )
         for batch_idx, suggestion, buffer_payload, buffer_path, buffer_trace_number in buffered:
+            direction_part = (
+                f"_{suggestion.optimization_direction}"
+                if str(suggestion.optimization_direction) in {"maximize", "minimize"}
+                and optimizer_count > group_count
+                else ""
+            )
             target_trace_number = (
-                cycle_idx * batch_size * group_count * 2
+                cycle_idx * batch_size * optimizer_count * 2
                 + len(suggestions)
                 + len(targeted)
                 + 1
@@ -711,9 +745,9 @@ def run_paired_response_optimizer_simulation(
                 session,
                 target_raw_dir,
                 analysis_output,
-                f"bo_g{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_target",
+                f"bo_g{suggestion.group_id:02d}{direction_part}_iter_{suggestion.iteration:03d}_target",
                 dict(cfg.get("analysis") or {}),
-                request_name=f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_target_simulation_analysis_request.json",
+                request_name=f"group_{suggestion.group_id:02d}{direction_part}_iter_{suggestion.iteration:03d}_target_simulation_analysis_request.json",
             )
             target_path = _augment_analysis_summary(
                 Path(target_summary["summary_path"]),
@@ -729,6 +763,7 @@ def run_paired_response_optimizer_simulation(
                     "bo_iteration": suggestion.iteration,
                     "group_id": suggestion.group_id,
                     "group_name": suggestion.group_name,
+                    "optimization_direction": suggestion.optimization_direction,
                     "path": str(target_path),
                 }
             )
@@ -757,7 +792,7 @@ def run_paired_response_optimizer_simulation(
             obs["target_trace_number"] = target_trace_number
             session.observations[-1] = obs
             session._write_json(
-                session.analysis_dir / f"group_{suggestion.group_id:02d}_iter_{suggestion.iteration:03d}_paired_quality.json",
+                session.analysis_dir / f"{session._group_iteration_stem(suggestion.iteration, suggestion.group_id, suggestion.optimization_direction if optimizer_count > group_count else None)}_paired_quality.json",
                 obs,
             )
             session._write_history_csv()
@@ -931,6 +966,8 @@ def _row_from_observation(obs: dict) -> dict:
         "iteration": int(obs.get("iteration", 0)),
         "group_id": int(obs.get("group_id", 1)),
         "group_name": str(obs.get("group_name", "Group 1")),
+        "optimization_direction": str(obs.get("optimization_direction", "")),
+        "analysis_channels": list(obs.get("analysis_channels") or []),
         "paired_cycle": int(obs.get("paired_cycle", truth.get("paired_cycle", 0)) or 0),
         "paired_batch_index": int(obs.get("paired_batch_index", truth.get("paired_batch_index", 0)) or 0),
         "buffer_trace_number": int(obs.get("buffer_trace_number", 0) or 0),
