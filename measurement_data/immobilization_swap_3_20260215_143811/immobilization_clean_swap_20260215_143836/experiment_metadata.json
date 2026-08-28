@@ -1,8 +1,0 @@
-{
-  "experiment_name": "manual_clean_auto_immobilize",
-  "experiment_folder": "immobilization_clean_swap_20260215_143836",
-  "session_folder": "immobilization_swap_3_20260215_143811",
-  "notes": "trithiol amp0 on unknown used chip. Solvent cleaned beforehand. Manual EC3 and EC4 with auto immobilization. Cleaned system (line 8) with IPA soak prior to experiment.",
-  "started_at": "2026-02-15T14:38:36",
-  "ended_at": "2026-02-15T18:04:11"
-}
