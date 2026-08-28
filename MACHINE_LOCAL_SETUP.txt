@@ -1,0 +1,184 @@
+EXPERIMENT AUTOMATION - MACHINE-LOCAL SETUP
+============================================
+
+Purpose
+-------
+Use this guide when installing or repairing the software on another computer.
+Machine settings and user-generated data must live outside the Git repository
+so that Git pulls and branch changes do not overwrite them.
+
+
+1. LIVE CONFIGURATION FILE
+--------------------------
+
+Windows default:
+
+  %LOCALAPPDATA%\ExperimentAutomation\local_config.json
+
+Usually this expands to:
+
+  C:\Users\<windows-user>\AppData\Local\ExperimentAutomation\local_config.json
+
+Create the ExperimentAutomation directory if it does not exist. Copy
+local_config.example.json from the repository into that directory, rename it
+local_config.json, and edit the copy. Do not edit the example as the live
+machine configuration.
+
+The live configuration path can be changed with:
+
+  EA_LOCAL_CONFIG_PATH
+
+Configuration precedence, from highest to lowest:
+
+  1. Individual EA_* environment variables
+  2. The external local_config.json file
+  3. Safe defaults in config.py
+
+
+2. LOCAL DATA LAYOUT
+--------------------
+
+Use this layout for each Windows user:
+
+  %USERPROFILE%\Documents\Experiment Automation Data\
+      <session folders and saved measurements>
+      methods\
+          library\
+          archive\
+          library_map.json
+      recipe_maker\
+          custom_blocks\
+          saved_recipes\
+      bo_configs\
+          default_swv_bo.json
+          last_bo_setup_metadata.json
+
+The application writes last_bo_setup_metadata.json whenever BO settings are
+saved or a BO session is started. On the next launch, that snapshot supplies
+the default BO configuration and run-setup fields. It is machine-local and
+must not be committed to the repository.
+
+Recommended JSON paths:
+
+  "data_dir": "%USERPROFILE%\\Documents\\Experiment Automation Data",
+  "methods_dir": "%USERPROFILE%\\Documents\\Experiment Automation Data\\methods",
+  "recipe_dir": "%USERPROFILE%\\Documents\\Experiment Automation Data\\recipe_maker"
+
+If methods_dir or recipe_dir is omitted, the application derives it from
+data_dir. The default data_dir is the current user's Documents folder shown
+above. Never put another computer's absolute C:\Users\<name>\... path into the
+configuration.
+
+User measurements, methods, recipes, and custom blocks belong in this external
+data tree. Bundled default program resources remain in the Git repository.
+
+
+3. COMPLETED-QUEUE ARCHIVES
+---------------------------
+
+Set session_archive_dir to that computer's station-specific folder inside the
+shared network destination. Example:
+
+  "session_archive_dir": "\\\\100.82.216.111\\Data_Drive\\young_nephew(setup_3)"
+
+The share may also be mapped as Z:, but the UNC path is preferred because drive
+letter mappings can differ between Windows accounts and launch methods.
+
+Use a different named subfolder for each station. Do not point a station at the
+Data_Drive root unless files from all stations are intentionally being mixed.
+
+When a queue finishes, the application:
+
+  1. Creates a ZIP snapshot of the current local session.
+  2. Copies it to the shared directory using a temporary .part file.
+  3. Atomically publishes the completed ZIP.
+  4. Leaves the original local session intact.
+
+Running another queue in the same session republishes the session ZIP with the
+same name, replacing the older snapshot after the new ZIP is fully copied.
+
+
+4. HARDWARE SETTINGS
+--------------------
+
+Hardware ports are machine-specific. Discover and test them on each computer;
+do not blindly copy COM port numbers from another station.
+
+Example settings:
+
+  "pump_com_port": 12,
+  "pump_baud": 9600,
+  "pump_dev": 0,
+  "pump_steps": 100000,
+  "pump_syringe_ul": 1250.0,
+  "preferred_steps_per_stroke": 181490,
+  "preferred_syringe_ul": 250.0,
+  "potentiostat_port": "COM13",
+  "device_baudrate": 230400
+
+On the station used to create this guide:
+
+  Pump:         COM12, address 0, 9600 baud
+  Potentiostat: COM13, 230400 baud
+
+Verify ports in Windows Device Manager after connecting both devices. The pump
+and potentiostat can use similar FTDI USB serial adapters, so selecting the
+first detected serial device is not reliable.
+
+
+5. NEW-COMPUTER CHECKLIST
+-------------------------
+
+  [ ] Clone or update the Git repository.
+  [ ] Create the supported 32-bit GUI virtual environment as required by the
+      pump COM software.
+  [ ] If Bayesian optimization is used, create/verify its suitable Python
+      analysis environment as well.
+  [ ] Create the external local_config.json from local_config.example.json.
+  [ ] Create the Documents\Experiment Automation Data directory tree.
+  [ ] Confirm the BO config is under Documents\Experiment Automation Data\bo_configs,
+      not inside the GitHub checkout. The app creates default_swv_bo.json there
+      automatically if it is missing.
+  [ ] Copy any shared method library and saved recipes into the external tree.
+  [ ] Detect and configure the pump and potentiostat ports.
+  [ ] Verify the pump connects and physically responds to initialization.
+  [ ] Verify the potentiostat connects on its explicitly configured port.
+  [ ] Verify the Tailscale/UNC share is reachable and writable.
+  [ ] Start a test session and confirm measurement files remain local.
+  [ ] End a test queue and confirm its ZIP appears on the shared drive.
+
+
+6. FILES THAT SHOULD NOT BE COMMITTED
+-------------------------------------
+
+Do not commit:
+
+  - local_config.json containing live machine settings
+  - virtual environments such as venv_gui or .venv64
+  - measurements or session folders
+  - credentials, Slack tokens, or other secrets
+
+Do commit:
+
+  - local_config.example.json with generic placeholders
+  - this setup guide
+  - application source code and bundled default resources
+
+
+7. TROUBLESHOOTING
+------------------
+
+If startup mentions a different Windows username or an old Data_Drive path,
+inspect the effective external local_config.json and EA_* environment variables.
+Do not fix the problem by hardcoding that computer's path in config.py.
+
+If a configured path contains %USERPROFILE%, the application expands it for the
+current Windows user.
+
+If a network archive fails, local session data should remain available under:
+
+  %USERPROFILE%\Documents\Experiment Automation Data
+
+For the complete generic configuration schema, see:
+
+  local_config.example.json

@@ -1,0 +1,9 @@
+{
+  "analysis_output_dir": "analysis_outputs",
+  "analysis_file_glob": "*.json",
+  "analysis_mode": "external",
+  "analysis_project": ".",
+  "analysis_script": "analysis_worker/bo_headless.py",
+  "analysis_python": "C:\\Path\\To\\64-bit-Python\\python.exe",
+  "analysis_timeout_seconds": 900
+}

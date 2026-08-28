@@ -1,0 +1,2741 @@
+{
+  "metadata": {
+    "saved_at": "2026-04-10T15:10:58",
+    "version": 1
+  },
+  "items": [
+    {
+      "type": "PUMP_SET_SPEED",
+      "status": "pending",
+      "details": "Pump: Set Speed S15R",
+      "pump_action": {
+        "name": "SET_SPEED",
+        "params": {
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 3",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 3
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 6",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 6
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 6",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 6
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_73be50.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_73be50.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_d7c7d5.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_d7c7d5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_03615f.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_03615f.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_db0a9e.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_db0a9e.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_6d1e99.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_6d1e99.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_9e887b.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_9e887b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_24d407.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_24d407.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_7aef88.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_7aef88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_f864e0.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_f864e0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_ec76e8.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_ec76e8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_73be50.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_73be50.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_d7c7d5.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_d7c7d5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_03615f.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_03615f.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_db0a9e.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_db0a9e.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_6d1e99.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_6d1e99.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_9e887b.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_9e887b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_24d407.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_24d407.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_7aef88.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_7aef88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_f864e0.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_f864e0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_ec76e8.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_ec76e8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_73be50.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_73be50.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_d7c7d5.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_d7c7d5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_03615f.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_03615f.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_db0a9e.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_db0a9e.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_6d1e99.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_6d1e99.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_9e887b.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_9e887b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_24d407.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_24d407.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_7aef88.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_7aef88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_f864e0.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_f864e0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_ec76e8.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_ec76e8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_73be50.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_73be50.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_d7c7d5.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_d7c7d5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_03615f.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_03615f.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_db0a9e.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_db0a9e.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_6d1e99.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_6d1e99.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_9e887b.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_9e887b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_24d407.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_24d407.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_7aef88.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_7aef88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_f864e0.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_f864e0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_ec76e8.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_ec76e8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_73be50.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_73be50.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_d7c7d5.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_d7c7d5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_03615f.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_03615f.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_db0a9e.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_db0a9e.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_6d1e99.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_6d1e99.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_9e887b.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_9e887b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_24d407.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_24d407.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_7aef88.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_7aef88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_f864e0.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_f864e0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_ec76e8.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_ec76e8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_73be50.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_73be50.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_d7c7d5.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_d7c7d5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_03615f.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_03615f.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_db0a9e.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_db0a9e.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_6d1e99.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_6d1e99.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_9e887b.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_9e887b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_24d407.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_24d407.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_7aef88.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_7aef88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_f864e0.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_f864e0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_ec76e8.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_ec76e8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_73be50.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_73be50.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_d7c7d5.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_d7c7d5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_03615f.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_03615f.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_db0a9e.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_db0a9e.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_6d1e99.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_6d1e99.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_9e887b.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_9e887b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_24d407.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_24d407.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_7aef88.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_7aef88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_f864e0.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_f864e0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_ec76e8.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_ec76e8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_73be50.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_73be50.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_d7c7d5.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_d7c7d5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_03615f.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_03615f.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_db0a9e.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_db0a9e.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_6d1e99.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_6d1e99.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_9e887b.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_9e887b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_24d407.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_24d407.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_7aef88.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_7aef88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_f864e0.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_f864e0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_ec76e8.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_ec76e8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_73be50.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_73be50.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_d7c7d5.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_d7c7d5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_03615f.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_03615f.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_db0a9e.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_db0a9e.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_6d1e99.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_6d1e99.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_9e887b.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_9e887b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_24d407.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_24d407.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_7aef88.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_7aef88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_f864e0.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_f864e0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_ec76e8.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_ec76e8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_73be50.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_73be50.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_d7c7d5.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_d7c7d5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_03615f.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_03615f.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_db0a9e.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_db0a9e.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_6d1e99.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_6d1e99.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_9e887b.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_9e887b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_24d407.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_24d407.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_7aef88.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_7aef88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_f864e0.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_f864e0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_ec76e8.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_ec76e8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_66488a.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_66488a.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_ad6fef.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_ad6fef.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_9165d8.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_9165d8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_01d50b.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_01d50b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_ec77f0.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_ec77f0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_5cdd5c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_5cdd5c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_efd48b.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_efd48b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_2feff1.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_2feff1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_5be56c.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_5be56c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_d09e7b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_d09e7b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_66488a.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_66488a.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_ad6fef.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_ad6fef.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_9165d8.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_9165d8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_01d50b.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_01d50b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_ec77f0.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_ec77f0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_5cdd5c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_5cdd5c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_efd48b.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_efd48b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_2feff1.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_2feff1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_5be56c.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_5be56c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_d09e7b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_d09e7b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_66488a.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_66488a.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_ad6fef.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_ad6fef.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_9165d8.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_9165d8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_01d50b.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_01d50b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_ec77f0.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_ec77f0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_5cdd5c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_5cdd5c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_efd48b.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_efd48b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_2feff1.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_2feff1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_5be56c.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_5be56c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_d09e7b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_d09e7b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_66488a.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_66488a.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_ad6fef.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_ad6fef.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_9165d8.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_9165d8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_01d50b.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_01d50b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_ec77f0.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_ec77f0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_5cdd5c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_5cdd5c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_efd48b.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_efd48b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_2feff1.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_2feff1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_5be56c.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_5be56c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_d09e7b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_d09e7b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_66488a.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_66488a.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_ad6fef.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_ad6fef.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_9165d8.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_9165d8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_01d50b.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_01d50b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_ec77f0.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_ec77f0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_5cdd5c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_5cdd5c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_efd48b.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_efd48b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_2feff1.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_2feff1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_5be56c.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_5be56c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_d09e7b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_d09e7b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_66488a.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_66488a.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_ad6fef.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_ad6fef.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_9165d8.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_9165d8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_01d50b.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_01d50b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_ec77f0.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_ec77f0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_5cdd5c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_5cdd5c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_efd48b.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_efd48b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_2feff1.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_2feff1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_5be56c.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_5be56c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_d09e7b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_d09e7b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_66488a.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_66488a.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_ad6fef.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_ad6fef.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_9165d8.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_9165d8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_01d50b.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_01d50b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_ec77f0.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_ec77f0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_5cdd5c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_5cdd5c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_efd48b.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_efd48b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_2feff1.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_2feff1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_5be56c.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_5be56c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_d09e7b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_d09e7b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_66488a.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_66488a.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_ad6fef.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_ad6fef.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_9165d8.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_9165d8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_01d50b.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_01d50b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_ec77f0.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_ec77f0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_5cdd5c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_5cdd5c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_efd48b.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_efd48b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_2feff1.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_2feff1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_5be56c.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_5be56c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_d09e7b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_d09e7b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_66488a.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_66488a.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_ad6fef.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_ad6fef.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_9165d8.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_9165d8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_01d50b.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_01d50b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_ec77f0.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_ec77f0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_5cdd5c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_5cdd5c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_efd48b.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_efd48b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_2feff1.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_2feff1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_5be56c.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_5be56c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_d09e7b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_d09e7b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_66488a.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_66488a.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_ad6fef.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_ad6fef.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_9165d8.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_9165d8.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_01d50b.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_01d50b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_ec77f0.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_ec77f0.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_5cdd5c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_5cdd5c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_efd48b.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_efd48b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_2feff1.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_2feff1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_5be56c.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_5be56c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_d09e7b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_d09e7b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_4f5f63.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_4f5f63.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_411a4d.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_411a4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_32137c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_32137c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_dff7ed.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_dff7ed.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_b38369.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_b38369.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_cbbb1c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_cbbb1c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_245459.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_245459.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_6545d3.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_6545d3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_70b9ab.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_70b9ab.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_98082b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_98082b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_4f5f63.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_4f5f63.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_411a4d.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_411a4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_32137c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_32137c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_dff7ed.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_dff7ed.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_b38369.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_b38369.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_cbbb1c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_cbbb1c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_245459.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_245459.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_6545d3.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_6545d3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_70b9ab.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_70b9ab.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_98082b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_98082b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_4f5f63.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_4f5f63.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_411a4d.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_411a4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_32137c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_32137c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_dff7ed.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_dff7ed.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_b38369.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_b38369.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_cbbb1c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_cbbb1c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_245459.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_245459.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_6545d3.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_6545d3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_70b9ab.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_70b9ab.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_98082b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_98082b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_4f5f63.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_4f5f63.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_411a4d.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_411a4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_32137c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_32137c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_dff7ed.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_dff7ed.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_b38369.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_b38369.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_cbbb1c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_cbbb1c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_245459.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_245459.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_6545d3.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_6545d3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_70b9ab.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_70b9ab.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_98082b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_98082b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_4f5f63.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_4f5f63.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_411a4d.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_411a4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_32137c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_32137c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_dff7ed.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_dff7ed.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_b38369.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_b38369.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_cbbb1c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_cbbb1c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_245459.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_245459.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_6545d3.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_6545d3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_70b9ab.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_70b9ab.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_98082b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_98082b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_4f5f63.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_4f5f63.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_411a4d.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_411a4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_32137c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_32137c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_dff7ed.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_dff7ed.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_b38369.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_b38369.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_cbbb1c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_cbbb1c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_245459.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_245459.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_6545d3.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_6545d3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_70b9ab.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_70b9ab.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_98082b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_98082b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_4f5f63.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_4f5f63.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_411a4d.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_411a4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_32137c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_32137c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_dff7ed.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_dff7ed.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_b38369.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_b38369.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_cbbb1c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_cbbb1c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_245459.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_245459.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_6545d3.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_6545d3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_70b9ab.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_70b9ab.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_98082b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_98082b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_4f5f63.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_4f5f63.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_411a4d.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_411a4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_32137c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_32137c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_dff7ed.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_dff7ed.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_b38369.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_b38369.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_cbbb1c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_cbbb1c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_245459.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_245459.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_6545d3.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_6545d3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_70b9ab.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_70b9ab.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_98082b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_98082b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_4f5f63.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_4f5f63.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_411a4d.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_411a4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_32137c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_32137c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_dff7ed.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_dff7ed.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_b38369.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_b38369.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_cbbb1c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_cbbb1c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_245459.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_245459.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_6545d3.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_6545d3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_70b9ab.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_70b9ab.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_98082b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_98082b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_4f5f63.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_4f5f63.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_411a4d.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_411a4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_32137c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_32137c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_dff7ed.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_dff7ed.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_b38369.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_b38369.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_cbbb1c.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_cbbb1c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_245459.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_245459.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_6545d3.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_6545d3.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_70b9ab.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_70b9ab.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_98082b.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_98082b.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_d03e4d.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_d03e4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_79ea48.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_79ea48.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_67419c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_67419c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_23bb88.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_23bb88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_f3cbec.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_f3cbec.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_eeea15.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_eeea15.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_324648.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_324648.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_3982e5.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_3982e5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_870aa1.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_870aa1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_738d16.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_738d16.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_d03e4d.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_d03e4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_79ea48.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_79ea48.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_67419c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_67419c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_23bb88.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_23bb88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_f3cbec.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_f3cbec.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_eeea15.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_eeea15.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_324648.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_324648.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_3982e5.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_3982e5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_870aa1.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_870aa1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_738d16.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_738d16.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_d03e4d.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_d03e4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_79ea48.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_79ea48.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_67419c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_67419c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_23bb88.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_23bb88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_f3cbec.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_f3cbec.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_eeea15.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_eeea15.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_324648.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_324648.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_3982e5.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_3982e5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_870aa1.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_870aa1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_738d16.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_738d16.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_d03e4d.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_d03e4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_79ea48.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_79ea48.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_67419c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_67419c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_23bb88.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_23bb88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_f3cbec.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_f3cbec.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_eeea15.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_eeea15.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_324648.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_324648.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_3982e5.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_3982e5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_870aa1.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_870aa1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_738d16.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_738d16.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_d03e4d.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_d03e4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_79ea48.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_79ea48.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_67419c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_67419c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_23bb88.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_23bb88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_f3cbec.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_f3cbec.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_eeea15.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_eeea15.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_324648.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_324648.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_3982e5.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_3982e5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_870aa1.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_870aa1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_738d16.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_738d16.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_d03e4d.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_d03e4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_79ea48.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_79ea48.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_67419c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_67419c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_23bb88.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_23bb88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_f3cbec.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_f3cbec.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_eeea15.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_eeea15.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_324648.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_324648.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_3982e5.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_3982e5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_870aa1.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_870aa1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_738d16.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_738d16.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_d03e4d.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_d03e4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_79ea48.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_79ea48.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_67419c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_67419c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_23bb88.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_23bb88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_f3cbec.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_f3cbec.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_eeea15.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_eeea15.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_324648.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_324648.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_3982e5.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_3982e5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_870aa1.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_870aa1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_738d16.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_738d16.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_d03e4d.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_d03e4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_79ea48.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_79ea48.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_67419c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_67419c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_23bb88.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_23bb88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_f3cbec.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_f3cbec.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_eeea15.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_eeea15.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_324648.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_324648.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_3982e5.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_3982e5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_870aa1.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_870aa1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_738d16.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_738d16.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_d03e4d.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_d03e4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_79ea48.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_79ea48.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_67419c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_67419c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_23bb88.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_23bb88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_f3cbec.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_f3cbec.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_eeea15.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_eeea15.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_324648.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_324648.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_3982e5.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_3982e5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_870aa1.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_870aa1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_738d16.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_738d16.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch1_d03e4d.ms (MUX ch 1)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch1_d03e4d.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch2_79ea48.ms (MUX ch 2)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch2_79ea48.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch3_67419c.ms (MUX ch 3)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch3_67419c.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch4_23bb88.ms (MUX ch 4)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch4_23bb88.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch5_f3cbec.ms (MUX ch 5)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch5_f3cbec.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch6_eeea15.ms (MUX ch 6)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch6_eeea15.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch7_324648.ms (MUX ch 7)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch7_324648.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch8_3982e5.ms (MUX ch 8)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch8_3982e5.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch9_870aa1.ms (MUX ch 9)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch9_870aa1.ms"
+    },
+    {
+      "type": "SWV",
+      "status": "pending",
+      "details": "swv_ch10_738d16.ms (MUX ch 10)",
+      "script_path": "methods\\library\\mux_methods\\swv_ch10_738d16.ms"
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 3",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 3
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 225.0,
+          "speed": 15
+        }
+      }
+    }
+  ]
+}

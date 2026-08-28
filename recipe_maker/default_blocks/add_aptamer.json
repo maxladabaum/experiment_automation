@@ -1,0 +1,124 @@
+﻿{
+  "metadata": {
+    "block": "add_aptamer",
+    "description": "Aspirate aptamer/duplex from valve 7, dispense 100 µL to flow cell (valve 1), purge 85 µL to waste (valve 2), chase with 70 µL air (valve 9)",
+    "version": 1
+  },
+  "items": [
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 7",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 7
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 185.00 µL @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 185.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 100.00 µL @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 100.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 2",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 2
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 85.00 µL @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 85.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 9",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 9
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 70.00 µL @ S20R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 70.0,
+          "speed": 20
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve -> 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 70.00 µL @ S20R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 70.0,
+          "speed": 20
+        }
+      }
+    }
+  ]
+}

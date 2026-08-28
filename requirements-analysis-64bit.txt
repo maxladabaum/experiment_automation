@@ -1,0 +1,5 @@
+# Install these packages with a separate 64-bit Python interpreter.
+numpy
+pandas
+scipy
+pywavelets
