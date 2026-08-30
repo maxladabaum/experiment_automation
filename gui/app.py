@@ -12,6 +12,7 @@ All UI logic lives in the individual ``gui/tab_*.py`` files.
 
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox
 import tkinter as tk
@@ -39,7 +40,8 @@ from gui.tab_pump    import PumpTab
 from gui.tab_recipe_maker import RecipeMakerTab
 from gui.tab_bayesian_optimization import BayesianOptimizationTab
 from gui.tab_automated_titration import AutomatedTitrationTab
-from gui.widgets import ScrollableFrame
+from gui.help_content import TAB_GUIDES
+from gui.widgets import ScrollableFrame, attach_info_button
 
 try:
     from pump_gui import PumpCtrl, HAS_COM as PUMP_HAS_COM
@@ -108,6 +110,12 @@ class ElectrochemGUI:
             command=self._toggle_session_bar,
         )
         self._session_bar_toggle.pack(side="right", padx=6, pady=2)
+        self._bug_report_button = ttk.Button(
+            self._session_bar_resize_grip,
+            text="Report Bug",
+            command=self._open_bug_report_dialog,
+        )
+        self._bug_report_button.pack(side="right", padx=(0, 6), pady=2)
 
         self._session_bar_body = ttk.Frame(self._session_bar_frame)
         self._session_bar_body.pack(side="top", fill="both", expand=True)
@@ -155,6 +163,16 @@ class ElectrochemGUI:
             self._session_gated_tabs.insert(0, pump_frame)
 
         # ── Instantiate tabs ──────────────────────────────────────────────────
+        if PUMP_AVAILABLE:
+            self._add_tab_info(pump_frame, "Pump Control")
+        self._add_tab_info(method_frame, "Method Creation")
+        self._add_tab_info(script_frame, "Script Preview")
+        self._add_tab_info(queue_frame, "Queue & Execution")
+        self._add_tab_info(recipe_frame, "Recipe Maker")
+        self._add_tab_info(bo_frame, "Bayesian Optimization")
+        self._add_tab_info(titration_frame, "Automated Titration")
+        self._add_tab_info(plotter_frame, "Plotter")
+
         method_content = self._scrollable_tab_content(method_frame, min_width=980)
         recipe_content = self._scrollable_tab_content(recipe_frame, min_width=1080)
         pump_content = self._scrollable_tab_content(pump_frame, min_width=980) if PUMP_AVAILABLE else pump_frame
@@ -310,6 +328,140 @@ class ElectrochemGUI:
         scroller = ScrollableFrame(parent, min_width=min_width)
         scroller.pack(fill="both", expand=True)
         return scroller.content
+
+    def _add_tab_info(self, parent, tab_name: str):
+        bar = ttk.Frame(parent)
+        bar.pack(side="top", fill="x", padx=8, pady=(5, 0))
+        attach_info_button(
+            bar,
+            f"{tab_name} Guide",
+            TAB_GUIDES.get(tab_name, [(tab_name, ["No guide is available yet."])]),
+            size=20,
+        )
+
+    def _open_bug_report_dialog(self):
+        win = tk.Toplevel(self.root)
+        win.title("Report Bug")
+        win.transient(self.root)
+        win.resizable(True, True)
+        win.minsize(460, 300)
+
+        container = ttk.Frame(win, padding=12)
+        container.pack(fill="both", expand=True)
+        container.rowconfigure(1, weight=1)
+        container.columnconfigure(0, weight=1)
+
+        ttk.Label(container, text="Describe the problem:").grid(row=0, column=0, sticky="w")
+        text = tk.Text(container, height=9, wrap="word")
+        text.grid(row=1, column=0, sticky="nsew", pady=(6, 8))
+        text.focus_set()
+
+        status_var = tk.StringVar(value="")
+        ttk.Label(container, textvariable=status_var, foreground="#555").grid(
+            row=2, column=0, sticky="w"
+        )
+
+        actions = ttk.Frame(container)
+        actions.grid(row=3, column=0, sticky="e", pady=(10, 0))
+        cancel_btn = ttk.Button(actions, text="Cancel", command=win.destroy)
+        cancel_btn.pack(side="right")
+
+        def submit():
+            description = text.get("1.0", "end").strip()
+            if not description:
+                messagebox.showwarning(
+                    "Report Bug",
+                    "Type a short description before sending.",
+                    parent=win,
+                )
+                return
+
+            message = self._build_bug_report_message(description)
+            self._session_mgr.log("Bug report submitted from GUI.")
+            self._session_mgr.log(message)
+
+            slack_enabled = getattr(self._session_mgr, "_slack", None)
+            if not getattr(slack_enabled, "enabled", False):
+                messagebox.showwarning(
+                    "Slack Not Configured",
+                    "Bug report saved to the app log, but Slack is not configured on this machine.",
+                    parent=win,
+                )
+                return
+
+            send_btn.configure(state="disabled")
+            cancel_btn.configure(state="disabled")
+            status_var.set("Sending to Slack...")
+
+            def worker():
+                ok = self._session_mgr.notify_slack(message)
+                self.root.after(0, lambda: finish(ok))
+
+            def finish(ok: bool):
+                if ok:
+                    win.destroy()
+                    messagebox.showinfo(
+                        "Report Bug",
+                        "Bug report posted to Slack.",
+                        parent=self.root,
+                    )
+                    return
+                send_btn.configure(state="normal")
+                cancel_btn.configure(state="normal")
+                status_var.set("")
+                messagebox.showerror(
+                    "Report Bug",
+                    "Slack did not accept the bug report. It was saved to the app log.",
+                    parent=win,
+                )
+
+            threading.Thread(target=worker, daemon=True).start()
+
+        send_btn = ttk.Button(actions, text="Send to Slack", command=submit)
+        send_btn.pack(side="right", padx=(0, 6))
+
+    def _build_bug_report_message(self, description: str) -> str:
+        session_name = (
+            self._session_mgr.current_session_path.name
+            if self._session_mgr.current_session_path is not None
+            else "(none)"
+        )
+        experiment_name = (
+            self._session_mgr.current_experiment_path.name
+            if self._session_mgr.current_experiment_path is not None
+            else "(none)"
+        )
+        queue_status = self._safe_queue_status()
+        queue_summary = str(queue_status.get("state") or "unknown")
+        current_label = queue_status.get("current_label")
+        if current_label:
+            queue_summary = f"{queue_summary}: {current_label}"
+
+        return (
+            ":rotating_light: :bug: *BUG REPORT - Experiment Automation* :bug: :rotating_light:\n"
+            f":clock3: *Time:* {datetime.now().isoformat(timespec='seconds')}\n"
+            f":desktop_computer: *App version:* {APP_VERSION}\n"
+            f":round_pushpin: *Active tab:* {self._active_tab_name()}\n"
+            f":file_folder: *Session:* {session_name}\n"
+            f":test_tube: *Experiment:* {experiment_name}\n"
+            f":hourglass_flowing_sand: *Queue:* {queue_summary}\n\n"
+            f":memo: *Problem:*\n{description}"
+        )
+
+    def _active_tab_name(self) -> str:
+        try:
+            selected = self._nb.select()
+            if selected:
+                return self._nb.tab(selected, "text") or "(unknown)"
+        except Exception:
+            pass
+        return "(unknown)"
+
+    def _safe_queue_status(self) -> dict:
+        try:
+            return self._session.get_queue_status()
+        except Exception:
+            return {}
 
     def _log(self, msg: str):
         """Route log messages to the queue tab's log panel."""

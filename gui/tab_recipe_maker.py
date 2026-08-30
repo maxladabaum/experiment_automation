@@ -25,7 +25,8 @@ from config import (
     RECIPE_DIR,
 )
 from core.bo_session import load_bo_config, normalize_bo_config
-from gui.widgets import FlowFrame
+from gui.help_content import RECIPE_GUIDES
+from gui.widgets import FlowFrame, attach_info_button
 
 
 class RecipeMakerTab:
@@ -148,9 +149,29 @@ class RecipeMakerTab:
         bottom_nb.add(method_tab, text="Method Library")
         bottom_nb.add(block_tab, text="Blocks")
 
-        self._build_pump_editor(pump_tab)
-        self._build_method_library(method_tab)
-        self._build_blocks_library(block_tab)
+        self._add_recipe_info_button(pump_tab, "Recipe Pump Steps Guide", "pump")
+        self._add_recipe_info_button(method_tab, "Recipe Method Library Guide", "methods")
+        self._add_recipe_info_button(block_tab, "Recipe Blocks Guide", "blocks")
+        pump_body = ttk.Frame(pump_tab)
+        method_body = ttk.Frame(method_tab)
+        block_body = ttk.Frame(block_tab)
+        pump_body.pack(fill="both", expand=True)
+        method_body.pack(fill="both", expand=True)
+        block_body.pack(fill="both", expand=True)
+
+        self._build_pump_editor(pump_body)
+        self._build_method_library(method_body)
+        self._build_blocks_library(block_body)
+
+    def _add_recipe_info_button(self, parent, title: str, guide_key: str):
+        bar = ttk.Frame(parent)
+        bar.pack(side="top", fill="x", padx=6, pady=(4, 0))
+        attach_info_button(
+            bar,
+            title,
+            RECIPE_GUIDES.get(guide_key, [(title, ["No guide is available yet."])]),
+            size=18,
+        )
 
     def _legend_chip(self, parent, color: str, text: str):
         swatch = tk.Canvas(parent, width=12, height=12, highlightthickness=0)

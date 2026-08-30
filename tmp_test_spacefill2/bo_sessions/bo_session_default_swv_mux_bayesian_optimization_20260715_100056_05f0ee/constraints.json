@@ -1,8 +1,0 @@
-{
-  "min_scan_window": 0.25,
-  "max_effective_scan_rate": 5.0,
-  "max_amplitude": 0.5,
-  "conditioning_must_be_in_scan_window": false,
-  "require_end_after_begin": true,
-  "conditioning_potential_tied_by_default": true
-}

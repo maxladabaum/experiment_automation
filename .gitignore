@@ -2,10 +2,13 @@ venv_gui/
 .venv64/
 __pycache__/
 *.pyc
+.pytest_cache/
 .DS_Store
 *.log
 local_config.json
 measurement_data/*
+tmp_test_spacefill*/
+*_screenshot.png
 methods/library/mux_methods/*
 analysis_outputs/
 bo_simulations/

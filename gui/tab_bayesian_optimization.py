@@ -60,7 +60,8 @@ from core.bo_simulation import LANDSCAPE_TYPES, default_dimensions, run_optimize
 from core.analysis import analyze_swv_arrays, partial_traces_for_failure_arrays
 from core.analysis_io import load_swv_csv
 from core.swv_method import EMSTAT_PICO_HIGH_SPEED_BA_RANGES, normalize_swv_ba_range_options, range_labels
-from gui.widgets import FlowFrame, ScrollableFrame
+from gui.help_content import BO_GUIDES
+from gui.widgets import FlowFrame, ScrollableFrame, attach_info_button, grid_info_button
 
 
 class BayesianOptimizationTab:
@@ -412,6 +413,11 @@ class BayesianOptimizationTab:
         self._tabs.add(simulation, text="Simulation Engine")
         self._tabs.add(results, text="Results & Records")
 
+        self._add_bo_info_button(setup, "BO Setup Guide", "setup")
+        self._add_bo_info_button(run, "BO Run Guide", "run")
+        self._add_bo_info_button(simulation, "BO Simulation Guide", "simulation")
+        self._add_bo_info_button(results, "BO Results Guide", "results")
+
         self._build_setup_tab(setup)
         self._build_run_tab(run)
         self._build_simulation_tab(simulation)
@@ -419,6 +425,16 @@ class BayesianOptimizationTab:
 
         status = ttk.Label(root, textvariable=self._status_var, relief="sunken")
         status.pack(side="bottom", fill="x", padx=8, pady=(0, 8))
+
+    def _add_bo_info_button(self, parent, title: str, guide_key: str):
+        bar = ttk.Frame(parent)
+        bar.pack(side="top", fill="x", padx=8, pady=(5, 0))
+        attach_info_button(
+            bar,
+            title,
+            BO_GUIDES.get(guide_key, [(title, ["No guide is available yet."])]),
+            size=18,
+        )
 
     def _configure_styles(self):
         self._style.configure(
@@ -543,6 +559,7 @@ class BayesianOptimizationTab:
         cfg = ttk.LabelFrame(left, text="Configuration and Analysis Output", padding=8)
         cfg.pack(fill="x", pady=(0, 8))
         cfg.columnconfigure(1, weight=1)
+        grid_info_button(cfg, "BO Configuration Guide", BO_GUIDES["config"], row=0, column=5)
         ttk.Label(cfg, text="BO config:").grid(row=0, column=0, sticky="w", pady=2)
         ttk.Entry(cfg, textvariable=self._config_path_var).grid(row=0, column=1, sticky="ew", padx=4)
         ttk.Button(cfg, text="Browse", command=self._browse_config).grid(row=0, column=2, padx=2)
@@ -760,6 +777,7 @@ class BayesianOptimizationTab:
         for child in algo_box.winfo_children():
             child.destroy()
         algo_box.configure(text="Optimizer Behavior by Group")
+        attach_info_button(algo_box, "BO Optimizer Behavior Guide", BO_GUIDES["optimizer"])
         self._bo_group_optimizer_panels_frame = ttk.Frame(algo_box)
         self._bo_group_optimizer_panels_frame.pack(fill="x")
         self._rebuild_bo_group_optimizer_panels()
@@ -827,6 +845,7 @@ class BayesianOptimizationTab:
 
         params = ttk.LabelFrame(params_host, text="Parameter Space", padding=8)
         params.pack(fill="both", expand=True)
+        attach_info_button(params, "BO Parameter Space Guide", BO_GUIDES["parameter_space"])
         toolbar = ttk.Frame(params)
         toolbar.pack(fill="x", pady=(0, 6))
         ttk.Button(toolbar, text="Edit Selected", command=self._edit_selected_parameter).pack(side="left", padx=2)
@@ -876,6 +895,7 @@ class BayesianOptimizationTab:
         self._normal_scoring_frame = scoring_box
         scoring_scroll._bind_mousewheel(scoring_box)
         scoring_box.pack(fill="both", expand=True, pady=(0, 8), padx=2)
+        grid_info_button(scoring_box, "BO Q Scoring Guide", BO_GUIDES["q_scoring"], row=0, column=6)
         self._build_q_scoring_controls(
             scoring_box,
             self._setup_scoring_vars(),
@@ -886,6 +906,7 @@ class BayesianOptimizationTab:
         paired_scoring_box = ttk.LabelFrame(scoring_content, text="Paired Q Scoring", padding=8)
         self._paired_scoring_frame = paired_scoring_box
         scoring_scroll._bind_mousewheel(paired_scoring_box)
+        grid_info_button(paired_scoring_box, "Paired Q Scoring Guide", BO_GUIDES["q_scoring"], row=0, column=4)
         self._build_paired_q_scoring_controls(
             paired_scoring_box,
             vars_by_name=self._paired_scoring_vars(),
@@ -898,6 +919,7 @@ class BayesianOptimizationTab:
         analysis_box.pack(fill="both", expand=True, pady=(0, 8), padx=2)
         for idx in range(4):
             analysis_box.columnconfigure(idx, weight=1 if idx in (1, 3) else 0)
+        grid_info_button(analysis_box, "BO Analysis Settings Guide", BO_GUIDES["analysis"], row=0, column=4)
         ttk.Label(analysis_box, text="Crop min/max (V):").grid(row=0, column=0, sticky="w", pady=2)
         ttk.Entry(analysis_box, textvariable=self._analysis_crop_min_var, width=8).grid(row=0, column=1, sticky="w", padx=(4, 2))
         ttk.Entry(analysis_box, textvariable=self._analysis_crop_max_var, width=8).grid(row=0, column=1, sticky="e", padx=(2, 4))
@@ -941,6 +963,7 @@ class BayesianOptimizationTab:
         parent = scroller.content
         controls = ttk.LabelFrame(parent, text="Manual Closed Loop", padding=8)
         controls.pack(fill="x", padx=4, pady=(4, 8))
+        attach_info_button(controls, "Manual BO Loop Guide", BO_GUIDES["manual"])
         manual_bar = FlowFrame(controls)
         manual_bar.pack(fill="x")
         manual_bar.add(ttk.Button(manual_bar, text="Suggest Next Method", command=self._suggest_next))
@@ -953,6 +976,7 @@ class BayesianOptimizationTab:
 
         auto = ttk.LabelFrame(parent, text="Auto Loop", padding=8)
         auto.pack(fill="x", padx=4, pady=(0, 8))
+        attach_info_button(auto, "BO Auto Loop Guide", BO_GUIDES["auto"])
         auto_bar = FlowFrame(auto)
         auto_bar.pack(fill="x")
         auto_bar.add(ttk.Label(auto_bar, text="Total target iterations:"))
@@ -1013,6 +1037,7 @@ class BayesianOptimizationTab:
         setup_scroll.pack(fill="both", expand=True)
         setup_box = ttk.LabelFrame(setup_scroll.content, text="Simulation Setup", padding=10)
         setup_box.pack(fill="both", expand=True)
+        attach_info_button(setup_box, "Simulation Setup Guide", BO_GUIDES["sim_setup"])
         mode_box = ttk.LabelFrame(setup_box, text="Simulation Type", padding=8)
         mode_box.pack(fill="x", pady=(0, 8))
         ttk.Radiobutton(
@@ -1195,6 +1220,7 @@ class BayesianOptimizationTab:
 
         dims_box = ttk.LabelFrame(landscape_page, text="Synthetic Parameter Landscape Map", padding=8)
         dims_box.pack(fill="both", expand=True)
+        attach_info_button(dims_box, "Simulation Landscape Guide", BO_GUIDES["sim_landscape"])
         dims_split = ttk.PanedWindow(dims_box, orient=tk.HORIZONTAL)
         dims_split.pack(fill="both", expand=True)
 
@@ -1242,6 +1268,7 @@ class BayesianOptimizationTab:
 
         model_box = ttk.LabelFrame(model_page, text="Synthetic SWV Model", padding=8)
         model_box.pack(fill="both", expand=True)
+        attach_info_button(model_box, "Simulation Signal Model Guide", BO_GUIDES["sim_model"])
         model_grid = ttk.Frame(model_box)
         model_grid.pack(fill="x")
         model_entries = [
@@ -1322,6 +1349,7 @@ class BayesianOptimizationTab:
         detail_box = ttk.LabelFrame(results, text="Simulation Window", padding=6)
         results.add(plot_box, weight=3)
         results.add(detail_box, weight=2)
+        attach_info_button(plot_box, "Simulation Results Guide", BO_GUIDES["simulation"])
 
         result_toolbar = ttk.Frame(plot_box)
         result_toolbar.pack(fill="x", pady=(0, 4))
@@ -1394,6 +1422,7 @@ class BayesianOptimizationTab:
         best_box = ttk.LabelFrame(top, text="Raw SWV Traces for Selected Iteration", padding=6)
         top.add(score_box, minsize=260, stretch="always")
         top.add(best_box, minsize=260, stretch="always")
+        attach_info_button(score_box, "BO Scores Guide", BO_GUIDES["results"])
 
         score_tree_frame = ttk.Frame(score_box)
         score_tree_frame.pack(fill="both", expand=True)
@@ -1459,6 +1488,7 @@ class BayesianOptimizationTab:
         corrected_box = ttk.LabelFrame(middle, text="Smoothed Corrected Traces for Selected Iteration", padding=6)
         middle.add(history_host, minsize=260, stretch="always")
         middle.add(corrected_box, minsize=260, stretch="always")
+        attach_info_button(history_host, "BO History and Trend Guide", BO_GUIDES["history"])
 
         self._history_tabs = ttk.Notebook(history_host)
         self._history_tabs.pack(fill="both", expand=True)
@@ -1552,6 +1582,7 @@ class BayesianOptimizationTab:
 
         rescore_box = ttk.LabelFrame(q_rescore_left, text="Rescore Recorded Data", padding=8)
         rescore_box.pack(fill="both", expand=True)
+        attach_info_button(rescore_box, "BO Rescore Guide", BO_GUIDES["rescore"])
         rescore_canvas = tk.Canvas(rescore_box, highlightthickness=0, borderwidth=0)
         rescore_scrollbar = ttk.Scrollbar(rescore_box, orient="vertical", command=rescore_canvas.yview)
         rescore_content = ttk.Frame(rescore_canvas)
@@ -1623,6 +1654,7 @@ class BayesianOptimizationTab:
 
         surrogate_box = ttk.LabelFrame(bottom, text="Surrogate View", padding=6)
         bottom.add(surrogate_box, minsize=260, stretch="always")
+        attach_info_button(surrogate_box, "BO Surrogate View Guide", BO_GUIDES["surrogate"])
         self._build_surrogate_view(surrogate_box)
         parent.after_idle(self._balance_results_trace_panes)
 

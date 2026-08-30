@@ -130,6 +130,146 @@ class ScrollableFrame(ttk.Frame):
         self._canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
 
+def show_guide_dialog(parent, title: str, sections, *, width=760, height=620):
+    """Open a scrollable step-by-step guide dialog."""
+    root = parent.winfo_toplevel()
+    win = tk.Toplevel(root)
+    win.title(title)
+    win.transient(root)
+    win.resizable(True, True)
+    win.minsize(620, 460)
+
+    container = ttk.Frame(win, padding=14)
+    container.pack(fill="both", expand=True)
+    container.rowconfigure(1, weight=1)
+    container.columnconfigure(0, weight=1)
+
+    header = ttk.Frame(container)
+    header.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+    header.columnconfigure(0, weight=1)
+    ttk.Label(
+        header,
+        text=title,
+        font=("Arial", 15, "bold"),
+    ).pack(side="left")
+    ttk.Label(
+        header,
+        text="Help only — this window does not change settings or start a run.",
+        foreground="#555555",
+        font=("Arial", 10),
+    ).pack(side="right")
+
+    text_frame = ttk.Frame(container)
+    text_frame.grid(row=1, column=0, sticky="nsew")
+    text_frame.rowconfigure(0, weight=1)
+    text_frame.columnconfigure(0, weight=1)
+
+    guide_text = tk.Text(
+        text_frame,
+        wrap="word",
+        font=("Arial", 11),
+        padx=14,
+        pady=12,
+        height=24,
+        spacing1=1,
+        spacing3=4,
+    )
+    guide_text.grid(row=0, column=0, sticky="nsew")
+    yscroll = ttk.Scrollbar(text_frame, orient="vertical", command=guide_text.yview)
+    yscroll.grid(row=0, column=1, sticky="ns")
+    guide_text.configure(yscrollcommand=yscroll.set)
+    guide_text.tag_configure("section", font=("Arial", 13, "bold"), spacing1=12, spacing3=6)
+    guide_text.tag_configure("body", font=("Arial", 11), spacing3=4)
+    guide_text.tag_configure("step", font=("Arial", 11), lmargin1=8, lmargin2=22, spacing3=4)
+
+    for section_title, lines in sections:
+        guide_text.insert("end", f"{section_title}\n", "section")
+        for line in lines:
+            tag = "step" if str(line).lstrip()[:1].isdigit() else "body"
+            guide_text.insert("end", f"{line}\n", tag)
+        guide_text.insert("end", "\n")
+    guide_text.configure(state="disabled")
+
+    ttk.Button(container, text="Close", command=win.destroy).grid(
+        row=2, column=0, sticky="e", pady=(10, 0)
+    )
+    _center_child_window(root, win, width=width, height=height)
+    return win
+
+
+def _center_child_window(root, win, *, width=760, height=620):
+    try:
+        root.update_idletasks()
+        root_x = root.winfo_rootx()
+        root_y = root.winfo_rooty()
+        root_w = max(1, root.winfo_width())
+        root_h = max(1, root.winfo_height())
+        x = root_x + max(0, (root_w - width) // 2)
+        y = root_y + max(0, (root_h - height) // 2)
+        win.geometry(f"{width}x{height}+{x}+{y}")
+    except Exception:
+        win.geometry(f"{width}x{height}")
+
+
+class InfoButton(tk.Canvas):
+    """A compact circular info icon that opens help when clicked."""
+
+    def __init__(self, parent, *, size=20, command=None, **kwargs):
+        super().__init__(
+            parent,
+            width=size,
+            height=size,
+            highlightthickness=0,
+            borderwidth=0,
+            cursor="hand2" if command is not None else "question_arrow",
+            **kwargs,
+        )
+        self._size = int(size)
+        self._command = command
+        self._fill = "#eef6ff"
+        self._outline = "#2f6f9f"
+        self.configure(background=self._background(parent))
+        self._draw()
+        self.bind("<Enter>", lambda _e: self._redraw(fill="#dceeff"), add="+")
+        self.bind("<Leave>", lambda _e: self._redraw(fill="#eef6ff"), add="+")
+        self.bind("<ButtonRelease-1>", self._on_click, add="+")
+
+    def _draw(self):
+        self.delete("all")
+        pad = 2
+        self.create_oval(
+            pad,
+            pad,
+            self._size - pad,
+            self._size - pad,
+            fill=self._fill,
+            outline=self._outline,
+            width=1,
+        )
+        self.create_text(
+            self._size // 2,
+            self._size // 2,
+            text="i",
+            fill="#2f6f9f",
+            font=("TkDefaultFont", 9, "bold"),
+        )
+
+    def _redraw(self, *, fill):
+        self._fill = fill
+        self._draw()
+
+    def _on_click(self, _event=None):
+        if self._command is not None:
+            self._command()
+
+    @staticmethod
+    def _background(parent):
+        try:
+            return parent.cget("background")
+        except Exception:
+            return "#f0f0f0"
+
+
 class FlowFrame(ttk.Frame):
     """A simple wrapping container for rows of buttons and compact controls."""
 
@@ -165,3 +305,61 @@ class FlowFrame(ttk.Frame):
             x += req_w + self._hgap
             row_h = max(row_h, req_h)
         self.configure(height=y + row_h)
+
+
+def attach_info_button(
+    parent,
+    title,
+    sections,
+    *,
+    side="right",
+    padx=4,
+    pady=2,
+    size=18,
+):
+    """Pack a compact click-only i that opens the guide dialog."""
+
+    def _open():
+        show_guide_dialog(parent, title, sections)
+
+    btn = InfoButton(parent, size=size, command=_open)
+    btn.pack(side=side, padx=padx, pady=pady)
+    return btn
+
+
+def grid_info_button(
+    parent,
+    title,
+    sections,
+    *,
+    row=0,
+    column=99,
+    sticky="ne",
+    padx=2,
+    pady=2,
+    size=18,
+):
+    """Grid a compact click-only i that opens the guide dialog."""
+
+    def _open():
+        show_guide_dialog(parent, title, sections)
+
+    btn = InfoButton(parent, size=size, command=_open)
+    btn.grid(row=row, column=column, sticky=sticky, padx=padx, pady=pady)
+    return btn
+
+
+def attach_step_strip(parent, steps, *, sections=None, info_title="Help"):
+    """Numbered on-screen order, with an optional i for the longer guide."""
+    wrap = ttk.LabelFrame(parent, text="Do this in order", padding=6)
+    wrap.pack(fill="x", padx=4, pady=(4, 8))
+    row = FlowFrame(wrap)
+    row.pack(fill="x")
+    for index, step in enumerate(steps, 1):
+        row.add(ttk.Label(row, text=f"{index}. {step}", font=("Arial", 10, "bold")))
+    if sections:
+        def _open():
+            show_guide_dialog(parent, info_title, sections)
+
+        row.add(InfoButton(row, size=18, command=_open))
+    return wrap
