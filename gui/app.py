@@ -10,6 +10,7 @@ All business logic lives in the ``core/`` modules.
 All UI logic lives in the individual ``gui/tab_*.py`` files.
 """
 
+import json
 import threading
 import time
 from datetime import datetime
@@ -51,6 +52,62 @@ except ImportError:
     PUMP_HAS_COM   = False
     PUMP_AVAILABLE = False
     print("Warning: pump backend not found — pump features disabled.")
+
+
+BUG_URGENCY_LEVELS = (
+    {
+        "key": "critical",
+        "label": "Critical",
+        "color": "#b91c1c",
+        "emoji": ":red_circle:",
+        "description": "Blocking run, data loss, unsafe behavior, or app cannot recover.",
+    },
+    {
+        "key": "urgent",
+        "label": "Urgent",
+        "color": "#d97706",
+        "emoji": ":large_orange_circle:",
+        "description": "Important workflow problem that should be looked at soon.",
+    },
+    {
+        "key": "normal",
+        "label": "Normal",
+        "color": "#2563eb",
+        "emoji": ":large_blue_circle:",
+        "description": "Bug is real, but there is a workaround or it is not blocking.",
+    },
+    {
+        "key": "not_urgent",
+        "label": "Not urgent",
+        "color": "#15803d",
+        "emoji": ":large_green_circle:",
+        "description": "Small issue, wording problem, polish, or later cleanup.",
+    },
+)
+BUG_URGENCY_BY_KEY = {item["key"]: item for item in BUG_URGENCY_LEVELS}
+
+SESSION_METADATA_LABELS = (
+    ("session_name", "Session name"),
+    ("session_folder", "Session folder"),
+    ("user", "User"),
+    ("notes", "Session notes"),
+    ("timestamp_suffix_enabled", "Session timestamp suffix"),
+    ("started_at", "Session started"),
+    ("ended_at", "Session ended"),
+    ("software_version", "Session software version"),
+)
+
+EXPERIMENT_METADATA_LABELS = (
+    ("experiment_name", "Experiment name"),
+    ("experiment_folder", "Experiment folder"),
+    ("chip_id", "Chip ID"),
+    ("aptamer_type", "Aptamer type"),
+    ("polymer_type", "Polymer type"),
+    ("notes", "Experiment notes"),
+    ("timestamp_suffix_enabled", "Experiment timestamp suffix"),
+    ("started_at", "Experiment started"),
+    ("ended_at", "Experiment ended"),
+)
 
 
 class ElectrochemGUI:
@@ -344,25 +401,58 @@ class ElectrochemGUI:
         win.title("Report Bug")
         win.transient(self.root)
         win.resizable(True, True)
-        win.minsize(460, 300)
+        win.minsize(560, 390)
 
         container = ttk.Frame(win, padding=12)
         container.pack(fill="both", expand=True)
-        container.rowconfigure(1, weight=1)
+        container.rowconfigure(3, weight=1)
         container.columnconfigure(0, weight=1)
 
-        ttk.Label(container, text="Describe the problem:").grid(row=0, column=0, sticky="w")
+        ttk.Label(container, text="Urgency:").grid(row=0, column=0, sticky="w")
+        urgency_var = tk.StringVar(value="normal")
+        urgency_frame = ttk.Frame(container)
+        urgency_frame.grid(row=1, column=0, sticky="ew", pady=(6, 10))
+        for col, item in enumerate(BUG_URGENCY_LEVELS):
+            urgency_frame.columnconfigure(col, weight=1)
+            btn = tk.Radiobutton(
+                urgency_frame,
+                text=item["label"],
+                variable=urgency_var,
+                value=item["key"],
+                indicatoron=False,
+                borderwidth=1,
+                relief="raised",
+                overrelief="ridge",
+                padx=10,
+                pady=5,
+                background=item["color"],
+                foreground="white",
+                activebackground=item["color"],
+                activeforeground="white",
+                selectcolor=item["color"],
+                font=("TkDefaultFont", 9, "bold"),
+            )
+            btn.grid(row=0, column=col, sticky="ew", padx=(0 if col == 0 else 6, 0))
+            ttk.Label(
+                urgency_frame,
+                text=item["description"],
+                wraplength=125,
+                justify="center",
+                foreground="#555",
+            ).grid(row=1, column=col, sticky="n", padx=(0 if col == 0 else 6, 0), pady=(3, 0))
+
+        ttk.Label(container, text="Describe the problem:").grid(row=2, column=0, sticky="w")
         text = tk.Text(container, height=9, wrap="word")
-        text.grid(row=1, column=0, sticky="nsew", pady=(6, 8))
+        text.grid(row=3, column=0, sticky="nsew", pady=(6, 8))
         text.focus_set()
 
         status_var = tk.StringVar(value="")
         ttk.Label(container, textvariable=status_var, foreground="#555").grid(
-            row=2, column=0, sticky="w"
+            row=4, column=0, sticky="w"
         )
 
         actions = ttk.Frame(container)
-        actions.grid(row=3, column=0, sticky="e", pady=(10, 0))
+        actions.grid(row=5, column=0, sticky="e", pady=(10, 0))
         cancel_btn = ttk.Button(actions, text="Cancel", command=win.destroy)
         cancel_btn.pack(side="right")
 
@@ -376,7 +466,7 @@ class ElectrochemGUI:
                 )
                 return
 
-            message = self._build_bug_report_message(description)
+            message = self._build_bug_report_message(description, urgency_var.get())
             self._session_mgr.log("Bug report submitted from GUI.")
             self._session_mgr.log(message)
 
@@ -420,7 +510,8 @@ class ElectrochemGUI:
         send_btn = ttk.Button(actions, text="Send to Slack", command=submit)
         send_btn.pack(side="right", padx=(0, 6))
 
-    def _build_bug_report_message(self, description: str) -> str:
+    def _build_bug_report_message(self, description: str, urgency_key: str = "normal") -> str:
+        urgency = BUG_URGENCY_BY_KEY.get(urgency_key, BUG_URGENCY_BY_KEY["normal"])
         session_name = (
             self._session_mgr.current_session_path.name
             if self._session_mgr.current_session_path is not None
@@ -438,15 +529,91 @@ class ElectrochemGUI:
             queue_summary = f"{queue_summary}: {current_label}"
 
         return (
-            ":rotating_light: :bug: *BUG REPORT - Experiment Automation* :bug: :rotating_light:\n"
+            f"{urgency['emoji']} :bug: *{urgency['label'].upper()} BUG REPORT - Experiment Automation* :bug: {urgency['emoji']}\n"
+            f"{urgency['emoji']} *Urgency:* {urgency['label']}\n"
             f":clock3: *Time:* {datetime.now().isoformat(timespec='seconds')}\n"
             f":desktop_computer: *App version:* {APP_VERSION}\n"
             f":round_pushpin: *Active tab:* {self._active_tab_name()}\n"
             f":file_folder: *Session:* {session_name}\n"
             f":test_tube: *Experiment:* {experiment_name}\n"
             f":hourglass_flowing_sand: *Queue:* {queue_summary}\n\n"
+            f"{self._bug_report_metadata_block(queue_status)}\n\n"
             f":memo: *Problem:*\n{description}"
         )
+
+    def _bug_report_metadata_block(self, queue_status: dict) -> str:
+        session_meta = self._safe_metadata(self._session_mgr.session_metadata)
+        experiment_meta = self._safe_metadata(self._session_mgr.experiment_metadata)
+        lines = [":clipboard: *Attached metadata:*"]
+
+        lines.extend(self._metadata_lines("Session metadata", session_meta, SESSION_METADATA_LABELS))
+        session_path = self._session_mgr.current_session_path
+        if session_path is not None:
+            lines.append(f"- *Session path:* {self._bug_report_value(session_path)}")
+        else:
+            lines.append("- *Session path:* (none)")
+
+        lines.extend(self._metadata_lines("Experiment metadata", experiment_meta, EXPERIMENT_METADATA_LABELS))
+        experiment_path = self._session_mgr.current_experiment_path
+        if experiment_path is not None:
+            lines.append(f"- *Experiment path:* {self._bug_report_value(experiment_path)}")
+        else:
+            lines.append("- *Experiment path:* (none)")
+
+        if queue_status:
+            lines.append("*Queue metadata:*")
+            for key in sorted(queue_status):
+                lines.append(
+                    f"- *{self._metadata_label(key)}:* {self._bug_report_value(queue_status.get(key))}"
+                )
+        else:
+            lines.append("*Queue metadata:* (unavailable)")
+
+        return "\n".join(lines)
+
+    def _metadata_lines(self, title: str, metadata: dict, preferred_labels) -> list[str]:
+        lines = [f"*{title}:*"]
+        if not metadata:
+            lines.append("- (none)")
+            return lines
+
+        seen = set()
+        for key, label in preferred_labels:
+            if key in metadata:
+                lines.append(f"- *{label}:* {self._bug_report_value(metadata.get(key))}")
+                seen.add(key)
+
+        for key in sorted(k for k in metadata if k not in seen):
+            lines.append(f"- *{self._metadata_label(key)}:* {self._bug_report_value(metadata.get(key))}")
+        return lines
+
+    @staticmethod
+    def _metadata_label(key: str) -> str:
+        return str(key).replace("_", " ").strip().title() or "Metadata"
+
+    @staticmethod
+    def _safe_metadata(getter) -> dict:
+        try:
+            data = getter()
+        except Exception as exc:
+            return {"metadata_error": str(exc)}
+        return data if isinstance(data, dict) else {}
+
+    @staticmethod
+    def _bug_report_value(value) -> str:
+        if value is None:
+            return "(blank)"
+        if isinstance(value, Path):
+            text = str(value)
+        elif isinstance(value, (dict, list, tuple)):
+            try:
+                text = json.dumps(value, ensure_ascii=True, default=str)
+            except TypeError:
+                text = str(value)
+        else:
+            text = str(value)
+        text = " ".join(text.split())
+        return text[:700] + "..." if len(text) > 700 else text
 
     def _active_tab_name(self) -> str:
         try:
