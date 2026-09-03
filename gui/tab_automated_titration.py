@@ -1,6 +1,4 @@
-"""
-gui/tab_automated_titration.py — BO-driven automated titration recipe builder.
-"""
+"""Automated titration recipes with optimized or manual SWV measurements."""
 
 from __future__ import annotations
 
@@ -10,7 +8,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from config import PREFERRED_SYRINGE_UL
-from core.bo_session import PARAMETER_ORDER, build_swv_script, wrap_mux
+from core.bo_session import PARAMETER_ORDER, build_swv_script, parse_channels, wrap_mux
 from core.titration import (
     calculate_titration_plan,
     parse_concentrations,
@@ -20,7 +18,7 @@ from gui.widgets import ScrollableFrame
 
 
 class AutomatedTitrationTab:
-    """Build pump/SWV recipes using the best parameters from each BO group."""
+    """Build pump/SWV recipes from optimized and/or manual parameters."""
 
     ACCENT_DARK = "#3f3a63"
     ACCENT_LIGHT = "#e7e3ff"
@@ -51,7 +49,7 @@ class AutomatedTitrationTab:
         self._plan = []
 
         self._status_var = tk.StringVar(
-            value="Waiting for optimized parameter groups from Bayesian Optimization."
+            value="Choose Bayesian parameters or manual-only SWV settings."
         )
 
         self._stock_port_var = tk.StringVar(value="5")
@@ -81,6 +79,8 @@ class AutomatedTitrationTab:
         self._replicates_var = tk.StringVar(value="10")
         self._skip_initial_buffer_var = tk.BooleanVar(value=False)
         self._measure_buffer_between_var = tk.BooleanVar(value=False)
+        self._manual_only_var = tk.BooleanVar(value=False)
+        self._manual_channels_var = tk.StringVar(value="1,2,3,4,5,6,7,8,9,10")
 
         self._build()
 
@@ -100,7 +100,7 @@ class AutomatedTitrationTab:
         ).pack(side="left", padx=(16, 10), pady=12)
         tk.Label(
             banner,
-            text="Build pump and SWV sequences from optimized channel-group parameters",
+            text="Build pump and SWV sequences from optimized or manual channel settings",
             bg=self.ACCENT_DARK,
             fg=self.ACCENT_LIGHT,
             font=("Arial", 10),
@@ -168,6 +168,22 @@ class AutomatedTitrationTab:
         horizontal.pack(side="bottom", fill="x")
         self._parameter_tree.configure(xscrollcommand=horizontal.set)
 
+        manual_mode = ttk.Frame(source)
+        manual_mode.pack(fill="x", pady=(10, 0))
+        ttk.Checkbutton(
+            manual_mode,
+            text="Run titration with manual SWV settings only (no Bayesian optimization)",
+            variable=self._manual_only_var,
+            command=self._manual_mode_changed,
+        ).pack(side="left")
+        ttk.Label(manual_mode, text="MUX channels:").pack(side="left", padx=(18, 4))
+        ttk.Entry(
+            manual_mode, textvariable=self._manual_channels_var, width=28
+        ).pack(side="left")
+        ttk.Button(
+            manual_mode, text="Apply Channels", command=self._apply_manual_channels
+        ).pack(side="left", padx=(6, 0))
+
     def _build_manual_parameters(self, parent):
         manual = ttk.LabelFrame(parent, text="Manual SWV Settings by Channel", padding=10)
         manual.pack(fill="x", padx=14, pady=6)
@@ -186,6 +202,11 @@ class AutomatedTitrationTab:
         ).pack(side="left", padx=(6, 0))
         ttk.Button(
             actions,
+            text="Add Setting to All Channels",
+            command=self._add_all_manual_channels,
+        ).pack(side="left", padx=(6, 0))
+        ttk.Button(
+            actions,
             text="Remove Selected Setting",
             command=self._remove_manual_channel_setting,
         ).pack(side="left", padx=(6, 0))
@@ -197,8 +218,7 @@ class AutomatedTitrationTab:
         ttk.Label(
             actions,
             text=(
-                "Each channel keeps its optimized BO setting and can have one or more "
-                "additional manual settings."
+                "Manual-only mode runs only the settings listed here."
             ),
             foreground="#666666",
         ).pack(side="left", padx=10)
@@ -415,6 +435,7 @@ class AutomatedTitrationTab:
             return
 
         self._parameter_groups = copy.deepcopy(groups)
+        self._manual_only_var.set(False)
         active_channels = {
             int(channel)
             for group in self._parameter_groups
@@ -464,6 +485,7 @@ class AutomatedTitrationTab:
     def prepare_for_bo(self, groups):
         """Prepare editable manual-channel rows before optimized values exist."""
         self._bo_setup_groups = copy.deepcopy(groups or [])
+        self._manual_only_var.set(False)
         self._bo_locked_settings = None
         self._bo_locked_plan = None
         self._bo_locked_manual_channel_params = None
@@ -623,6 +645,51 @@ class AutomatedTitrationTab:
         )
         return params
 
+    @staticmethod
+    def _standalone_manual_params():
+        return {
+            "begin_potential": -0.6,
+            "end_potential": 0.0,
+            "step_potential": 0.002,
+            "amplitude": 0.036,
+            "frequency": 200.0,
+            "conditioning_potential": -0.6,
+            "conditioning_time": 0.1,
+        }
+
+    def _manual_mode_changed(self):
+        if self._manual_only_var.get():
+            self._apply_manual_channels()
+        else:
+            self._status_var.set(
+                "Bayesian mode selected; receive optimized parameters before generating."
+            )
+
+    def _is_manual_only(self):
+        variable = getattr(self, "_manual_only_var", None)
+        return bool(variable is not None and variable.get())
+
+    def _apply_manual_channels(self):
+        try:
+            channels = parse_channels(self._manual_channels_var.get())
+            if not channels:
+                raise ValueError("Enter at least one MUX channel.")
+        except Exception as exc:
+            messagebox.showerror("Manual SWV Channels", str(exc))
+            return False
+        existing = self._manual_channel_params
+        default = self._standalone_manual_params()
+        self._manual_channel_params = {
+            channel: self._coerce_manual_param_sets(existing.get(channel))
+            or [copy.deepcopy(default)]
+            for channel in channels
+        }
+        self._refresh_manual_tree()
+        self._status_var.set(
+            f"Configured manual SWV settings for {len(channels)} channel(s)."
+        )
+        return True
+
     def _edit_manual_channel(self):
         selection = self._manual_tree.selection()
         if not selection:
@@ -653,6 +720,34 @@ class AutomatedTitrationTab:
             append=True,
         )
 
+    def _add_all_manual_channels(self):
+        if not self._manual_channel_params:
+            messagebox.showwarning(
+                "Manual SWV Settings",
+                "Configure manual channels or receive optimized parameters first.",
+            )
+            return
+        first_channel = min(self._manual_channel_params)
+        first_settings = self._coerce_manual_param_sets(
+            self._manual_channel_params[first_channel]
+        )
+        self._show_manual_editor(
+            channel=None, initial=first_settings[-1], append=True
+        )
+
+    def _set_all_manual_params(self, values, *, append):
+        for channel in self._manual_channel_params:
+            param_sets = self._coerce_manual_param_sets(
+                self._manual_channel_params[channel]
+            )
+            if append:
+                param_sets.append(copy.deepcopy(values))
+            elif param_sets:
+                param_sets[0] = copy.deepcopy(values)
+            else:
+                param_sets.append(copy.deepcopy(values))
+            self._manual_channel_params[channel] = param_sets
+
     def _remove_manual_channel_setting(self):
         selection = self._manual_tree.selection()
         if not selection:
@@ -667,7 +762,7 @@ class AutomatedTitrationTab:
         if len(param_sets) <= 1:
             messagebox.showwarning(
                 "Manual SWV Settings",
-                "Each BO channel must retain at least one manual setting.",
+                "Each channel must retain at least one manual setting.",
             )
             return
         del param_sets[setting_index]
@@ -681,7 +776,7 @@ class AutomatedTitrationTab:
         if not self._manual_channel_params:
             messagebox.showwarning(
                 "Manual SWV Settings",
-                "Receive optimized parameters before setting manual channel values.",
+                "Configure manual channels or receive optimized parameters first.",
             )
             return
         first_channel = min(self._manual_channel_params)
@@ -704,7 +799,8 @@ class AutomatedTitrationTab:
                 self._manual_channel_params[channel]
             )[setting_index]
         title = (
-            "Set First Manual SWV Setting — All Channels"
+            ("Add Manual SWV Setting — All Channels" if append else
+             "Set First Manual SWV Setting — All Channels")
             if channel is None
             else (
                 f"Add Manual SWV Setting — Channel {channel}"
@@ -747,19 +843,11 @@ class AutomatedTitrationTab:
                 messagebox.showerror("Manual SWV Settings", str(exc), parent=dialog)
                 return
             if channel is None:
-                for manual_channel in self._manual_channel_params:
-                    param_sets = self._coerce_manual_param_sets(
-                        self._manual_channel_params[manual_channel]
-                    )
-                    if param_sets:
-                        param_sets[0] = copy.deepcopy(values)
-                    else:
-                        param_sets.append(copy.deepcopy(values))
-                    self._manual_channel_params[manual_channel] = param_sets
-                status = (
-                    f"Updated the first manual SWV setting for "
-                    f"{len(self._manual_channel_params)} channel(s)."
+                self._set_all_manual_params(values, append=append)
+                action = "Added a manual SWV setting to" if append else (
+                    "Updated the first manual SWV setting for"
                 )
+                status = f"{action} {len(self._manual_channel_params)} channel(s)."
             else:
                 param_sets = self._coerce_manual_param_sets(
                     self._manual_channel_params.get(channel)
@@ -787,6 +875,8 @@ class AutomatedTitrationTab:
 
     def _generate_recipe(self):
         try:
+            if self._manual_only_var.get() and not self._apply_manual_channels():
+                return
             settings = self._read_settings()
             self._plan = calculate_titration_plan(
                 parse_concentrations(self._concentrations_var.get()),
@@ -808,11 +898,14 @@ class AutomatedTitrationTab:
             f"{len(self._plan)} concentration point(s), {total_stock:.2f} µL total "
             f"stock, {len(self._recipe)} queue step(s)"
         )
-        if not self._parameter_groups:
-            summary += " — pump-only preview; receive BO parameters to add SWV steps"
+        swv_count = sum(item.get("type") == "SWV" for item in self._recipe)
+        if not swv_count:
+            summary += " — pump-only preview; configure SWV measurements first"
+        elif self._is_manual_only():
+            summary += f" — manual SWV only ({swv_count} measurement step(s))"
         self._summary_label.configure(text=summary)
         self._send_button.configure(
-            state="normal" if self._recipe and self._parameter_groups else "disabled"
+            state="normal" if self._recipe and swv_count else "disabled"
         )
         self._status_var.set(f"Recipe generated: {summary}.")
 
@@ -1131,73 +1224,69 @@ class AutomatedTitrationTab:
         # Complete one pass across every configured channel before starting
         # the next replicate (for example: 1,2,3,1,2,3).
         for replicate in range(1, settings["replicates"] + 1):
-            for group in self._parameter_groups:
-                for channel in group.get("channels", []):
-                    recipe.append(
-                        {
-                            "type": "SWV",
-                            "status": "pending",
-                            "details": (
-                                f"{point_label} | optimized | {group['name']} | "
-                                f"MUX ch {channel} | "
-                                f"rep {replicate}/{settings['replicates']}"
-                            ),
-                            "_point": point_label,
-                            "_titration_group": copy.deepcopy(group),
-                            "_mux_channel": int(channel),
-                            "_swv_source": "optimized",
-                        }
-                    )
+            if not self._is_manual_only():
+                for group in self._parameter_groups:
+                    for channel in group.get("channels", []):
+                        recipe.append(
+                            {
+                                "type": "SWV",
+                                "status": "pending",
+                                "details": (
+                                    f"{point_label} | optimized | {group['name']} | "
+                                    f"MUX ch {channel} | "
+                                    f"rep {replicate}/{settings['replicates']}"
+                                ),
+                                "_point": point_label,
+                                "_titration_group": copy.deepcopy(group),
+                                "_mux_channel": int(channel),
+                                "_swv_source": "optimized",
+                            }
+                        )
             manual_by_channel = {
                 int(channel): self._coerce_manual_param_sets(value)
                 for channel, value in getattr(
                     self, "_manual_channel_params", {}
                 ).items()
             }
+            method_options_by_channel = {
+                int(channel): copy.deepcopy(group.get("method_options") or {})
+                for group in self._parameter_groups
+                for channel in group.get("channels", [])
+            }
             manual_pass_count = max(
                 (len(param_sets) for param_sets in manual_by_channel.values()),
                 default=0,
             )
-            # Run the same manual-setting number across every channel before
-            # advancing to the next setting, mirroring the optimized channel pass.
+            # Manual settings do not depend on BO groups. Run the same setting
+            # number across every channel before advancing to the next setting.
             for setting_index in range(manual_pass_count):
-                manual_channels_seen = set()
-                for group in self._parameter_groups:
-                    for channel in group.get("channels", []):
-                        channel = int(channel)
-                        if channel in manual_channels_seen:
-                            continue
-                        manual_channels_seen.add(channel)
-                        param_sets = manual_by_channel.get(channel, [])
-                        if setting_index >= len(param_sets):
-                            continue
-                        manual_group = copy.deepcopy(group)
-                        manual_group["name"] = (
-                            f"Manual ch {channel} set {setting_index + 1}"
-                        )
-                        manual_group["params"] = copy.deepcopy(
-                            param_sets[setting_index]
-                        )
-                        manual_group.pop("session_id", None)
-                        manual_group.pop("optimization_direction", None)
-                        manual_group.pop("split_direction_channel", None)
-                        recipe.append(
-                            {
-                                "type": "SWV",
-                                "status": "pending",
-                                "details": (
-                                    f"{point_label} | manual set "
-                                    f"{setting_index + 1}/{len(param_sets)} | "
-                                    f"MUX ch {channel} | rep {replicate}/"
-                                    f"{settings['replicates']}"
-                                ),
-                                "_point": point_label,
-                                "_titration_group": manual_group,
-                                "_mux_channel": channel,
-                                "_swv_source": "manual",
-                                "_manual_setting_index": setting_index,
-                            }
-                        )
+                for channel in sorted(manual_by_channel):
+                    param_sets = manual_by_channel[channel]
+                    if setting_index >= len(param_sets):
+                        continue
+                    manual_group = {
+                        "name": f"Manual ch {channel} set {setting_index + 1}",
+                        "channels": [channel],
+                        "params": copy.deepcopy(param_sets[setting_index]),
+                        "method_options": method_options_by_channel.get(channel, {}),
+                    }
+                    recipe.append(
+                        {
+                            "type": "SWV",
+                            "status": "pending",
+                            "details": (
+                                f"{point_label} | manual set "
+                                f"{setting_index + 1}/{len(param_sets)} | "
+                                f"MUX ch {channel} | rep {replicate}/"
+                                f"{settings['replicates']}"
+                            ),
+                            "_point": point_label,
+                            "_titration_group": manual_group,
+                            "_mux_channel": channel,
+                            "_swv_source": "manual",
+                            "_manual_setting_index": setting_index,
+                        }
+                    )
 
     def _append_air_assisted_stock_delivery(
         self,
@@ -1498,10 +1587,12 @@ class AutomatedTitrationTab:
         }
 
     def _send_to_queue(self):
-        if not self._recipe or not self._parameter_groups:
+        if not self._recipe or not any(
+            item.get("type") == "SWV" for item in self._recipe
+        ):
             messagebox.showwarning(
                 "Automated Titration",
-                "Generate a recipe with Bayesian Optimization parameters first.",
+                "Generate a recipe with SWV measurements first.",
             )
             return
         if not callable(self._send_queue_item) or self._session is None:

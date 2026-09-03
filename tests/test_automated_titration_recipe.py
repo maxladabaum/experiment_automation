@@ -714,6 +714,52 @@ def test_new_manual_channels_use_requested_swv_defaults():
     assert manual["conditioning_time"] == pytest.approx(2.0)
 
 
+def test_manual_only_measurements_do_not_require_bo_groups():
+    class Enabled:
+        @staticmethod
+        def get():
+            return True
+
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    tab._manual_only_var = Enabled()
+    tab._parameter_groups = [
+        {
+            "name": "optimized",
+            "channels": [2],
+            "params": tab._standalone_manual_params(),
+        }
+    ]
+    tab._manual_channel_params = {
+        2: [tab._standalone_manual_params()],
+        5: [tab._standalone_manual_params()],
+    }
+    recipe = []
+
+    tab._append_swv_measurements(
+        recipe,
+        settings={"replicates": 2},
+        point_label="10 uM",
+    )
+
+    assert len(recipe) == 4
+    assert [item["_mux_channel"] for item in recipe] == [2, 5, 2, 5]
+    assert {item["_swv_source"] for item in recipe} == {"manual"}
+
+
+def test_add_manual_setting_to_all_channels_appends_independent_copies():
+    tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
+    initial = tab._standalone_manual_params()
+    added = {**initial, "frequency": 400.0}
+    tab._manual_channel_params = {2: [initial], 5: [initial]}
+
+    tab._set_all_manual_params(added, append=True)
+
+    assert [len(values) for values in tab._manual_channel_params.values()] == [2, 2]
+    assert tab._manual_channel_params[2][1]["frequency"] == pytest.approx(400.0)
+    assert tab._manual_channel_params[5][1]["frequency"] == pytest.approx(400.0)
+    assert tab._manual_channel_params[2][1] is not tab._manual_channel_params[5][1]
+
+
 def test_initial_buffer_transfer_can_be_bypassed():
     tab = AutomatedTitrationTab.__new__(AutomatedTitrationTab)
     tab._parameter_groups = []
