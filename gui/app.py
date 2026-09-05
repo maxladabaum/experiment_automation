@@ -22,7 +22,7 @@ from tkinter import ttk
 from config import (
     APP_VERSION, WINDOW_TITLE, WINDOW_GEOMETRY,
     PREFERRED_STEPS_PER_STROKE, PREFERRED_SYRINGE_UL,
-    SESSION_ARCHIVE_DIR,
+    SESSION_ARCHIVE_DIRS,
     SLACK_ENABLE, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_PORT,
     SLACK_ONLY_WHEN_EXPERIMENT,
     NGROK_AUTOSTART, NGROK_PATH, NGROK_DOMAIN,
@@ -292,7 +292,7 @@ class ElectrochemGUI:
         self._bo_frame = bo_frame
         self._titration_frame = titration_frame
         self._queue_tab.add_completion_callback(self._bo_tab.on_queue_complete)
-        if SESSION_ARCHIVE_DIR is not None:
+        if SESSION_ARCHIVE_DIRS:
             self._queue_tab.add_completion_callback(self._archive_session_after_queue)
 
         if PUMP_AVAILABLE:
@@ -656,20 +656,22 @@ class ElectrochemGUI:
 
     def _archive_session_after_queue(self, _summary):
         session_path = self._session_mgr.current_session_path
-        if session_path is None or SESSION_ARCHIVE_DIR is None:
+        if session_path is None or not SESSION_ARCHIVE_DIRS:
             return
         session_path = Path(session_path)
-        destination = Path(SESSION_ARCHIVE_DIR)
+        destinations = tuple(Path(path) for path in SESSION_ARCHIVE_DIRS)
 
         def worker():
             self._session_mgr.log(f"Archiving session after queue: {session_path.name}")
-            try:
-                uploaded = archive_session(session_path, destination)
-                self._session_mgr.log(f"Session archive uploaded: {uploaded}")
-            except Exception as exc:
-                self._session_mgr.log(
-                    f"Session archive upload failed; local data is unchanged: {exc}"
-                )
+            for destination in destinations:
+                try:
+                    uploaded = archive_session(session_path, destination)
+                    self._session_mgr.log(f"Session archive uploaded: {uploaded}")
+                except Exception as exc:
+                    self._session_mgr.log(
+                        "Session archive upload failed for "
+                        f"{destination}; local data is unchanged: {exc}"
+                    )
 
         threading.Thread(target=worker, daemon=True).start()
 

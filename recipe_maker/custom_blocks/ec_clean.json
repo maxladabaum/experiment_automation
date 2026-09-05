@@ -1,0 +1,312 @@
+{
+  "metadata": {
+    "saved_at": "2026-09-04T15:37:17",
+    "version": 1
+  },
+  "items": [
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 7",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 7
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 250.00 \u00b5L @ S13R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 250.0,
+          "speed": 13
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 250.00 \u00b5L @ S13R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 250.0,
+          "speed": 13
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 7",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 7
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 250.00 \u00b5L @ S13R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 250.0,
+          "speed": 13
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 250.00 \u00b5L @ S13R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 250.0,
+          "speed": 13
+        }
+      }
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch1_3f539d.ms (MUX ch 1)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch1_3f539d.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch2_f73bac.ms (MUX ch 2)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch2_f73bac.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch3_96cf4b.ms (MUX ch 3)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch3_96cf4b.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch4_93cbe8.ms (MUX ch 4)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch4_93cbe8.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch5_b37f84.ms (MUX ch 5)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch5_b37f84.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch6_bd4918.ms (MUX ch 6)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch6_bd4918.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch7_c0f9cf.ms (MUX ch 7)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch7_c0f9cf.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch8_7da51c.ms (MUX ch 8)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch8_7da51c.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch9_6befd1.ms (MUX ch 9)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch9_6befd1.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch10_6fb4fc.ms (MUX ch 10)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch10_6fb4fc.ms"
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 6",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 6
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 250.00 \u00b5L @ S13R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 250.0,
+          "speed": 13
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 250.00 \u00b5L @ S13R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 250.0,
+          "speed": 13
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 6",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 6
+        }
+      }
+    },
+    {
+      "type": "PUMP_ASPIRATE",
+      "status": "pending",
+      "details": "Pump: Aspirate 250.00 \u00b5L @ S13R",
+      "pump_action": {
+        "name": "ASPIRATE",
+        "params": {
+          "volume": 250.0,
+          "speed": 13
+        }
+      }
+    },
+    {
+      "type": "PUMP_VALVE",
+      "status": "pending",
+      "details": "Pump: Valve \u2192 1",
+      "pump_action": {
+        "name": "VALVE",
+        "params": {
+          "port": 1
+        }
+      }
+    },
+    {
+      "type": "PUMP_DISPENSE",
+      "status": "pending",
+      "details": "Pump: Dispense 250.00 \u00b5L @ S13R",
+      "pump_action": {
+        "name": "DISPENSE",
+        "params": {
+          "volume": 250.0,
+          "speed": 13
+        }
+      }
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch1_7ab9ac.ms (MUX ch 1)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch1_7ab9ac.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch2_c5d5d1.ms (MUX ch 2)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch2_c5d5d1.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch3_b27240.ms (MUX ch 3)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch3_b27240.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch4_1f38a6.ms (MUX ch 4)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch4_1f38a6.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch5_3a0c97.ms (MUX ch 5)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch5_3a0c97.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch6_c133c0.ms (MUX ch 6)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch6_c133c0.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch7_c09b85.ms (MUX ch 7)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch7_c09b85.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch8_8776d7.ms (MUX ch 8)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch8_8776d7.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch9_dc8198.ms (MUX ch 9)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch9_dc8198.ms"
+    },
+    {
+      "type": "CV",
+      "status": "pending",
+      "details": "cv_ch10_22b45a.ms (MUX ch 10)",
+      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch10_22b45a.ms"
+    }
+  ]
+}

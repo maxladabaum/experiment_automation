@@ -143,14 +143,27 @@ RECIPE_DIR = _as_path(  # where user-created recipes and custom blocks are saved
     _env_or_local("EA_RECIPE_DIR", "recipe_dir", DATA_DIR / "recipe_maker"),
     DATA_DIR / "recipe_maker",
 )
-_SESSION_ARCHIVE_RAW = _env_or_local(
-    "EA_SESSION_ARCHIVE_DIR", "session_archive_dir", ""
+def _session_archive_values():
+    env_plural = os.getenv("EA_SESSION_ARCHIVE_DIRS")
+    if env_plural is not None:
+        return _as_string_list(env_plural, [])
+
+    env_single = os.getenv("EA_SESSION_ARCHIVE_DIR")
+    if env_single is not None:
+        return _as_string_list(env_single, [])
+
+    local_plural = _local_value("session_archive_dirs")
+    if local_plural not in (None, ""):
+        return _as_string_list(local_plural, [])
+
+    return _as_string_list(_local_value("session_archive_dir", ""), [])
+
+
+SESSION_ARCHIVE_DIRS = tuple(
+    _as_path(value, value) for value in _session_archive_values()
 )
-SESSION_ARCHIVE_DIR = (
-    _as_path(_SESSION_ARCHIVE_RAW, _SESSION_ARCHIVE_RAW)
-    if _SESSION_ARCHIVE_RAW not in (None, "")
-    else None
-)
+# Backward-compatible alias for code that expects one optional destination.
+SESSION_ARCHIVE_DIR = SESSION_ARCHIVE_DIRS[0] if SESSION_ARCHIVE_DIRS else None
 BLOCKS_DIR      = Path("recipe_maker") / "default_blocks"  # bundled default block definitions
 SAVE_DATED_METHOD_COPIES = False            # if True, also write methods/YYYY-MM-DD/*.ms working copies
 # Bayesian optimization integration (optional)

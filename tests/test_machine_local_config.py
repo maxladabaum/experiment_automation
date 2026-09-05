@@ -22,6 +22,8 @@ class MachineLocalConfigTests(unittest.TestCase):
             "EA_BO_DEFAULT_CONFIG_PATH",
             "EA_BO_LOCAL_PATHS_CONFIG",
             "EA_BO_LAST_SETUP_METADATA_PATH",
+            "EA_SESSION_ARCHIVE_DIR",
+            "EA_SESSION_ARCHIVE_DIRS",
         ):
             env.pop(key, None)
         env["EA_LOCAL_CONFIG_PATH"] = str(local_config_path)
@@ -36,6 +38,8 @@ class MachineLocalConfigTests(unittest.TestCase):
             "'bo_default_config': str(config.BO_DEFAULT_CONFIG_PATH), "
             "'bo_local_paths': str(config.BO_LOCAL_PATHS_CONFIG), "
             "'bo_last_setup': str(config.BO_LAST_SETUP_METADATA_PATH), "
+            "'archive_dirs': [str(path) for path in config.SESSION_ARCHIVE_DIRS], "
+            "'archive_dir': str(config.SESSION_ARCHIVE_DIR) if config.SESSION_ARCHIVE_DIR else None, "
             "'pump': [config.PUMP_DEFAULT_COM_PORT, config.PUMP_DEFAULT_BAUD, config.PUMP_DEFAULT_DEV], "
             "'potentiostat': config.DEVICE_DEFAULT_PORT"
             "}))"
@@ -102,6 +106,34 @@ class MachineLocalConfigTests(unittest.TestCase):
         )
         self.assertEqual(values["pump"], [12, 9600, 0])
         self.assertEqual(values["potentiostat"], "COM13")
+
+    def test_multiple_archive_destinations_and_singular_compatibility(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config_path = root / "local_config.json"
+            first = root / "archive-one"
+            second = root / "archive-two"
+            config_path.write_text(
+                json.dumps({"session_archive_dirs": [str(first), str(second)]}),
+                encoding="utf-8",
+            )
+
+            values = self._read_config(config_path)
+            self.assertEqual(
+                [Path(path) for path in values["archive_dirs"]],
+                [first, second],
+            )
+            self.assertEqual(Path(values["archive_dir"]), first)
+
+            singular = root / "environment-archive"
+            values = self._read_config(
+                config_path,
+                extra_env={"EA_SESSION_ARCHIVE_DIR": str(singular)},
+            )
+            self.assertEqual(
+                [Path(path) for path in values["archive_dirs"]],
+                [singular],
+            )
 
     def test_missing_default_bo_config_bootstraps_local_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:

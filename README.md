@@ -121,7 +121,10 @@ Common local settings:
   "data_dir": "%USERPROFILE%\\Documents\\Experiment Automation Data",
   "methods_dir": "%USERPROFILE%\\Documents\\Experiment Automation Data\\methods",
   "recipe_dir": "%USERPROFILE%\\Documents\\Experiment Automation Data\\recipe_maker",
-  "session_archive_dir": "\\\\server-or-tailscale-ip\\Data_Drive",
+  "session_archive_dirs": [
+    "Z:\\station-specific-folder",
+    "\\\\server-or-tailscale-ip\\Data_Drive\\station-specific-folder"
+  ],
   "pump_com_port": 12,
   "pump_baud": 9600,
   "pump_dev": 0,
@@ -135,14 +138,16 @@ methods_dir -> <data_dir>/methods
 recipe_dir  -> <data_dir>/recipe_maker
 
 If data_dir is omitted, it safely defaults to the current Windows user's
-Documents\Experiment Automation Data folder. If session_archive_dir is set,
+Documents\Experiment Automation Data folder. If session_archive_dirs is set,
 each completed queue creates a ZIP snapshot of the current local session and
-publishes it atomically to that directory. The local session remains in place.
+publishes it atomically to every listed directory. Each destination is attempted
+independently, and the local session remains in place. The singular
+session_archive_dir setting remains supported for older configurations.
 
 Environment variables can override individual local-config values:
 EA_DATA_DIR, EA_PUMP_COM_PORT, EA_PUMP_BAUD, EA_PUMP_DEV,
 EA_POTENTIOSTAT_PORT, EA_METHODS_DIR, EA_RECIPE_DIR, EA_DEVICE_BAUDRATE,
-EA_DEVICE_KEYWORDS, and EA_SESSION_ARCHIVE_DIR.
+EA_DEVICE_KEYWORDS, EA_SESSION_ARCHIVE_DIR, and EA_SESSION_ARCHIVE_DIRS.
 
 OPTIONAL BAYESIAN OPTIMIZATION TAB
 
