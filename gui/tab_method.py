@@ -19,7 +19,7 @@ from tkinter import ttk
 import serial.tools.list_ports
 
 from core.mscript_parser import to_si_string
-from core.runner import SerialMeasurementRunner, format_port_info
+from core.runner import format_port_info, get_pump_com_port, device_port_sort_key
 from core.swv_method import format_swv_frequency_hz
 from config import DEVICE_KEYWORDS
 from core.session import SessionState
@@ -100,6 +100,7 @@ class MethodTab:
         on_refresh_queue,
         on_script_preview,
         on_run_now,
+        pump_ctrl=None,
     ):
         self._frame            = parent_frame
         self._session          = session
@@ -107,6 +108,7 @@ class MethodTab:
         self._refresh_queue    = on_refresh_queue
         self._script_preview   = on_script_preview
         self._run_now          = on_run_now
+        self._pump_ctrl        = pump_ctrl
 
         self.current_technique = "CV"
         self.cv_params:  dict  = {}
@@ -238,7 +240,7 @@ class MethodTab:
         if ports:
             selected = self._session.device_port or "Auto"
             if self._session.device_port is None:
-                resolved = self._auto_detect_port(ports)
+                resolved = self._auto_detect_port(ports, get_pump_com_port(self._pump_ctrl))
                 if resolved:
                     selected = f"Auto -> {resolved}"
                 else:
@@ -284,7 +286,7 @@ class MethodTab:
         self._session.device_port = device or None
 
     @staticmethod
-    def _auto_detect_port(ports):
+    def _auto_detect_port(ports, pump_com_port=None):
         candidates = []
         for port in ports:
             haystack = " ".join(
@@ -299,7 +301,7 @@ class MethodTab:
                 candidates.append(port.device)
         if not candidates:
             return None
-        return sorted(candidates)[0]
+        return min(candidates, key=lambda port: device_port_sort_key(port, pump_com_port))
 
     # ── Parameter forms ───────────────────────────────────────────────────────
 

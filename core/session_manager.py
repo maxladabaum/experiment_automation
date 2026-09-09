@@ -56,7 +56,7 @@ class SessionManager:
         self._slack = SlackNotifier(
             bot_token=SLACK_BOT_TOKEN,
             default_target=SLACK_TARGET,
-            log_callback=self._log_cb,
+            log_callback=self.log,
         )
         self._on_experiment_started = None
         self._on_experiment_ended = None

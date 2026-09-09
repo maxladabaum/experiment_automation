@@ -30,7 +30,7 @@ from core.queue_eta import (
     eta_finish_time,
     format_duration,
 )
-from core.runner import SerialMeasurementRunner
+from core.runner import SerialMeasurementRunner, get_pump_com_port
 from core.bo_session import BOIntegrationSession, load_bo_config, normalize_bo_config, parse_channels, validate_bo_config
 from methods import library_map
 from core.session import SessionState
@@ -1172,6 +1172,7 @@ class QueueTab:
                             simulate_measurements=self._session.simulate_measurements,
                             invert_current=(item.get("type") == "SWV"),
                             device_port=self._session.device_port,
+                            pump_com_port=get_pump_com_port(self._pump_ctrl),
                         )
                         self._session.current_runner = runner
                         success, csv_path = runner.execute(meas_tag=meas_tag)
@@ -1645,6 +1646,7 @@ class QueueTab:
                 simulate_measurements=self._session.simulate_measurements,
                 invert_current=(item.get("type") == "SWV"),
                 device_port=self._session.device_port,
+                pump_com_port=get_pump_com_port(self._pump_ctrl),
             )
             self._session.current_runner = runner
             success, csv_path = runner.execute(meas_tag=meas_tag)

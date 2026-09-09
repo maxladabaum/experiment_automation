@@ -26,6 +26,7 @@ class SlackNotifier:
         self._target = (default_target or "").strip()
         self._log = log_callback
         self._timeout = float(timeout_seconds)
+        self.last_image_error = ""
 
     @property
     def enabled(self) -> bool:
@@ -68,28 +69,32 @@ class SlackNotifier:
         filename: str,
         target: Optional[str] = None,
         title: Optional[str] = None,
+        comment: Optional[str] = None,
     ) -> bool:
         """Upload image bytes and share them in a Slack conversation."""
+        self.last_image_error = ""
         channel = (target or self._target or "").strip()
         filename = (filename or "image.png").strip()
         if not content or not self._token or not channel:
-            return False
+            return self._image_upload_failed("Missing image, Slack token, or destination channel.")
 
+        image_title = title or filename
+
+        stage = "request upload URL"
         try:
             ticket = self._post_form(
                 self._GET_UPLOAD_URL,
                 {"filename": filename, "length": str(len(content))},
             )
             if not ticket.get("ok"):
-                self._log(f"Slack image upload failed: {ticket.get('error', 'unknown_error')}")
-                return False
+                return self._image_upload_failed(ticket.get("error", "unknown_error"), stage)
 
             upload_url = str(ticket.get("upload_url") or "")
             file_id = str(ticket.get("file_id") or "")
             if not upload_url or not file_id:
-                self._log("Slack image upload failed: upload ticket was incomplete")
-                return False
+                return self._image_upload_failed("upload ticket was incomplete", stage)
 
+            stage = "transfer image"
             upload_request = request.Request(
                 upload_url,
                 data=content,
@@ -99,23 +104,35 @@ class SlackNotifier:
             with request.urlopen(upload_request, timeout=self._timeout) as resp:
                 resp.read()
 
-            completed = self._post_form(
-                self._COMPLETE_UPLOAD_URL,
-                {
-                    "files": json.dumps([{"id": file_id, "title": title or filename}]),
-                    "channel_id": channel,
-                },
-            )
+            fields = {
+                "files": json.dumps([{"id": file_id, "title": image_title}]),
+                "channel_id": channel,
+            }
+            if comment:
+                fields["initial_comment"] = comment
+            stage = "share image in channel"
+            completed = self._post_form(self._COMPLETE_UPLOAD_URL, fields)
             if not completed.get("ok"):
-                self._log(f"Slack image upload failed: {completed.get('error', 'unknown_error')}")
-                return False
+                return self._image_upload_failed(completed.get("error", "unknown_error"), stage)
+            self._log(f"Slack image upload accepted: file {file_id}, channel {channel}")
             return True
         except (error.URLError, TimeoutError) as exc:
-            self._log(f"Slack image upload failed: {exc}")
-            return False
+            return self._image_upload_failed(type(exc).__name__, stage)
         except Exception as exc:
-            self._log(f"Slack image upload failed: {type(exc).__name__}: {exc}")
-            return False
+            return self._image_upload_failed(type(exc).__name__, stage)
+
+    def _image_upload_failed(self, reason: str, stage: str = "") -> bool:
+        hints = {
+            "missing_scope": "Add the files:write bot scope in Slack OAuth & Permissions, then reinstall the app to the workspace.",
+            "not_in_channel": "Invite the Slack bot to the destination channel.",
+            "no_permission": "Check that the Slack bot is a member of the destination channel and can upload files.",
+            "channel_not_found": "Set EA_SLACK_TARGET to the channel ID, not its name, and check the bot has access.",
+        }
+        self.last_image_error = f"{stage}: {reason}" if stage else reason
+        if reason in hints:
+            self.last_image_error += "\n" + hints[reason]
+        self._log(f"Slack image upload failed: {self.last_image_error}")
+        return False
 
     def _post_form(self, url: str, fields: dict) -> dict:
         payload = urlencode(fields).encode("utf-8")

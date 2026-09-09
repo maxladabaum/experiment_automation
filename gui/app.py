@@ -10,6 +10,7 @@ All business logic lives in the ``core/`` modules.
 All UI logic lives in the individual ``gui/tab_*.py`` files.
 """
 
+import io
 import json
 import threading
 import time
@@ -28,7 +29,7 @@ from config import (
     NGROK_AUTOSTART, NGROK_PATH, NGROK_DOMAIN,
 )
 from core.session  import SessionState
-from core.runner   import SerialMeasurementRunner
+from core.runner   import SerialMeasurementRunner, get_pump_com_port
 from core.session_manager import SessionManager
 from core.session_archive import archive_session
 from core.slack_bot import SlackBotServer
@@ -265,6 +266,7 @@ class ElectrochemGUI:
             on_refresh_queue  = self._queue_tab.refresh,
             on_script_preview = self._script_tab.update,
             on_run_now        = self._run_now,
+            pump_ctrl         = self._pump_ctrl,
         )
 
         self._bo_tab = BayesianOptimizationTab(
@@ -396,12 +398,58 @@ class ElectrochemGUI:
             size=20,
         )
 
+    def _capture_bug_screenshot(self):
+        """Capture the visible app area before the report dialog covers it."""
+        from PIL import ImageGrab
+        import sys
+
+        self.root.lift()
+        self.root.update_idletasks()
+        x, y = self.root.winfo_rootx(), self.root.winfo_rooty()
+        width, height = self.root.winfo_width(), self.root.winfo_height()
+        if sys.platform == "win32":
+            # Use physical client coordinates on scaled/multiple monitors.
+            import win32gui
+            hwnd = self.root.winfo_id()
+            left, top, right, bottom = win32gui.GetClientRect(hwnd)
+            x, y = win32gui.ClientToScreen(hwnd, (left, top))
+            width, height = right - left, bottom - top
+        if width <= 1 or height <= 1:
+            raise RuntimeError("App window is not visible")
+        return ImageGrab.grab(
+            bbox=(x, y, x + width, y + height),
+            all_screens=(sys.platform == "win32"),
+        )
+
+    def _deliver_bug_report(self, message, screenshot=None):
+        """Return (report_sent, screenshot_failed), falling back to text."""
+        if screenshot is not None:
+            try:
+                if self._session_mgr._slack.send_image(
+                    screenshot,
+                    "bug_report.png",
+                    title="Bug report screenshot",
+                    comment=message,
+                ):
+                    return True, False
+            except Exception as exc:
+                self._session_mgr.log(f"Bug screenshot upload failed: {type(exc).__name__}")
+            return self._session_mgr.notify_slack(message), True
+        return self._session_mgr.notify_slack(message), False
+
     def _open_bug_report_dialog(self):
+        if not self._session_mgr.has_session:
+            return
+        # Hold the screenshot only in memory; upload requires explicit selection.
+        try:
+            screenshot = self._capture_bug_screenshot()
+        except Exception:
+            screenshot = None
         win = tk.Toplevel(self.root)
         win.title("Report Bug")
         win.transient(self.root)
         win.resizable(True, True)
-        win.minsize(560, 390)
+        win.minsize(560, 470)
 
         container = ttk.Frame(win, padding=12)
         container.pack(fill="both", expand=True)
@@ -446,17 +494,53 @@ class ElectrochemGUI:
         text.grid(row=3, column=0, sticky="nsew", pady=(6, 8))
         text.focus_set()
 
+        attach_var = tk.BooleanVar(value=False)
+        attachment = ttk.Frame(container)
+        attachment.grid(row=4, column=0, sticky="ew", pady=(4, 8))
+        thumbnail = ttk.Label(attachment)
+
+        def toggle_screenshot():
+            if attach_var.get() and screenshot is not None:
+                from PIL import ImageTk
+                preview = screenshot.copy()
+                preview.thumbnail((480, 220))
+                thumbnail.image = ImageTk.PhotoImage(preview, master=win)
+                thumbnail.configure(image=thumbnail.image)
+                thumbnail.grid(row=1, column=0, sticky="w", pady=(6, 0))
+            else:
+                thumbnail.grid_remove()
+                thumbnail.configure(image="")
+                thumbnail.image = None
+
+        attach_btn = ttk.Checkbutton(
+            attachment, text="Attach screenshot of the app", variable=attach_var,
+            command=toggle_screenshot,
+        )
+        attach_btn.grid(row=0, column=0, sticky="w")
+        if screenshot is None:
+            attach_btn.configure(state="disabled")
+        ttk.Label(
+            attachment,
+            text=("Preview the captured app below; uncheck to remove it."
+                  if screenshot is not None else
+                  "Screenshot unavailable. You can still send a text report."),
+            foreground="#555",
+        ).grid(row=2, column=0, sticky="w", pady=(4, 0))
+
         status_var = tk.StringVar(value="")
         ttk.Label(container, textvariable=status_var, foreground="#555").grid(
-            row=4, column=0, sticky="w"
+            row=5, column=0, sticky="w"
         )
 
         actions = ttk.Frame(container)
-        actions.grid(row=5, column=0, sticky="e", pady=(10, 0))
+        actions.grid(row=6, column=0, sticky="e", pady=(10, 0))
         cancel_btn = ttk.Button(actions, text="Cancel", command=win.destroy)
         cancel_btn.pack(side="right")
 
         def submit():
+            if not self._session_mgr.has_session:
+                status_var.set("Start a session before reporting a bug.")
+                return
             description = text.get("1.0", "end").strip()
             if not description:
                 messagebox.showwarning(
@@ -479,23 +563,51 @@ class ElectrochemGUI:
                 )
                 return
 
+            image_bytes = None
+            if attach_var.get() and screenshot is not None:
+                try:
+                    buffer = io.BytesIO()
+                    screenshot.save(buffer, format="PNG")
+                    image_bytes = buffer.getvalue()
+                except Exception:
+                    messagebox.showwarning(
+                        "Screenshot unavailable",
+                        "Could not prepare the screenshot. Uncheck the attachment to send text only.",
+                        parent=win,
+                    )
+                    return
+
             send_btn.configure(state="disabled")
             cancel_btn.configure(state="disabled")
+            attach_btn.configure(state="disabled")
+            win.protocol("WM_DELETE_WINDOW", lambda: None)
             status_var.set("Sending to Slack...")
 
             def worker():
-                ok = self._session_mgr.notify_slack(message)
-                self.root.after(0, lambda: finish(ok))
+                ok, screenshot_failed = self._deliver_bug_report(message, image_bytes)
+                self.root.after(0, lambda: finish(ok, screenshot_failed))
 
-            def finish(ok: bool):
+            def finish(ok: bool, screenshot_failed: bool):
                 if ok:
                     win.destroy()
-                    messagebox.showinfo(
-                        "Report Bug",
-                        "Bug report posted to Slack.",
-                        parent=self.root,
-                    )
+                    if screenshot_failed:
+                        messagebox.showwarning(
+                            "Report Bug",
+                            "Bug report posted to Slack, but the screenshot upload failed.\n\n"
+                            + getattr(self._session_mgr._slack, "last_image_error", "Check the app log for details."),
+                            parent=self.root,
+                        )
+                    else:
+                        messagebox.showinfo(
+                            "Report Bug",
+                            "Bug report posted to Slack."
+                            + (" Screenshot attached." if image_bytes else " No screenshot attached."),
+                            parent=self.root,
+                        )
                     return
+                win.protocol("WM_DELETE_WINDOW", win.destroy)
+                if screenshot is not None:
+                    attach_btn.configure(state="normal")
                 send_btn.configure(state="normal")
                 cancel_btn.configure(state="normal")
                 status_var.set("")
@@ -676,6 +788,9 @@ class ElectrochemGUI:
         threading.Thread(target=worker, daemon=True).start()
 
     def _apply_session_gate(self):
+        self._bug_report_button.configure(
+            state="normal" if self._session_mgr.has_session else "disabled"
+        )
         state = "normal" if self._session_mgr.has_session else "hidden"
         for tab in self._session_gated_tabs:
             self._nb.tab(tab, state=state)
@@ -869,6 +984,7 @@ class ElectrochemGUI:
                 simulate_measurements = self._session.simulate_measurements,
                 invert_current = (technique == "SWV"),
                 device_port = self._session.device_port,
+                pump_com_port=get_pump_com_port(self._pump_ctrl),
             )
             self._session.current_runner = runner
             success, csv_path = runner.execute(meas_tag=meas_tag)
@@ -938,7 +1054,9 @@ class ElectrochemGUI:
                     save_raw_packets=self._session.save_raw_packets,
                     simulate_measurements=self._session.simulate_measurements,
                     invert_current=(technique == "SWV"),
-                    device_port=self._session.device_port)
+                    device_port=self._session.device_port,
+                    pump_com_port=get_pump_com_port(self._pump_ctrl),
+                )
                 self._session.current_runner = runner
                 ok, csv_path = runner.execute(meas_tag=meas_tag)
                 self._session.current_runner = None
@@ -999,7 +1117,9 @@ class ElectrochemGUI:
                     save_raw_packets=self._session.save_raw_packets,
                     simulate_measurements=self._session.simulate_measurements,
                     invert_current=True,
-                    device_port=self._session.device_port)
+                    device_port=self._session.device_port,
+                    pump_com_port=get_pump_com_port(self._pump_ctrl),
+                )
                 self._session.current_runner = runner
                 ok, csv_path = runner.execute(meas_tag=meas_tag)
                 self._session.current_runner = None
@@ -1072,7 +1192,9 @@ class ElectrochemGUI:
                         save_raw_packets=self._session.save_raw_packets,
                         simulate_measurements=self._session.simulate_measurements,
                         invert_current=True,
-                        device_port=self._session.device_port)
+                        device_port=self._session.device_port,
+                        pump_com_port=get_pump_com_port(self._pump_ctrl),
+                    )
                     self._session.current_runner = runner
                     ok, csv_path = runner.execute(meas_tag=meas_tag)
                     self._session.current_runner = None

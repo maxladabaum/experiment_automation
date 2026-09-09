@@ -85,6 +85,27 @@ def format_port_info(port) -> str:
     return f"{port.device}: {suffix}"
 
 
+def get_pump_com_port(pump_ctrl):
+    """Use the real pump's current port, including while it is connecting."""
+    if pump_ctrl is None or pump_ctrl.use_sim:
+        return None
+    return pump_ctrl.com_port
+
+
+def normalize_com_port(port):
+    if port is None:
+        return None
+    token = str(port).strip().upper()
+    if token.startswith("COM"):
+        token = token[3:].strip()
+    return f"COM{int(token)}" if token.isdigit() else token
+
+
+def device_port_sort_key(port, pump_com_port=None):
+    pump_port = normalize_com_port(pump_com_port)
+    return (pump_port is not None and normalize_com_port(port) == pump_port, port)
+
+
 class SerialMeasurementRunner:
     """Run a single MethodSCRIPT measurement over a serial port.
 
@@ -172,20 +193,9 @@ class SerialMeasurementRunner:
             self.log("ERROR: No measurement device found")
             return None
 
-        # Deprioritise the pump port so we never accidentally send a script there
-        pump_upper = None
-        if self._pump_com_port is not None:
-            try:
-                pump_upper = f"COM{int(self._pump_com_port)}".upper()
-            except (TypeError, ValueError):
-                pump_upper = str(self._pump_com_port).upper()
-
-        candidates.sort(
-            key=lambda item: (
-                pump_upper is not None and item[0].upper() == pump_upper,
-                item[0],
-            )
-        )
+        # Prefer other matching devices; the pump remains a last-resort candidate.
+        pump_upper = normalize_com_port(self._pump_com_port)
+        candidates.sort(key=lambda item: device_port_sort_key(item[0], pump_upper))
 
         if len(candidates) > 1:
             self.log("Multiple devices found:")
