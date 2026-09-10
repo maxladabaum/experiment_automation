@@ -24,6 +24,7 @@ class MachineLocalConfigTests(unittest.TestCase):
             "EA_BO_LAST_SETUP_METADATA_PATH",
             "EA_SESSION_ARCHIVE_DIR",
             "EA_SESSION_ARCHIVE_DIRS",
+            "EA_SLACK_STATION_NAME",
         ):
             env.pop(key, None)
         env["EA_LOCAL_CONFIG_PATH"] = str(local_config_path)
@@ -42,6 +43,7 @@ class MachineLocalConfigTests(unittest.TestCase):
             "'archive_dir': str(config.SESSION_ARCHIVE_DIR) if config.SESSION_ARCHIVE_DIR else None, "
             "'pump': [config.PUMP_DEFAULT_COM_PORT, config.PUMP_DEFAULT_BAUD, config.PUMP_DEFAULT_DEV], "
             "'potentiostat': config.DEVICE_DEFAULT_PORT"
+            ", 'slack_station_name': config.SLACK_STATION_NAME"
             "}))"
         )
         completed = subprocess.run(
@@ -53,6 +55,17 @@ class MachineLocalConfigTests(unittest.TestCase):
             check=True,
         )
         return json.loads(completed.stdout)
+
+    def test_slack_header_is_optional_and_machine_local(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "local_config.json"
+            self.assertEqual(self._read_config(config_path)["slack_station_name"], "")
+            config_path.write_text(json.dumps({"slack_station_name": "Test station"}))
+            self.assertEqual(
+                self._read_config(config_path)["slack_station_name"], "Test station"
+            )
+            config_path.write_text("{}")
+            self.assertEqual(self._read_config(config_path)["slack_station_name"], "")
 
     def test_missing_external_config_uses_current_user_documents(self):
         with tempfile.TemporaryDirectory() as temp_dir:

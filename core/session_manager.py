@@ -32,7 +32,7 @@ from tkinter import messagebox
 import tkinter as tk
 from typing import Optional
 
-from config import DATA_DIR, SLACK_BOT_TOKEN, SLACK_TARGET, APP_VERSION
+from config import DATA_DIR, SLACK_BOT_TOKEN, SLACK_TARGET, SLACK_STATION_NAME, APP_VERSION
 from .slack_notifier import SlackNotifier
 
 
@@ -56,6 +56,7 @@ class SessionManager:
         self._slack = SlackNotifier(
             bot_token=SLACK_BOT_TOKEN,
             default_target=SLACK_TARGET,
+            station_name=SLACK_STATION_NAME,
             log_callback=self.log,
         )
         self._on_experiment_started = None

@@ -7,16 +7,44 @@ import pytest
 from core.slack_notifier import SlackNotifier
 
 
-def test_image_report_comment_and_title():
-    notifier = SlackNotifier("fake-token", "C-default")
+@pytest.mark.parametrize("station,expected", [
+    ("el infanto (setup 5)", "[el infanto (setup 5)]\nTest message"),
+    ("", "Test message"),
+])
+def test_message_station_header_and_target(station, expected):
+    notifier = SlackNotifier("fake-token", "C-default", station_name=station)
+    with patch("core.slack_notifier.request.urlopen", return_value=io.BytesIO(b'{"ok":true}')) as send:
+        assert notifier.send_message("Test message", target="C-reply")
+    payload = json.loads(send.call_args.args[0].data)
+    assert payload == {"channel": "C-reply", "text": expected}
+
+
+@pytest.mark.parametrize("station,expected", [
+    ("el infanto (setup 5)", "[el infanto (setup 5)] Trend"),
+    ("", "Trend"),
+])
+def test_image_station_title(station, expected):
+    notifier = SlackNotifier("fake-token", "C-default", station_name=station)
+    with patch.object(notifier, "_post_form", side_effect=[
+        {"ok": True, "upload_url": "https://example.test/upload", "file_id": "F1"},
+        {"ok": True},
+    ]) as form, patch("core.slack_notifier.request.urlopen", return_value=io.BytesIO(b"ok")):
+        assert notifier.send_image(b"png", "trend.png", title="Trend")
+    fields = form.call_args.args[1]
+    assert fields["channel_id"] == "C-default"
+    assert json.loads(fields["files"]) == [{"id": "F1", "title": expected}]
+
+
+def test_image_report_comment_has_station_header():
+    notifier = SlackNotifier("fake-token", "C-default", station_name="*Station*")
     with patch.object(notifier, "_post_form", side_effect=[
         {"ok": True, "upload_url": "https://example.test/upload", "file_id": "F1"},
         {"ok": True},
     ]) as form, patch("core.slack_notifier.request.urlopen", return_value=io.BytesIO(b"ok")):
         assert notifier.send_image(b"png", "bug.png", comment="Bug description")
     fields = form.call_args.args[1]
-    assert fields["initial_comment"] == "Bug description"
-    assert json.loads(fields["files"])[0]["title"] == "bug.png"
+    assert fields["initial_comment"] == "[*Station*]\nBug description"
+    assert json.loads(fields["files"])[0]["title"] == "[Station] bug.png"
 
 
 @pytest.mark.parametrize('reason,hint', [

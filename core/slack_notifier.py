@@ -21,11 +21,13 @@ class SlackNotifier:
         default_target: str,
         log_callback: Callable[[str], None] = print,
         timeout_seconds: float = 8.0,
+        station_name: str = "",
     ):
         self._token = (bot_token or "").strip()
         self._target = (default_target or "").strip()
         self._log = log_callback
         self._timeout = float(timeout_seconds)
+        self._station_name = (station_name or "").strip()
         self.last_image_error = ""
 
     @property
@@ -38,6 +40,8 @@ class SlackNotifier:
         if not text or not self._token or not channel:
             return False
 
+        if self._station_name:
+            text = f"[{self._station_name}]\n{text}"
         payload = json.dumps({"channel": channel, "text": text}).encode("utf-8")
         req = request.Request(
             self._POST_MESSAGE_URL,
@@ -79,6 +83,10 @@ class SlackNotifier:
             return self._image_upload_failed("Missing image, Slack token, or destination channel.")
 
         image_title = title or filename
+        if self._station_name:
+            # File titles are plain text, so omit Slack bold markers.
+            plain_station = self._station_name.replace("*", "")
+            image_title = f"[{plain_station}] {image_title}"
 
         stage = "request upload URL"
         try:
@@ -109,7 +117,9 @@ class SlackNotifier:
                 "channel_id": channel,
             }
             if comment:
-                fields["initial_comment"] = comment
+                fields["initial_comment"] = (
+                    f"[{self._station_name}]\n{comment}" if self._station_name else comment
+                )
             stage = "share image in channel"
             completed = self._post_form(self._COMPLETE_UPLOAD_URL, fields)
             if not completed.get("ok"):
