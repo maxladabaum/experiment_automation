@@ -89,7 +89,7 @@ def _as_string_list(value, default):
 
 
 # ── Version ──────────────────────────────────────────────────────────────────
-APP_VERSION = "2.1.2"
+APP_VERSION = "2.2.0"
 
 # ── Pump hardware defaults ────────────────────────────────────────────────────
 PUMP_DEFAULT_COM_PORT = _as_com_port_int(
