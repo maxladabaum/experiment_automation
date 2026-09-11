@@ -114,17 +114,15 @@ class RecipeMakerTab:
         tree_horizontal = ttk.Scrollbar(tree_frame, orient="horizontal", command=self._tree.xview)
         tree_horizontal.grid(row=1, column=0, sticky="ew")
         self._tree.configure(yscrollcommand=tree_scroll.set, xscrollcommand=tree_horizontal.set)
-        for column in cols:
-            self._tree.column(column, minwidth=self._tree.column(column, "width"))
         self._tree.tag_configure("volt", background="#dff5d8")
         self._tree.tag_configure("block", background="#fff3cd")
         self._tree.tag_configure("alert", background="#f8d7da")
         self._tree.tag_configure("bo", background="#e8ddff")
         self._tree.tag_configure("default", background="#f2f2f2")
 
-        legend = FlowFrame(top)
-        legend.pack(before=tree_frame, fill="x", padx=10, pady=(0, 6))
-        legend.add(ttk.Label(legend, text="Legend:"))
+        legend = ttk.Frame(top)
+        legend.pack(side="bottom", before=tree_frame, fill="x", padx=10, pady=(0, 6))
+        ttk.Label(legend, text="Legend:").pack(side="left")
         self._legend_chip(legend, "#dff5d8", "Voltammetry (CV/SWV)")
         self._legend_chip(legend, "#fff3cd", "Block step")
         self._legend_chip(legend, "#f8d7da", "Alert/Pause")
@@ -146,6 +144,39 @@ class RecipeMakerTab:
         self._tree.bind("<Control-d>", lambda e: self._duplicate_selected())
 
         # ── Bottom pane: editors / library
+        # The native Windows sash is only a few pixels high. Provide an
+        # explicit drag target without changing the existing panel layout.
+        resize_grip = ttk.Label(
+            bottom, text="⋯  Drag to resize  ⋯", anchor="center",
+            cursor="sb_v_double_arrow", padding=(0, 2),
+        )
+        resize_grip.pack(fill="x")
+        drag_origin = None
+
+        def start_resize(event):
+            nonlocal drag_origin
+            drag_origin = (event.y_root, pane.sashpos(0))
+            return "break"
+
+        def resize_panels(event):
+            if drag_origin is not None:
+                start_y, start_pos = drag_origin
+                # Keep both the recipe controls and the grip accessible.
+                minimum = ctrl.winfo_height() + legend.winfo_reqheight() + 70
+                maximum = max(minimum, pane.winfo_height() - 100)
+                position = start_pos + event.y_root - start_y
+                pane.sashpos(0, max(minimum, min(maximum, position)))
+            return "break"
+
+        def stop_resize(_event):
+            nonlocal drag_origin
+            drag_origin = None
+            return "break"
+
+        resize_grip.bind("<ButtonPress-1>", start_resize)
+        resize_grip.bind("<B1-Motion>", resize_panels)
+        resize_grip.bind("<ButtonRelease-1>", stop_resize)
+
         bottom_nb = ttk.Notebook(bottom)
         bottom_nb.pack(fill="both", expand=True, padx=10, pady=8)
 
@@ -159,21 +190,16 @@ class RecipeMakerTab:
         self._add_recipe_info_button(pump_tab, "Recipe Pump Steps Guide", "pump")
         self._add_recipe_info_button(method_tab, "Recipe Method Library Guide", "methods")
         self._add_recipe_info_button(block_tab, "Recipe Blocks Guide", "blocks")
-        pump_body = ScrollableFrame(pump_tab, min_width=700)
-        method_body = ScrollableFrame(method_tab, min_width=700)
-        block_body = ScrollableFrame(block_tab, min_width=700)
+        pump_body = ttk.Frame(pump_tab)
+        method_body = ttk.Frame(method_tab)
+        block_body = ttk.Frame(block_tab)
         pump_body.pack(fill="both", expand=True)
         method_body.pack(fill="both", expand=True)
         block_body.pack(fill="both", expand=True)
 
-        self._build_pump_editor(pump_body.content)
-        self._build_method_library(method_body.content)
-        self._build_blocks_library(block_body.content)
-        # Preserve each editor's requested width (including display scaling).
-        # Narrow windows scroll instead of clipping the rightmost controls.
-        for body in (pump_body, method_body, block_body):
-            body.update_idletasks()
-            body._min_width = max(body._min_width, body.content.winfo_reqwidth())
+        self._build_pump_editor(pump_body)
+        self._build_method_library(method_body)
+        self._build_blocks_library(block_body)
 
     def _add_recipe_info_button(self, parent, title: str, guide_key: str):
         bar = ttk.Frame(parent)
@@ -186,12 +212,13 @@ class RecipeMakerTab:
         )
 
     def _legend_chip(self, parent, color: str, text: str):
-        chip = ttk.Frame(parent)
-        swatch = tk.Canvas(chip, width=12, height=12, highlightthickness=0)
+        swatch = tk.Canvas(parent, width=12, height=12, highlightthickness=0)
         swatch.create_rectangle(0, 0, 12, 12, fill=color, outline="#777")
         swatch.pack(side="left", padx=(8, 2))
-        ttk.Label(chip, text=text).pack(side="left", padx=(0, 6))
-        parent.add(chip)
+        ttk.Label(parent, text=text).pack(side="left", padx=(0, 6))
+
+
+    # ── Pump editor ────────────────────────────────────────────────────────
 
     @staticmethod
     def _scrollable_tree(parent, **kwargs):
@@ -208,7 +235,6 @@ class RecipeMakerTab:
         tree.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)
         return tree
 
-    # ── Pump editor ────────────────────────────────────────────────────────
 
     def _build_pump_editor(self, parent):
         pad = {"padx": 6, "pady": 4}
@@ -231,25 +257,25 @@ class RecipeMakerTab:
         self._pump_volume = tk.DoubleVar(value=100.0)
         ttk.Entry(parent, width=10, textvariable=self._pump_volume).grid(row=0, column=5, **pad, sticky="w")
 
-        ttk.Label(parent, text="Valve port:").grid(row=1, column=0, **pad, sticky="e")
+        ttk.Label(parent, text="Valve port:").grid(row=0, column=6, **pad, sticky="e")
         self._pump_port = tk.IntVar(value=1)
-        ttk.Entry(parent, width=8, textvariable=self._pump_port).grid(row=1, column=1, **pad, sticky="w")
+        ttk.Entry(parent, width=8, textvariable=self._pump_port).grid(row=0, column=7, **pad, sticky="w")
 
-        ttk.Label(parent, text="Pause (sec):").grid(row=1, column=2, **pad, sticky="e")
+        ttk.Label(parent, text="Pause (sec):").grid(row=0, column=8, **pad, sticky="e")
         self._pause_seconds = tk.DoubleVar(value=10.0)
-        ttk.Entry(parent, width=10, textvariable=self._pause_seconds).grid(row=1, column=3, **pad, sticky="w")
+        ttk.Entry(parent, width=10, textvariable=self._pause_seconds).grid(row=0, column=9, **pad, sticky="w")
 
-        ttk.Label(parent, text="Alert message:").grid(row=2, column=0, **pad, sticky="e")
+        ttk.Label(parent, text="Alert message:").grid(row=1, column=0, **pad, sticky="e")
         self._alert_message = tk.StringVar(value="Check setup")
         ttk.Entry(parent, width=50, textvariable=self._alert_message).grid(
-            row=2, column=1, columnspan=5, **pad, sticky="w"
+            row=1, column=1, columnspan=6, **pad, sticky="w"
         )
 
         ttk.Label(
             parent,
             text="Tip: Only relevant fields are used based on action type.",
             foreground="#666",
-        ).grid(row=3, column=0, columnspan=6, padx=6, pady=(0, 6), sticky="w")
+        ).grid(row=2, column=0, columnspan=10, padx=6, pady=(0, 6), sticky="w")
 
     def _add_pump_step(self):
         action = self._pump_action.get().strip().upper()
@@ -428,7 +454,7 @@ class RecipeMakerTab:
         ttk.Label(top, text="Search:").pack(side="left")
         self._method_search = tk.StringVar()
         self._method_search.trace_add("write", lambda *_: self._refresh_methods())
-        ttk.Entry(top, textvariable=self._method_search, width=20).pack(side="left", padx=6)
+        ttk.Entry(top, textvariable=self._method_search, width=30).pack(side="left", padx=6)
 
         ttk.Label(top, text="Technique:").pack(side="left", padx=(10, 0))
         self._tech_filter = tk.StringVar(value="ALL")
@@ -452,14 +478,12 @@ class RecipeMakerTab:
         ).pack(side="left", padx=6)
         self._mux_filter.trace_add("write", lambda *_: self._refresh_methods())
 
-        actions = FlowFrame(parent)
-        actions.pack(fill="x", padx=6, pady=(0, 6))
-        actions.add(ttk.Button(actions, text="Refresh",
-                   command=self._load_method_map))
-        actions.add(ttk.Button(actions, text="Delete Method",
-                   command=self._delete_method_family))
-        actions.add(ttk.Button(actions, text="Clear MUX Methods",
-                   command=self._clear_mux_methods))
+        ttk.Button(top, text="Refresh",
+                   command=self._load_method_map).pack(side="left", padx=6)
+        ttk.Button(top, text="Delete Method",
+                   command=self._delete_method_family).pack(side="left", padx=6)
+        ttk.Button(top, text="Clear MUX Methods",
+                   command=self._clear_mux_methods).pack(side="left", padx=6)
 
         sweep = ttk.Frame(parent)
         sweep.pack(fill="x", padx=6, pady=(0, 4))
@@ -489,7 +513,7 @@ class RecipeMakerTab:
 
         ttk.Label(sweep, text="Custom order:").grid(row=1, column=0, **pad, sticky="e")
         self._sweep_custom = tk.StringVar(value="")
-        ttk.Entry(sweep, width=28, textvariable=self._sweep_custom).grid(
+        ttk.Entry(sweep, width=44, textvariable=self._sweep_custom).grid(
             row=1, column=1, columnspan=5, **pad, sticky="we"
         )
         ttk.Label(sweep, text="e.g. 1,3,5,2,4").grid(row=1, column=6, columnspan=3, **pad, sticky="w")
@@ -498,7 +522,7 @@ class RecipeMakerTab:
             sweep,
             text="Add Channel Sweep Block",
             command=self._add_method_sweep_block,
-        ).grid(row=2, column=0, columnspan=9, padx=6, pady=4, sticky="w")
+        ).grid(row=0, column=9, rowspan=2, padx=(12, 6), pady=4, sticky="ns")
 
         cols = ("Hash", "Note", "Technique", "Params")
         self._method_tree = self._scrollable_tree(parent, columns=cols, show="headings", height=8)
@@ -520,7 +544,7 @@ class RecipeMakerTab:
                 "Select a method and use Add Method Step, double-click to edit its note, "
                 "or configure channels and use 'Add Channel Sweep Block'."
             ),
-            foreground="#666", wraplength=660,
+            foreground="#666",
         )
         hint.pack(side="bottom", anchor="w", padx=8, pady=(0, 6))
 
@@ -1202,7 +1226,7 @@ class RecipeMakerTab:
                 "Blocks are predefined sequences stored in bundled default_blocks "
                 "and local custom_blocks/saved_recipes folders."
             ),
-            foreground="#666", wraplength=660,
+            foreground="#666",
         )
         hint.pack(side="bottom", anchor="w", padx=8, pady=(0, 6))
 
