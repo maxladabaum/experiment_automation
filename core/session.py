@@ -93,7 +93,7 @@ class SessionState:
         self.last_live_plot_label: Optional[str]  = None
 
         # —— Execution options ———————————————————————————————————————————————————
-        self.save_raw_packets: bool = False
+        self.save_raw_packets: bool = True
         self.simulate_measurements: bool = False
         self.step_delay: float = 1.0
         # Selected device COM port (None = auto-detect)

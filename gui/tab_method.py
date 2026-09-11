@@ -118,6 +118,7 @@ class MethodTab:
         self.pause_params: dict = {}
         self._library_note = tk.StringVar(value="")
         self._cv_range_mode = tk.StringVar(value="auto")
+        self._cv_configure_voltage_window = tk.BooleanVar(value=True)
         self._cv_fixed_range = tk.StringVar(value="125 uA")
         self._cv_auto_min = tk.StringVar(value="1 nA")
         self._cv_auto_max = tk.StringVar(value="100 uA")
@@ -338,13 +339,20 @@ class MethodTab:
             title="Current Range (EmStat Pico low-speed mode / PSTrace labels)",
         )
 
+        window_frame = ttk.Frame(self._params_frame)
+        window_frame.grid(row=len(params) + 1, column=0, columnspan=2, sticky="w", pady=(8, 2))
+        ttk.Checkbutton(window_frame, text="Configure CV voltage window",
+                        variable=self._cv_configure_voltage_window).pack(anchor="w")
+        ttk.Label(window_frame, text="On: fit the voltage window to this method. Off: use the device default (legacy)."
+                  ).pack(anchor="w")
+
         ttk.Label(self._params_frame, text="Library note (optional):").grid(
-            row=len(params) + 1, column=0, sticky="w", pady=(8, 2))
+            row=len(params) + 2, column=0, sticky="w", pady=(8, 2))
         ttk.Entry(self._params_frame, width=40, textvariable=self._library_note).grid(
-            row=len(params) + 1, column=1, sticky="w", pady=2)
+            row=len(params) + 2, column=1, sticky="w", pady=2)
 
         btn_frame = ttk.Frame(self._params_frame)
-        btn_frame.grid(row=len(params) + 2, column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=len(params) + 3, column=0, columnspan=2, pady=20)
         ttk.Button(btn_frame, text="Generate Script",
                    command=self._generate_cv_script).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Save to Library",
@@ -702,13 +710,18 @@ class MethodTab:
 
     def _serialize_ba_range_config(self, technique: str) -> dict:
         cfg = self._get_ba_range_config(technique)
-        return {
+        params = {
             "ba_autorange": "1" if cfg["mode"] == "auto" else "0",
             "ba_range_mode": cfg["mode"],
             "ba_fixed_range": cfg["fixed_label"],
             "ba_auto_min": cfg["auto_min_label"],
             "ba_auto_max": cfg["auto_max_label"],
         }
+        if technique == "CV":
+            # Generate a new library key instead of reusing scripts that omit
+            # the applied-potential window, even with identical user settings.
+            params["cv_voltage_window_version"] = "1" if self._cv_configure_voltage_window.get() else "0"
+        return params
 
     def _build_cv_script(self) -> str:
         p = self.cv_params
@@ -722,10 +735,29 @@ class MethodTab:
         cond_time  = p["cond_time"].get()
         ba_cfg     = self._get_ba_range_config("CV")
 
+        potentials = [float(p[key].get()) for key in ("begin_potential", "vertex1", "vertex2")]
+        if float(cond_time) > 0:
+            potentials.append(float(p["cond_potential"].get()))
+        if not all(math.isfinite(value) for value in potentials):
+            raise ValueError("CV potentials must be finite numbers.")
+        min_v, max_v = min(potentials), max(potentials)
+        if min_v < -1.25 or max_v > 2.0 or max_v - min_v > 2.2 + 1e-9:
+            raise ValueError(
+                "CV uses EmStat Pico low-speed mode: potentials must be between "
+                "-1.25 and +2.0 V, with a total window no wider than 2.2 V "
+                "(including active conditioning)."
+            )
+        potential_window = (
+            f"set_range_minmax da {to_si_string(str(min_v), 'V')} "
+            f"{to_si_string(str(max_v), 'V')}"
+        )
+
         parts = [
             "e", "var c", "var p",
             "set_pgstat_mode 2", "set_max_bandwidth 40",
         ]
+        if self._cv_configure_voltage_window.get():
+            parts.append(potential_window)
         parts += self._ba_range_lines(
             ba_cfg["set_range_value"],
             ba_cfg["mode"] == "auto",

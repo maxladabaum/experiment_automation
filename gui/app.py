@@ -895,11 +895,11 @@ class ElectrochemGUI:
           - ``"SWV_MUX_CYCLES"``          → repeated SWV scans over MUX channels
         ``extra`` carries the additional context needed for each variant.
         """
-        if self._session.is_running:
+        if self._session.is_running or self._queue_tab.worker_is_active():
             messagebox.showwarning(
                 "Busy",
-                "A measurement is already running. "
-                "Stop it before starting a new one."
+                "A run is still running or stopping. "
+                "Wait for it to finish before starting a new one."
             )
             return
 

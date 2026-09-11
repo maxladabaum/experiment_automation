@@ -16,7 +16,7 @@ import hashlib
 import os
 import time
 import uuid
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from datetime import datetime
 from typing import Optional
 
@@ -126,6 +126,48 @@ def lookup(hash_key: str) -> Optional[Path]:
         return alt_path
     del _map[hash_key]
     _persist()
+    return None
+
+
+def legacy_library_suffix(script_path) -> Optional[Path]:
+    """Recognize old absolute library/archive addresses, not arbitrary methods folders."""
+    parts = str(script_path).replace("\\", "/").split("/")
+    for index, part in enumerate(parts[:-2]):
+        if part.lower() == "methods" and parts[index + 1].lower() in {"library", "archive"}:
+            suffix = parts[index + 1:]
+            if ".." not in suffix:
+                return Path(*suffix)
+    return None
+
+
+def resolve_script_path(script_path, base_dir=None) -> Optional[Path]:
+    """Resolve a saved methods-library path on this machine without guessing a method."""
+    if not script_path:
+        return None
+    normalized = str(script_path).replace("\\", "/")
+    path = Path(normalized).expanduser()
+    portable = normalized.lower().startswith("methods/") and ".." not in path.parts
+    # A portable methods/... address refers to this setup's configured library,
+    # even when a same-named bundled method exists in the working directory.
+    if portable:
+        candidate = _METHODS_ROOT.joinpath(*path.parts[1:])
+        if candidate.is_file():
+            return candidate
+    absolute = path.is_absolute() or PureWindowsPath(str(script_path)).is_absolute()
+    if base_dir is not None and not absolute:
+        relative_path = Path(base_dir) / path
+        if relative_path.is_file():
+            return relative_path
+        if not portable:
+            return None
+    if path.is_file():
+        return path
+    relative = Path(*path.parts[1:]) if portable else (legacy_library_suffix(script_path) if absolute else None)
+    if relative is not None:
+        for root in (_METHODS_ROOT, Path(__file__).resolve().parent):
+            candidate = root / relative
+            if candidate.is_file():
+                return candidate
     return None
 
 

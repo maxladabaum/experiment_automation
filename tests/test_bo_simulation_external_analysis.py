@@ -46,6 +46,8 @@ def test_classic_simulation_uses_analysis_worker(monkeypatch, tmp_path):
     calls = []
     monkeypatch.setattr(bo_simulation, "run_analysis", _external_worker_stub(calls))
     config = load_bo_config("optimizer/bo_configs/default_swv_bo.json")
+    config["channel_groups"] = [{"name": "Test", "channels": [1]}]
+    config["channels"] = [1]
 
     result = bo_simulation.run_optimizer_simulation(
         config,
@@ -62,6 +64,8 @@ def test_paired_simulation_analyzes_buffer_and_target_externally(monkeypatch, tm
     calls = []
     monkeypatch.setattr(bo_simulation, "run_analysis", _external_worker_stub(calls))
     config = load_bo_config("optimizer/bo_configs/default_swv_bo.json")
+    config["channel_groups"] = [{"name": "Test", "channels": [1]}]
+    config["channels"] = [1]
 
     result = bo_simulation.run_paired_response_optimizer_simulation(
         config,

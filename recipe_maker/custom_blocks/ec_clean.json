@@ -1,8 +1,4 @@
 {
-  "metadata": {
-    "saved_at": "2026-09-04T15:37:17",
-    "version": 1
-  },
   "items": [
     {
       "type": "PUMP_VALVE",
@@ -99,62 +95,292 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch1_3f539d.ms (MUX ch 1)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch1_3f539d.ms"
+      "details": "cv_ch1_db1147.ms | MUX ch 1",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch1_db1147",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.01",
+          "scan_rate": "1",
+          "n_scans": "25",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 1
+      },
+      "script_path": "methods/library/ec_clean/cv_ch1_db1147.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch2_f73bac.ms (MUX ch 2)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch2_f73bac.ms"
+      "details": "cv_ch2_27fa75.ms | MUX ch 2",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch2_27fa75",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.01",
+          "scan_rate": "1",
+          "n_scans": "25",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 2
+      },
+      "script_path": "methods/library/ec_clean/cv_ch2_27fa75.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch3_96cf4b.ms (MUX ch 3)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch3_96cf4b.ms"
+      "details": "cv_ch3_632ed8.ms | MUX ch 3",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch3_632ed8",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.01",
+          "scan_rate": "1",
+          "n_scans": "25",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 3
+      },
+      "script_path": "methods/library/ec_clean/cv_ch3_632ed8.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch4_93cbe8.ms (MUX ch 4)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch4_93cbe8.ms"
+      "details": "cv_ch4_197ecb.ms | MUX ch 4",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch4_197ecb",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.01",
+          "scan_rate": "1",
+          "n_scans": "25",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 4
+      },
+      "script_path": "methods/library/ec_clean/cv_ch4_197ecb.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch5_b37f84.ms (MUX ch 5)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch5_b37f84.ms"
+      "details": "cv_ch5_58c4e8.ms | MUX ch 5",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch5_58c4e8",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.01",
+          "scan_rate": "1",
+          "n_scans": "25",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 5
+      },
+      "script_path": "methods/library/ec_clean/cv_ch5_58c4e8.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch6_bd4918.ms (MUX ch 6)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch6_bd4918.ms"
+      "details": "cv_ch6_abc512.ms | MUX ch 6",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch6_abc512",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.01",
+          "scan_rate": "1",
+          "n_scans": "25",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 6
+      },
+      "script_path": "methods/library/ec_clean/cv_ch6_abc512.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch7_c0f9cf.ms (MUX ch 7)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch7_c0f9cf.ms"
+      "details": "cv_ch7_ede6c8.ms | MUX ch 7",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch7_ede6c8",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.01",
+          "scan_rate": "1",
+          "n_scans": "25",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 7
+      },
+      "script_path": "methods/library/ec_clean/cv_ch7_ede6c8.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch8_7da51c.ms (MUX ch 8)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch8_7da51c.ms"
+      "details": "cv_ch8_d030dc.ms | MUX ch 8",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch8_d030dc",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.01",
+          "scan_rate": "1",
+          "n_scans": "25",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 8
+      },
+      "script_path": "methods/library/ec_clean/cv_ch8_d030dc.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch9_6befd1.ms (MUX ch 9)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch9_6befd1.ms"
+      "details": "cv_ch9_50739a.ms | MUX ch 9",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch9_50739a",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.01",
+          "scan_rate": "1",
+          "n_scans": "25",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 9
+      },
+      "script_path": "methods/library/ec_clean/cv_ch9_50739a.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch10_6fb4fc.ms (MUX ch 10)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch10_6fb4fc.ms"
+      "details": "cv_ch10_a78c59.ms | MUX ch 10",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch10_a78c59",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.01",
+          "scan_rate": "1",
+          "n_scans": "25",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 10
+      },
+      "script_path": "methods/library/ec_clean/cv_ch10_a78c59.ms"
     },
     {
       "type": "PUMP_VALVE",
@@ -251,62 +477,292 @@
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch1_7ab9ac.ms (MUX ch 1)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch1_7ab9ac.ms"
+      "details": "cv_ch1_e4baab.ms | MUX ch 1",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch1_e4baab",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.001",
+          "scan_rate": "0.1",
+          "n_scans": "3",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 1
+      },
+      "script_path": "methods/library/ec_clean/cv_ch1_e4baab.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch2_c5d5d1.ms (MUX ch 2)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch2_c5d5d1.ms"
+      "details": "cv_ch2_26e5d6.ms | MUX ch 2",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch2_26e5d6",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.001",
+          "scan_rate": "0.1",
+          "n_scans": "3",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 2
+      },
+      "script_path": "methods/library/ec_clean/cv_ch2_26e5d6.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch3_b27240.ms (MUX ch 3)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch3_b27240.ms"
+      "details": "cv_ch3_833f48.ms | MUX ch 3",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch3_833f48",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.001",
+          "scan_rate": "0.1",
+          "n_scans": "3",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 3
+      },
+      "script_path": "methods/library/ec_clean/cv_ch3_833f48.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch4_1f38a6.ms (MUX ch 4)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch4_1f38a6.ms"
+      "details": "cv_ch4_6c339f.ms | MUX ch 4",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch4_6c339f",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.001",
+          "scan_rate": "0.1",
+          "n_scans": "3",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 4
+      },
+      "script_path": "methods/library/ec_clean/cv_ch4_6c339f.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch5_3a0c97.ms (MUX ch 5)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch5_3a0c97.ms"
+      "details": "cv_ch5_3c3626.ms | MUX ch 5",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch5_3c3626",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.001",
+          "scan_rate": "0.1",
+          "n_scans": "3",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 5
+      },
+      "script_path": "methods/library/ec_clean/cv_ch5_3c3626.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch6_c133c0.ms (MUX ch 6)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch6_c133c0.ms"
+      "details": "cv_ch6_679202.ms | MUX ch 6",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch6_679202",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.001",
+          "scan_rate": "0.1",
+          "n_scans": "3",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 6
+      },
+      "script_path": "methods/library/ec_clean/cv_ch6_679202.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch7_c09b85.ms (MUX ch 7)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch7_c09b85.ms"
+      "details": "cv_ch7_982b60.ms | MUX ch 7",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch7_982b60",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.001",
+          "scan_rate": "0.1",
+          "n_scans": "3",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 7
+      },
+      "script_path": "methods/library/ec_clean/cv_ch7_982b60.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch8_8776d7.ms (MUX ch 8)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch8_8776d7.ms"
+      "details": "cv_ch8_a0b209.ms | MUX ch 8",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch8_a0b209",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.001",
+          "scan_rate": "0.1",
+          "n_scans": "3",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 8
+      },
+      "script_path": "methods/library/ec_clean/cv_ch8_a0b209.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch9_dc8198.ms (MUX ch 9)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch9_dc8198.ms"
+      "details": "cv_ch9_3a7c96.ms | MUX ch 9",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch9_3a7c96",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.001",
+          "scan_rate": "0.1",
+          "n_scans": "3",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 9
+      },
+      "script_path": "methods/library/ec_clean/cv_ch9_3a7c96.ms"
     },
     {
       "type": "CV",
       "status": "pending",
-      "details": "cv_ch10_22b45a.ms (MUX ch 10)",
-      "script_path": "C:\\Users\\Chien Lab\\Documents\\Experiment Automation Data\\methods\\library\\mux_methods\\cv_ch10_22b45a.ms"
+      "details": "cv_ch10_1fef34.ms | MUX ch 10",
+      "block_name": "Sweep CV (10 ch x 1)",
+      "method_ref": {
+        "hash_key": "cv_ch10_1fef34",
+        "technique": "CV",
+        "params": {
+          "begin_potential": "-0.2",
+          "vertex1": "-0.2",
+          "vertex2": "1.5",
+          "step_potential": "0.001",
+          "scan_rate": "0.1",
+          "n_scans": "3",
+          "cond_potential": "0",
+          "cond_time": "0",
+          "mux_channel": "0",
+          "ba_autorange": "1",
+          "ba_range_mode": "auto",
+          "ba_fixed_range": "125 uA",
+          "ba_auto_min": "1 nA",
+          "ba_auto_max": "100 uA",
+          "cv_voltage_window_version": "1"
+        },
+        "mux_channel": 10
+      },
+      "script_path": "methods/library/ec_clean/cv_ch10_1fef34.ms"
     }
   ]
 }

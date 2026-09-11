@@ -17,6 +17,7 @@ import tkinter as tk
 from tkinter import ttk, simpledialog
 
 from methods import library_map
+from core.protocol_io import write_protocol, loaded_items
 from config import (
     BLOCKS_DIR,
     BO_ANALYSIS_FILE_GLOB,
@@ -26,7 +27,7 @@ from config import (
 )
 from core.bo_session import load_bo_config, normalize_bo_config
 from gui.help_content import RECIPE_GUIDES
-from gui.widgets import FlowFrame, attach_info_button
+from gui.widgets import FlowFrame, ScrollableFrame, attach_info_button
 
 
 class RecipeMakerTab:
@@ -105,19 +106,25 @@ class RecipeMakerTab:
         self._tree.column("Type", width=160)
         self._tree.column("Block", width=180)
         self._tree.column("Details", width=420)
-        self._tree.pack(side="left", fill="both", expand=True)
+        tree_frame.rowconfigure(0, weight=1)
+        tree_frame.columnconfigure(0, weight=1)
+        self._tree.grid(row=0, column=0, sticky="nsew")
         tree_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self._tree.yview)
-        tree_scroll.pack(side="right", fill="y")
-        self._tree.configure(yscrollcommand=tree_scroll.set)
+        tree_scroll.grid(row=0, column=1, sticky="ns")
+        tree_horizontal = ttk.Scrollbar(tree_frame, orient="horizontal", command=self._tree.xview)
+        tree_horizontal.grid(row=1, column=0, sticky="ew")
+        self._tree.configure(yscrollcommand=tree_scroll.set, xscrollcommand=tree_horizontal.set)
+        for column in cols:
+            self._tree.column(column, minwidth=self._tree.column(column, "width"))
         self._tree.tag_configure("volt", background="#dff5d8")
         self._tree.tag_configure("block", background="#fff3cd")
         self._tree.tag_configure("alert", background="#f8d7da")
         self._tree.tag_configure("bo", background="#e8ddff")
         self._tree.tag_configure("default", background="#f2f2f2")
 
-        legend = ttk.Frame(top)
-        legend.pack(fill="x", padx=10, pady=(0, 6))
-        ttk.Label(legend, text="Legend:").pack(side="left")
+        legend = FlowFrame(top)
+        legend.pack(before=tree_frame, fill="x", padx=10, pady=(0, 6))
+        legend.add(ttk.Label(legend, text="Legend:"))
         self._legend_chip(legend, "#dff5d8", "Voltammetry (CV/SWV)")
         self._legend_chip(legend, "#fff3cd", "Block step")
         self._legend_chip(legend, "#f8d7da", "Alert/Pause")
@@ -152,16 +159,21 @@ class RecipeMakerTab:
         self._add_recipe_info_button(pump_tab, "Recipe Pump Steps Guide", "pump")
         self._add_recipe_info_button(method_tab, "Recipe Method Library Guide", "methods")
         self._add_recipe_info_button(block_tab, "Recipe Blocks Guide", "blocks")
-        pump_body = ttk.Frame(pump_tab)
-        method_body = ttk.Frame(method_tab)
-        block_body = ttk.Frame(block_tab)
+        pump_body = ScrollableFrame(pump_tab, min_width=700)
+        method_body = ScrollableFrame(method_tab, min_width=700)
+        block_body = ScrollableFrame(block_tab, min_width=700)
         pump_body.pack(fill="both", expand=True)
         method_body.pack(fill="both", expand=True)
         block_body.pack(fill="both", expand=True)
 
-        self._build_pump_editor(pump_body)
-        self._build_method_library(method_body)
-        self._build_blocks_library(block_body)
+        self._build_pump_editor(pump_body.content)
+        self._build_method_library(method_body.content)
+        self._build_blocks_library(block_body.content)
+        # Preserve each editor's requested width (including display scaling).
+        # Narrow windows scroll instead of clipping the rightmost controls.
+        for body in (pump_body, method_body, block_body):
+            body.update_idletasks()
+            body._min_width = max(body._min_width, body.content.winfo_reqwidth())
 
     def _add_recipe_info_button(self, parent, title: str, guide_key: str):
         bar = ttk.Frame(parent)
@@ -174,10 +186,27 @@ class RecipeMakerTab:
         )
 
     def _legend_chip(self, parent, color: str, text: str):
-        swatch = tk.Canvas(parent, width=12, height=12, highlightthickness=0)
+        chip = ttk.Frame(parent)
+        swatch = tk.Canvas(chip, width=12, height=12, highlightthickness=0)
         swatch.create_rectangle(0, 0, 12, 12, fill=color, outline="#777")
         swatch.pack(side="left", padx=(8, 2))
-        ttk.Label(parent, text=text).pack(side="left", padx=(0, 6))
+        ttk.Label(chip, text=text).pack(side="left", padx=(0, 6))
+        parent.add(chip)
+
+    @staticmethod
+    def _scrollable_tree(parent, **kwargs):
+        frame = ttk.Frame(parent)
+        frame.pack(fill="both", expand=True, padx=6, pady=6)
+        frame.rowconfigure(0, weight=1)
+        frame.columnconfigure(0, weight=1)
+        tree = ttk.Treeview(frame, **kwargs)
+        tree.grid(row=0, column=0, sticky="nsew")
+        vertical = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        horizontal = ttk.Scrollbar(frame, orient="horizontal", command=tree.xview)
+        vertical.grid(row=0, column=1, sticky="ns")
+        horizontal.grid(row=1, column=0, sticky="ew")
+        tree.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)
+        return tree
 
     # ── Pump editor ────────────────────────────────────────────────────────
 
@@ -202,25 +231,25 @@ class RecipeMakerTab:
         self._pump_volume = tk.DoubleVar(value=100.0)
         ttk.Entry(parent, width=10, textvariable=self._pump_volume).grid(row=0, column=5, **pad, sticky="w")
 
-        ttk.Label(parent, text="Valve port:").grid(row=0, column=6, **pad, sticky="e")
+        ttk.Label(parent, text="Valve port:").grid(row=1, column=0, **pad, sticky="e")
         self._pump_port = tk.IntVar(value=1)
-        ttk.Entry(parent, width=8, textvariable=self._pump_port).grid(row=0, column=7, **pad, sticky="w")
+        ttk.Entry(parent, width=8, textvariable=self._pump_port).grid(row=1, column=1, **pad, sticky="w")
 
-        ttk.Label(parent, text="Pause (sec):").grid(row=0, column=8, **pad, sticky="e")
+        ttk.Label(parent, text="Pause (sec):").grid(row=1, column=2, **pad, sticky="e")
         self._pause_seconds = tk.DoubleVar(value=10.0)
-        ttk.Entry(parent, width=10, textvariable=self._pause_seconds).grid(row=0, column=9, **pad, sticky="w")
+        ttk.Entry(parent, width=10, textvariable=self._pause_seconds).grid(row=1, column=3, **pad, sticky="w")
 
-        ttk.Label(parent, text="Alert message:").grid(row=1, column=0, **pad, sticky="e")
+        ttk.Label(parent, text="Alert message:").grid(row=2, column=0, **pad, sticky="e")
         self._alert_message = tk.StringVar(value="Check setup")
         ttk.Entry(parent, width=50, textvariable=self._alert_message).grid(
-            row=1, column=1, columnspan=6, **pad, sticky="w"
+            row=2, column=1, columnspan=5, **pad, sticky="w"
         )
 
         ttk.Label(
             parent,
             text="Tip: Only relevant fields are used based on action type.",
             foreground="#666",
-        ).grid(row=2, column=0, columnspan=10, padx=6, pady=(0, 6), sticky="w")
+        ).grid(row=3, column=0, columnspan=6, padx=6, pady=(0, 6), sticky="w")
 
     def _add_pump_step(self):
         action = self._pump_action.get().strip().upper()
@@ -399,7 +428,7 @@ class RecipeMakerTab:
         ttk.Label(top, text="Search:").pack(side="left")
         self._method_search = tk.StringVar()
         self._method_search.trace_add("write", lambda *_: self._refresh_methods())
-        ttk.Entry(top, textvariable=self._method_search, width=30).pack(side="left", padx=6)
+        ttk.Entry(top, textvariable=self._method_search, width=20).pack(side="left", padx=6)
 
         ttk.Label(top, text="Technique:").pack(side="left", padx=(10, 0))
         self._tech_filter = tk.StringVar(value="ALL")
@@ -423,12 +452,14 @@ class RecipeMakerTab:
         ).pack(side="left", padx=6)
         self._mux_filter.trace_add("write", lambda *_: self._refresh_methods())
 
-        ttk.Button(top, text="Refresh",
-                   command=self._load_method_map).pack(side="left", padx=6)
-        ttk.Button(top, text="Delete Method",
-                   command=self._delete_method_family).pack(side="left", padx=6)
-        ttk.Button(top, text="Clear MUX Methods",
-                   command=self._clear_mux_methods).pack(side="left", padx=6)
+        actions = FlowFrame(parent)
+        actions.pack(fill="x", padx=6, pady=(0, 6))
+        actions.add(ttk.Button(actions, text="Refresh",
+                   command=self._load_method_map))
+        actions.add(ttk.Button(actions, text="Delete Method",
+                   command=self._delete_method_family))
+        actions.add(ttk.Button(actions, text="Clear MUX Methods",
+                   command=self._clear_mux_methods))
 
         sweep = ttk.Frame(parent)
         sweep.pack(fill="x", padx=6, pady=(0, 4))
@@ -458,7 +489,7 @@ class RecipeMakerTab:
 
         ttk.Label(sweep, text="Custom order:").grid(row=1, column=0, **pad, sticky="e")
         self._sweep_custom = tk.StringVar(value="")
-        ttk.Entry(sweep, width=44, textvariable=self._sweep_custom).grid(
+        ttk.Entry(sweep, width=28, textvariable=self._sweep_custom).grid(
             row=1, column=1, columnspan=5, **pad, sticky="we"
         )
         ttk.Label(sweep, text="e.g. 1,3,5,2,4").grid(row=1, column=6, columnspan=3, **pad, sticky="w")
@@ -467,10 +498,10 @@ class RecipeMakerTab:
             sweep,
             text="Add Channel Sweep Block",
             command=self._add_method_sweep_block,
-        ).grid(row=0, column=9, rowspan=2, padx=(12, 6), pady=4, sticky="ns")
+        ).grid(row=2, column=0, columnspan=9, padx=6, pady=4, sticky="w")
 
         cols = ("Hash", "Note", "Technique", "Params")
-        self._method_tree = ttk.Treeview(parent, columns=cols, show="headings", height=8)
+        self._method_tree = self._scrollable_tree(parent, columns=cols, show="headings", height=8)
         self._method_tree.heading("Hash", text="Hash")
         self._method_tree.heading("Note", text="Note")
         self._method_tree.heading("Technique", text="Technique")
@@ -479,7 +510,6 @@ class RecipeMakerTab:
         self._method_tree.column("Note", width=220)
         self._method_tree.column("Technique", width=100)
         self._method_tree.column("Params", width=320)
-        self._method_tree.pack(fill="both", expand=True, padx=6, pady=6)
         self._method_tree.bind("<Double-1>", self._on_method_tree_double_click)
 
         self._load_method_map()
@@ -490,7 +520,7 @@ class RecipeMakerTab:
                 "Select a method and use Add Method Step, double-click to edit its note, "
                 "or configure channels and use 'Add Channel Sweep Block'."
             ),
-            foreground="#666",
+            foreground="#666", wraplength=660,
         )
         hint.pack(side="bottom", anchor="w", padx=8, pady=(0, 6))
 
@@ -1030,42 +1060,46 @@ class RecipeMakerTab:
         win.title("Edit Pump Step")
         win.transient(self._frame.winfo_toplevel())
         win.grab_set()
+        win.geometry(f"{min(1000, win.winfo_screenwidth() - 80)}x{min(700, win.winfo_screenheight() - 100)}")
+        viewport = ScrollableFrame(win, fit_width=False)
+        viewport.pack(fill="both", expand=True)
+        form = viewport.content
 
         pad = {"padx": 6, "pady": 4}
-        ttk.Label(win, text="Pump action:").grid(row=0, column=0, **pad, sticky="e")
+        ttk.Label(form, text="Pump action:").grid(row=0, column=0, **pad, sticky="e")
         action_var = tk.StringVar(value=fields["action"])
         ttk.Combobox(
-            win,
+            form,
             textvariable=action_var,
             values=["INIT", "SET_SPEED", "VALVE", "ASPIRATE", "DISPENSE", "PAUSE", "ALERT"],
             width=16,
             state="readonly",
         ).grid(row=0, column=1, **pad, sticky="w")
 
-        ttk.Label(win, text="Speed:").grid(row=0, column=2, **pad, sticky="e")
+        ttk.Label(form, text="Speed:").grid(row=0, column=2, **pad, sticky="e")
         speed_var = tk.IntVar(value=fields["speed"])
-        ttk.Entry(win, width=8, textvariable=speed_var).grid(row=0, column=3, **pad, sticky="w")
+        ttk.Entry(form, width=8, textvariable=speed_var).grid(row=0, column=3, **pad, sticky="w")
 
-        ttk.Label(win, text="Volume (uL):").grid(row=0, column=4, **pad, sticky="e")
+        ttk.Label(form, text="Volume (uL):").grid(row=0, column=4, **pad, sticky="e")
         volume_var = tk.DoubleVar(value=fields["volume"])
-        ttk.Entry(win, width=10, textvariable=volume_var).grid(row=0, column=5, **pad, sticky="w")
+        ttk.Entry(form, width=10, textvariable=volume_var).grid(row=0, column=5, **pad, sticky="w")
 
-        ttk.Label(win, text="Valve port:").grid(row=0, column=6, **pad, sticky="e")
+        ttk.Label(form, text="Valve port:").grid(row=0, column=6, **pad, sticky="e")
         port_var = tk.IntVar(value=fields["port"])
-        ttk.Entry(win, width=8, textvariable=port_var).grid(row=0, column=7, **pad, sticky="w")
+        ttk.Entry(form, width=8, textvariable=port_var).grid(row=0, column=7, **pad, sticky="w")
 
-        ttk.Label(win, text="Pause (sec):").grid(row=0, column=8, **pad, sticky="e")
+        ttk.Label(form, text="Pause (sec):").grid(row=0, column=8, **pad, sticky="e")
         pause_var = tk.DoubleVar(value=fields["pause"])
-        ttk.Entry(win, width=10, textvariable=pause_var).grid(row=0, column=9, **pad, sticky="w")
+        ttk.Entry(form, width=10, textvariable=pause_var).grid(row=0, column=9, **pad, sticky="w")
 
-        ttk.Label(win, text="Alert message:").grid(row=1, column=0, **pad, sticky="e")
+        ttk.Label(form, text="Alert message:").grid(row=1, column=0, **pad, sticky="e")
         alert_var = tk.StringVar(value=fields["alert"])
-        ttk.Entry(win, width=50, textvariable=alert_var).grid(
+        ttk.Entry(form, width=50, textvariable=alert_var).grid(
             row=1, column=1, columnspan=6, **pad, sticky="w"
         )
 
         btns = ttk.Frame(win)
-        btns.grid(row=2, column=0, columnspan=10, pady=(6, 8))
+        btns.pack(before=viewport, side="bottom", fill="x", pady=8)
 
         def _apply():
             try:
@@ -1110,8 +1144,10 @@ class RecipeMakerTab:
         if not path:
             return
         payload = {"items": self._recipe}
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2)
+        try:
+            write_protocol(path, payload)
+        except Exception as exc:
+            messagebox.showerror("Save failed", str(exc))
 
     def _load_recipe(self):
         path = filedialog.askopenfilename(
@@ -1121,11 +1157,9 @@ class RecipeMakerTab:
         if not path:
             return
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8-sig") as f:
                 payload = json.load(f)
-            items = payload.get("items", [])
-            if not isinstance(items, list):
-                raise ValueError("Invalid recipe format: items is not a list.")
+            items = loaded_items(payload, path)
             self._recipe = items
             self._refresh()
         except Exception as exc:
@@ -1152,12 +1186,11 @@ class RecipeMakerTab:
         self._block_filter.trace_add("write", lambda *_: self._load_blocks())
 
         cols = ("Block", "Items")
-        self._block_tree = ttk.Treeview(parent, columns=cols, show="headings", height=8)
+        self._block_tree = self._scrollable_tree(parent, columns=cols, show="headings", height=8)
         self._block_tree.heading("Block", text="Block")
         self._block_tree.heading("Items", text="Items")
         self._block_tree.column("Block", width=200)
         self._block_tree.column("Items", width=560)
-        self._block_tree.pack(fill="both", expand=True, padx=6, pady=6)
 
         self._blocks: dict = {}
         self._block_iid_to_name: dict = {}
@@ -1169,7 +1202,7 @@ class RecipeMakerTab:
                 "Blocks are predefined sequences stored in bundled default_blocks "
                 "and local custom_blocks/saved_recipes folders."
             ),
-            foreground="#666",
+            foreground="#666", wraplength=660,
         )
         hint.pack(side="bottom", anchor="w", padx=8, pady=(0, 6))
 
@@ -1201,6 +1234,7 @@ class RecipeMakerTab:
             seen.add(norm)
             try:
                 payload = json.loads(path.read_text(encoding="utf-8-sig"))
+                items = loaded_items(payload, path)
             except Exception as exc:
                 self._block_tree.insert(
                     "", "end",
@@ -1208,7 +1242,6 @@ class RecipeMakerTab:
                 )
                 continue
 
-            items = payload.get("items", [])
             if not isinstance(items, list):
                 self._block_tree.insert(
                     "", "end",
@@ -1261,13 +1294,17 @@ class RecipeMakerTab:
         win.title("Edit BO Loop")
         win.transient(self._frame.winfo_toplevel())
         win.grab_set()
+        win.geometry(f"{min(1000, win.winfo_screenwidth() - 80)}x{min(700, win.winfo_screenheight() - 100)}")
+        viewport = ScrollableFrame(win, fit_width=False)
+        viewport.pack(fill="both", expand=True)
+        form = viewport.content
 
         pad = {"padx": 6, "pady": 4}
-        ttk.Label(win, text="BO config:").grid(row=0, column=0, **pad, sticky="e")
+        ttk.Label(form, text="BO config:").grid(row=0, column=0, **pad, sticky="e")
         cfg_var = tk.StringVar(value=str(block.get("bo_config_path") or ""))
-        ttk.Entry(win, width=56, textvariable=cfg_var).grid(row=0, column=1, columnspan=3, **pad, sticky="we")
+        ttk.Entry(form, width=56, textvariable=cfg_var).grid(row=0, column=1, columnspan=3, **pad, sticky="we")
         ttk.Button(
-            win,
+            form,
             text="Browse",
             command=lambda: self._set_string_from_dialog(
                 cfg_var,
@@ -1279,11 +1316,11 @@ class RecipeMakerTab:
             ),
         ).grid(row=0, column=4, **pad, sticky="w")
 
-        ttk.Label(win, text="Analysis output:").grid(row=1, column=0, **pad, sticky="e")
+        ttk.Label(form, text="Analysis output:").grid(row=1, column=0, **pad, sticky="e")
         out_var = tk.StringVar(value=str(block.get("analysis_output_dir") or ""))
-        ttk.Entry(win, width=56, textvariable=out_var).grid(row=1, column=1, columnspan=3, **pad, sticky="we")
+        ttk.Entry(form, width=56, textvariable=out_var).grid(row=1, column=1, columnspan=3, **pad, sticky="we")
         ttk.Button(
-            win,
+            form,
             text="Browse",
             command=lambda: self._set_string_from_dialog(
                 out_var,
@@ -1291,33 +1328,33 @@ class RecipeMakerTab:
             ),
         ).grid(row=1, column=4, **pad, sticky="w")
 
-        ttk.Label(win, text="Target iterations:").grid(row=2, column=0, **pad, sticky="e")
+        ttk.Label(form, text="Target iterations:").grid(row=2, column=0, **pad, sticky="e")
         target_var = tk.IntVar(value=int(block.get("target_iterations", 3) or 3))
-        ttk.Entry(win, width=8, textvariable=target_var).grid(row=2, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Objective:").grid(row=2, column=2, **pad, sticky="e")
+        ttk.Entry(form, width=8, textvariable=target_var).grid(row=2, column=1, **pad, sticky="w")
+        ttk.Label(form, text="Objective:").grid(row=2, column=2, **pad, sticky="e")
         objective_var = tk.StringVar(value=str(block.get("objective") or "quality"))
         ttk.Combobox(
-            win,
+            form,
             textvariable=objective_var,
             values=["quality", "paired_response"],
             state="readonly",
             width=18,
         ).grid(row=2, column=3, **pad, sticky="w")
 
-        ttk.Label(win, text="Batch size:").grid(row=3, column=0, **pad, sticky="e")
+        ttk.Label(form, text="Batch size:").grid(row=3, column=0, **pad, sticky="e")
         batch_var = tk.IntVar(value=max(1, int(block.get("batch_size", 1) or 1)))
-        ttk.Entry(win, width=8, textvariable=batch_var).grid(row=3, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Channels override:").grid(row=3, column=2, **pad, sticky="e")
+        ttk.Entry(form, width=8, textvariable=batch_var).grid(row=3, column=1, **pad, sticky="w")
+        ttk.Label(form, text="Channels override:").grid(row=3, column=2, **pad, sticky="e")
         channels_var = tk.StringVar(value=str(block.get("channels_override") or ""))
-        ttk.Entry(win, width=24, textvariable=channels_var).grid(row=3, column=3, **pad, sticky="w")
-        ttk.Label(win, text="Glob:").grid(row=4, column=0, **pad, sticky="e")
+        ttk.Entry(form, width=24, textvariable=channels_var).grid(row=3, column=3, **pad, sticky="w")
+        ttk.Label(form, text="Glob:").grid(row=4, column=0, **pad, sticky="e")
         glob_var = tk.StringVar(value=str(block.get("analysis_file_glob") or BO_ANALYSIS_FILE_GLOB))
-        ttk.Entry(win, width=18, textvariable=glob_var).grid(row=4, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Buffer -> target block:").grid(row=4, column=2, **pad, sticky="e")
+        ttk.Entry(form, width=18, textvariable=glob_var).grid(row=4, column=1, **pad, sticky="w")
+        ttk.Label(form, text="Buffer -> target block:").grid(row=4, column=2, **pad, sticky="e")
         target_exchange_var = tk.StringVar(value=str(block.get("target_exchange_block_path") or ""))
-        ttk.Entry(win, width=34, textvariable=target_exchange_var).grid(row=4, column=3, **pad, sticky="we")
+        ttk.Entry(form, width=34, textvariable=target_exchange_var).grid(row=4, column=3, **pad, sticky="we")
         ttk.Button(
-            win,
+            form,
             text="Browse",
             command=lambda: self._set_string_from_dialog(
                 target_exchange_var,
@@ -1329,11 +1366,11 @@ class RecipeMakerTab:
             ),
         ).grid(row=4, column=4, **pad, sticky="w")
 
-        ttk.Label(win, text="Target -> buffer block:").grid(row=5, column=2, **pad, sticky="e")
+        ttk.Label(form, text="Target -> buffer block:").grid(row=5, column=2, **pad, sticky="e")
         buffer_exchange_var = tk.StringVar(value=str(block.get("buffer_exchange_block_path") or ""))
-        ttk.Entry(win, width=34, textvariable=buffer_exchange_var).grid(row=5, column=3, **pad, sticky="we")
+        ttk.Entry(form, width=34, textvariable=buffer_exchange_var).grid(row=5, column=3, **pad, sticky="we")
         ttk.Button(
-            win,
+            form,
             text="Browse",
             command=lambda: self._set_string_from_dialog(
                 buffer_exchange_var,
@@ -1345,12 +1382,12 @@ class RecipeMakerTab:
             ),
         ).grid(row=5, column=4, **pad, sticky="w")
 
-        ttk.Label(win, text="Target equilibration (s):").grid(row=6, column=0, **pad, sticky="e")
+        ttk.Label(form, text="Target equilibration (s):").grid(row=6, column=0, **pad, sticky="e")
         target_equilibration_var = tk.StringVar(value=str(block.get("target_equilibration_seconds", 0.0) or 0.0))
-        ttk.Entry(win, width=10, textvariable=target_equilibration_var).grid(row=6, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Buffer equilibration (s):").grid(row=6, column=2, **pad, sticky="e")
+        ttk.Entry(form, width=10, textvariable=target_equilibration_var).grid(row=6, column=1, **pad, sticky="w")
+        ttk.Label(form, text="Buffer equilibration (s):").grid(row=6, column=2, **pad, sticky="e")
         buffer_equilibration_var = tk.StringVar(value=str(block.get("buffer_equilibration_seconds", 0.0) or 0.0))
-        ttk.Entry(win, width=10, textvariable=buffer_equilibration_var).grid(row=6, column=3, **pad, sticky="w")
+        ttk.Entry(form, width=10, textvariable=buffer_equilibration_var).grid(row=6, column=3, **pad, sticky="w")
 
         scoring = block.get("scoring") if isinstance(block.get("scoring"), dict) else {}
         normal_scoring = self._default_normal_scoring()
@@ -1362,7 +1399,7 @@ class RecipeMakerTab:
             run_weights = dict(normal_scoring.get("run_weights") or {})
             run_weights.update(dict(scoring.get("run_weights") or {}))
             normal_scoring["run_weights"] = run_weights
-        normal_box = ttk.LabelFrame(win, text="Normal Q Weights", padding=6)
+        normal_box = ttk.LabelFrame(form, text="Normal Q Weights", padding=6)
         normal_box.grid(row=7, column=0, columnspan=5, padx=6, pady=(6, 4), sticky="we")
         for col in range(6):
             normal_box.columnconfigure(col, weight=1 if col in (1, 3, 5) else 0)
@@ -1464,7 +1501,7 @@ class RecipeMakerTab:
             saved_paired_weights["buffer_classic_Q"] = legacy_quality_weight / 2.0
             saved_paired_weights["target_classic_Q"] = legacy_quality_weight / 2.0
         paired_weights.update(saved_paired_weights)
-        weight_box = ttk.LabelFrame(win, text="Paired Response Q Scoring", padding=6)
+        weight_box = ttk.LabelFrame(form, text="Paired Response Q Scoring", padding=6)
         weight_box.grid(row=8, column=0, columnspan=5, padx=6, pady=(6, 4), sticky="we")
         weight_box.columnconfigure(0, weight=1)
         paired_formula_var = tk.StringVar(value=self._paired_response_equation_text(paired_weights))
@@ -1510,30 +1547,30 @@ class RecipeMakerTab:
         ).grid(row=1, column=0, sticky="w", pady=(6, 0))
 
         analysis = block.get("analysis") or {}
-        ttk.Label(win, text="Crop min/max (V):").grid(row=9, column=0, **pad, sticky="e")
+        ttk.Label(form, text="Crop min/max (V):").grid(row=9, column=0, **pad, sticky="e")
         crop_min_var = tk.StringVar(value=str(analysis.get("crop_min_v", -0.6)))
         crop_max_var = tk.StringVar(value=str(analysis.get("crop_max_v", -0.1)))
-        ttk.Entry(win, width=8, textvariable=crop_min_var).grid(row=9, column=1, **pad, sticky="w")
-        ttk.Entry(win, width=8, textvariable=crop_max_var).grid(row=9, column=1, padx=(76, 6), pady=4, sticky="w")
-        ttk.Label(win, text="Smooth win/poly:").grid(row=9, column=2, **pad, sticky="e")
+        ttk.Entry(form, width=8, textvariable=crop_min_var).grid(row=9, column=1, **pad, sticky="w")
+        ttk.Entry(form, width=8, textvariable=crop_max_var).grid(row=9, column=1, padx=(76, 6), pady=4, sticky="w")
+        ttk.Label(form, text="Smooth win/poly:").grid(row=9, column=2, **pad, sticky="e")
         smooth_win_var = tk.StringVar(value=str(analysis.get("smooth_window", 15)))
         smooth_poly_var = tk.StringVar(value=str(analysis.get("smooth_polyorder", 2)))
-        ttk.Entry(win, width=8, textvariable=smooth_win_var).grid(row=9, column=3, **pad, sticky="w")
-        ttk.Entry(win, width=8, textvariable=smooth_poly_var).grid(row=9, column=3, padx=(76, 6), pady=4, sticky="w")
+        ttk.Entry(form, width=8, textvariable=smooth_win_var).grid(row=9, column=3, **pad, sticky="w")
+        ttk.Entry(form, width=8, textvariable=smooth_poly_var).grid(row=9, column=3, padx=(76, 6), pady=4, sticky="w")
 
-        ttk.Label(win, text="Minima window (V):").grid(row=10, column=0, **pad, sticky="e")
+        ttk.Label(form, text="Minima window (V):").grid(row=10, column=0, **pad, sticky="e")
         minima_var = tk.StringVar(value=str(analysis.get("minima_search_window_v", 0.30)))
-        ttk.Entry(win, width=10, textvariable=minima_var).grid(row=10, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Min peak height (uA):").grid(row=10, column=2, **pad, sticky="e")
+        ttk.Entry(form, width=10, textvariable=minima_var).grid(row=10, column=1, **pad, sticky="w")
+        ttk.Label(form, text="Min peak height (uA):").grid(row=10, column=2, **pad, sticky="e")
         min_peak_var = tk.StringVar(value="" if analysis.get("min_peak_height_ua") in (None, "") else str(analysis.get("min_peak_height_ua")))
-        ttk.Entry(win, width=10, textvariable=min_peak_var).grid(row=10, column=3, **pad, sticky="w")
+        ttk.Entry(form, width=10, textvariable=min_peak_var).grid(row=10, column=3, **pad, sticky="w")
 
-        ttk.Label(win, text="Min start V:").grid(row=11, column=0, **pad, sticky="e")
+        ttk.Label(form, text="Min start V:").grid(row=11, column=0, **pad, sticky="e")
         min_start_var = tk.StringVar(value=str(analysis.get("min_start_voltage_v", -0.6)))
-        ttk.Entry(win, width=10, textvariable=min_start_var).grid(row=11, column=1, **pad, sticky="w")
-        ttk.Label(win, text="Scan windows:").grid(row=11, column=2, **pad, sticky="e")
+        ttk.Entry(form, width=10, textvariable=min_start_var).grid(row=11, column=1, **pad, sticky="w")
+        ttk.Label(form, text="Scan windows:").grid(row=11, column=2, **pad, sticky="e")
         scan_windows_var = tk.StringVar(value=str(analysis.get("scan_windows", "")))
-        ttk.Entry(win, width=24, textvariable=scan_windows_var).grid(row=11, column=3, **pad, sticky="w")
+        ttk.Entry(form, width=24, textvariable=scan_windows_var).grid(row=11, column=3, **pad, sticky="w")
 
         prominent_var = tk.BooleanVar(value=bool(analysis.get("use_prominent_minima", False)))
         double_corr_var = tk.BooleanVar(value=bool(analysis.get("use_double_correction", True)))
@@ -1541,15 +1578,15 @@ class RecipeMakerTab:
         wavelet_energy_var = tk.BooleanVar(value=bool(analysis.get("compute_wavelet_energy", False)))
         wavelet_trace_var = tk.BooleanVar(value=bool(analysis.get("compute_wavelet_denoised_trace", False)))
         wavelet_corr_var = tk.BooleanVar(value=bool(analysis.get("use_wavelet_for_correction", False)))
-        ttk.Checkbutton(win, text="Prominent minima", variable=prominent_var).grid(row=12, column=0, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Double correction", variable=double_corr_var).grid(row=12, column=2, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Compute skew", variable=skew_var).grid(row=13, column=0, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Wavelet energy", variable=wavelet_energy_var).grid(row=13, column=2, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Wavelet trace", variable=wavelet_trace_var).grid(row=14, column=0, columnspan=2, **pad, sticky="w")
-        ttk.Checkbutton(win, text="Wavelet correction", variable=wavelet_corr_var).grid(row=14, column=2, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(form, text="Prominent minima", variable=prominent_var).grid(row=12, column=0, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(form, text="Double correction", variable=double_corr_var).grid(row=12, column=2, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(form, text="Compute skew", variable=skew_var).grid(row=13, column=0, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(form, text="Wavelet energy", variable=wavelet_energy_var).grid(row=13, column=2, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(form, text="Wavelet trace", variable=wavelet_trace_var).grid(row=14, column=0, columnspan=2, **pad, sticky="w")
+        ttk.Checkbutton(form, text="Wavelet correction", variable=wavelet_corr_var).grid(row=14, column=2, columnspan=2, **pad, sticky="w")
 
         btns = ttk.Frame(win)
-        btns.grid(row=15, column=0, columnspan=5, pady=(8, 10))
+        btns.pack(before=viewport, side="bottom", fill="x", pady=8)
 
         def _apply():
             try:

@@ -138,7 +138,7 @@ class SerialMeasurementRunner:
         log_callback: Callable[[str], None] = print,
         data_callback: Optional[Callable[[dict], None]] = None,
         data_folder: Optional[Path] = None,
-        save_raw_packets: bool = False,
+        save_raw_packets: bool = True,
         simulate_measurements: bool = False,
         invert_current: bool = False,
         device_port: Optional[str] = None,

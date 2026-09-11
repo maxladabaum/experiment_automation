@@ -34,6 +34,7 @@ from core.runner import SerialMeasurementRunner, get_pump_com_port
 from core.bo_session import BOIntegrationSession, load_bo_config, normalize_bo_config, parse_channels, validate_bo_config
 from methods import library_map
 from core.session import SessionState
+from core.protocol_io import write_protocol, loaded_items
 from gui.widgets import FlowFrame
 
 
@@ -77,7 +78,6 @@ class QueueTab:
 
     def _build(self):
         pane = ttk.PanedWindow(self._frame, orient=tk.VERTICAL)
-        pane.pack(fill="both", expand=True)
 
         top    = ttk.Frame(pane); pane.add(top, weight=1)
         bottom = ttk.Frame(pane); pane.add(bottom, weight=1)
@@ -152,24 +152,23 @@ class QueueTab:
         self._log_text.config(state="disabled")
 
         # ── Session info bar ──────────────────────────────────────────────────
-        info_bar = ttk.Frame(self._frame)
+        info_bar = FlowFrame(self._frame)
         info_bar.pack(side="bottom", fill="x", padx=10, pady=(0, 2))
         self._lbl_counter  = ttk.Label(info_bar, text="Measurements this session: 0",
                                        foreground="#555")
-        self._lbl_counter.pack(side="left", padx=8)
+        info_bar.add(self._lbl_counter)
         self._lbl_registry = ttk.Label(info_bar, text="Script registry: 0 unique",
                                        foreground="#555")
-        self._lbl_registry.pack(side="left", padx=8)
-        ttk.Button(info_bar, text="Reset Counter",
-                   command=self._reset_counter).pack(side="right", padx=4)
-        ttk.Button(info_bar, text="Queue ETA",
-                   command=self.show_queue_eta).pack(side="right", padx=4)
-        ttk.Button(info_bar, text="Clear Registry",
-                   command=self._clear_registry).pack(side="right", padx=4)
+        info_bar.add(self._lbl_registry)
+        info_bar.add(ttk.Button(info_bar, text="Clear Registry", command=self._clear_registry))
+        info_bar.add(ttk.Button(info_bar, text="Queue ETA", command=self.show_queue_eta))
+        info_bar.add(ttk.Button(info_bar, text="Reset Counter", command=self._reset_counter))
 
         # ── Status bar ────────────────────────────────────────────────────────
         self._status = ttk.Label(self._frame, text="Status: Ready", relief="sunken")
         self._status.pack(side="bottom", fill="x", padx=10, pady=5)
+        # Reserve footer space before the expanding queue/log panels consume it.
+        pane.pack(fill="both", expand=True)
 
     # ── Public API (used by app.py and MethodTab) ─────────────────────────────
 
@@ -556,8 +555,8 @@ class QueueTab:
         self.set_status(f"Copied {len(self._clipboard)} item(s)")
 
     def paste_after_selected(self):
-        if self._session.is_running:
-            messagebox.showwarning("Queue Running", "Stop before editing.")
+        if self._session.is_running or self.worker_is_active():
+            messagebox.showwarning("Queue Running", "Wait until the run has fully stopped before editing.")
             return
         if not self._clipboard:
             messagebox.showwarning("Empty Clipboard", "Copy items first.")
@@ -572,8 +571,8 @@ class QueueTab:
         self.set_status(f"Pasted {len(new)} item(s) at position {pos + 1}")
 
     def duplicate_selected(self):
-        if self._session.is_running:
-            messagebox.showwarning("Queue Running", "Stop before editing.")
+        if self._session.is_running or self.worker_is_active():
+            messagebox.showwarning("Queue Running", "Wait until the run has fully stopped before editing.")
             return
         idxs = self._selected_indices()
         if not idxs:
@@ -587,8 +586,8 @@ class QueueTab:
         self.set_status(f"Duplicated {len(idxs)} item(s)")
 
     def delete_selected(self):
-        if self._session.is_running:
-            messagebox.showwarning("Queue Running", "Stop before editing.")
+        if self._session.is_running or self.worker_is_active():
+            messagebox.showwarning("Queue Running", "Wait until the run has fully stopped before editing.")
             return
         idxs = self._selected_indices()
         if not idxs:
@@ -602,8 +601,8 @@ class QueueTab:
 
     def clear_queue(self):
         self._reset_reorder()
-        if self._session.is_running:
-            messagebox.showwarning("Queue Running", "Stop before clearing.")
+        if self._session.is_running or self.worker_is_active():
+            messagebox.showwarning("Queue Running", "Wait until the run has fully stopped before clearing.")
             return
         self._session.measurement_queue.clear()
         self.refresh()
@@ -613,7 +612,7 @@ class QueueTab:
     # ── Drag reorder ──────────────────────────────────────────────────────────
 
     def _drag_start(self, event):
-        if self._session.is_running:
+        if self._session.is_running or self.worker_is_active():
             return
         item = self._tree.identify_row(event.y)
         if item:
@@ -623,7 +622,7 @@ class QueueTab:
                 self._reorder_snapshot = list(self._session.measurement_queue)
 
     def _drag_motion(self, event):
-        if self._session.is_running or not self._drag_item:
+        if self._session.is_running or self.worker_is_active() or not self._drag_item:
             return
         target = self._tree.identify_row(event.y)
         if target and target != self._drag_item:
@@ -636,6 +635,9 @@ class QueueTab:
         self._drag_item = None
 
     def confirm_reorder(self):
+        if self._session.is_running or self.worker_is_active():
+            messagebox.showwarning("Queue busy", "Wait until the run has fully stopped before reordering.")
+            return
         if not self._reorder_pending or not self._reorder_snapshot:
             messagebox.showinfo("No Changes", "No pending reorder.")
             return
@@ -680,16 +682,15 @@ class QueueTab:
             "items": [self._serialize(i) for i in self._session.measurement_queue],
         }
         try:
-            with open(path, "w", encoding="utf-8") as fh:
-                json.dump(payload, fh, indent=2)
+            write_protocol(path, payload)
             messagebox.showinfo("Saved", f"Queue saved to:\n{path}")
             self.log(f"Queue saved: {path}")
             self._last_queue_path = path
-        except OSError as exc:
+        except (OSError, ValueError) as exc:
             messagebox.showerror("Save Failed", str(exc))
 
     def load_queue(self):
-        if self._session.is_running:
+        if self._session.is_running or self.worker_is_active():
             messagebox.showwarning("Running", "Stop the queue first."); return
         path = filedialog.askopenfilename(
             title="Load Queue",
@@ -701,22 +702,25 @@ class QueueTab:
         try:
             with open(path, "r", encoding="utf-8-sig") as fh:
                 payload = json.load(fh)
-            if isinstance(payload, list):
-                items = payload
-            else:
-                items = payload.get("items")
-            if not isinstance(items, list):
-                raise ValueError("Queue file missing 'items' list")
+            items = loaded_items(payload, path)
         except Exception as exc:
             messagebox.showerror("Load Failed", str(exc)); return
 
-        new_queue, skipped = [], 0
-        for raw in items:
-            item = self._deserialize(raw)
-            if item is None:
-                skipped += 1
-            else:
-                new_queue.append(item)
+        new_queue = []
+        for index, raw in enumerate(items, start=1):
+            try:
+                item = self._deserialize(raw)
+                if item is None:
+                    raise ValueError("Invalid step or unavailable method reference")
+            except Exception as exc:
+                messagebox.showerror(
+                    "Load Failed",
+                    f"Item {index} could not be loaded: {exc}.\n"
+                    "The existing queue was kept. Restore the missing method or correct "
+                    "the recipe before loading it again.",
+                )
+                return
+            new_queue.append(item)
 
         if not new_queue:
             messagebox.showwarning("Load Queue", "No valid items found."); return
@@ -726,8 +730,6 @@ class QueueTab:
         self.set_status(f"Queue loaded ({len(new_queue)} items)")
         self.log(f"Queue loaded: {path} ({len(new_queue)} items)")
         self._last_queue_path = path
-        if skipped:
-            self.log(f"Queue load skipped {skipped} invalid item(s).")
         messagebox.showinfo("Queue Loaded", f"Loaded {len(new_queue)} item(s).")
 
     @staticmethod
@@ -885,7 +887,8 @@ class QueueTab:
                 else:
                     return None
 
-            item["script_path"] = sp
+            local_path = library_map.resolve_script_path(sp)
+            item["script_path"] = str(local_path) if local_path is not None else sp
             if "method_ref" in raw and isinstance(raw.get("method_ref"), dict):
                 item["method_ref"] = dict(raw.get("method_ref") or {})
             if "bo_ref" in raw and isinstance(raw.get("bo_ref"), dict):
@@ -980,12 +983,52 @@ class QueueTab:
 
     # ── Run queue ─────────────────────────────────────────────────────────────
 
+    def _validate_queue_scripts(self, start_index=0):
+        missing = []
+        for index, item in enumerate(self._session.measurement_queue[start_index:], start_index):
+            kind = str(item.get("type") or "").upper()
+            if kind in {"PAUSE", "ALERT", "BO_AUTO_LOOP"} or kind.startswith("PUMP_"):
+                continue
+            path = library_map.resolve_script_path(item.get("script_path"))
+            if path is None:
+                missing.append(f"Item {index + 1}: {item.get('script_path') or '(no script path)'}")
+            else:
+                item["script_path"] = str(path)
+        if missing:
+            for detail in missing:
+                self.log(f"Missing queue script: {detail}")
+            messagebox.showerror(
+                "Missing measurement scripts",
+                "Queue was not started. Copy the original scripts into this machine's "
+                "methods library or replace these measurements in the queue.\n\n"
+                + "\n".join(missing[:10])
+                + (f"\n... and {len(missing) - 10} more (see log)." if len(missing) > 10 else ""),
+            )
+            return False
+        return True
+
+    def worker_is_active(self):
+        """Stop requests cancellation; the worker may still be finishing a hardware call."""
+        worker = getattr(self, "_queue_thread", None)
+        return worker is not None and worker.is_alive()
+
+    def _queue_start_is_blocked(self):
+        if self.worker_is_active() or self._session.is_running:
+            messagebox.showwarning(
+                "Queue busy",
+                "The previous run is still running or stopping. Wait for it to finish before starting again.",
+            )
+            return True
+        return False
+
     def run_queue(self):
         self._reset_reorder()
         if not self._session.measurement_queue:
             messagebox.showwarning("Empty Queue", "No items in queue."); return
-        if self._session.is_running:
-            messagebox.showwarning("Already Running", "Queue already running."); return
+        if self._queue_start_is_blocked():
+            return
+        if not self._validate_queue_scripts():
+            return
         self._session.is_running = True
         self._session.update_queue_status(
             state="running",
@@ -1023,8 +1066,8 @@ class QueueTab:
         self._reset_reorder()
         if not self._session.measurement_queue:
             messagebox.showwarning("Empty Queue", "No items in queue."); return
-        if self._session.is_running:
-            messagebox.showwarning("Already Running", "Queue already running."); return
+        if self._queue_start_is_blocked():
+            return
         sel = self._tree.selection()
         if not sel:
             messagebox.showwarning("No Selection", "Select a queue item to start from.")
@@ -1041,8 +1084,8 @@ class QueueTab:
         self._reset_reorder()
         if not self._session.measurement_queue:
             messagebox.showwarning("Empty Queue", "No items in queue."); return
-        if self._session.is_running:
-            messagebox.showwarning("Already Running", "Queue already running."); return
+        if self._queue_start_is_blocked():
+            return
         try:
             idx = int(idx)
         except (TypeError, ValueError):
@@ -1050,6 +1093,8 @@ class QueueTab:
             return
         if idx < 0 or idx >= len(self._session.measurement_queue):
             messagebox.showerror("Queue Error", "Queue start index is out of range.")
+            return
+        if not self._validate_queue_scripts(idx):
             return
         self._session.is_running = True
         self._session.update_queue_status(
@@ -1091,155 +1136,8 @@ class QueueTab:
         self._session.is_running = False
         self._session.stop_current_runner()
         self._session.update_queue_status(state="stopping")
-        self.set_status("Queue Stopped")
+        self.set_status("Queue stopping — waiting for the current action to finish")
 
-    def _execute_queue(self, start_index: int = 0):
-        queue = list(self._session.measurement_queue)
-        for i, item in enumerate(queue[start_index:], start=start_index):
-            if not self._session.is_running:
-                self.log("Queue execution stopped by user."); break
-
-            self._session.measurement_queue[i]["status"] = "running"
-            self._root.after(0, self.refresh)
-            self._root.after(0, self.set_status,
-                             f"Running: {item['type']} — {item.get('details', '')}")
-            item_eta = estimate_item_seconds(item)
-            if str(item.get("type", "")).strip().upper() == "ALERT":
-                item_eta = None
-            self._session.update_queue_status(
-                state="running",
-                current_index=(i - start_index + 1),
-                total=len(queue) - start_index,
-                current_label=(item.get("details") or item.get("type") or ""),
-                queue_start_index=start_index,
-                active_queue_index=i,
-                next_queue_index=min(i + 1, len(queue)),
-                active_step_started_at=datetime.now().isoformat(timespec="seconds"),
-                active_step_estimated_seconds=item_eta,
-                active_step_type=item.get("type"),
-                active_step_details=(item.get("details") or item.get("type") or ""),
-            )
-            self.log(f"Queue start -> {item.get('details', item.get('type'))}")
-
-            csv_path = None
-            success  = False
-            try:
-                t = item["type"]
-                if t == "PAUSE":
-                    ok = self._exec_pause(float(item.get("pause_seconds", 0)))
-                    self._session.measurement_queue[i]["status"] = "completed" if ok else "stopped"
-                    success = ok
-
-                elif t == "ALERT":
-                    alert_msg = item.get("alert_message", "Paused — click OK.")
-                    session_mgr = getattr(self._session, "session_manager", None)
-                    if session_mgr is not None:
-                        session_mgr.notify_slack(f"Queue alert: {alert_msg}")
-                    ok = self._exec_alert(alert_msg)
-                    self._session.measurement_queue[i]["status"] = "completed" if ok else "stopped"
-                    success = ok
-
-                elif t.startswith("PUMP_"):
-                    ok = self._exec_pump(item)
-                    self._session.measurement_queue[i]["status"] = "completed" if ok else "failed"
-                    if not ok:
-                        self.log(f"Queue item FAILED: {t} | {item.get('details', '')}")
-                    success = ok
-
-                else:
-                    self._ensure_mux_script_for_item(item)
-                    self._root.after(0, self._plotter.start_live,
-                                     f"{item['type']} (live)", None, item["type"])
-                    try:
-                        mux_channel = self._extract_mux_channel(item)
-                        meas_tag = self._next_measurement_tag(item, mux_channel)
-                        self._session.measurement_queue[i]["meas_tag"] = meas_tag
-                        self.log(f"[Tag] {meas_tag}")
-                        self._root.after(0, self.refresh_labels)
-                        data_folder = None
-                        if self._session.session_manager is not None:
-                            data_folder = self._session.session_manager.require_experiment()
-                            if data_folder is None:
-                                self._session.measurement_queue[i]["status"] = "failed"
-                                self._root.after(0, self.refresh)
-                                break
-                        runner = SerialMeasurementRunner(
-                            Path(item["script_path"]),
-                            log_callback=self.log,
-                            data_callback=self._plotter.push_live_point,
-                            data_folder=data_folder,
-                            save_raw_packets=self._session.save_raw_packets,
-                            simulate_measurements=self._session.simulate_measurements,
-                            invert_current=(item.get("type") == "SWV"),
-                            device_port=self._session.device_port,
-                            pump_com_port=get_pump_com_port(self._pump_ctrl),
-                        )
-                        self._session.current_runner = runner
-                        success, csv_path = runner.execute(meas_tag=meas_tag)
-                        if csv_path:
-                            self._session.measurement_queue[i]["csv_path"] = str(csv_path)
-                        if success:
-                            self._session.measurement_queue[i]["status"] = "completed"
-                            self._session.measurement_queue[i]["completed_at"] = datetime.now().isoformat(timespec="seconds")
-                        else:
-                            self._session.measurement_queue[i]["status"] = "failed"
-                            self._session.measurement_queue[i]["failed_at"] = datetime.now().isoformat(timespec="seconds")
-                            self.log(f"Queue item FAILED: {item['type']} | {item.get('details', meas_tag)}")
-                    finally:
-                        self._session.current_runner = None
-                        self._root.after(0, self._plotter.stop_live)
-
-            except Exception as exc:
-                self._session.measurement_queue[i]["status"] = "failed"
-                self.log(f"CRITICAL ERROR in queue: {exc}")
-
-            if csv_path:
-                self._root.after(0, self._plotter.plot_data, csv_path,
-                                 self._session.last_live_plot_color, None, True, False)
-            self._root.after(0, self.refresh)
-            step_delay = getattr(self._session, "step_delay", 0.0) or 0.0
-            if step_delay > 0 and i < len(queue) - 1:
-                next_step_number = i - start_index + 2
-                delay_label = f"Inter-step delay before step {next_step_number}"
-                self._session.update_queue_status(
-                    state="step_delay",
-                    current_index=(i - start_index + 1),
-                    total=len(queue) - start_index,
-                    current_label=delay_label,
-                    queue_start_index=start_index,
-                    active_queue_index=i,
-                    next_queue_index=i + 1,
-                    active_step_started_at=datetime.now().isoformat(timespec="seconds"),
-                    active_step_estimated_seconds=step_delay,
-                    active_step_type="STEP_DELAY",
-                    active_step_details=delay_label,
-                )
-                if not self._exec_pause(step_delay):
-                    break
-
-        self._session.is_running = False
-        self._session.update_queue_status(
-            state="idle",
-            current_label="Queue Complete",
-            active_queue_index=None,
-            next_queue_index=None,
-            active_step_started_at=None,
-            active_step_estimated_seconds=None,
-            active_step_type=None,
-            active_step_details=None,
-            bo_mode=None,
-            bo_cycle_current=None,
-            bo_cycle_total=None,
-            bo_phase=None,
-            bo_completed_measurements=None,
-            bo_total_measurements=None,
-            bo_observed_sets=None,
-            bo_total_sets=None,
-        )
-        self.log("Queue completed.")
-        self._root.after(0, self.set_status, "Queue Complete")
-        self._announce_queue_end(start_index=start_index)
-        self._notify_completion_callbacks(start_index=start_index)
 
     def _notify_completion_callbacks(self, start_index: int):
         ran = self._session.measurement_queue[start_index:]
@@ -1416,8 +1314,7 @@ class QueueTab:
                     suffix = ""
             filename = f"{prefix}_{ts}{suffix}"
             dst = queue_dir / filename
-            with open(dst, "w", encoding="utf-8") as fh:
-                json.dump(self._queue_payload(), fh, indent=2)
+            write_protocol(dst, self._queue_payload())
             self.log(f"Queue file copied to: {dst}")
         except Exception as exc:
             self.log(f"Queue file copy failed: {exc}")
@@ -1574,14 +1471,12 @@ class QueueTab:
         action_info = item.get("pump_action") or {}
         name        = action_info.get("name")
         params      = action_info.get("params") or {}
-        details     = item.get("details", f"Pump {name}")
 
         if not name:
             self.log("Invalid pump item: missing action name."); return False
         if not self._pump_ctrl.connected:
             self.log("Pump not connected."); return False
 
-        self.log(f"Queue pump → {details}")
         try:
             if name == "INIT":
                 self._pump_ctrl.initialize(); return True
@@ -1782,6 +1677,7 @@ class QueueTab:
                 return False
             t = str(sub_item.get("type") or "").upper()
             details = str(sub_item.get("details") or t)
+            self.log(f"{label} step {idx + 1}/{total_items}: {details}")
             if bo_parent_item is not None:
                 self._set_bo_live_details(bo_parent_item, f"{label}: step {idx + 1}/{total_items} | {details}")
             progress_record = self._append_bo_progress(
@@ -2506,11 +2402,16 @@ class QueueTab:
         return self._session.is_running and completed_iterations >= expected_observations
 
     def _execute_queue(self, start_index: int = 0):
-        queue = list(self._session.measurement_queue)
-        for i, item in enumerate(queue[start_index:], start=start_index):
+        # Structural edits are blocked while running; appending is allowed.
+        # Read the live list each iteration instead of freezing its initial tail.
+        queue = self._session.measurement_queue
+        initial_size = len(queue)
+        i = start_index
+        while i < len(queue):
             if not self._session.is_running:
                 self.log("Queue execution stopped by user.")
                 break
+            item = queue[i]
 
             self._session.measurement_queue[i]["status"] = "running"
             self._root.after(0, self.refresh)
@@ -2531,7 +2432,7 @@ class QueueTab:
                 active_step_type=item.get("type"),
                 active_step_details=(item.get("details") or item.get("type") or ""),
             )
-            self.log(f"Queue start -> {item.get('details', item.get('type'))}")
+            self.log(f"Queue step {i + 1}/{len(queue)}: {item.get('details') or item.get('type')}")
 
             csv_path = None
             try:
@@ -2595,8 +2496,11 @@ class QueueTab:
                 )
                 if not self._exec_pause(step_delay):
                     break
+            i += 1
 
         self._session.is_running = False
+        if len(queue) != initial_size:
+            self._copy_queue_file("queue_updated")
         self._session.update_queue_status(
             state="idle",
             current_label="Queue Complete",
