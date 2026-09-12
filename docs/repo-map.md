@@ -6,6 +6,7 @@ experiment_automation/
 |-- requirements-pump-32bit.txt    # Pump GUI deps for 32-bit Python + pywin32
 |-- README.md
 |-- docs/
+|   |-- bo-session-run-guide.md    # Full BO + post-BO titration operator SOP
 |   |-- repo-map.md                # This file
 |   `-- reference/
 |       `-- MethodSCRIPT-v1_8.pdf  # MethodSCRIPT reference

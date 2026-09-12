@@ -155,6 +155,10 @@ The app includes an optional Bayesian Optimization tab for closed-loop SWV metho
 optimization across a mux batch. Normal measurement, queue, recipe, and plotting
 workflows do not require this feature.
 
+For the complete Windows/AnyDesk operating procedure, including paired BO,
+recovery, and automatic handoff to titration, see
+the [BO session operator guide](docs/bo-session-run-guide.md).
+
 The working BO integration lives in:
 
 core/bo_session.py
