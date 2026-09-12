@@ -29,6 +29,8 @@ from core.queue_eta import (
     estimate_running_queue_eta,
     eta_finish_time,
     format_duration,
+    record_pump_seconds,
+    set_pump_timing_context,
 )
 from core.runner import SerialMeasurementRunner, get_pump_com_port
 from core.bo_session import BOIntegrationSession, load_bo_config, normalize_bo_config, parse_channels, validate_bo_config
@@ -385,6 +387,7 @@ class QueueTab:
         return count
 
     def _build_static_eta_lines(self, start_index: int, scope: str) -> list:
+        set_pump_timing_context(getattr(self, '_pump_ctrl', None))
         eta = estimate_queue_eta(
             self._session.measurement_queue,
             start_index=start_index,
@@ -415,6 +418,12 @@ class QueueTab:
         elapsed_seconds = self._elapsed_since(status.get("active_step_started_at"))
         estimated_seconds = self._coerce_float(status.get("active_step_estimated_seconds"))
         include_next_step_delay = str(status.get("active_step_type") or "").upper() != "STEP_DELAY"
+        if queue[active_index].get('type') == 'BO_AUTO_LOOP' and include_next_step_delay:
+            # Substeps overwrite active_step_*; BO ETA must cover the whole
+            # remaining loop, not just the current electrode or pump action.
+            estimated_seconds = self._coerce_float(status.get('bo_eta_seconds'))
+            elapsed_seconds = self._elapsed_since(status.get('bo_eta_updated_at'))
+            details = 'BO loop | ' + str(details)
 
         eta = estimate_running_queue_eta(
             queue,
@@ -453,7 +462,11 @@ class QueueTab:
 
     @staticmethod
     def _eta_caveat_lines(unknown_item_count: int, excluded_alert_count: int) -> list:
-        lines = []
+        lines = [
+            "Pump timing learns from successful queued actions at each speed during this app session; unsampled timings are approximate.",
+            "BO planning uses representative SWV settings and approximate analysis overhead; paired estimates adapt after complete batches.",
+            "Post-BO autotitration is excluded until its steps are added to the queue.",
+        ]
         if unknown_item_count:
             lines.append(f"Unknown items not counted: {unknown_item_count}")
         if excluded_alert_count:
@@ -1465,6 +1478,14 @@ class QueueTab:
     # ── Pump execution ────────────────────────────────────────────────────────
 
     def _exec_pump(self, item: dict) -> bool:
+        set_pump_timing_context(getattr(self, '_pump_ctrl', None))
+        started = time.monotonic()
+        success = self._exec_pump_action(item)
+        if success:
+            record_pump_seconds(item, time.monotonic() - started)
+        return success
+
+    def _exec_pump_action(self, item: dict) -> bool:
         if self._pump_ctrl is None:
             self.log("Pump backend unavailable — skipping pump action.")
             return False
@@ -1834,6 +1855,10 @@ class QueueTab:
         )
 
     def _exec_bo_auto_loop(self, item: dict) -> bool:
+        self._session.update_queue_status(
+            bo_eta_seconds=estimate_item_seconds(item),
+            bo_eta_updated_at=datetime.now().isoformat(),
+        )
         block = dict(item.get("bo_block") or {})
         config_path = str(block.get("bo_config_path") or "").strip()
         if not config_path:
@@ -1951,6 +1976,8 @@ class QueueTab:
             target_observations = target_parameter_sets * optimizer_count
             halfway_cycle = max(1, int(math.ceil(total_cycles / 2.0)))
             completed_cycles = 0
+            eta_started = time.monotonic()
+            eta_modeled_done = 0.0
             target_equilibration_seconds = max(0.0, float(block.get("target_equilibration_seconds", 0.0) or 0.0))
             buffer_equilibration_seconds = max(0.0, float(block.get("buffer_equilibration_seconds", 0.0) or 0.0))
             target_exchange_items = self._load_bo_exchange_items(
@@ -1974,6 +2001,12 @@ class QueueTab:
                 if suggestion_count <= 0:
                     break
                 cycle_index = completed_cycles + 1
+                cycle_eta_item = {'type': 'BO_AUTO_LOOP', 'bo_block': dict(block)}
+                cycle_eta_item['bo_block'].update(
+                    target_iterations=suggestion_count, batch_size=suggestion_count,
+                    warmup_iterations=0,
+                )
+                cycle_modeled_seconds = estimate_item_seconds(cycle_eta_item)
                 is_warmup_batch = (
                     len(bo_session.observations) // optimizer_count < warmup_observations
                 )
@@ -2213,6 +2246,21 @@ class QueueTab:
                     if callable(live_refresh):
                         self._run_bo_render_break(bo_session, obs.get("iteration"))
                 completed_cycles = cycle_index
+                if cycle_modeled_seconds is not None:
+                    eta_modeled_done += cycle_modeled_seconds
+                    scale = (time.monotonic() - eta_started) / max(eta_modeled_done, 0.001)
+                    completed_sets = len(bo_session.observations) // optimizer_count
+                    remaining_eta_item = {'type': 'BO_AUTO_LOOP', 'bo_block': dict(block)}
+                    remaining_eta_item['bo_block'].update(
+                        target_iterations=max(0, target_parameter_sets - completed_sets),
+                        warmup_iterations=max(0, warmup_observations - completed_sets),
+                    )
+                    modeled_remaining = estimate_item_seconds(remaining_eta_item)
+                    if modeled_remaining is not None:
+                        self._session.update_queue_status(
+                            bo_eta_seconds=modeled_remaining * scale,
+                            bo_eta_updated_at=datetime.now().isoformat(),
+                        )
                 self._update_bo_progress(
                     cycle_progress_record,
                     "completed",

@@ -1,5 +1,9 @@
 # Bayesian Optimization Session Run Guide
 
+For the complete beginner sequence using the supplied example, including the
+corrected priming recipes, all-channel checks, peak windows, bundled exchanges,
+and ETA behavior, see [Paired BO quickstart](paired-bo-quickstart.md).
+
 This is the operator procedure for running Bayesian optimization (BO) on a
 Windows station, including a paired buffer/target run and the optional automatic
 handoff to Automated Titration. It is written for a station operated locally or

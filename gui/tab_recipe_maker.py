@@ -1176,7 +1176,7 @@ class RecipeMakerTab:
     def _load_recipe(self):
         path = filedialog.askopenfilename(
             filetypes=[("JSON", "*.json")],
-            initialdir=str(self._recipe_root),
+            initialdir=str(self._repo_root / "recipe_maker"),
         )
         if not path:
             return

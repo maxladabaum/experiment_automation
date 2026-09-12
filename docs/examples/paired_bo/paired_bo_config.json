@@ -1,0 +1,372 @@
+{
+  "schema_version": 1,
+  "name": "SWV mux Bayesian optimization",
+  "n_initial_points": 0,
+  "random_seed": 42,
+  "channels": [
+    2,
+    4,
+    5,
+    7,
+    8,
+    9
+  ],
+  "measurements_per_channel": 3,
+  "channel_groups": [
+    {
+      "id": 1,
+      "name": "Group 1",
+      "channels": [
+        2
+      ],
+      "exploration": 0.7,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "random",
+      "optimization_direction": "maximize_and_minimize",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      }
+    },
+    {
+      "id": 2,
+      "name": "Group 2",
+      "channels": [
+        4
+      ],
+      "exploration": 0.7,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "random",
+      "optimization_direction": "maximize_and_minimize",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      }
+    },
+    {
+      "id": 3,
+      "name": "Group 3",
+      "channels": [
+        5
+      ],
+      "exploration": 0.7,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "random",
+      "optimization_direction": "maximize_and_minimize",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      }
+    },
+    {
+      "id": 4,
+      "name": "Group 4",
+      "channels": [
+        7
+      ],
+      "exploration": 0.7,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "random",
+      "optimization_direction": "maximize_and_minimize",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      }
+    },
+    {
+      "id": 5,
+      "name": "Group 5",
+      "channels": [
+        8
+      ],
+      "exploration": 0.7,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "random",
+      "optimization_direction": "maximize_and_minimize",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      }
+    },
+    {
+      "id": 6,
+      "name": "Group 6",
+      "channels": [
+        9
+      ],
+      "exploration": 0.7,
+      "n_initial_points": 0,
+      "candidate_pool_size": 1000,
+      "local_candidate_pool_size": 100,
+      "initial_point_mode": "random",
+      "optimization_direction": "maximize_and_minimize",
+      "gp_falloff_fractions": {
+        "begin_potential": 0.2,
+        "end_potential": 0.2,
+        "step_potential": 0.2,
+        "amplitude": 0.2,
+        "frequency": 0.2,
+        "conditioning_potential": 0.2,
+        "conditioning_time": 0.2
+      }
+    }
+  ],
+  "method_options": {
+    "bandwidth": "8k",
+    "ba_range": {
+      "mode": "auto",
+      "fixed": "100 nA",
+      "auto_min": "100 nA",
+      "auto_max": "100 uA"
+    }
+  },
+  "initial_parameters": {
+    "begin_potential": -0.7,
+    "end_potential": -0.1,
+    "step_potential": 0.002,
+    "amplitude": 0.036,
+    "frequency": 200.0,
+    "conditioning_potential": -0.7,
+    "conditioning_time": 0.0
+  },
+  "parameters": {
+    "begin_potential": {
+      "label": "Begin Potential",
+      "mode": "locked",
+      "space": "discrete",
+      "value": -0.6,
+      "values": [
+        -0.7
+      ],
+      "min": -0.7,
+      "max": -0.7,
+      "scale": "linear",
+      "step": null,
+      "proposal_sigma": 0.12,
+      "tie_to": "begin_potential"
+    },
+    "end_potential": {
+      "label": "End Potential",
+      "mode": "locked",
+      "space": "discrete",
+      "value": 0.0,
+      "values": [
+        -0.1
+      ],
+      "min": -0.1,
+      "max": -0.1,
+      "scale": "linear",
+      "step": null,
+      "proposal_sigma": 0.1,
+      "tie_to": "begin_potential"
+    },
+    "step_potential": {
+      "label": "Step Potential",
+      "mode": "active",
+      "space": "continuous",
+      "value": 0.002,
+      "values": [
+        0.002
+      ],
+      "min": 0.001,
+      "max": 0.01,
+      "scale": "linear",
+      "step": 0.001,
+      "proposal_sigma": 0.2,
+      "tie_to": "begin_potential"
+    },
+    "amplitude": {
+      "label": "Amplitude",
+      "mode": "active",
+      "space": "continuous",
+      "value": 0.036,
+      "values": [
+        0.036
+      ],
+      "min": 0.01,
+      "max": 0.2,
+      "scale": "linear",
+      "step": 0.01,
+      "proposal_sigma": 0.18,
+      "tie_to": "begin_potential"
+    },
+    "frequency": {
+      "label": "Frequency",
+      "mode": "active",
+      "space": "continuous",
+      "value": 200.0,
+      "values": [
+        200.0
+      ],
+      "min": 10.0,
+      "max": 500.0,
+      "scale": "linear",
+      "step": 1.0,
+      "proposal_sigma": 0.25,
+      "tie_to": "begin_potential"
+    },
+    "conditioning_potential": {
+      "label": "Conditioning Potential",
+      "mode": "tied",
+      "space": "discrete",
+      "value": -0.7,
+      "values": [
+        -0.7
+      ],
+      "min": -0.7,
+      "max": -0.7,
+      "scale": "linear",
+      "step": null,
+      "proposal_sigma": 0.12,
+      "tie_to": "begin_potential"
+    },
+    "conditioning_time": {
+      "label": "Conditioning Time",
+      "mode": "locked",
+      "space": "discrete",
+      "value": 0.2,
+      "values": [
+        0.0
+      ],
+      "min": 0.0,
+      "max": 0.0,
+      "scale": "linear",
+      "step": null,
+      "proposal_sigma": 0.2,
+      "tie_to": "begin_potential"
+    }
+  },
+  "constraints": {
+    "min_scan_window": 0.4,
+    "max_effective_scan_rate": 5.0,
+    "max_amplitude": 0.5,
+    "conditioning_must_be_in_scan_window": false,
+    "require_end_after_begin": true,
+    "conditioning_potential_tied_by_default": true
+  },
+  "acquisition": {
+    "exploration": 0.35,
+    "candidate_pool_size": 600,
+    "local_candidate_pool_size": 120,
+    "initial_point_mode": "specific",
+    "optimization_direction": "maximize",
+    "use_gp": true,
+    "gp_optimizer_restarts": 2,
+    "gp_length_scales": {
+      "begin_potential": 0.2,
+      "end_potential": 0.2,
+      "step_potential": 0.2,
+      "amplitude": 0.2,
+      "frequency": 0.2,
+      "conditioning_potential": 0.2,
+      "conditioning_time": 0.2
+    },
+    "gp_falloff_fractions": {
+      "begin_potential": 0.2,
+      "end_potential": 0.2,
+      "step_potential": 0.2,
+      "amplitude": 0.2,
+      "frequency": 0.2,
+      "conditioning_potential": 0.2,
+      "conditioning_time": 0.2
+    }
+  },
+  "scoring": {
+    "mode": "classic",
+    "channel_weights": {
+      "peak_prominence": 1.0,
+      "repeat_scan_snr": 0.5,
+      "peak_height": 0.0,
+      "peak_shape": 0.0,
+      "baseline": 0.0,
+      "replicate_consistency": 0.0,
+      "success": 0.0,
+      "noise_penalty": 0.0,
+      "peak_prominence_saturation": 100.0
+    },
+    "run_weights": {
+      "lambda_variability": 0.0,
+      "lambda_repeat_std": 0.0,
+      "lambda_failed": 0.0,
+      "lambda_low": 0.0,
+      "low_channel_threshold": 0.0
+    },
+    "paired_response_weights": {
+      "buffer_classic_Q": 0.0,
+      "target_classic_Q": 0.0,
+      "peak_prominence": 0.0,
+      "repeat_scan_snr": 1.0,
+      "pairwise_std_floor_uA": 0.001,
+      "lambda_repeat_std": 0.0,
+      "repeat_scan_snr_definition": "pairwise"
+    }
+  },
+  "analysis": {
+    "file_glob": "*.json",
+    "copy_outputs_into_record": true,
+    "crop_min_v": -0.55,
+    "crop_max_v": 0.0,
+    "smooth_window": 15,
+    "smooth_polyorder": 2,
+    "minima_search_window_v": 0.3,
+    "use_prominent_minima": true,
+    "require_local_minima_on_both_sides": true,
+    "use_double_correction": true,
+    "min_peak_height_ua": 0.001,
+    "peak_voltage_min_v": -0.45,
+    "peak_voltage_max_v": -0.1,
+    "left_min_voltage_min_v": -0.54,
+    "left_min_voltage_max_v": -0.1,
+    "right_min_voltage_min_v": -0.45,
+    "right_min_voltage_max_v": -0.01,
+    "min_start_voltage_v": -0.6,
+    "scan_windows": "",
+    "compute_skew": false,
+    "compute_wavelet_energy": false,
+    "compute_wavelet_denoised_trace": false,
+    "use_wavelet_for_correction": false
+  },
+  "records": {
+    "folder_prefix": "bo_session"
+  },
+  "objective": "paired_response",
+  "paired_warmup_cycles": 8,
+  "paired_batch_size": 1,
+  "paired_warmup_batch_size": 1,
+  "paired_warmup_single_batch": false
+}
