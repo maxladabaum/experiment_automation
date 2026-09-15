@@ -41,7 +41,7 @@ class SimPumpComm:
         self.connected = False
         self.dev = DEFAULT_DEV
         self.com_port = None
-        self.speed = 20
+        self.speed = 15
         self.valve_port = 1
         self.steps_per_stroke = int(steps_per_stroke)
         self.syringe_ul = float(syringe_ul)

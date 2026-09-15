@@ -1,0 +1,25 @@
+{
+  "hardware_tested": false,
+  "firmware_emulated": false,
+  "assumptions": {
+    "Rct_ohm": 10000.0,
+    "C_F": 1e-06,
+    "reference_offset_V": 0.05,
+    "settling_tau_s": 0.001,
+    "CE_branch_ohm": [
+      1000,
+      2000
+    ]
+  },
+  "reference_change_steady_current_uA": 5.0,
+  "reference_change_capacitive_charge_nC": 50.00041656291368,
+  "reference_change_initial_current_uA": 49.99999999999999,
+  "max_CE_drive_relative_WE_V": {
+    "WE0_RE0_CE0": 0.11010000000000003,
+    "WE0_RE1_CE1": 0.17995999999999998,
+    "WE0_RE1_CE0": 0.16490000000000002,
+    "WE0_RE0_CE1": 0.12020000000000004
+  },
+  "SWV_200Hz_100Hz_filter_retained_fraction": 0.6557942026326724,
+  "analytic_checks_passed": true
+}

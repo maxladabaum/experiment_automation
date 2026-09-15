@@ -15,12 +15,12 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "emelt_no_duplex_ordered_-.7_to_-.1"
@@ -40,12 +40,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "emelt_no_duplex_ordered_-.7_to_-.1"
@@ -33805,12 +33805,12 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "emelt_no_duplex_ordered_-.7_to_-.1"
@@ -33830,12 +33830,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "emelt_no_duplex_ordered_-.7_to_-.1"
@@ -39455,12 +39455,12 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 185.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 185.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
           "volume": 185.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "add_aptamer"
@@ -39480,12 +39480,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 100.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 100.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 100.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "add_aptamer"
@@ -39505,12 +39505,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 85.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 85.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 85.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "add_aptamer"
@@ -39530,11 +39530,11 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 110.00 uL @ S20R",
+      "details": "Pump: Aspirate 110.00 uL @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
-          "speed": 20,
+          "speed": 15,
           "volume": 110.0
         }
       },
@@ -39555,11 +39555,11 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 110.00 uL @ S20R",
+      "details": "Pump: Dispense 110.00 uL @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
-          "speed": 20,
+          "speed": 15,
           "volume": 110.0
         }
       },
@@ -44180,12 +44180,12 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "add_buffer"
@@ -44205,12 +44205,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "add_buffer"
@@ -44230,12 +44230,12 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "add_buffer"
@@ -44255,12 +44255,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "add_buffer"
@@ -80320,12 +80320,12 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "emelt_no_duplex_ordered_-.7_to_-.1"
@@ -80345,12 +80345,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "emelt_no_duplex_ordered_-.7_to_-.1"

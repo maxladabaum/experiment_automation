@@ -250,7 +250,7 @@ class RecipeMakerTab:
         ).grid(row=0, column=1, **pad, sticky="w")
 
         ttk.Label(parent, text="Speed:").grid(row=0, column=2, **pad, sticky="e")
-        self._pump_speed = tk.IntVar(value=20)
+        self._pump_speed = tk.IntVar(value=15)
         ttk.Entry(parent, width=8, textvariable=self._pump_speed).grid(row=0, column=3, **pad, sticky="w")
 
         ttk.Label(parent, text="Volume (uL):").grid(row=0, column=4, **pad, sticky="e")
@@ -493,7 +493,7 @@ class RecipeMakerTab:
         ttk.Entry(sweep, width=6, textvariable=self._sweep_start).grid(row=0, column=1, **pad, sticky="w")
 
         ttk.Label(sweep, text="End:").grid(row=0, column=2, **pad, sticky="e")
-        self._sweep_end = tk.IntVar(value=16)
+        self._sweep_end = tk.IntVar(value=10)
         ttk.Entry(sweep, width=6, textvariable=self._sweep_end).grid(row=0, column=3, **pad, sticky="w")
 
         ttk.Label(sweep, text="Step:").grid(row=0, column=4, **pad, sticky="e")
@@ -1048,7 +1048,7 @@ class RecipeMakerTab:
         if item_type == "PAUSE":
             return {
                 "action": "PAUSE",
-                "speed": 20,
+                "speed": 15,
                 "volume": 100.0,
                 "port": 1,
                 "pause": float(item.get("pause_seconds", 10.0)),
@@ -1057,7 +1057,7 @@ class RecipeMakerTab:
         if item_type == "ALERT":
             return {
                 "action": "ALERT",
-                "speed": 20,
+                "speed": 15,
                 "volume": 100.0,
                 "port": 1,
                 "pause": 10.0,
@@ -1069,7 +1069,7 @@ class RecipeMakerTab:
         params = action_info.get("params") or {}
         return {
             "action": action,
-            "speed": int(params.get("speed", 20)),
+            "speed": int(params.get("speed", 15)),
             "volume": float(params.get("volume", 100.0)),
             "port": int(params.get("port", 1)),
             "pause": 10.0,

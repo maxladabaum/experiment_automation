@@ -1,6 +1,7 @@
 venv_gui/
 .venv64/
 __pycache__/
+/local_routing_results/
 *.pyc
 .pytest_cache/
 .DS_Store

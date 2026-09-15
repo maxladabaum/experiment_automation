@@ -706,6 +706,7 @@ class QueueTab:
         if self._session.is_running or self.worker_is_active():
             messagebox.showwarning("Running", "Stop the queue first."); return
         path = filedialog.askopenfilename(
+            initialdir=str(Path(__file__).resolve().parents[1] / "recipe_maker"),
             title="Load Queue",
             defaultextension=".json",
             filetypes=(("Queue Files", "*.json"), ("All", "*.*")),

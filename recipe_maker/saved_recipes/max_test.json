@@ -15,12 +15,12 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "air_flush"
@@ -40,12 +40,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "air_flush"
@@ -65,12 +65,12 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "di_flush"
@@ -90,12 +90,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "di_flush"
@@ -115,12 +115,12 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "air_flush"
@@ -140,12 +140,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "air_flush"
@@ -165,12 +165,12 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "di_flush"
@@ -190,12 +190,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "di_flush"
@@ -215,12 +215,12 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "add_buffer"
@@ -240,12 +240,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "add_buffer"
@@ -265,12 +265,12 @@
     {
       "type": "PUMP_ASPIRATE",
       "status": "pending",
-      "details": "Pump: Aspirate 225.00 \u00b5L @ S20R",
+      "details": "Pump: Aspirate 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "ASPIRATE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "add_ec4"
@@ -290,12 +290,12 @@
     {
       "type": "PUMP_DISPENSE",
       "status": "pending",
-      "details": "Pump: Dispense 225.00 \u00b5L @ S20R",
+      "details": "Pump: Dispense 225.00 \u00b5L @ S15R",
       "pump_action": {
         "name": "DISPENSE",
         "params": {
           "volume": 225.0,
-          "speed": 20
+          "speed": 15
         }
       },
       "block_name": "add_ec4"
