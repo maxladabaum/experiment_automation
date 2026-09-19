@@ -45,9 +45,10 @@ C:\Windows\SysWOW64\regsvr32.exe "C:\Program Files (x86)\Tecan\Cavro FUSION Soft
 
 You should see: “DllRegisterServer … succeeded.”
 
-Install 32-bit Python (3.13 or 3.11, x86 build).
+Install Python 3.11 (x86 / 32-bit build) for requirements-pump-32bit.txt.
+The pinned NumPy/pandas/matplotlib versions do not support Python 3.13.
 Example path:
-C:\Users\<you>\AppData\Local\Programs\Python\Python313-32\python.exe
+C:\Users\<you>\AppData\Local\Programs\Python\Python311-32\python.exe
 
 Install Python libraries for the 32-bit pump environment:
 

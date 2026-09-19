@@ -229,6 +229,8 @@ class PumpCtrl:
 
     def connect(self, com_port:int, baud:int, dev:int):
         if self.connected: return
+        if not self.use_sim and not HAS_COM:
+            raise RuntimeError("Pump COM driver unavailable. Use the 32-bit pump Python environment.")
         self.com_port, self.baud, self.dev = int(com_port), int(baud), int(dev)
 
         if self.use_sim or not HAS_COM:

@@ -133,6 +133,25 @@ first detected serial device is not reliable.
 5. NEW-COMPUTER CHECKLIST
 -------------------------
 
+Use Python 3.11 32-bit for the pinned GUI requirements. Python 3.13 32-bit
+cannot use these pinned NumPy/pandas/matplotlib wheels. Keep a separate
+64-bit Python for analysis.
+
+Install Microsoft's x86 Visual C++ Redistributable as well, even on 64-bit
+Windows: https://aka.ms/vc14/vc_redist.x86.exe
+Without it, importing kiwisolver/matplotlib can fail with a missing-DLL error.
+
+Run these commands in PowerShell from the repository folder after installing
+Python 3.11 x86 and Python 3.14 x64:
+
+  py -3.11-32 -m venv "$env:LOCALAPPDATA\ExperimentAutomation\venvs\gui32"
+  & "$env:LOCALAPPDATA\ExperimentAutomation\venvs\gui32\Scripts\python.exe" -m pip install --only-binary=:all: -r requirements-pump-32bit.txt
+  py -3.14 -m venv "$env:LOCALAPPDATA\ExperimentAutomation\venvs\analysis64"
+  & "$env:LOCALAPPDATA\ExperimentAutomation\venvs\analysis64\Scripts\python.exe" -m pip install --only-binary=:all: -r requirements-analysis-64bit.txt
+
+The Windows launcher automatically finds these machine-local environments.
+PowerShell uses Get-Content to read files; Git Bash uses cat.
+
   [ ] Clone or update the Git repository.
   [ ] Create the supported 32-bit GUI virtual environment as required by the
       pump COM software.
@@ -186,3 +205,46 @@ If a network archive fails, local session data should remain available under:
 For the complete generic configuration schema, see:
 
   local_config.example.json
+
+
+8. REPLACEMENT COMPUTER, GIT BASH, AND REMOTE ACCESS
+--------------------------------------------------
+
+Run hostname to identify the current computer. Archive paths already expand
+environment variables; no source-code change is needed for a new hostname.
+For example, in the external local_config.json:
+
+  "session_archive_dirs": [
+    "\\\\%EA_ARCHIVE_SERVER%\\Data_Drive\\%COMPUTERNAME%"
+  ]
+
+Set EA_ARCHIVE_SERVER to the actual data server's Tailscale DNS name or IP,
+in the environment that launches the app. The server name and this computer's
+station folder are separate settings. To keep a station's folder unchanged
+when replacing its computer, use a fixed station folder instead of
+%COMPUTERNAME%. Leave session_archive_dirs empty until the destination is known.
+Changing an archive path does not install Tailscale or authenticate an SMB share.
+
+Keep optional shell settings and secrets outside Git, for example in:
+
+  %LOCALAPPDATA%\ExperimentAutomation\shell.env
+
+Git Bash ~/.bashrc can load it with:
+
+  source "$(cygpath -u "$LOCALAPPDATA")/ExperimentAutomation/shell.env"
+
+Git Bash ~/.bash_profile should load ~/.bashrc for the launcher's login shell:
+
+  [[ -f ~/.bashrc ]] && source ~/.bashrc
+
+Optional Slack/ngrok settings are EA_SLACK_ENABLE, EA_SLACK_BOT_TOKEN,
+EA_SLACK_SIGNING_SECRET, EA_SLACK_TARGET, EA_NGROK_PATH (the ngrok executable),
+and EA_NGROK_DOMAIN. Authenticate
+ngrok locally with your account's authtoken and verify with ngrok config check.
+Do not put tokens in Git or paste them into diagnostic output. Reusing the old
+domain requires access to its ngrok account and stopping the old tunnel before
+cutover. Slack's Events API URL is https://<domain>/slack/events.
+
+Check Tailscale with tailscale status (or its full installed executable path).
+Confirm the data server is reachable and sign in to its SMB share using the
+appropriate Windows credentials before testing completed-queue archives.

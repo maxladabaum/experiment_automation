@@ -10,6 +10,9 @@ PumpCtrl is unavailable.
 """
 
 import threading
+import json
+import os
+import tempfile
 from tkinter import messagebox
 import tkinter as tk
 from tkinter import ttk
@@ -27,6 +30,7 @@ except ImportError:
     HAS_PYTHONCOM = False
 
 from config import (
+    LOCAL_CONFIG_PATH,
     PUMP_DEFAULT_COM_PORT, PUMP_DEFAULT_BAUD, PUMP_DEFAULT_DEV,
     PUMP_SPEED_MIN, PUMP_SPEED_MAX,
     PREFERRED_STEPS_PER_STROKE, PREFERRED_SYRINGE_UL,
@@ -331,7 +335,7 @@ class PumpTab:
         if not hasattr(self, "_var_sim"):
             return
         self._launch(
-            self._do_connect,
+            self._do_autoconnect,
             lambda: bool(self._var_sim.get()),
             self._get_selected_com_port,
             lambda: int(self._var_baud.get()),
@@ -353,8 +357,71 @@ class PumpTab:
             self._ctrl.connect(com, baud, dev)
             self.log("Connected.")
         except Exception as exc:
-            self._root.after(0, lambda: messagebox.showerror("Connect failed", str(exc)))
+            self._root.after(0, lambda error=str(exc): messagebox.showerror("Connect failed", error))
             self.log(f"Connect failed: {exc}")
+
+    def _do_autoconnect(self, sim, com, baud, dev):
+        if sim:
+            self._do_connect(sim, com, baud, dev)
+            return
+        try:
+            self._ctrl.use_sim = False
+            try:
+                self._ctrl.connect(com, baud, dev)
+                return
+            except Exception as exc:
+                self.log(f"COM{com} unavailable: {exc}. Searching USB serial ports...")
+
+            ports = serial.tools.list_ports.comports() if HAS_SERIAL_PORTS else []
+            candidates = sorted({int(p.device[3:]) for p in ports
+                                 if p.vid is not None and p.device.upper().startswith("COM")
+                                 and p.device[3:].isdigit()} - {com})
+            found = []
+            for port in candidates:
+                try:
+                    # connect() only sends Q (status); it does not initialize or move.
+                    self._ctrl.connect(port, baud, dev)
+                    found.append(port)
+                except Exception as exc:
+                    self.log(f"COM{port}: {exc}")
+                finally:
+                    self._ctrl.disconnect()
+            if not found:
+                raise RuntimeError("No pump responded. Check power, USB cable, baud rate and device address.")
+            if len(found) > 1:
+                choices = ", ".join(f"COM{port}" for port in found)
+                raise RuntimeError(f"Multiple pumps responded: {choices}. Select a port and click Connect.")
+            port = found[0]
+            self._ctrl.connect(port, baud, dev)
+            self._root.after(0, lambda: self._var_com.set(f"COM{port}"))
+            self.log(f"Found pump on COM{port}.")
+            try:
+                self._remember_pump_port(port, baud, dev)
+            except Exception as exc:
+                self.log(f"Connected, but could not save pump settings: {exc}")
+        except Exception as exc:
+            self.log(f"Connect failed: {exc}")
+            self._root.after(0, lambda error=str(exc): messagebox.showerror("Connect failed", error))
+
+    @staticmethod
+    def _remember_pump_port(port, baud, dev):
+        try:
+            settings = json.loads(LOCAL_CONFIG_PATH.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            settings = {}
+        settings.update(pump_com_port=port, pump_baud=baud, pump_dev=dev)
+        LOCAL_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8",
+                                             dir=LOCAL_CONFIG_PATH.parent, delete=False) as fh:
+                temp_path = fh.name
+                json.dump(settings, fh, indent=2)
+                fh.write("\n")
+            os.replace(temp_path, LOCAL_CONFIG_PATH)
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                os.unlink(temp_path)
 
     def _do_disconnect(self):
         if self._ctrl:
