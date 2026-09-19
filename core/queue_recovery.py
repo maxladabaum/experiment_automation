@@ -6,7 +6,7 @@ import math
 import os
 from pathlib import Path
 import tempfile
-import shutil
+import zipfile
 from datetime import datetime
 
 
@@ -110,18 +110,30 @@ def recover_bo_item(record_dir):
 def backup_recovery(record_dir):
     """Snapshot metadata and pending input CSVs before recovery mutates records."""
     root = Path(record_dir)
-    target = root/'recovery_backups'/datetime.now().strftime('%Y%m%d_%H%M%S_%f')
-    target.mkdir(parents=True, exist_ok=False)
-    for name in ('bo_state.json', 'bo_config_snapshot.json', 'execution_plan.json', 'history.csv'):
-        if (root/name).is_file():
-            shutil.copy2(root/name, target/name)
-    if (root/'queue').exists():
-        shutil.copytree(root/'queue', target/'queue')
+    # Keep long source filenames inside a ZIP, not appended to the already
+    # deeply nested experiment path (32-bit Windows MAX_PATH is often 260).
+    folder = root/'recovery_backups'
+    folder.mkdir(parents=True, exist_ok=True)
+    target = folder/(datetime.now().strftime('%Y%m%d_%H%M%S_%f') + '.zip')
+    temporary = target.with_suffix('.tmp')
     report = assess_pending(root)
-    (target/'pending_csv').mkdir()
-    for path in report['files']:
-        shutil.copy2(path, target/'pending_csv'/Path(path).name)
-    atomic_json(target/'assessment.json', report)
+    try:
+        with zipfile.ZipFile(temporary, 'x', zipfile.ZIP_DEFLATED) as archive:
+            for name in ('bo_state.json', 'bo_config_snapshot.json', 'execution_plan.json', 'history.csv'):
+                if (root/name).is_file():
+                    archive.write(root/name, name)
+            for path in sorted((root/'queue').rglob('*')):
+                if path.is_file():
+                    archive.write(path, path.relative_to(root).as_posix())
+            report['backup_entries'] = []
+            for index, path in enumerate(report['files']):
+                entry = f'pending_csv/{index:06d}_{Path(path).name}'
+                archive.write(path, entry)
+                report['backup_entries'].append({'source': path, 'entry': entry})
+            archive.writestr('assessment.json', json.dumps(report, indent=2))
+        os.replace(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)
     return target
 
 
@@ -147,7 +159,10 @@ def exclude_from_iteration(session, first_invalid):
     atomic_json(audit/'observations.json', {'reason':'Operator reported failed/uncertain fluid exchanges',
                 'first_invalid_iteration':first_invalid, 'observations':rejected})
     if (session.record_dir/'analysis').exists():
-        shutil.copytree(session.record_dir/'analysis', audit/'analysis')
+        with zipfile.ZipFile(audit/'analysis.zip', 'x', zipfile.ZIP_DEFLATED) as archive:
+            for path in sorted((session.record_dir/'analysis').rglob('*')):
+                if path.is_file():
+                    archive.write(path, path.relative_to(session.record_dir/'analysis').as_posix())
     session.observations = [x for x in session.observations if int(x['iteration']) < first_invalid]
     session.suggestions = [x for x in session.suggestions if int(x['iteration']) < first_invalid] + copy.deepcopy(pending)
     session.pending = None

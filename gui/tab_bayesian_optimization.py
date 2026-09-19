@@ -4052,16 +4052,17 @@ class BayesianOptimizationTab:
         except Exception as exc:
             messagebox.showerror("Start BO Session", str(exc))
 
-    def _load_bo_session(self):
+    def _load_bo_session(self, path=None):
         session_mgr = getattr(self._session, "session_manager", None)
         exp_path = session_mgr.require_experiment() if session_mgr is not None else None
         if exp_path is None:
             return
         base_dir = Path(exp_path) / "bo_sessions"
-        path = filedialog.askdirectory(
-            title="Choose saved BO session folder",
-            initialdir=str(base_dir if base_dir.exists() else exp_path),
-        )
+        if path is None:
+            path = filedialog.askdirectory(
+                title="Choose saved BO session folder",
+                initialdir=str(base_dir if base_dir.exists() else exp_path),
+            )
         if not path:
             return
         try:
@@ -4096,6 +4097,7 @@ class BayesianOptimizationTab:
                 f"Loaded BO session: {loaded.session_id} "
                 f"({len(loaded.observations)} completed iterations)"
             )
+            return True
         except Exception as exc:
             messagebox.showerror("Load BO Session", str(exc))
 
@@ -5837,6 +5839,11 @@ class BayesianOptimizationTab:
             return
         record_dir = str(payload.get("record_dir") or "").strip()
         if not record_dir:
+            return
+        if payload.get('event') == 'recovery_loaded':
+            if self._load_bo_session(record_dir):
+                self._sync_suggestion_from_session()
+                self._auto_status_var.set('Recovery queued. Use Queue & Execution > From Selected; nothing has started.')
             return
         selected_iteration = None
         if self._selected_history_observation is not None:

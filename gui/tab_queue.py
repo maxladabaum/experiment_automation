@@ -1307,6 +1307,9 @@ class QueueTab:
             self.refresh()
             self._tree.selection_set(str(index))
             self._tree.see(str(index))
+            callback = getattr(self._session, '_bo_live_refresh_callback', None)
+            if callable(callback):
+                callback({'record_dir': str(path), 'event': 'recovery_loaded'})
             messagebox.showinfo('BO recovery queued',
                 f"Saved observations: {report['observations']}; pending suggestions: {report['pending']}.\n"
                 f"Verified pending CSVs: {report['valid_files']}/{report['expected_files']}.\n\n"
@@ -2794,9 +2797,14 @@ class QueueTab:
         self._session.is_running = False
         if len(queue) != initial_size:
             self._copy_queue_file("queue_updated")
+        ran = queue[start_index:]
+        end_label = ('Queue failed — remaining actions left pending'
+                     if any(x.get('status') == 'failed' for x in ran) else
+                     'Queue Complete' if all(x.get('status') == 'completed' for x in ran) else
+                     'Queue stopped — progress saved')
         self._session.update_queue_status(
             state="idle",
-            current_label="Queue Complete",
+            current_label=end_label,
             active_queue_index=None,
             next_queue_index=None,
             active_step_started_at=None,
@@ -2812,7 +2820,7 @@ class QueueTab:
             bo_observed_sets=None,
             bo_total_sets=None,
         )
-        self.log("Queue completed.")
-        self._root.after(0, self.set_status, "Queue Complete")
+        self.log('Queue completed.' if end_label == 'Queue Complete' else end_label)
+        self._root.after(0, self.set_status, end_label)
         self._announce_queue_end(start_index=start_index)
         self._notify_completion_callbacks(start_index=start_index)

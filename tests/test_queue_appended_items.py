@@ -96,3 +96,4 @@ def test_pump_failure_stops_queue_before_any_later_action(monkeypatch):
     tab._exec_pump.assert_called_once()
     assert [item['status'] for item in tab._session.measurement_queue] == ['failed', 'pending']
     assert not tab._session.is_running
+    assert not any(call.args[0]=='Queue completed.' for call in tab.log.call_args_list)

@@ -59,10 +59,14 @@ unplugged pump cannot keep the experiment advancing as if delivery succeeded.
    only after step 3 is complete.
 8. Recovery loads the existing optimizer, pending methods, saved configuration,
    and original schedule. It continues toward the original total. It backs up
-   state, queue records, and pending CSVs under `recovery_backups` before changing
+   state, queue records, and pending CSVs in ZIP files under `recovery_backups` before changing
    records. Remeasurement detaches suspect input records without deleting CSVs;
    excluded observations and derived analysis are retained under
    `excluded_observations`.
+
+Recover BO also loads the saved session into the BO tab so its configuration and
+history are visible before execution. Backups use ZIP entries to avoid extending
+long Windows experiment paths with another copy of each measurement filename.
 
 For example, with a total of 50 and 11 valid iterations, recovery repeats pending
 iteration 12 and continues to 50. If iteration 11 was already invalid, exclude from

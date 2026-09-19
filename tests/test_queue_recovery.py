@@ -1,6 +1,7 @@
 import json
 import threading
 import time
+import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -56,8 +57,9 @@ def test_recover_preserves_total_and_backs_up_pending_data(tmp_path):
     assert item['bo_block']['target_iterations']==50
     assert item['bo_resume_record_dir']==str(root)
     backup=backup_recovery(root)
-    assert (backup/'bo_state.json').read_bytes()==(root/'bo_state.json').read_bytes()
-    assert len(list((backup/'pending_csv').glob('*.csv')))==4
+    with zipfile.ZipFile(backup) as archive:
+        assert archive.read('bo_state.json')==(root/'bo_state.json').read_bytes()
+        assert len([x for x in archive.namelist() if x.startswith('pending_csv/')])==4
 
 
 def test_legacy_schedule_recovery_rejects_ambiguity(tmp_path):
@@ -194,7 +196,8 @@ def test_remeasurement_invalidates_old_traces_without_deleting_csvs(tmp_path):
     assert assess_pending(root)['valid_files']==0
     assert 'queue_completion_records' not in session.suggestions[0]
     assert (tmp_path/'target_1.csv').exists()
-    assert len(list((backup/'pending_csv').glob('*.csv')))==4
+    with zipfile.ZipFile(backup) as archive:
+        assert len([x for x in archive.namelist() if x.startswith('pending_csv/')])==4
 
 
 @pytest.mark.parametrize('batch_size', [1, 2])
@@ -251,7 +254,59 @@ def test_saved_bo_continues_pending_batch_without_new_session(tmp_path, monkeypa
     assert tab._run_bo_queue_items.call_count==2
     assert tab._execute_bo_operational_items.call_count==2
     assert item['bo_session_id']==original.session_id
-    assert list((original.record_dir/'recovery_backups').glob('*/bo_state.json'))
+    assert list((original.record_dir/'recovery_backups').glob('*.zip'))
+
+
+def test_recovery_loads_bo_view_without_starting_execution(tmp_path, monkeypatch):
+    root=saved_run(tmp_path)
+    tab=paused_tab()
+    tab._queue_start_is_blocked=Mock(return_value=False)
+    tab._session.measurement_queue=[]
+    tab._session.session_manager=SimpleNamespace(require_experiment=lambda:tmp_path)
+    tab._session._bo_live_refresh_callback=Mock()
+    tab.add_item=lambda item:tab._session.measurement_queue.append(item)
+    tab.refresh=Mock();tab._tree=Mock();tab.run_from_index=Mock()
+    monkeypatch.setattr('gui.tab_queue.filedialog.askdirectory',lambda **kwargs:str(root))
+    monkeypatch.setattr('gui.tab_queue.messagebox.askyesno',lambda *args,**kwargs:False)
+    monkeypatch.setattr('gui.tab_queue.messagebox.showinfo',Mock())
+    error=Mock()
+    monkeypatch.setattr('gui.tab_queue.messagebox.showerror',error)
+    tab.recover_bo()
+    error.assert_not_called()
+    tab._session._bo_live_refresh_callback.assert_called_once_with(
+        {'record_dir':str(root),'event':'recovery_loaded'})
+    tab.run_from_index.assert_not_called()
+
+
+def test_bo_view_adopts_recovered_session_without_second_picker(tmp_path):
+    from gui.tab_bayesian_optimization import BayesianOptimizationTab
+    tab=BayesianOptimizationTab.__new__(BayesianOptimizationTab)
+    tab._load_bo_session=Mock(return_value=True)
+    tab._sync_suggestion_from_session=Mock();tab._auto_status_var=Mock()
+    tab._on_live_paired_bo_update({'record_dir':str(tmp_path),'event':'recovery_loaded'})
+    tab._load_bo_session.assert_called_once_with(str(tmp_path))
+    tab._sync_suggestion_from_session.assert_called_once()
+
+
+def test_zip_backup_preserves_long_named_inputs_and_failed_copy_keeps_state(tmp_path,monkeypatch):
+    root=saved_run(tmp_path)
+    original=(root/'bo_state.json').read_bytes()
+    long_source=tmp_path/('measurement_'+'x'*80+'.csv')
+    (tmp_path/'buffer_1.csv').rename(long_source)
+    record=root/'queue/iter_012_queue_completion_buffer.json'
+    data=json.loads(record.read_text())
+    data['items'][0]['csv_path']=str(long_source)
+    atomic_json(record,data)
+    backup=backup_recovery(root)
+    with zipfile.ZipFile(backup) as archive:
+        entry=next(x for x in archive.namelist() if x.endswith(long_source.name))
+        assert archive.read(entry)==long_source.read_bytes()
+    assert len(str(backup)) < len(str(backup.parent/backup.stem/'pending_csv'/long_source.name))
+    monkeypatch.setattr('core.queue_recovery.zipfile.ZipFile.write',Mock(side_effect=OSError('disk full')))
+    with pytest.raises(OSError,match='disk full'):
+        backup_recovery(root)
+    assert (root/'bo_state.json').read_bytes()==original
+    assert not list((root/'recovery_backups').glob('*.tmp'))
 
 
 def test_pump_ambiguous_motion_does_not_advance_position_or_allow_next_move(monkeypatch):
