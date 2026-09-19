@@ -131,6 +131,7 @@ class PumpCtrl:
         self.steps_per_stroke = DEFAULT_STEPS
         self.syringe_ul = DEFAULT_SYRINGE
         self.current_speed = None
+        self.position_uncertain = False
         self._backend = None
         self._plunger_steps = 0
         self._com_queue = None
@@ -243,31 +244,7 @@ class PumpCtrl:
 
         self._log(f"Connecting (real) -> COM{self.com_port} @ {self.baud}, dev={self.dev}")
         try:
-            def connect_real():
-                self._backend = gencache.EnsureDispatch(PROGID)
-                try:
-                    self._backend.EnableLog = True
-                    self._backend.LogComPort = True
-                    self._backend.CommandAckTimeout = 18
-                    self._backend.CommandRetryCount = 3
-                    try: self._backend.BaudRate = self.baud
-                    except Exception: pass
-                except Exception:
-                    pass
-
-                self._backend.PumpInitComm(self.com_port)
-                try:
-                    self._backend.PumpSendCommand("Q", self.dev, "")
-                except Exception as probe_exc:
-                    try:
-                        self._backend.PumpExitComm()
-                    except Exception:
-                        pass
-                    raise RuntimeError(
-                        f"COM{self.com_port} opened, but pump address {self.dev} did not respond: {probe_exc}"
-                    )
-
-            self._call_com_thread(connect_real)
+            self._call_com_thread(self._connect_backend)
             self.connected = True
             self._sync_backend_plunger()
             self._log("Connected.")
@@ -275,6 +252,44 @@ class PumpCtrl:
             self._backend = None
             self._stop_com_thread()
             raise RuntimeError(f"Connect failed: {e}")
+
+    def _connect_backend(self):
+        """COM-thread only: retry the same port/address, without moving the pump."""
+        last_error = None
+        for attempt in range(1, 4):
+            try:
+                if self._backend is not None:
+                    try:
+                        self._backend.PumpExitComm()
+                    except Exception:
+                        pass
+                self._backend = gencache.EnsureDispatch(PROGID)
+                self._backend.CommandAckTimeout = 18
+                # Application retries connection/status only, never blind movement.
+                self._backend.CommandRetryCount = 0
+                try:
+                    self._backend.BaudRate = self.baud
+                    self._backend.EnableLog = True
+                    self._backend.LogComPort = True
+                except Exception:
+                    pass
+                self._backend.PumpInitComm(self.com_port)
+                self._backend.PumpSendCommand("Q", self.dev, "")
+                self.connected = True
+                self._log(f"Pump connection verified on COM{self.com_port}, address {self.dev} (attempt {attempt}/3).")
+                return
+            except Exception as exc:
+                self.connected = False
+                last_error = exc
+                self._log(f"Pump connection attempt {attempt}/3 failed: {exc}")
+                if attempt < 3:
+                    time.sleep(2)
+        if self._backend is not None:
+            try:
+                self._backend.PumpExitComm()
+            except Exception:
+                pass
+        raise RuntimeError(f"Automatic pump reconnection exhausted on COM{self.com_port}: {last_error}")
 
     def disconnect(self):
         if not self.connected: return
@@ -292,12 +307,25 @@ class PumpCtrl:
 
     def _send(self, cmd, wait_s=1.0):
         if not self.connected: raise RuntimeError("Not connected.")
+        if self.position_uncertain and cmd[:1] in ('A', 'D', 'I'):
+            raise RuntimeError('Pump position is uncertain after communication loss; reconcile the physical state before movement.')
         def send_real():
             try:
                 self._backend.PumpSendCommand(cmd, self.dev, "")
-            except Exception:
-                try: self._backend.PumpSendNoWait(cmd, self.dev)
-                except Exception: pass
+            except Exception as exc:
+                if cmd != 'Q' and not (cmd.startswith('S') and cmd.endswith('R') and cmd[1:-1].isdigit()):
+                    self.position_uncertain = True
+                self._log(f"Pump command failed ({cmd}); attempting automatic reconnection.")
+                try:
+                    self._connect_backend()
+                except Exception as reconnect_exc:
+                    raise RuntimeError(f"Pump disconnected; action {cmd} is unconfirmed. {reconnect_exc}") from exc
+                # Speed/status are safe to repeat after verified reconnection.
+                # Never repeat aspiration, relative dispense, valve movement or home.
+                if cmd == "Q" or (cmd.startswith("S") and cmd.endswith("R") and cmd[1:-1].isdigit()):
+                    self._backend.PumpSendCommand(cmd, self.dev, "")
+                else:
+                    raise RuntimeError(f"Pump reconnected, but action {cmd} may have executed; physical position is uncertain. Queue must stop for recovery.") from exc
             time.sleep(wait_s)
             return self._get_last_answer()
 
@@ -306,6 +334,7 @@ class PumpCtrl:
     def initialize(self):
         ans = self._send("ZR", 1.2)
         self._set_plunger_steps(0)
+        self.position_uncertain = False
         return ans
 
     def valve_to(self, port):

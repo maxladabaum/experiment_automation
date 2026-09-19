@@ -45,6 +45,8 @@ class SessionState:
         # ── Queue ─────────────────────────────────────────────────────────────
         self.measurement_queue: List[dict] = []
         self.is_running  = False
+        self.pause_requested = False
+        self.queue_paused = False
         self.current_runner: Optional[SerialMeasurementRunner] = None
 
         # ── Queue status (for external status polling) ────────────────────────

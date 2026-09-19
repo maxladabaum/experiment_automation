@@ -159,6 +159,8 @@ workflows do not require this feature.
 For the complete Windows/AnyDesk operating procedure, including paired BO,
 recovery, and automatic handoff to titration, see
 the [BO session operator guide](docs/bo-session-run-guide.md).
+For Pause/Resume, automatic pump reconnection, and continuing an interrupted paired
+run, see [queue and BO recovery](docs/queue-recovery.md).
 
 The working BO integration lives in:
 

@@ -27,7 +27,7 @@ def test_200hz_swv_sent_and_saved_without_routing_conversion(tmp_path):
 
 def test_queue_does_not_forward_stale_experimental_selection(tmp_path, monkeypatch):
     tab = QueueTab.__new__(QueueTab)
-    tab._session = SimpleNamespace(queue_electrode_route='we0_re1_ce1',
+    tab._session = SimpleNamespace(is_running=True, queue_electrode_route='we0_re1_ce1',
         session_manager=None, save_raw_packets=True, simulate_measurements=False,
         device_port=None, current_runner=None)
     tab._root = Mock()

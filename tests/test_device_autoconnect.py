@@ -48,7 +48,7 @@ def test_current_real_pump_port_is_available_during_connect():
 def test_queue_measurement_uses_live_pump_port(monkeypatch, tmp_path):
     tab = QueueTab.__new__(QueueTab)
     tab._pump_ctrl = SimpleNamespace(use_sim=False, com_port=3, connected=True)
-    tab._session = SimpleNamespace(session_manager=None, save_raw_packets=False,
+    tab._session = SimpleNamespace(is_running=True, session_manager=None, save_raw_packets=False,
         simulate_measurements=False, device_port=None, current_runner=None)
     tab._root = Mock()
     tab._plotter = Mock()

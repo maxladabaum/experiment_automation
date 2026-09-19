@@ -481,25 +481,25 @@ generating or queueing anything.
 Preserve the complete experiment directory before attempting recovery.
 
 1. Reopen the original application Session and Experiment.
-2. In BO Setup, press **Load BO Session**.
+2. For a paired loop, use **Queue & Execution > Recover BO**.
 3. Select the specific folder containing `bo_state.json`, normally:
 
    ```text
    <experiment>\bo_sessions\<bo_session>
    ```
 
-4. Inspect completed observations, the pending suggestion, queue manifests, and
-   analysis files before taking action.
-5. If a measurement completed but its analysis was not imported, use the
-   matching analysis action only after confirming its tags and iteration.
+4. Identify any completed iterations affected by failed fluid exchanges. Recovery
+   can exclude observations from the first invalid iteration onward while retaining
+   earlier learning and backing up originals.
+5. Restore the physical buffer state and empty syringe, then use **From Selected**
+   on the new recovery row. Repeat pending measurements after uncertain exchanges;
+   reuse saved traces only if both fluid phases were valid.
 
-For Classic BO, a loaded session can continue the assisted manual/Auto Loop
-flow. Paired Auto Loop is queue-owned in this version: pressing **Start Auto
-Loop** creates a new paired queue session rather than transparently continuing
-the old queue-owned run. Do not assume it resumes an interrupted paired loop.
-After inspecting with **Load BO Session**, either complete a clearly recoverable
-pending result under supervision or start a fresh paired run in a new experiment
-and preserve the interrupted record for audit.
+See [queue and BO recovery](queue-recovery.md) for the full procedure, Pause/Resume,
+automatic pump retries, and general queue checkpoints. Recovery retains the original
+iteration total and saved optimizer. For Classic BO, **Load BO Session** continues
+the existing assisted workflow. **Start Auto Loop** still creates a new paired run;
+use **Recover BO** to resume an interrupted paired loop.
 
 ### Classic BO
 
@@ -559,7 +559,7 @@ complete audit requires the entire original experiment directory.
 | Q is zero or contradicts the trace | Peak/minimum windows, correction, thresholds, scoring mode, or weights do not match the signal | Stop automatic progression, inspect raw and analysis JSON, test revised analysis/scoring on recorded data, and document any rescoring |
 | BO completed but titration did not start | Autotitration was not enabled/locked, BO ended with failed/stopped items, or no completed best result exists for every group/stream | Inspect BO status and best groups; receive parameters manually only after confirming completeness |
 | Application or network disconnects | AnyDesk/network loss may be harmless, but application/power loss can interrupt a physical action | Determine whether the local application and queue are still running before reconnecting or issuing commands |
-| Interrupted paired session was loaded, but Start Auto Loop proposes a new run | Paired Auto Loop creates a new queue-owned session | Do not overwrite the old record; inspect pending data and choose supervised recovery or a fresh experiment |
+| Interrupted paired session was loaded, but Start Auto Loop proposes a new run | Start Auto Loop creates a new queue-owned session | Use Queue & Execution > Recover BO in the original experiment; confirm fluid state and repeat suspect measurements |
 
 ## 16. One-page production checklist
 

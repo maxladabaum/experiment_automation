@@ -87,3 +87,12 @@ def test_raw_packets_default_on_and_runner_can_opt_out(monkeypatch, tmp_path):
     runner = SerialMeasurementRunner(tmp_path / 'method.ms', data_folder=tmp_path,
                                      save_raw_packets=False)
     assert runner.save_raw_packets is False
+
+
+def test_pump_failure_stops_queue_before_any_later_action(monkeypatch):
+    tab = make_queue(monkeypatch, [pump('failed dispense'), pump('later valve')])
+    tab._exec_pump = Mock(return_value=False)
+    tab._execute_queue()
+    tab._exec_pump.assert_called_once()
+    assert [item['status'] for item in tab._session.measurement_queue] == ['failed', 'pending']
+    assert not tab._session.is_running

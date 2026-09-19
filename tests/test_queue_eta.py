@@ -113,6 +113,7 @@ def test_failed_pump_action_does_not_train_eta(monkeypatch):
     monkeypatch.setattr('gui.tab_queue.time.monotonic', lambda: next(ticks))
     tab = QueueTab.__new__(QueueTab)
     tab._pump_ctrl = SimpleNamespace(syringe_ul=250, use_sim=False)
+    tab._session = SimpleNamespace(is_running=True)
     tab._exec_pump_action = lambda item: False
     assert tab._exec_pump(pump(250)) is False
     assert not queue_eta._PUMP_SAMPLES

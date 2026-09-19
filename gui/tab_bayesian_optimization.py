@@ -983,6 +983,8 @@ class BayesianOptimizationTab:
         auto_bar.add(ttk.Entry(auto_bar, textvariable=self._auto_target_var, width=6))
         auto_bar.add(ttk.Button(auto_bar, text="Start Auto Loop", command=self._start_auto_loop))
         auto_bar.add(ttk.Button(auto_bar, text="Stop Auto", command=self._stop_auto_loop))
+        auto_bar.add(ttk.Button(auto_bar, text="Pause", command=lambda: self._pause_auto_queue(True)))
+        auto_bar.add(ttk.Button(auto_bar, text="Resume", command=lambda: self._pause_auto_queue(False)))
         auto_bar.add(ttk.Label(auto_bar, textvariable=self._auto_status_var, foreground=self.ACCENT))
 
         clue = ttk.LabelFrame(parent, text="Workflow Cues", padding=8)
@@ -5671,6 +5673,13 @@ class BayesianOptimizationTab:
             f"{config_name} | paired {target} total iter, batches x {batch} methods "
             f"({warmup_text}){eq_text} | {channels}"
         )
+
+    def _pause_auto_queue(self, pause):
+        if not self._session.is_running:
+            self._auto_status_var.set('Stopped run: use Queue & Execution > Recover BO to load saved progress.')
+            return
+        self._session.pause_requested = pause
+        self._auto_status_var.set('Pause requested after the current action/scan.' if pause else 'Resume requested.')
 
     def _start_paired_auto_loop(self):
         if self._session.is_running:

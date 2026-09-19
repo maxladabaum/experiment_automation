@@ -36,6 +36,7 @@ from core.runner import SerialMeasurementRunner, get_pump_com_port
 from core.bo_session import BOIntegrationSession, load_bo_config, normalize_bo_config, parse_channels, validate_bo_config
 from methods import library_map
 from core.session import SessionState
+from core.queue_recovery import atomic_json, assess_pending, recover_bo_item
 from core.protocol_io import write_protocol, loaded_items
 from gui.widgets import FlowFrame
 
@@ -91,6 +92,10 @@ class QueueTab:
         ctrl.add(ttk.Button(ctrl, text="Run Queue", command=self.run_queue))
         ctrl.add(ttk.Button(ctrl, text="From Selected", command=self.run_from_selected))
         ctrl.add(ttk.Button(ctrl, text="Stop", command=self.stop_queue))
+        ctrl.add(ttk.Button(ctrl, text="Pause", command=self.pause_queue))
+        ctrl.add(ttk.Button(ctrl, text="Resume", command=self.resume_queue))
+        ctrl.add(ttk.Button(ctrl, text="Load Progress", command=self.load_progress))
+        ctrl.add(ttk.Button(ctrl, text="Recover BO", command=self.recover_bo))
         ctrl.separator()
         ctrl.add(ttk.Button(ctrl, text="Save", command=self.save_queue))
         ctrl.add(ttk.Button(ctrl, text="Load", command=self.load_queue))
@@ -1001,6 +1006,40 @@ class QueueTab:
         missing = []
         for index, item in enumerate(self._session.measurement_queue[start_index:], start_index):
             kind = str(item.get("type") or "").upper()
+            if kind == 'BO_AUTO_LOOP' and (item.get('bo_resume_record_dir') or item.get('bo_record_dir')):
+                record_dir = item.get('bo_resume_record_dir') or item['bo_record_dir']
+                try:
+                    current = self._session.session_manager.require_experiment()
+                    if Path(record_dir).resolve().parent.parent != Path(current).resolve():
+                        raise ValueError('Open the original experiment to resume this BO session.')
+                    report = assess_pending(record_dir)
+                except Exception as exc:
+                    messagebox.showerror('BO recovery', str(exc))
+                    return False
+                mode = 'remeasure'
+                if report['analysis_ready'] and not item.get('bo_exclude_from_iteration'):
+                    choice = messagebox.askyesnocancel('Pending measurements',
+                        'All pending CSVs exist, but files do not prove the fluid exchanges worked.\n\n'
+                        'YES: repeat the pending batch (use this after a failed/uncertain exchange).\n'
+                        'NO: reuse its saved traces for analysis (only if both phases were measured in the correct solutions).\n'
+                        'CANCEL: do not start.', default='yes')
+                    if choice is None:
+                        return False
+                    mode = 'remeasure' if choice else 'reuse'
+                action = ('Repeat the pending buffer/target measurements from restored BUFFER; completed observations retained.'
+                          if report['pending'] and mode == 'remeasure' else
+                          'Reuse valid pending buffer/target traces and finish analysis.'
+                          if report['pending'] else 'Continue with the next suggestions using saved observations.')
+                if item.get('bo_exclude_from_iteration'):
+                    action = (f"Exclude observations from iteration {item['bo_exclude_from_iteration']} onward and repeat from there. Earlier observations stay in the optimizer; originals are backed up.")
+                if not messagebox.askyesno('Confirm BO recovery',
+                    f"Saved observations: {report['observations']}.\n{action}\n\n"
+                    'Confirm the pump is connected, syringe empty, flow cell restored to BUFFER, and the buffer equilibration wait completed. '
+                    'Previously imported observations will remain in the optimizer. If those also used the wrong fluid, cancel and exclude them first. Continue?'):
+                    return False
+                item['bo_resume_record_dir'] = str(record_dir)
+                item['bo_recovery_confirmed'] = True
+                item['bo_recovery_mode'] = mode
             if kind in {"PAUSE", "ALERT", "BO_AUTO_LOOP"} or kind.startswith("PUMP_"):
                 continue
             path = library_map.resolve_script_path(item.get("script_path"))
@@ -1043,6 +1082,7 @@ class QueueTab:
             return
         if not self._validate_queue_scripts():
             return
+        self._session.pause_requested = False
         self._session.is_running = True
         self._session.update_queue_status(
             state="running",
@@ -1086,6 +1126,9 @@ class QueueTab:
         if not sel:
             messagebox.showwarning("No Selection", "Select a queue item to start from.")
             return
+        if self._tree.parent(sel[0]):
+            messagebox.showwarning('BO progress row', 'These rows are records, not restart points. Use Recover BO to continue the saved optimizer.')
+            return
         try:
             idx = self._tree.index(sel[0])
         except Exception:
@@ -1110,6 +1153,7 @@ class QueueTab:
             return
         if not self._validate_queue_scripts(idx):
             return
+        self._session.pause_requested = False
         self._session.is_running = True
         self._session.update_queue_status(
             state="running",
@@ -1148,9 +1192,127 @@ class QueueTab:
             return
         self.log("Queue stop requested.")
         self._session.is_running = False
+        self._session.pause_requested = False
         self._session.stop_current_runner()
         self._session.update_queue_status(state="stopping")
         self.set_status("Queue stopping — waiting for the current action to finish")
+
+    def pause_queue(self):
+        if self._session.is_running:
+            self._session.pause_requested = True
+            self.log('Pause requested: current pump action/scan finishes first. Do not disconnect hardware until paused.')
+            self._session.update_queue_status(state='pausing')
+            self.set_status('Pause requested — waiting for the current action')
+
+    def resume_queue(self):
+        if self._session.is_running:
+            self._session.pause_requested = False
+            self.log('Queue resume requested.')
+        else:
+            messagebox.showinfo('Resume', 'For a stopped/interrupted run, use Load Progress or Recover BO. Resume continues an in-memory pause only.')
+
+    def _wait_if_paused(self):
+        announced = False
+        while self._session.is_running and getattr(self._session, 'pause_requested', False):
+            if not announced:
+                self._session.queue_paused = True
+                self._session.update_queue_status(state='paused')
+                self._root.after(0, self.set_status, 'Paused between actions — Resume to continue')
+                self.log('Queue paused. No new pump action or measurement will start.')
+                announced = True
+            time.sleep(.1)
+        if announced:
+            self._session.queue_paused = False
+            self._session.update_queue_status(state='running' if self._session.is_running else 'stopping')
+            self._root.after(0, self.set_status, 'Resuming queue' if self._session.is_running else 'Queue stopping')
+        return self._session.is_running
+
+    def _save_progress(self, index, stage):
+        manager = getattr(self._session, 'session_manager', None)
+        experiment = getattr(manager, 'current_experiment_path', None)
+        if experiment is None:
+            return True
+        payload = {'version': 1, 'experiment_dir': str(experiment), 'index': index,
+                   'stage': stage, 'saved_at': datetime.now().isoformat(),
+                   'measurement_counter': self._session.measurement_counter,
+                   'items': copy.deepcopy(self._session.measurement_queue)}
+        # Recovery confirmations are deliberately not persistent.
+        for item in payload['items']:
+            item.pop('bo_recovery_confirmed', None)
+        try:
+            atomic_json(Path(experiment)/'queue_progress.json', payload)
+            return True
+        except Exception as exc:
+            self._session.is_running = False
+            self.log(f'Progress checkpoint failed; queue stopped before further actions: {exc}')
+            return False
+
+    def load_progress(self):
+        if self._queue_start_is_blocked():
+            return
+        path = filedialog.askopenfilename(title='Load queue_progress.json', filetypes=[('Progress', '*.json')])
+        if not path:
+            return
+        try:
+            data = json.loads(Path(path).read_text(encoding='utf8'))
+            current = self._session.session_manager.require_experiment()
+            if Path(data['experiment_dir']).resolve() != Path(current).resolve():
+                raise ValueError('Open the original experiment before loading its progress.')
+            items = data['items']
+            index = int(data['index']) + (1 if data['stage'] == 'after' else 0)
+            if index >= len(items):
+                messagebox.showinfo('Progress', 'This checkpoint has no remaining queue items.')
+                return
+            item = items[index]
+            if item.get('type') == 'BO_AUTO_LOOP' and item.get('bo_record_dir'):
+                item['bo_resume_record_dir'] = item['bo_record_dir']
+            elif data['stage'] == 'before':
+                if not messagebox.askyesno('Interrupted action',
+                    'The last action may have partly or fully executed. Check the physical state first.\n\n'
+                    f"Repeat this action: {item.get('details', item.get('type'))}?\n"
+                    'Yes explicitly repeats it. No leaves the current queue unchanged.'):
+                    return
+            self._session.measurement_queue = items
+            self._session.measurement_counter = max(self._session.measurement_counter, int(data.get('measurement_counter', 0)))
+            self.refresh()
+            self._tree.selection_set(str(index))
+            self._tree.see(str(index))
+            messagebox.showinfo('Progress loaded', 'Select From Selected to continue. Nothing has started. BO recovery will ask you to confirm restored fluid state.')
+        except Exception as exc:
+            messagebox.showerror('Load Progress', str(exc))
+
+    def recover_bo(self):
+        if self._queue_start_is_blocked():
+            return
+        path = filedialog.askdirectory(title='Select the BO session folder containing bo_state.json')
+        if not path:
+            return
+        try:
+            item = recover_bo_item(path)
+            current = self._session.session_manager.require_experiment()
+            if Path(path).resolve().parent.parent != Path(current).resolve():
+                raise ValueError('Open the original experiment first. Recovery does not redirect its data.')
+            report = assess_pending(path)
+            if report['observations'] and messagebox.askyesno('Earlier measurements affected?',
+                'Did failed fluid exchanges also affect PREVIOUSLY COMPLETED iterations?\n\n'
+                'Yes: choose the first invalid iteration; exclude it and later observations from learning. Originals are backed up.\n'
+                'No: retain completed observations and recover the pending batch.', default='no'):
+                cutoff = simpledialog.askinteger('First invalid iteration',
+                    'Enter the first invalid per-optimizer iteration (not a queue row).\nCancel if uncertain; nothing will start.', minvalue=1)
+                if cutoff is None:
+                    return
+                item['bo_exclude_from_iteration'] = cutoff
+            self.add_item(item)
+            index = len(self._session.measurement_queue)-1
+            self.refresh()
+            self._tree.selection_set(str(index))
+            self._tree.see(str(index))
+            messagebox.showinfo('BO recovery queued',
+                f"Saved observations: {report['observations']}; pending suggestions: {report['pending']}.\n"
+                f"Verified pending CSVs: {report['valid_files']}/{report['expected_files']}.\n\n"
+                'Use From Selected on the new recovery row. Nothing has started.')
+        except Exception as exc:
+            messagebox.showerror('Recover BO', str(exc))
 
 
     def _notify_completion_callbacks(self, start_index: int):
@@ -1366,15 +1528,17 @@ class QueueTab:
 
     def _exec_pause(self, seconds: float) -> bool:
         total = max(0.0, seconds)
-        start = time.time()
+        remaining = total
         while self._session.is_running:
-            elapsed   = time.time() - start
-            remaining = total - elapsed
+            if not self._wait_if_paused():
+                return False
             if remaining <= 0:
                 break
             rem = max(0.0, remaining)
             self._root.after(0, self.set_status, f"Pausing: {rem:.1f} sec remaining")
+            start = time.monotonic()
             time.sleep(min(0.5, rem))
+            remaining -= time.monotonic() - start
         if not self._session.is_running:
             return False
         self._root.after(0, self.set_status, "Pause complete")
@@ -1479,6 +1643,8 @@ class QueueTab:
     # ── Pump execution ────────────────────────────────────────────────────────
 
     def _exec_pump(self, item: dict) -> bool:
+        if not self._wait_if_paused():
+            return False
         set_pump_timing_context(getattr(self, '_pump_ctrl', None))
         started = time.monotonic()
         success = self._exec_pump_action(item)
@@ -1496,10 +1662,10 @@ class QueueTab:
 
         if not name:
             self.log("Invalid pump item: missing action name."); return False
-        if not self._pump_ctrl.connected:
-            self.log("Pump not connected."); return False
-
         try:
+            if not self._pump_ctrl.connected:
+                self.log('Pump disconnected; trying the configured port automatically.')
+                self._pump_ctrl.connect(self._pump_ctrl.com_port, self._pump_ctrl.baud, self._pump_ctrl.dev)
             if name == "INIT":
                 self._pump_ctrl.initialize(); return True
             if name == "SET_SPEED":
@@ -1539,6 +1705,8 @@ class QueueTab:
         return f"{config_name} | {target} iter | {channels}"
 
     def _execute_measurement_item(self, item: dict):
+        if not self._wait_if_paused():
+            return False, None
         self._ensure_mux_script_for_item(item)
         self._root.after(0, self._plotter.start_live, f"{item['type']} (live)", None, item["type"])
         csv_path = None
@@ -1567,6 +1735,8 @@ class QueueTab:
             )
             self._session.current_runner = runner
             success, csv_path = runner.execute(meas_tag=meas_tag)
+            if not runner.is_running:
+                success = False  # A stopped/partial scan is not a completed BO input.
             return success, csv_path
         finally:
             self._session.current_runner = None
@@ -1682,6 +1852,10 @@ class QueueTab:
                 recorded_items.append(dict(sub_item))
                 break
             recorded_items.append(dict(sub_item))
+            active_bo = getattr(self, '_active_bo_session', None)
+            if active_bo is not None:
+                active_bo.record_queue_completion({'items': recorded_items, 'total': total_items,
+                    'completed': completed, 'failed': failed, 'stopped': stopped})
         if bo_parent_item is not None:
             summary_status = "completed" if failed == 0 and stopped == 0 else ("stopped" if stopped else "failed")
             self._append_bo_progress(
@@ -1855,6 +2029,26 @@ class QueueTab:
             ),
         )
 
+    def _recover_pending_analysis(self, bo_session, block):
+        """Reuse a fully recorded pending batch; otherwise replay that batch in full."""
+        from core.bo_session import BOSuggestion
+        report = assess_pending(bo_session.record_dir)
+        if not report['pending']:
+            return
+        if not report['analysis_ready']:
+            self.log('Recovery: pending batch is incomplete; repeating its paired measurements from restored buffer. Prior observations retained.')
+            return
+        self.log(f"Recovery: reusing {report['valid_files']} completed CSVs for {report['pending']} pending suggestions; analysis only.")
+        for record in list(bo_session.pending_batch):
+            if not self._wait_if_paused():
+                raise InterruptedError('Recovery stopped before next analysis; remaining suggestions stay pending.')
+            suggestion = BOSuggestion(**record)
+            buffer_summary = self._run_bo_analysis(bo_session, block, suggestion=suggestion, phase='buffer')
+            target_summary = self._run_bo_analysis(bo_session, block, suggestion=suggestion, phase='target')
+            obs = bo_session.import_paired_analysis(suggestion, buffer_summary, target_summary,
+                notes='Recovered completed paired measurements after interruption; fluid state confirmed by operator')
+            self.log(f"Recovered BO {suggestion.method_id}: Q_run={obs['Q_run']:.3f}")
+
     def _exec_bo_auto_loop(self, item: dict) -> bool:
         self._session.update_queue_status(
             bo_eta_seconds=estimate_item_seconds(item),
@@ -1864,7 +2058,16 @@ class QueueTab:
         config_path = str(block.get("bo_config_path") or "").strip()
         if not config_path:
             raise RuntimeError("BO block is missing its BO config path.")
-        config = load_bo_config(config_path)
+        resume_dir = item.get('bo_resume_record_dir') or item.get('bo_record_dir')
+        recovering = bool(resume_dir)
+        if recovering:
+            if not item.pop('bo_recovery_confirmed', False):
+                raise RuntimeError('BO recovery requires confirmation of the physical buffer state before execution.')
+            # Load the saved configuration, not a possibly edited source file.
+            saved_config = Path(resume_dir)/'bo_config_snapshot.json'
+            config = json.loads(saved_config.read_text(encoding='utf8'))
+        else:
+            config = load_bo_config(config_path)
         if str(block.get("channels_override") or "").strip():
             config["channels"] = parse_channels(block.get("channels_override"))
         if str(block.get("objective") or "").strip():
@@ -1927,16 +2130,42 @@ class QueueTab:
             raise RuntimeError("BO block target iterations must be at least 1.")
 
         analysis_output_dir = str(block.get("analysis_output_dir") or (Path(exp_path) / "bo_analysis"))
-        bo_session = BOIntegrationSession(config, exp_path, config_path=config_path, analysis_output_dir=analysis_output_dir)
+        if recovering:
+            from core.queue_recovery import backup_recovery
+            backup_recovery(resume_dir)
+            bo_session = BOIntegrationSession.load(resume_dir)
+            if item.get('bo_exclude_from_iteration'):
+                from core.queue_recovery import exclude_from_iteration
+                removed = exclude_from_iteration(bo_session, item.pop('bo_exclude_from_iteration'))
+                self.log(f'Recovery excluded {removed} affected observations from learning; originals backed up.')
+                item['bo_recovery_mode'] = 'remeasure'
+            config = bo_session.config
+            if not paired_mode:
+                raise RuntimeError('Use Recover BO for paired sessions; automatic classic-session recovery is not supported.')
+            if item.get('bo_recovery_mode', 'remeasure') == 'remeasure':
+                from core.queue_recovery import invalidate_pending_measurements
+                invalidate_pending_measurements(bo_session)
+        else:
+            bo_session = BOIntegrationSession(config, exp_path, config_path=config_path, analysis_output_dir=analysis_output_dir)
+        atomic_json(bo_session.record_dir/'execution_plan.json', {'bo_block': block})
+        self._active_bo_session = bo_session
         item["bo_session_id"] = bo_session.session_id
         item["bo_record_dir"] = str(bo_session.record_dir)
-        item["bo_progress"] = []
+        for queue_index, queue_item in enumerate(self._session.measurement_queue):
+            if queue_item is item:
+                if not self._save_progress(queue_index, 'before'):
+                    return False
+                break
+        if not recovering:
+            item["bo_progress"] = []
         self.log(f"BO block started: {item.get('details', '')}")
         self._append_bo_progress(item, "BO_START", "running", f"BO session started: {bo_session.session_id}")
         halfway_iteration = max(1, int(math.ceil(target_iterations / 2.0)))
         halfway_notified = False
 
         if paired_mode:
+            if recovering and item.get('bo_recovery_mode') == 'reuse':
+                self._recover_pending_analysis(bo_session, block)
             configured_groups = config.get("channel_groups") or [{"channels": config.get("channels", [])}]
             optimizer_count = sum(
                 2
@@ -1976,7 +2205,11 @@ class QueueTab:
             gp_batches = max(0, total_cycles - warmup_batches)
             target_observations = target_parameter_sets * optimizer_count
             halfway_cycle = max(1, int(math.ceil(total_cycles / 2.0)))
-            completed_cycles = 0
+            completed_sets = len(bo_session.observations) // max(1, optimizer_count)
+            completed_cycles = (completed_sets // warmup_batch_size if completed_sets < warmup_observations
+                                else warmup_batches + (completed_sets - warmup_observations) // batch_size)
+            if completed_sets >= target_parameter_sets:
+                completed_cycles = total_cycles
             eta_started = time.monotonic()
             eta_modeled_done = 0.0
             target_equilibration_seconds = max(0.0, float(block.get("target_equilibration_seconds", 0.0) or 0.0))
@@ -1991,7 +2224,7 @@ class QueueTab:
                 "buffer_exchange_block_path",
                 "Return-to-buffer exchange",
             )
-            while self._session.is_running and completed_cycles < total_cycles:
+            while self._session.is_running and len(bo_session.observations) < target_observations:
                 suggestion_count, _cycle_span = self._paired_bo_batch_span(
                     len(bo_session.observations) // optimizer_count,
                     target_parameter_sets,
@@ -2224,6 +2457,8 @@ class QueueTab:
                     bo_total_sets=target_observations,
                 )
                 for suggestion in suggestions:
+                    if not self._wait_if_paused():
+                        return False
                     self._set_bo_live_details(
                         item,
                         f"{cycle_label} | analysis | importing iteration {suggestion.iteration}",
@@ -2457,10 +2692,12 @@ class QueueTab:
         initial_size = len(queue)
         i = start_index
         while i < len(queue):
-            if not self._session.is_running:
+            if not self._wait_if_paused():
                 self.log("Queue execution stopped by user.")
                 break
             item = queue[i]
+            if not self._save_progress(i, 'before'):
+                break
 
             self._session.measurement_queue[i]["status"] = "running"
             self._root.after(0, self.refresh)
@@ -2522,6 +2759,13 @@ class QueueTab:
             except Exception as exc:
                 self._session.measurement_queue[i]["status"] = "failed"
                 self.log(f"CRITICAL ERROR in queue: {exc}")
+
+            self._active_bo_session = None
+            finished = self._session.measurement_queue[i]['status'] == 'completed'
+            self._save_progress(i, 'after' if finished else 'before')
+            if self._session.measurement_queue[i]['status'] == 'failed':
+                self.log('Queue stopped after failure; remaining actions left pending.')
+                break
 
             if csv_path:
                 self._root.after(0, self._plotter.plot_data, csv_path, self._session.last_live_plot_color, None, True, False)
