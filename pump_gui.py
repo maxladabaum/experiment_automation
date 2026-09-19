@@ -21,7 +21,7 @@ except Exception:
 HAS_COM = False
 try:
     import pythoncom
-    from win32com.client import gencache
+    from win32com.client import gencache, dynamic
     HAS_COM = True
 except Exception:
     HAS_COM = False
@@ -253,6 +253,21 @@ class PumpCtrl:
             self._stop_com_thread()
             raise RuntimeError(f"Connect failed: {e}")
 
+    def _create_com_backend(self):
+        """Keep generated bindings normally; bypass an incomplete pywin32 cache."""
+        try:
+            return gencache.EnsureDispatch(PROGID)
+        except AttributeError as exc:
+            error = str(exc)
+            if 'win32com.gen_py.' not in error or not any(
+                name in error for name in ('CLSIDToClassMap', 'CLSIDToPackageMap')
+            ):
+                raise
+            self._log('Pump driver wrapper cache is incomplete; using direct COM binding.')
+            # dynamic.Dispatch does not load the damaged generated wrapper. It
+            # still obtains method signatures from the installed driver's type info.
+            return dynamic.Dispatch(PROGID)
+
     def _connect_backend(self):
         """COM-thread only: retry the same port/address, without moving the pump."""
         last_error = None
@@ -263,7 +278,7 @@ class PumpCtrl:
                         self._backend.PumpExitComm()
                     except Exception:
                         pass
-                self._backend = gencache.EnsureDispatch(PROGID)
+                self._backend = self._create_com_backend()
                 self._backend.CommandAckTimeout = 18
                 # Application retries connection/status only, never blind movement.
                 self._backend.CommandRetryCount = 0

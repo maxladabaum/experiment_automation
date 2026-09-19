@@ -16,6 +16,11 @@ address up to three times, with two seconds between attempts. Each attempt can
 also take the driver's acknowledgement timeout. Startup port discovery remains
 available. Keep the USB cable in its original socket when reconnecting.
 
+If pywin32 reports a generated wrapper missing `CLSIDToClassMap` or
+`CLSIDToPackageMap`, the app automatically bypasses that incomplete cache using
+the installed driver's direct COM binding. This does not change the pump port,
+use simulation, or delete another application's cached wrappers.
+
 Reconnection queries status; it does not initialize the syringe. Status and speed
 commands can be retried. A failed motion command might already have moved liquid,
 so it is never automatically replayed. The queue stops, leaves later items pending,
