@@ -377,10 +377,15 @@ class ElectrochemGUI:
         self._bo_tab.select_setup_tab()
         self._nb.select(self._bo_frame)
 
-    def _run_post_bo_titration(self):
+    def _run_post_bo_titration(self, completion_summary=None):
         groups = self._bo_tab.get_best_parameter_groups()
         self._nb.select(self._titration_frame)
-        self._automated_titration_tab.run_locked_after_bo(groups)
+        completion_summary = completion_summary or {}
+        return self._automated_titration_tab.run_locked_after_bo(
+            groups,
+            handoff_id=completion_summary.get("run_id"),
+            expected_run_id=completion_summary.get("run_id"),
+        )
 
     @staticmethod
     def _scrollable_tab_content(parent, *, min_width=980):

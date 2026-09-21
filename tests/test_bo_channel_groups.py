@@ -678,10 +678,16 @@ def test_classic_auto_loop_appends_queue_history_and_runs_only_new_rows():
     tab._refresh_queue = lambda: None
     tab._refresh_record_files = lambda: None
     tab._run_queue = lambda: pytest.fail("Completed queue rows must not be replayed")
-    tab._run_queue_from_index = started_at.append
+    def start_from_index(index, **kwargs):
+        started_at.append((index, kwargs))
+        return True
+
+    tab._run_queue_from_index = start_from_index
 
     tab._auto_submit_next()
 
     assert measurement_session.measurement_queue[0] is old_item
     assert len(measurement_session.measurement_queue) == 2
-    assert started_at == [1]
+    assert started_at == [
+        (1, {"expected_run_id": None, "automatic": True})
+    ]

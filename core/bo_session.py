@@ -67,6 +67,13 @@ DEFAULT_INITIAL_METHOD = {
     "conditioning_time": 0.0,
 }
 
+DEFAULT_BO_BA_RANGE = {
+    "mode": "auto",
+    "fixed": "100 nA",
+    "auto_min": "100 nA",
+    "auto_max": "100 uA",
+}
+
 DEFAULT_PARAMETER_RANGES = {
     "begin_potential": {"min": -0.9, "max": -0.4, "scale": "linear", "step": None, "proposal_sigma": 0.12},
     "end_potential": {"min": -0.35, "max": 0.05, "scale": "linear", "step": None, "proposal_sigma": 0.10},
@@ -297,10 +304,9 @@ def normalize_bo_config(config: dict) -> dict:
     cfg["channels"] = [ch for group in groups for ch in group["channels"]]
     cfg.setdefault("method_options", {})
     cfg["method_options"].setdefault("bandwidth", "4k")
-    cfg["method_options"].setdefault(
-        "ba_range",
-        {"mode": "fixed", "fixed": "100n", "auto_min": "100n", "auto_max": "100n"},
-    )
+    ba_range = dict(DEFAULT_BO_BA_RANGE)
+    ba_range.update(dict(cfg["method_options"].get("ba_range") or {}))
+    cfg["method_options"]["ba_range"] = ba_range
     if "initial_parameters" not in cfg:
         if isinstance(cfg.get("initial_method"), dict):
             cfg["initial_parameters"] = dict(cfg["initial_method"])

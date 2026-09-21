@@ -19,7 +19,7 @@
       "mode": "auto",
       "fixed": "100 nA",
       "auto_min": "100 nA",
-      "auto_max": "50 uA"
+      "auto_max": "100 uA"
     }
   },
   "initial_parameters": {

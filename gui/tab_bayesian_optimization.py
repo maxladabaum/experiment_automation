@@ -35,6 +35,7 @@ from config import (
 )
 from core.bo_session import (
     BOIntegrationSession,
+    DEFAULT_BO_BA_RANGE,
     DEFAULT_PARAMETER_RANGES,
     OPTIMIZER_ORDER,
     PARAMETER_ORDER,
@@ -139,10 +140,18 @@ class BayesianOptimizationTab:
         self._channel_group_vars = []
         self._channel_group_settings = []
         self._bo_bandwidth_var = tk.StringVar(value="4k")
-        self._bo_ba_range_mode_var = tk.StringVar(value="fixed")
-        self._bo_ba_fixed_range_var = tk.StringVar(value="100 nA")
-        self._bo_ba_auto_min_var = tk.StringVar(value="100 nA")
-        self._bo_ba_auto_max_var = tk.StringVar(value="100 nA")
+        self._bo_ba_range_mode_var = tk.StringVar(
+            value=DEFAULT_BO_BA_RANGE["mode"]
+        )
+        self._bo_ba_fixed_range_var = tk.StringVar(
+            value=DEFAULT_BO_BA_RANGE["fixed"]
+        )
+        self._bo_ba_auto_min_var = tk.StringVar(
+            value=DEFAULT_BO_BA_RANGE["auto_min"]
+        )
+        self._bo_ba_auto_max_var = tk.StringVar(
+            value=DEFAULT_BO_BA_RANGE["auto_max"]
+        )
         self._measurements_per_channel_var = tk.StringVar(value="1")
         self._exploration_var = tk.DoubleVar(value=0.35)
         self._exploration_text_var = tk.StringVar(value="0.35")
@@ -3975,25 +3984,60 @@ class BayesianOptimizationTab:
     def select_setup_tab(self):
         self._tabs.select(0)
 
-    def _start_post_bo_titration(self):
+    def _log_post_bo_handoff(self, message):
+        session_mgr = getattr(self._session, "session_manager", None)
+        if session_mgr is not None and callable(getattr(session_mgr, "log", None)):
+            session_mgr.log(message)
+
+    def _start_post_bo_titration(self, completion_summary=None):
         if (
             not self._run_auto_titration_var.get()
             or self._post_bo_titration_started
             or not callable(self._on_bo_finished)
         ):
-            return
-        self._post_bo_titration_started = True
-        try:
-            self._on_bo_finished()
-            self._auto_status_var.set(
-                "BO complete; starting the locked automated titration."
+            return False
+        completion_summary = completion_summary or {}
+        run_id = completion_summary.get("run_id")
+        if completion_summary.get("superseded"):
+            reason = f"completed queue run {run_id} was superseded"
+            self._log_post_bo_handoff(
+                f"Post-BO autotitration start canceled: {reason}."
             )
+            self._auto_status_var.set(
+                f"BO complete; automatic titration canceled because {reason}."
+            )
+            return False
+        self._log_post_bo_handoff(
+            f"Post-BO autotitration handoff attempt after queue run {run_id}."
+        )
+        try:
+            started = bool(self._on_bo_finished(completion_summary))
+            if started:
+                self._post_bo_titration_started = True
+                self._auto_status_var.set(
+                    "BO complete; locked automated titration actually started."
+                )
+                self._log_post_bo_handoff(
+                    f"Post-BO autotitration actually started after queue run {run_id}."
+                )
+                return True
+            self._auto_status_var.set(
+                "BO complete; automatic titration start was rejected. Steps remain queued."
+            )
+            self._log_post_bo_handoff(
+                f"Post-BO autotitration start rejected after queue run {run_id}; "
+                "the handoff remains unstarted."
+            )
+            return False
         except Exception as exc:
-            self._post_bo_titration_started = False
             self._auto_status_var.set(
                 f"BO complete, but autotitration could not start: {exc}"
             )
+            self._log_post_bo_handoff(
+                f"Post-BO autotitration handoff failed after queue run {run_id}: {exc}"
+            )
             messagebox.showerror("BO Autotitration", str(exc))
+            return False
 
     def _validate_config(self, show_dialog=True):
         if self._config is None:
@@ -5715,10 +5759,25 @@ class BayesianOptimizationTab:
             f"Queued paired BO: {target_iterations} total iteration(s), including warmups; "
             f"regular batch size {block['batch_size']}. Starting queue."
         )
-        self._run_queue()
+        started = self._run_queue(automatic=True)
+        if not started:
+            self._paired_queue_running = False
+            self._auto_status_var.set(
+                "Paired BO queue start was rejected; queued steps were not started."
+            )
 
-    def _auto_submit_next(self):
+    def _auto_submit_next(self, completion_summary=None):
         if not self._auto_running:
+            return
+        if completion_summary and completion_summary.get("superseded"):
+            self._auto_running = False
+            run_id = completion_summary.get("run_id")
+            self._auto_status_var.set(
+                f"Automatic BO continuation canceled: queue run {run_id} was superseded."
+            )
+            self._log_post_bo_handoff(
+                f"Automatic BO continuation canceled: queue run {run_id} was superseded."
+            )
             return
         target = int(self._auto_target_var.get())
         groups = channel_groups(self._bo_session.config) if self._bo_session else []
@@ -5757,7 +5816,7 @@ class BayesianOptimizationTab:
                     f"Session={self._bo_session.session_id}; "
                     f"Experiment={experiment_name}.{best_text}"
                 )
-            self._start_post_bo_titration()
+            self._start_post_bo_titration(completion_summary)
             return
         if self._session.is_running:
             return
@@ -5787,10 +5846,25 @@ class BayesianOptimizationTab:
                 f"Queued BO iteration {self._suggestion.iteration}; starting queue."
             )
             self._auto_analysis_cutoff = time.time()
+            expected_run_id = (
+                completion_summary.get("run_id") if completion_summary else None
+            )
             if queue_start_index > 0 and callable(self._run_queue_from_index):
-                self._run_queue_from_index(queue_start_index)
+                started = self._run_queue_from_index(
+                    queue_start_index,
+                    expected_run_id=expected_run_id,
+                    automatic=True,
+                )
             else:
-                self._run_queue()
+                started = self._run_queue(
+                    expected_run_id=expected_run_id,
+                    automatic=True,
+                )
+            if not started:
+                self._auto_running = False
+                self._auto_status_var.set(
+                    "Auto loop stopped: queued BO iteration start was rejected."
+                )
         except Exception as exc:
             self._auto_running = False
             self._auto_status_var.set(f"Auto loop stopped: {exc}")
@@ -5799,6 +5873,15 @@ class BayesianOptimizationTab:
     def on_queue_complete(self, summary):
         if self._paired_queue_running:
             self._paired_queue_running = False
+            if summary.get("superseded"):
+                run_id = summary.get("run_id")
+                self._auto_status_var.set(
+                    f"Paired BO continuation canceled: queue run {run_id} was superseded."
+                )
+                self._log_post_bo_handoff(
+                    f"Paired BO continuation canceled: queue run {run_id} was superseded."
+                )
+                return
             if summary.get("failed", 0) or summary.get("stopped", 0):
                 self._auto_status_var.set("Paired BO stopped: queue did not complete cleanly.")
                 return
@@ -5815,7 +5898,7 @@ class BayesianOptimizationTab:
                     f"Paired BO complete: {len(self._bo_session.observations)} paired comparison(s)."
                 )
                 self._tabs.select(3)
-                self._start_post_bo_titration()
+                self._start_post_bo_titration(summary)
             else:
                 self._auto_status_var.set("Paired BO complete, but session folder could not be loaded.")
             return
@@ -5823,6 +5906,16 @@ class BayesianOptimizationTab:
             self._bo_session.record_queue_completion(summary)
             self._refresh_record_files()
         if not self._auto_running:
+            return
+        if summary.get("superseded"):
+            self._auto_running = False
+            run_id = summary.get("run_id")
+            self._auto_status_var.set(
+                f"Automatic BO continuation canceled: queue run {run_id} was superseded."
+            )
+            self._log_post_bo_handoff(
+                f"Automatic BO continuation canceled: queue run {run_id} was superseded."
+            )
             return
         if summary.get("failed", 0) or summary.get("stopped", 0):
             self._auto_running = False
@@ -5832,7 +5925,7 @@ class BayesianOptimizationTab:
         obs = self._run_analysis_for_pending(prompt=False)
         if obs is None or not self._auto_running:
             return
-        self._auto_submit_next()
+        self._auto_submit_next(summary)
 
     def _on_live_paired_bo_update(self, payload):
         if not isinstance(payload, dict):

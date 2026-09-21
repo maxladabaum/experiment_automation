@@ -45,6 +45,7 @@ class AutomatedTitrationTab:
         self._bo_locked_settings = None
         self._bo_locked_plan = None
         self._bo_locked_manual_channel_params = None
+        self._bo_queue_handoff = None
         self._recipe = []
         self._plan = []
 
@@ -489,6 +490,7 @@ class AutomatedTitrationTab:
         self._bo_locked_settings = None
         self._bo_locked_plan = None
         self._bo_locked_manual_channel_params = None
+        self._bo_queue_handoff = None
         self._parameter_groups = []
         self._manual_channel_params = {}
         for group in self._bo_setup_groups:
@@ -510,6 +512,7 @@ class AutomatedTitrationTab:
         self._bo_locked_settings = None
         self._bo_locked_plan = None
         self._bo_locked_manual_channel_params = None
+        self._bo_queue_handoff = None
         self._lock_bo_button.configure(state="disabled")
 
     def bo_settings_locked(self):
@@ -561,35 +564,71 @@ class AutomatedTitrationTab:
         if callable(self._on_lock_for_bo):
             self._on_lock_for_bo()
 
-    def run_locked_after_bo(self, optimized_groups):
+    def run_locked_after_bo(
+        self, optimized_groups, *, handoff_id=None, expected_run_id=None
+    ):
         """Build, enqueue, and immediately start the locked post-BO titration."""
         if not self.bo_settings_locked():
             raise RuntimeError("Autotitration settings were not locked before BO started.")
         if not callable(self._send_queue_item) or not callable(self._run_queue):
             raise RuntimeError("The autotitration queue runner is not available.")
-        self._parameter_groups = copy.deepcopy(optimized_groups)
-        locked_manual = getattr(self, "_bo_locked_manual_channel_params", None)
-        if locked_manual is not None:
-            self._manual_channel_params = copy.deepcopy(locked_manual)
-        self._recipe = self._build_recipe(
-            copy.deepcopy(self._bo_locked_settings),
-            copy.deepcopy(self._bo_locked_plan),
-        )
-        start_index = len(self._session.measurement_queue)
-        for item in self._recipe:
-            if item.get("type") == "SWV":
-                queue_item = self._materialize_swv_item(item)
-            else:
-                queue_item = {
-                    key: copy.deepcopy(value)
-                    for key, value in item.items()
-                    if not key.startswith("_")
-                }
-            self._send_queue_item(queue_item)
+        key = handoff_id if handoff_id is not None else "locked-post-bo"
+        handoff = getattr(self, "_bo_queue_handoff", None)
+        if handoff is None:
+            self._parameter_groups = copy.deepcopy(optimized_groups)
+            locked_manual = getattr(self, "_bo_locked_manual_channel_params", None)
+            if locked_manual is not None:
+                self._manual_channel_params = copy.deepcopy(locked_manual)
+            self._recipe = self._build_recipe(
+                copy.deepcopy(self._bo_locked_settings),
+                copy.deepcopy(self._bo_locked_plan),
+            )
+            queue_items = []
+            for item in self._recipe:
+                if item.get("type") == "SWV":
+                    queue_item = self._materialize_swv_item(item)
+                else:
+                    queue_item = {
+                        item_key: copy.deepcopy(value)
+                        for item_key, value in item.items()
+                        if not item_key.startswith("_")
+                    }
+                queue_items.append(queue_item)
+            handoff = {
+                "key": key,
+                "start_index": len(self._session.measurement_queue),
+                "items": queue_items,
+                "queued_count": 0,
+            }
+            self._bo_queue_handoff = handoff
+        elif handoff["key"] != key:
+            raise RuntimeError(
+                "A different post-BO autotitration handoff is already queued."
+            )
+
+        while handoff["queued_count"] < len(handoff["items"]):
+            queue_item = handoff["items"][handoff["queued_count"]]
+            self._send_queue_item(copy.deepcopy(queue_item))
+            handoff["queued_count"] += 1
+
+        start_index = handoff["start_index"]
         self._status_var.set(
             f"BO complete; queued {len(self._recipe)} locked autotitration steps."
         )
-        self._run_queue(start_index)
+        started = self._run_queue(
+            start_index,
+            expected_run_id=expected_run_id,
+            automatic=True,
+        )
+        if started:
+            self._status_var.set(
+                f"BO complete; started {len(self._recipe)} locked autotitration steps."
+            )
+        else:
+            self._status_var.set(
+                "BO complete; autotitration steps are queued, but queue start was rejected."
+            )
+        return bool(started)
 
     def _refresh_manual_tree(self):
         for row in self._manual_tree.get_children():

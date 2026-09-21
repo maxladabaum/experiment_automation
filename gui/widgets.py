@@ -114,6 +114,7 @@ class ScrollableFrame(ttk.Frame):
         self._bind_mousewheel(self.content)
 
     def _on_content_configure(self, _event=None):
+        self._protect_descendant_comboboxes(self.content)
         self._canvas.configure(scrollregion=self._canvas.bbox("all"))
 
     def _on_canvas_configure(self, event):
@@ -128,6 +129,23 @@ class ScrollableFrame(ttk.Frame):
 
     def _on_mousewheel(self, event):
         self._canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def _protect_descendant_comboboxes(self, parent):
+        """Route wheel gestures to this viewport instead of changing dropdown values."""
+        for child in parent.winfo_children():
+            if isinstance(child, ScrollableFrame):
+                continue
+            if (
+                str(child.winfo_class()) == "TCombobox"
+                and getattr(child, "_scrollable_wheel_owner", None) is None
+            ):
+                child.bind("<MouseWheel>", self._on_combobox_mousewheel, add="+")
+                child._scrollable_wheel_owner = self
+            self._protect_descendant_comboboxes(child)
+
+    def _on_combobox_mousewheel(self, event):
+        self._on_mousewheel(event)
+        return "break"
 
 
 def show_guide_dialog(parent, title: str, sections, *, width=760, height=620):

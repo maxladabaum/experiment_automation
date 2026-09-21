@@ -848,7 +848,11 @@ def test_locked_post_bo_titration_materializes_queues_and_starts():
     queued = []
     run_calls = []
     tab._send_queue_item = queued.append
-    tab._run_queue = lambda start_index: run_calls.append(start_index)
+    def run_queue(start_index, **kwargs):
+        run_calls.append((start_index, kwargs))
+        return True
+
+    tab._run_queue = run_queue
     tab._status_var = type("Status", (), {"set": lambda self, value: None})()
     optimized = {
         "begin_potential": -0.7, "end_potential": -0.1,
@@ -862,4 +866,4 @@ def test_locked_post_bo_titration_materializes_queues_and_starts():
 
     assert queued
     assert any(item["type"] == "SWV" for item in queued)
-    assert run_calls == [1]
+    assert run_calls == [(1, {"expected_run_id": None, "automatic": True})]

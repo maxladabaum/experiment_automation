@@ -66,6 +66,7 @@ class QueueTab:
         self._root       = root
 
         self._queue_thread = None
+        self._queue_run_id = 0
         self._reorder_pending  = False
         self._reorder_snapshot = None
         self._drag_item        = None
@@ -1065,8 +1066,30 @@ class QueueTab:
         worker = getattr(self, "_queue_thread", None)
         return worker is not None and worker.is_alive()
 
-    def _queue_start_is_blocked(self):
+    def _queue_start_is_blocked(self, *, expected_run_id=None, automatic=False):
+        current_run_id = getattr(self, "_queue_run_id", 0)
+        if expected_run_id is not None and expected_run_id != current_run_id:
+            reason = (
+                f"completed run {expected_run_id} was superseded by queue run "
+                f"generation {current_run_id}"
+            )
+            self.log(
+                f"Queue start rejected "
+                f"({'automatic' if automatic else 'manual'}): {reason}."
+            )
+            return True
         if self.worker_is_active() or self._session.is_running:
+            reason = (
+                "the previous queue worker is still active"
+                if self.worker_is_active()
+                else "the session is already running"
+            )
+            self.log(
+                f"Queue start deferred/rejected "
+                f"({'automatic' if automatic else 'manual'}): {reason}."
+            )
+            if automatic:
+                return True
             messagebox.showwarning(
                 "Queue busy",
                 "The previous run is still running or stopping. Wait for it to finish before starting again.",
@@ -1074,14 +1097,16 @@ class QueueTab:
             return True
         return False
 
-    def run_queue(self):
+    def run_queue(self, *, expected_run_id=None, automatic=False):
         self._reset_reorder()
         if not self._session.measurement_queue:
-            messagebox.showwarning("Empty Queue", "No items in queue."); return
-        if self._queue_start_is_blocked():
-            return
+            messagebox.showwarning("Empty Queue", "No items in queue."); return False
+        if self._queue_start_is_blocked(
+            expected_run_id=expected_run_id, automatic=automatic
+        ):
+            return False
         if not self._validate_queue_scripts():
-            return
+            return False
         self._session.pause_requested = False
         self._session.is_running = True
         self._session.update_queue_status(
@@ -1111,48 +1136,71 @@ class QueueTab:
         self.log(f"Measurement simulation: {'ON' if self._session.simulate_measurements else 'OFF'}")
         self._announce_queue_start(start_index=0)
         self._copy_queue_file("run_queue")
+        run_id = getattr(self, "_queue_run_id", 0) + 1
+        self._queue_run_id = run_id
         self._queue_thread = threading.Thread(
-            target=self._execute_queue, args=(0,), daemon=True
+            target=self._execute_queue, args=(0, run_id), daemon=True
         )
-        self._queue_thread.start()
+        try:
+            self._queue_thread.start()
+        except Exception as exc:
+            self._session.is_running = False
+            self.log(
+                f"Queue start rejected ({'automatic' if automatic else 'manual'}): "
+                f"worker could not start: {exc}"
+            )
+            if not automatic:
+                messagebox.showerror("Queue Error", f"Queue worker could not start: {exc}")
+            return False
+        self.log(
+            f"Queue run {run_id} actually started from item 1 "
+            f"({'automatic' if automatic else 'manual'} request)."
+        )
+        return True
 
     def run_from_selected(self):
         self._reset_reorder()
         if not self._session.measurement_queue:
-            messagebox.showwarning("Empty Queue", "No items in queue."); return
+            messagebox.showwarning("Empty Queue", "No items in queue."); return False
         if self._queue_start_is_blocked():
-            return
+            return False
         sel = self._tree.selection()
         if not sel:
             messagebox.showwarning("No Selection", "Select a queue item to start from.")
-            return
+            return False
         if self._tree.parent(sel[0]):
             messagebox.showwarning('BO progress row', 'These rows are records, not restart points. Use Recover BO to continue the saved optimizer.')
-            return
+            return False
         try:
             idx = self._tree.index(sel[0])
         except Exception:
             messagebox.showerror("Selection Error", "Could not determine selected item.")
-            return
-        self.run_from_index(idx)
+            return False
+        return self.run_from_index(idx)
 
-    def run_from_index(self, idx: int):
+    def run_from_index(self, idx: int, *, expected_run_id=None, automatic=False):
         """Start queue execution at an explicit index without replaying prior items."""
         self._reset_reorder()
         if not self._session.measurement_queue:
-            messagebox.showwarning("Empty Queue", "No items in queue."); return
-        if self._queue_start_is_blocked():
-            return
+            messagebox.showwarning("Empty Queue", "No items in queue."); return False
+        if self._queue_start_is_blocked(
+            expected_run_id=expected_run_id, automatic=automatic
+        ):
+            return False
         try:
             idx = int(idx)
         except (TypeError, ValueError):
             messagebox.showerror("Queue Error", "Invalid queue start index.")
-            return
+            return False
         if idx < 0 or idx >= len(self._session.measurement_queue):
             messagebox.showerror("Queue Error", "Queue start index is out of range.")
-            return
+            return False
         if not self._validate_queue_scripts(idx):
-            return
+            self.log(
+                f"Queue start rejected ({'automatic' if automatic else 'manual'}): "
+                "queue script validation failed."
+            )
+            return False
         self._session.pause_requested = False
         self._session.is_running = True
         self._session.update_queue_status(
@@ -1182,12 +1230,31 @@ class QueueTab:
         self.log(f"Measurement simulation: {'ON' if self._session.simulate_measurements else 'OFF'}")
         self._announce_queue_start(start_index=idx)
         self._copy_queue_file("run_queue_from_selected")
+        run_id = getattr(self, "_queue_run_id", 0) + 1
+        self._queue_run_id = run_id
         self._queue_thread = threading.Thread(
-            target=self._execute_queue, args=(idx,), daemon=True
+            target=self._execute_queue, args=(idx, run_id), daemon=True
         )
-        self._queue_thread.start()
+        try:
+            self._queue_thread.start()
+        except Exception as exc:
+            self._session.is_running = False
+            self.log(
+                f"Queue start rejected ({'automatic' if automatic else 'manual'}): "
+                f"worker could not start: {exc}"
+            )
+            if not automatic:
+                messagebox.showerror("Queue Error", f"Queue worker could not start: {exc}")
+            return False
+        self.log(
+            f"Queue run {run_id} actually started from item {idx + 1} "
+            f"({'automatic' if automatic else 'manual'} request)."
+        )
+        return True
 
     def stop_queue(self):
+        self._queue_run_id = getattr(self, "_queue_run_id", 0) + 1
+        self.log("Pending automatic queue continuation invalidated by Stop.")
         if not self._session.is_running:
             return
         self.log("Queue stop requested.")
@@ -1318,7 +1385,7 @@ class QueueTab:
             messagebox.showerror('Recover BO', str(exc))
 
 
-    def _notify_completion_callbacks(self, start_index: int):
+    def _notify_completion_callbacks(self, start_index: int, run_id=None):
         ran = self._session.measurement_queue[start_index:]
         summary = {
             "start_index": start_index,
@@ -1328,11 +1395,41 @@ class QueueTab:
             "stopped": sum(1 for item in ran if item.get("status") == "stopped"),
             "items": [dict(item) for item in ran],
         }
-        for callback in list(self._completion_callbacks):
-            try:
-                self._root.after(0, lambda cb=callback, data=dict(summary): cb(data))
-            except Exception as exc:
-                self.log(f"Queue completion callback failed: {exc}")
+        if run_id is not None:
+            summary["run_id"] = run_id
+
+        def deliver():
+            data = dict(summary)
+            data["superseded"] = (
+                run_id is not None
+                and getattr(self, "_queue_run_id", 0) != run_id
+            )
+            for callback in list(self._completion_callbacks):
+                try:
+                    callback(dict(data))
+                except Exception as exc:
+                    self.log(f"Queue completion callback failed: {exc}")
+
+        completed_worker = threading.current_thread()
+        if completed_worker is getattr(self, "_queue_thread", None):
+            self.log(
+                f"Queue run {run_id if run_id is not None else '(untracked)'} complete; "
+                "deferring completion callbacks until its worker exits."
+            )
+
+            def wait_for_completed_worker():
+                completed_worker.join()
+                try:
+                    self._root.after(0, deliver)
+                except Exception as exc:
+                    self.log(f"Queue completion callback scheduling failed: {exc}")
+
+            threading.Thread(target=wait_for_completed_worker, daemon=True).start()
+            return
+        try:
+            self._root.after(0, deliver)
+        except Exception as exc:
+            self.log(f"Queue completion callback scheduling failed: {exc}")
 
     def _announce_queue_start(self, start_index: int):
         session_mgr = getattr(self._session, "session_manager", None)
@@ -2688,7 +2785,7 @@ class QueueTab:
             )
         return self._session.is_running and completed_iterations >= expected_observations
 
-    def _execute_queue(self, start_index: int = 0):
+    def _execute_queue(self, start_index: int = 0, run_id=None):
         # Structural edits are blocked while running; appending is allowed.
         # Read the live list each iteration instead of freezing its initial tail.
         queue = self._session.measurement_queue
@@ -2823,4 +2920,4 @@ class QueueTab:
         self.log('Queue completed.' if end_label == 'Queue Complete' else end_label)
         self._root.after(0, self.set_status, end_label)
         self._announce_queue_end(start_index=start_index)
-        self._notify_completion_callbacks(start_index=start_index)
+        self._notify_completion_callbacks(start_index=start_index, run_id=run_id)
